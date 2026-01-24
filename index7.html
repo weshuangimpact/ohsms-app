@@ -16,7 +16,6 @@
             display: none; /* Auth Guard */
         }
         
-        /* 說明卡 */
         .master-info-card {
             background-color: #e0e7ff;
             border-left: 5px solid #4338ca;
@@ -24,52 +23,11 @@
             padding: 1.25rem;
             margin-bottom: 1.5rem;
             border-radius: 0.375rem;
-            font-size: 0.9rem;
-            line-height: 1.6;
         }
 
-        /* 表格樣式 */
         .client-table th { background-color: #4f46e5; color: white; font-weight: 500; }
-        .client-table tbody tr { transition: all 0.3s; }
         .client-table tbody tr:hover { background-color: #eef2ff; }
         
-        /* 狀態標籤 */
-        .status-active { background-color: #d1fae5; color: #065f46; border: 1px solid #a7f3d0; padding: 2px 8px; border-radius: 12px; font-size: 0.8rem; }
-        .status-inactive { background-color: #f3f4f6; color: #4b5563; border: 1px solid #d1d5db; padding: 2px 8px; border-radius: 12px; font-size: 0.8rem; }
-
-        /* 新增資料的高亮動畫 */
-        .new-row-highlight {
-            animation: highlightRow 3s ease-out;
-            background-color: #fef3c7; /* 初始黃色高亮 */
-        }
-        @keyframes highlightRow {
-            0% { background-color: #fffbeb; }
-            50% { background-color: #fef3c7; } 
-            100% { background-color: transparent; }
-        }
-
-        /* Modal 分頁樣式 */
-        .nav-tabs .nav-link { color: #6b7280; }
-        .nav-tabs .nav-link.active {
-            font-weight: bold;
-            color: #4f46e5;
-            border-top: 3px solid #4f46e5;
-            background-color: #fff;
-        }
-        .form-section-title {
-            font-size: 0.9rem;
-            font-weight: 700;
-            color: #6b7280;
-            text-transform: uppercase;
-            letter-spacing: 0.05em;
-            border-bottom: 1px solid #e5e7eb;
-            padding-bottom: 0.5rem;
-            margin-bottom: 1rem;
-            margin-top: 1.5rem;
-        }
-        .form-section-title:first-child { margin-top: 0; }
-
-        /* 上傳區塊 */
         .upload-zone {
             border: 2px dashed #cbd5e1;
             border-radius: 0.5rem;
@@ -86,6 +44,7 @@
     </style>
 
     <script>
+        // 權限檢查
         document.addEventListener('DOMContentLoaded', function() {
             const role = sessionStorage.getItem('currentUserRole');
             if (!role || role === 'medical') {
@@ -115,90 +74,45 @@
         
         <div class="d-flex justify-content-between align-items-center mb-4">
             <div>
-                <h2 class="fw-bold text-dark"><i class="fas fa-database me-2 text-indigo-600" style="color: #4f46e5;"></i>基本資料建立</h2>
-                <p class="text-muted mb-0">客戶主檔管理與合約設定 (Master Data Management)</p>
+                <h2 class="fw-bold text-dark"><i class="fas fa-database me-2" style="color: #4f46e5;"></i>基本資料建立</h2>
+                <p class="text-muted mb-0">客戶主檔管理與合約設定</p>
             </div>
             <div class="d-flex gap-2">
                 <button class="btn btn-outline-primary fw-bold" onclick="triggerImport()">
-                    <i class="fas fa-file-import me-2"></i>匯入歷史資料 (AI)
+                    <i class="fas fa-file-import me-2"></i>匯入歷史資料 (PDF/Excel)
                 </button>
                 <button class="btn btn-primary fw-bold" onclick="openCreateModal()">
-                    <i class="fas fa-plus me-2"></i>新增事業單位
+                    <i class="fas fa-plus me-2"></i>手動新增
                 </button>
             </div>
         </div>
 
-        <input type="file" id="importInput" style="display: none;" onchange="simulateImportProcess()">
+        <input type="file" id="importInput" accept=".pdf, .xlsx, .xls" style="display: none;" onchange="handleFileSelect(this)">
 
         <div class="master-info-card shadow-sm">
-            <strong><i class="fas fa-magic me-2"></i>智慧建檔功能 (Smart Import)</strong><br>
-            您可透過「匯入歷史資料」功能，直接上傳既有的<strong>「勞工健康服務執行紀錄表 (PDF)」</strong>。系統將自動解析文件內容，擷取員工人數、製程特性與危害分類，自動建立客戶主檔。
-        </div>
-
-        <div class="card border-0 shadow-sm mb-4">
-            <div class="card-body py-3">
-                <div class="row g-3">
-                    <div class="col-md-4">
-                        <div class="input-group">
-                            <span class="input-group-text bg-white border-end-0"><i class="fas fa-search text-muted"></i></span>
-                            <input type="text" class="form-control border-start-0" placeholder="搜尋公司名稱、統編或合約編號...">
-                        </div>
-                    </div>
-                    <div class="col-md-3">
-                        <select class="form-select">
-                            <option value="">所有合約狀態</option>
-                            <option value="active">有效合約中</option>
-                            <option value="expired">已過期</option>
-                        </select>
-                    </div>
-                </div>
-            </div>
+            <strong><i class="fas fa-info-circle me-2"></i>操作指引</strong><br>
+            您可以使用 <strong>PDF (單筆辨識)</strong> 或 <strong>Excel (批量匯入)</strong> 來建立資料。所有操作皆會記錄於「系統稽核日誌」中供日後查核。
         </div>
 
         <div class="card border-0 shadow">
             <div class="card-body p-0">
                 <div class="table-responsive">
-                    <table class="table client-table mb-0 align-middle" id="clientTable">
+                    <table class="table client-table mb-0 align-middle">
                         <thead>
                             <tr>
                                 <th class="ps-4">統一編號</th>
                                 <th>事業單位名稱</th>
-                                <th>合約編號</th>
                                 <th>聯絡人</th>
-                                <th>負責顧問</th>
-                                <th>附件</th>
-                                <th>合約期間</th>
-                                <th>狀態</th>
+                                <th>電話</th>
+                                <th>建立日期</th>
                                 <th class="text-end pe-4">操作</th>
                             </tr>
                         </thead>
-                        <tbody>
+                        <tbody id="tableBody">
                             <tr>
-                                <td class="ps-4 font-monospace">12345678</td>
-                                <td class="fw-bold">ABCDEF有限公司</td>
-                                <td class="small text-muted">CT-2024-001</td>
-                                <td>陳經理</td>
-                                <td><div class="d-flex align-items-center"><div class="bg-primary text-white rounded-circle d-flex justify-content-center align-items-center me-2" style="width:24px;height:24px;font-size:10px;">王</div>王大明</div></td>
-                                <td><i class="fas fa-paperclip text-primary"></i></td>
-                                <td class="small text-muted">2024/01/01 ~ 2025/12/31</td>
-                                <td><span class="status-active">合約中</span></td>
-                                <td class="text-end pe-4">
-                                    <button class="btn btn-sm btn-outline-secondary me-1"><i class="fas fa-pen"></i></button>
-                                    <button class="btn btn-sm btn-outline-danger"><i class="fas fa-trash-alt"></i></button>
-                                </td>
-                            </tr>
-                            <tr>
-                                <td class="ps-4 font-monospace">87654321</td>
-                                <td class="fw-bold">XYZ 物流中心</td>
-                                <td class="small text-muted">CT-2024-008</td>
-                                <td>林小姐</td>
-                                <td><div class="d-flex align-items-center"><div class="bg-success text-white rounded-circle d-flex justify-content-center align-items-center me-2" style="width:24px;height:24px;font-size:10px;">林</div>林美秀</div></td>
-                                <td><span class="text-muted text-opacity-25"><i class="fas fa-paperclip"></i></span></td>
-                                <td class="small text-muted">2024/06/01 ~ 2025/05/31</td>
-                                <td><span class="status-active">合約中</span></td>
-                                <td class="text-end pe-4">
-                                    <button class="btn btn-sm btn-outline-secondary me-1"><i class="fas fa-pen"></i></button>
-                                    <button class="btn btn-sm btn-outline-danger"><i class="fas fa-trash-alt"></i></button>
+                                <td colspan="6" class="text-center py-4 text-muted">
+                                    <div class="spinner-border spinner-border-sm text-primary me-2"></div>
+                                    連線資料庫中...
                                 </td>
                             </tr>
                         </tbody>
@@ -210,182 +124,324 @@
 
     <div id="loadingOverlay" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(255,255,255,0.9); z-index: 9999; text-align: center; padding-top: 20%;">
         <div class="spinner-border text-primary mb-3" style="width: 3rem; height: 3rem;" role="status"></div>
-        <h4 class="fw-bold text-dark">AI 正在解析文件內容...</h4>
-        <p class="text-muted">正在擷取：統一編號、製程特性、危害風險分類</p>
+        <h4 class="fw-bold text-dark">資料解析中...</h4>
+        <p class="text-muted">正在處理檔案內容</p>
     </div>
 
     <div class="modal fade" id="createModal" tabindex="-1" data-bs-backdrop="static">
         <div class="modal-dialog modal-xl modal-dialog-scrollable">
             <div class="modal-content">
                 <div class="modal-header bg-dark text-white">
-                    <h5 class="modal-title"><i class="fas fa-edit me-2"></i>事業單位資料維護</h5>
+                    <h5 class="modal-title" id="modalTitle"><i class="fas fa-edit me-2"></i>資料確認與建立</h5>
                     <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
                 </div>
-                <div class="modal-body p-0">
-                    <ul class="nav nav-tabs px-4 pt-3 bg-light" id="myTab" role="tablist">
-                        <li class="nav-item"><button class="nav-link active" data-bs-toggle="tab" data-bs-target="#basic">1. 基本資料</button></li>
-                        <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#workplace">2. 作業場所資料</button></li>
-                        <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#condition">3. 勞動條件概況</button></li>
-                        <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#contract">4. 合約及附件</button></li>
-                    </ul>
-                    <div class="tab-content p-4" id="myTabContent">
-                        
-                        <div class="tab-pane fade show active" id="basic">
-                            <h6 class="form-section-title">公司基本資料</h6>
-                            <div class="row g-3">
-                                <div class="col-md-4"><label class="form-label fw-bold">統一編號 <span class="text-danger">*</span></label><input type="text" class="form-control"></div>
-                                <div class="col-md-8"><label class="form-label fw-bold">事業單位名稱 <span class="text-danger">*</span></label><input type="text" class="form-control"></div>
-                                <div class="col-md-12"><label class="form-label">公司地址</label><input type="text" class="form-control"></div>
+                <div class="modal-body p-4">
+                    
+                    <div id="singleModeForm">
+                        <div class="alert alert-light border-start border-4 border-primary shadow-sm mb-4">
+                            <i class="fas fa-user-check me-2 text-primary"></i>
+                            請確認下方資料正確無誤。按下儲存後，系統將寫入資料庫並記錄操作日誌。
+                        </div>
+                        <div class="row g-3">
+                            <div class="col-md-4">
+                                <label class="form-label fw-bold">統一編號 <span class="text-danger">*</span></label>
+                                <input type="text" class="form-control" id="inp-taxid" placeholder="8碼數字">
                             </div>
-                            <h6 class="form-section-title">聯絡窗口</h6>
-                            <div class="row g-3">
-                                <div class="col-md-4"><label class="form-label">聯絡人</label><input type="text" class="form-control"></div>
-                                <div class="col-md-4"><label class="form-label">電話</label><input type="text" class="form-control"></div>
-                                <div class="col-md-4"><label class="form-label">Email</label><input type="email" class="form-control"></div>
+                            <div class="col-md-8">
+                                <label class="form-label fw-bold">事業單位名稱 <span class="text-danger">*</span></label>
+                                <input type="text" class="form-control" id="inp-name">
+                            </div>
+                            <div class="col-md-12">
+                                <label class="form-label">公司地址</label>
+                                <input type="text" class="form-control" id="inp-address">
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">聯絡人</label>
+                                <input type="text" class="form-control" id="inp-contact">
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">電話</label>
+                                <input type="text" class="form-control" id="inp-phone">
                             </div>
                         </div>
-
-                        <div class="tab-pane fade" id="workplace">
-                            <h6 class="form-section-title">基本概況</h6>
-                            <div class="row g-3 mb-3">
-                                <div class="col-md-6"><label class="form-label">部門名稱</label><input type="text" class="form-control"></div>
-                                <div class="col-md-6"><label class="form-label">一般作業人數</label><input type="number" class="form-control"></div>
-                            </div>
-
-                            <h6 class="form-section-title">勞工人數結構 (ABCDEF 格式)</h6>
-                            <div class="row g-3 mb-3">
-                                <div class="col-md-6">
-                                    <div class="card bg-light border-0">
-                                        <div class="card-body">
-                                            <h6 class="card-title text-muted small fw-bold">行政人員</h6>
-                                            <div class="row">
-                                                <div class="col-6"><label class="small">男</label><input type="number" class="form-control form-control-sm"></div>
-                                                <div class="col-6"><label class="small">女</label><input type="number" class="form-control form-control-sm"></div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                                <div class="col-md-6">
-                                    <div class="card bg-light border-0">
-                                        <div class="card-body">
-                                            <h6 class="card-title text-muted small fw-bold">現場操作人員</h6>
-                                            <div class="row">
-                                                <div class="col-6"><label class="small">男</label><input type="number" class="form-control form-control-sm"></div>
-                                                <div class="col-6"><label class="small">女</label><input type="number" class="form-control form-control-sm"></div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <h6 class="form-section-title">特別危害健康作業</h6>
-                            <div class="row g-3">
-                                <div class="col-md-4"><label class="form-label">1. 高溫 (人)</label><input type="number" class="form-control"></div>
-                                <div class="col-md-4"><label class="form-label">2. 噪音 (人)</label><input type="number" class="form-control"></div>
-                                <div class="col-md-4"><label class="form-label">3. 其他 (人)</label><input type="number" class="form-control"></div>
-                            </div>
-                        </div>
-
-                        <div class="tab-pane fade" id="condition">
-                            <h6 class="form-section-title">作業細節描述</h6>
-                            <div class="mb-3">
-                                <label class="form-label fw-bold">1. 工作流程 (製程)</label>
-                                <textarea class="form-control" rows="3" placeholder="例如：整經漿紗->織布->脫漿->成布加工..."></textarea>
-                            </div>
-                            <div class="mb-3">
-                                <label class="form-label fw-bold">2. 工作型態與時間</label>
-                                <textarea class="form-control" rows="2" placeholder="例如：行政人員常日班，產線人員輪值三班。"></textarea>
-                            </div>
-                            <div class="mb-3">
-                                <label class="form-label fw-bold">3. 潛在工作危害特性</label>
-                                <textarea class="form-control" rows="3" placeholder="例如：高溫、噪音、人因性危害..."></textarea>
-                            </div>
-                        </div>
-
-                        <div class="tab-pane fade" id="contract">
-                            <h6 class="form-section-title">合約與管理資訊</h6>
-                            <div class="row g-3">
-                                <div class="col-md-4"><label class="form-label">合約編號</label><input type="text" class="form-control"></div>
-                                <div class="col-md-4"><label class="form-label">合約起始日</label><input type="date" class="form-control"></div>
-                                <div class="col-md-4"><label class="form-label">合約結束日</label><input type="date" class="form-control"></div>
-                                <div class="col-md-6"><label class="form-label fw-bold">指派負責顧問</label><select class="form-select"><option>王大明 醫師</option><option>李雅婷 護理師</option></select></div>
-                            </div>
-                            <h6 class="form-section-title mt-4">文件歸檔</h6>
-                            <div class="upload-zone" onclick="alert('開啟檔案選擇器')">
-                                <i class="fas fa-file-contract fa-2x text-secondary mb-2"></i>
-                                <p class="mb-0 text-muted small">合約影本上傳</p>
-                            </div>
-                        </div>
-
                     </div>
+
+                    <div id="batchModeForm" style="display: none;">
+                        <div class="alert alert-success border-start border-4 border-success shadow-sm mb-3">
+                            <i class="fas fa-file-excel me-2"></i>
+                            已讀取 Excel 檔案，共發現 <strong id="batchCount">0</strong> 筆資料。請檢視後確認匯入。
+                        </div>
+                        <div class="table-responsive" style="max-height: 400px;">
+                            <table class="table table-bordered table-striped table-sm small">
+                                <thead class="table-light sticky-top">
+                                    <tr>
+                                        <th>統一編號</th>
+                                        <th>事業單位名稱</th>
+                                        <th>聯絡人</th>
+                                        <th>電話</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="batchTableBody">
+                                    </tbody>
+                            </table>
+                        </div>
+                    </div>
+
                 </div>
                 <div class="modal-footer bg-light">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
-                    <button type="button" class="btn btn-primary fw-bold px-4" onclick="alert('新增成功！')">儲存資料</button>
+                    <button type="button" class="btn btn-primary fw-bold px-4" onclick="handleSaveRouter()">
+                        <i class="fas fa-save me-2"></i>確認並寫入資料庫
+                    </button>
                 </div>
             </div>
         </div>
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     
     <script>
-        function openCreateModal() {
-            new bootstrap.Modal(document.getElementById('createModal')).show();
+        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.worker.min.js';
+
+        // 1. Supabase 連線
+        const SUPABASE_URL = 'https://ghpxaeenikochgrnczic.supabase.co';
+        const SUPABASE_KEY = 'sb_publishable_v0ZN2OY08lh-8EC8ps8NdQ_ChYo1FRW';
+        const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+        // 全域變數用來存 Excel 暫存檔
+        let currentBatchData = []; 
+        let currentMode = 'single'; // 'single' or 'batch'
+
+        // 2. 初始載入
+        document.addEventListener('DOMContentLoaded', loadCompanies);
+
+        async function loadCompanies() {
+            const tableBody = document.getElementById('tableBody');
+            const { data, error } = await supabase.from('companies').select('*').order('created_at', { ascending: false });
+
+            if (error) return tableBody.innerHTML = `<tr><td colspan="6" class="text-danger">讀取失敗：${error.message}</td></tr>`;
+            if (!data || data.length === 0) return tableBody.innerHTML = `<tr><td colspan="6" class="text-center py-4 text-muted">無資料</td></tr>`;
+
+            tableBody.innerHTML = '';
+            data.forEach(c => {
+                tableBody.innerHTML += `
+                    <tr class="animate__animated animate__fadeIn">
+                        <td class="ps-4 font-monospace">${c.tax_id || '-'}</td>
+                        <td class="fw-bold">${c.name}</td>
+                        <td>${c.contact_person || '-'}</td>
+                        <td>${c.phone || '-'}</td>
+                        <td class="small text-muted">${new Date(c.created_at).toLocaleDateString()}</td>
+                        <td class="text-end pe-4">
+                            <button class="btn btn-sm btn-outline-danger" onclick="deleteCompany('${c.id}', '${c.name}')"><i class="fas fa-trash-alt"></i></button>
+                        </td>
+                    </tr>`;
+            });
         }
 
-        // 1. 觸發檔案選擇
+        // 3. 檔案處理路由 (PDF vs Excel)
         function triggerImport() {
+            document.getElementById('importInput').value = ''; 
             document.getElementById('importInput').click();
         }
 
-        // 2. 模擬匯入流程 (使用 參考範例1.pdf 的數據)
-        function simulateImportProcess() {
-            const input = document.getElementById('importInput');
-            if (input.files && input.files[0]) {
-                // 顯示 Loading
-                document.getElementById('loadingOverlay').style.display = 'block';
+        function handleFileSelect(input) {
+            if (!input.files[0]) return;
+            const file = input.files[0];
+            const fileType = file.name.split('.').pop().toLowerCase();
 
-                setTimeout(() => {
-                    // 隱藏 Loading
-                    document.getElementById('loadingOverlay').style.display = 'none';
-                    
-                    // 3. 動態新增一列 (模擬 0000公司 匯入)
-                    const tbody = document.querySelector('#clientTable tbody');
-                    const newRow = document.createElement('tr');
-                    
-                    // 加入動畫 Class
-                    newRow.className = 'new-row-highlight animate__animated animate__fadeInUp'; 
-                    
-                    // 根據 [參考範例1.pdf] 填入數據 [cite: 59, 60]
-                    // 公司名: 0000公司 -> 模擬為 0000科技有限公司
-                    // 日期: 2022/01/01
-                    newRow.innerHTML = `
-                        <td class="ps-4 font-monospace">00001234</td>
-                        <td class="fw-bold">0000科技有限公司 <span class="badge bg-primary bg-opacity-10 text-primary ms-2" style="font-size: 0.7rem;">New</span></td>
-                        <td class="small text-muted">待補登</td>
-                        <td>陳廠長 (系統帶入)</td>
-                        <td><div class="d-flex align-items-center"><div class="bg-secondary text-white rounded-circle d-flex justify-content-center align-items-center me-2" style="width:24px;height:24px;font-size:10px;">待</div>指派中</div></td>
-                        <td><i class="fas fa-file-pdf text-danger" title="來源文件：勞工健康服務執行紀錄表_參考範例1.pdf"></i></td>
-                        <td class="small text-muted">2022/01/01 ~ 2022/12/31</td>
-                        <td><span class="status-inactive">已過期</span></td>
-                        <td class="text-end pe-4">
-                            <button class="btn btn-sm btn-outline-secondary me-1"><i class="fas fa-pen"></i></button>
-                            <button class="btn btn-sm btn-outline-danger"><i class="fas fa-trash-alt"></i></button>
-                        </td>
-                    `;
-                    
-                    tbody.appendChild(newRow);
-                    
-                    // 成功提示 (顯示擷取的重點資訊)
-                    alert('匯入成功！\n\n系統已依據「勞工健康服務執行紀錄表_參考範例1.pdf」建立基本資料。\n\n[AI 擷取重點]\n● 公司名稱：0000科技有限公司\n● 員工總數：110 人 (行政50/現場60)\n● 危害風險：高溫(5人)、噪音(20人)\n● 製程特徵：紡織相關(漿紗/織布/染整)');
-                    
-                    // 捲動到底部
-                    newRow.scrollIntoView({ behavior: 'smooth' });
+            document.getElementById('loadingOverlay').style.display = 'block';
 
-                }, 1500); // 模擬運算時間
+            if (fileType === 'pdf') {
+                parsePDF(file);
+            } else if (fileType === 'xlsx' || fileType === 'xls') {
+                parseExcel(file);
+            } else {
+                alert('不支援的檔案格式，請上傳 PDF 或 Excel。');
+                document.getElementById('loadingOverlay').style.display = 'none';
             }
         }
+
+        // 3-A. 解析 PDF
+        async function parsePDF(file) {
+            try {
+                const buffer = await file.arrayBuffer();
+                const pdf = await pdfjsLib.getDocument(buffer).promise;
+                const page = await pdf.getPage(1);
+                const text = (await page.getTextContent()).items.map(s => s.str).join(' ');
+
+                // 簡單規則抓取
+                const taxMatch = text.match(/(?<!\d)\d{8}(?!\d)/);
+                const extractedTax = taxMatch ? taxMatch[0] : '';
+                const extractedName = file.name.replace('.pdf', ''); // 預設用檔名
+
+                // 設定介面為單筆模式
+                setupSingleMode(extractedTax, extractedName, '', '', '');
+                
+            } catch (err) {
+                alert('PDF 解析失敗: ' + err.message);
+                setupSingleMode('', '', '', '', '');
+            } finally {
+                document.getElementById('loadingOverlay').style.display = 'none';
+                new bootstrap.Modal(document.getElementById('createModal')).show();
+            }
+        }
+
+        // 3-B. 解析 Excel
+        function parseExcel(file) {
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const data = new Uint8Array(e.target.result);
+                    const workbook = XLSX.read(data, {type: 'array'});
+                    const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+                    // 轉成 JSON, 假設第一列是標題
+                    const jsonData = XLSX.utils.sheet_to_json(firstSheet, {header: 1}); // 陣列的陣列
+
+                    // 簡單對應：假設 A欄=統編, B欄=名稱, C欄=聯絡人, D欄=電話
+                    // 跳過標題列 (Index 0)
+                    currentBatchData = [];
+                    for(let i=1; i<jsonData.length; i++) {
+                        const row = jsonData[i];
+                        if(row.length > 0) {
+                            currentBatchData.push({
+                                tax_id: row[0] ? String(row[0]).trim() : '',
+                                name: row[1] ? String(row[1]).trim() : '',
+                                contact_person: row[2] || '',
+                                phone: row[3] || ''
+                            });
+                        }
+                    }
+
+                    setupBatchMode();
+
+                } catch (err) {
+                    alert('Excel 解析失敗: ' + err.message);
+                } finally {
+                    document.getElementById('loadingOverlay').style.display = 'none';
+                    new bootstrap.Modal(document.getElementById('createModal')).show();
+                }
+            };
+            reader.readAsArrayBuffer(file);
+        }
+
+        // 4. 介面切換邏輯
+        function setupSingleMode(tax, name, addr, contact, phone) {
+            currentMode = 'single';
+            document.getElementById('singleModeForm').style.display = 'block';
+            document.getElementById('batchModeForm').style.display = 'none';
+            
+            document.getElementById('inp-taxid').value = tax;
+            document.getElementById('inp-name').value = name;
+            document.getElementById('inp-address').value = addr;
+            document.getElementById('inp-contact').value = contact;
+            document.getElementById('inp-phone').value = phone;
+        }
+
+        function setupBatchMode() {
+            currentMode = 'batch';
+            document.getElementById('singleModeForm').style.display = 'none';
+            document.getElementById('batchModeForm').style.display = 'block';
+            
+            document.getElementById('batchCount').innerText = currentBatchData.length;
+            const tbody = document.getElementById('batchTableBody');
+            tbody.innerHTML = '';
+            currentBatchData.forEach(row => {
+                tbody.innerHTML += `
+                    <tr>
+                        <td>${row.tax_id}</td>
+                        <td>${row.name}</td>
+                        <td>${row.contact_person}</td>
+                        <td>${row.phone}</td>
+                    </tr>
+                `;
+            });
+        }
+
+        function openCreateModal() {
+            setupSingleMode('', '', '', '', '');
+            new bootstrap.Modal(document.getElementById('createModal')).show();
+        }
+
+        // 5. 儲存路由 (Save Router)
+        async function handleSaveRouter() {
+            if (currentMode === 'single') {
+                await saveSingle();
+            } else {
+                await saveBatch();
+            }
+        }
+
+        async function saveSingle() {
+            const data = {
+                tax_id: document.getElementById('inp-taxid').value.trim(),
+                name: document.getElementById('inp-name').value.trim(),
+                address: document.getElementById('inp-address').value.trim(),
+                contact_person: document.getElementById('inp-contact').value.trim(),
+                phone: document.getElementById('inp-phone').value.trim()
+            };
+
+            if (!data.tax_id || !data.name) return alert('統編與名稱為必填');
+
+            // 1. 寫入資料
+            const { error } = await supabase.from('companies').upsert(data, { onConflict: 'tax_id' });
+            if (error) return alert('儲存失敗: ' + error.message);
+
+            // 2. 寫入 Log (重要!)
+            await writeLog('新增/修改', 'companies', `單筆編輯: ${data.name} (${data.tax_id})`);
+
+            alert('✅ 儲存成功');
+            finishSave();
+        }
+
+        async function saveBatch() {
+            if (currentBatchData.length === 0) return alert('沒有資料可匯入');
+
+            // 1. 批量寫入
+            const { error } = await supabase.from('companies').upsert(currentBatchData, { onConflict: 'tax_id' });
+            if (error) return alert('匯入失敗: ' + error.message);
+
+            // 2. 寫入 Log
+            await writeLog('批量匯入', 'companies', `Excel 匯入 ${currentBatchData.length} 筆資料`);
+
+            alert(`✅ 成功匯入 ${currentBatchData.length} 筆資料`);
+            finishSave();
+        }
+
+        function finishSave() {
+            bootstrap.Modal.getInstance(document.getElementById('createModal')).hide();
+            loadCompanies();
+        }
+
+        // 6. 核心功能: 寫入 Log 到 Supabase
+        async function writeLog(action, table, detail) {
+            const userRole = sessionStorage.getItem('currentUserRole') || 'unknown';
+            const userName = sessionStorage.getItem('currentUserName') || 'unknown';
+
+            await supabase.from('audit_logs').insert([{
+                user_role: userRole,
+                user_name: userName,
+                action_type: action,
+                target_table: table,
+                details: detail
+            }]);
+        }
+
+        // 7. 刪除
+        async function deleteCompany(id, name) {
+            if (!confirm('確定要刪除嗎？此操作將被記錄。')) return;
+
+            const { error } = await supabase.from('companies').delete().eq('id', id);
+            if (error) return alert('刪除失敗');
+
+            // 寫入 Log
+            await writeLog('刪除', 'companies', `刪除公司: ${name}`);
+            
+            loadCompanies();
+        }
+
     </script>
 </body>
 </html>
