@@ -186,10 +186,11 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     
     <script>
-        // 1. Supabase Init
+        // 1. Supabase Init (修正變數名稱衝突)
         const SUPABASE_URL = 'https://ghpxaeenikochgrnczic.supabase.co';
         const SUPABASE_KEY = 'sb_publishable_v0ZN2OY08lh-8EC8ps8NdQ_ChYo1FRW';
-        const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+        // 改用 db，避免與全域 supabase 物件衝突
+        const db = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
         // 初始化
         document.addEventListener('DOMContentLoaded', function() {
@@ -232,15 +233,15 @@
 
             try {
                 // 寫入 document_staging
-                const { error } = await supabase
+                const { error } = await db // 使用 db
                     .from('document_staging')
                     .insert([{
                         uploader_name: uploader,
                         file_name: file.name,
                         file_type: fileType,
-                        category: '待歸檔文件', // 預設值，不作假分類
-                        status: 'pending',     // 待審核
-                        extracted_data: {      // 存入基本 Metadata
+                        category: '待歸檔文件', 
+                        status: 'pending',     
+                        extracted_data: {      
                             size: sizeKB,
                             mime: file.type,
                             upload_source: 'Index 4 Input'
@@ -250,7 +251,7 @@
                 if (error) throw error;
 
                 // 寫入稽核日誌
-                await supabase.from('audit_logs').insert([{
+                await db.from('audit_logs').insert([{ // 使用 db
                     user_role: sessionStorage.getItem('currentUserRole'),
                     user_name: uploader,
                     action_type: '上傳',
