@@ -16,35 +16,40 @@
             display: none; /* Auth Guard */
         }
         
+        .section-title {
+            border-left: 5px solid #4f46e5;
+            padding-left: 15px;
+            margin-bottom: 20px;
+        }
+
         .master-info-card {
             background-color: #e0e7ff;
             border-left: 5px solid #4338ca;
             color: #312e81;
-            padding: 1.25rem;
-            margin-bottom: 1.5rem;
+            padding: 1rem;
             border-radius: 0.375rem;
+            font-size: 0.9rem;
+        }
+
+        .staff-info-card {
+            background-color: #d1fae5;
+            border-left: 5px solid #059669;
+            color: #064e3b;
+            padding: 1rem;
+            border-radius: 0.375rem;
+            font-size: 0.9rem;
         }
 
         .client-table th { background-color: #4f46e5; color: white; font-weight: 500; }
-        .client-table tbody tr:hover { background-color: #eef2ff; }
+        .staff-table th { background-color: #059669; color: white; font-weight: 500; }
         
-        .upload-zone {
-            border: 2px dashed #cbd5e1;
-            border-radius: 0.5rem;
-            padding: 2rem;
-            text-align: center;
-            background-color: #f8fafc;
-            cursor: pointer;
-            transition: all 0.2s;
-        }
-        .upload-zone:hover {
-            border-color: #4f46e5;
-            background-color: #eef2ff;
-        }
+        tbody tr:hover { background-color: #f8fafc; }
+        
+        /* 標籤樣式 */
+        .badge-role { font-size: 0.8em; padding: 5px 8px; }
     </style>
 
     <script>
-        // 權限檢查
         document.addEventListener('DOMContentLoaded', function() {
             const role = sessionStorage.getItem('currentUserRole');
             if (!role || role === 'medical') {
@@ -72,29 +77,27 @@
 
     <div class="container-fluid px-4 pb-5">
         
-        <div class="d-flex justify-content-between align-items-center mb-4">
-            <div>
-                <h2 class="fw-bold text-dark"><i class="fas fa-database me-2" style="color: #4f46e5;"></i>基本資料建立</h2>
-                <p class="text-muted mb-0">客戶主檔管理與合約設定</p>
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <div class="section-title">
+                <h4 class="fw-bold text-dark mb-0">1. 客戶主檔管理 (Companies)</h4>
+                <small class="text-muted">管理服務之事業單位清單</small>
             </div>
             <div class="d-flex gap-2">
-                <button class="btn btn-outline-primary fw-bold" onclick="triggerImport()">
+                <button class="btn btn-outline-primary fw-bold btn-sm" onclick="triggerImport('company')">
                     <i class="fas fa-file-import me-2"></i>匯入歷史資料 (PDF/Excel)
                 </button>
-                <button class="btn btn-primary fw-bold" onclick="openCreateModal()">
-                    <i class="fas fa-plus me-2"></i>手動新增
+                <button class="btn btn-primary fw-bold btn-sm" onclick="openCompanyModal()">
+                    <i class="fas fa-plus me-2"></i>新增單位
                 </button>
             </div>
         </div>
 
-        <input type="file" id="importInput" accept=".pdf, .xlsx, .xls" style="display: none;" onchange="handleFileSelect(this)">
-
-        <div class="master-info-card shadow-sm">
+        <div class="master-info-card shadow-sm mb-3">
             <strong><i class="fas fa-info-circle me-2"></i>操作指引</strong><br>
-            您可以使用 <strong>PDF (單筆辨識)</strong> 或 <strong>Excel (批量匯入)</strong> 來建立資料。所有操作皆會記錄於「系統稽核日誌」中供日後查核。
+            您可以使用 <strong>PDF (單筆辨識)</strong> 或 <strong>Excel (批量匯入)</strong> 來建立資料。系統將自動記錄統編與合約資訊。
         </div>
 
-        <div class="card border-0 shadow">
+        <div class="card border-0 shadow mb-5">
             <div class="card-body p-0">
                 <div class="table-responsive">
                     <table class="table client-table mb-0 align-middle">
@@ -108,91 +111,134 @@
                                 <th class="text-end pe-4">操作</th>
                             </tr>
                         </thead>
-                        <tbody id="tableBody">
-                            <tr>
-                                <td colspan="6" class="text-center py-4 text-muted">
-                                    <div class="spinner-border spinner-border-sm text-primary me-2"></div>
-                                    連線資料庫中...
-                                </td>
-                            </tr>
+                        <tbody id="companyTableBody">
+                            <tr><td colspan="6" class="text-center py-4 text-muted">連線資料庫中...</td></tr>
                         </tbody>
                     </table>
                 </div>
             </div>
         </div>
+
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <div class="section-title" style="border-left-color: #059669;">
+                <h4 class="fw-bold text-dark mb-0">2. 職護與顧問人員管理 (Staff)</h4>
+                <small class="text-muted">建立醫師、護理師與顧問名單，以利評鑑報告串接</small>
+            </div>
+            <div class="d-flex gap-2">
+                <button class="btn btn-outline-success fw-bold btn-sm" onclick="triggerImport('staff')">
+                    <i class="fas fa-file-excel me-2"></i>匯入人員名單 (Excel)
+                </button>
+                <button class="btn btn-success fw-bold btn-sm" onclick="openStaffModal()">
+                    <i class="fas fa-user-plus me-2"></i>新增人員
+                </button>
+            </div>
+        </div>
+
+        <div class="staff-info-card shadow-sm mb-3">
+            <strong><i class="fas fa-user-md me-2"></i>人員資料庫指引</strong><br>
+            請建立完整的醫護團隊名單。系統將依據此處設定的「身分 (醫師/護理人員)」與「職務型態 (全職/兼職)」，自動判定評鑑報告中的人力配置分數。
+        </div>
+
+        <div class="card border-0 shadow">
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table staff-table mb-0 align-middle">
+                        <thead>
+                            <tr>
+                                <th class="ps-4">姓名</th>
+                                <th>身分角色</th>
+                                <th>職務型態</th>
+                                <th>聯絡電話</th>
+                                <th>Email</th>
+                                <th class="text-end pe-4">操作</th>
+                            </tr>
+                        </thead>
+                        <tbody id="staffTableBody">
+                            <tr><td colspan="6" class="text-center py-4 text-muted">讀取人員名單中...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
     </div>
+
+    <input type="file" id="importInput" accept=".pdf, .xlsx, .xls" style="display: none;" onchange="handleFileSelect(this)">
 
     <div id="loadingOverlay" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(255,255,255,0.9); z-index: 9999; text-align: center; padding-top: 20%;">
         <div class="spinner-border text-primary mb-3" style="width: 3rem; height: 3rem;" role="status"></div>
-        <h4 class="fw-bold text-dark">資料解析中...</h4>
-        <p class="text-muted">正在處理檔案內容</p>
+        <h4 class="fw-bold text-dark">資料處理中...</h4>
+        <p class="text-muted">正在解析與寫入資料庫</p>
     </div>
 
-    <div class="modal fade" id="createModal" tabindex="-1" data-bs-backdrop="static">
-        <div class="modal-dialog modal-xl modal-dialog-scrollable">
+    <div class="modal fade" id="companyModal" tabindex="-1">
+        <div class="modal-dialog modal-lg">
             <div class="modal-content">
-                <div class="modal-header bg-dark text-white">
-                    <h5 class="modal-title" id="modalTitle"><i class="fas fa-edit me-2"></i>資料確認與建立</h5>
+                <div class="modal-header bg-primary text-white">
+                    <h5 class="modal-title"><i class="fas fa-building me-2"></i>事業單位資料</h5>
                     <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
                 </div>
                 <div class="modal-body p-4">
-                    
-                    <div id="singleModeForm">
-                        <div class="alert alert-light border-start border-4 border-primary shadow-sm mb-4">
-                            <i class="fas fa-user-check me-2 text-primary"></i>
-                            請確認下方資料正確無誤。按下儲存後，系統將寫入資料庫並記錄操作日誌。
-                        </div>
+                    <div id="companyForm">
                         <div class="row g-3">
-                            <div class="col-md-4">
-                                <label class="form-label fw-bold">統一編號 <span class="text-danger">*</span></label>
-                                <input type="text" class="form-control" id="inp-taxid" placeholder="8碼數字">
-                            </div>
-                            <div class="col-md-8">
-                                <label class="form-label fw-bold">事業單位名稱 <span class="text-danger">*</span></label>
-                                <input type="text" class="form-control" id="inp-name">
-                            </div>
-                            <div class="col-md-12">
-                                <label class="form-label">公司地址</label>
-                                <input type="text" class="form-control" id="inp-address">
-                            </div>
-                            <div class="col-md-4">
-                                <label class="form-label">聯絡人</label>
-                                <input type="text" class="form-control" id="inp-contact">
-                            </div>
-                            <div class="col-md-4">
-                                <label class="form-label">電話</label>
-                                <input type="text" class="form-control" id="inp-phone">
-                            </div>
+                            <div class="col-md-4"><label class="form-label fw-bold">統一編號 *</label><input type="text" class="form-control" id="co-taxid"></div>
+                            <div class="col-md-8"><label class="form-label fw-bold">公司名稱 *</label><input type="text" class="form-control" id="co-name"></div>
+                            <div class="col-md-12"><label class="form-label">地址</label><input type="text" class="form-control" id="co-addr"></div>
+                            <div class="col-md-6"><label class="form-label">聯絡人</label><input type="text" class="form-control" id="co-contact"></div>
+                            <div class="col-md-6"><label class="form-label">電話</label><input type="text" class="form-control" id="co-phone"></div>
                         </div>
                     </div>
-
-                    <div id="batchModeForm" style="display: none;">
-                        <div class="alert alert-success border-start border-4 border-success shadow-sm mb-3">
-                            <i class="fas fa-file-excel me-2"></i>
-                            已讀取 Excel 檔案，共發現 <strong id="batchCount">0</strong> 筆資料。請檢視後確認匯入。
-                        </div>
-                        <div class="table-responsive" style="max-height: 400px;">
-                            <table class="table table-bordered table-striped table-sm small">
-                                <thead class="table-light sticky-top">
-                                    <tr>
-                                        <th>統一編號</th>
-                                        <th>事業單位名稱</th>
-                                        <th>聯絡人</th>
-                                        <th>電話</th>
-                                    </tr>
-                                </thead>
-                                <tbody id="batchTableBody">
-                                    </tbody>
-                            </table>
-                        </div>
+                    <div id="excelPreview" style="display:none;" class="mt-3">
+                        <div class="alert alert-warning small">即將匯入 <strong id="previewCount">0</strong> 筆資料，請確認。</div>
+                        <div style="max-height:300px; overflow:auto;"><table class="table table-sm table-bordered" id="previewTable"></table></div>
                     </div>
-
                 </div>
-                <div class="modal-footer bg-light">
+                <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
-                    <button type="button" class="btn btn-primary fw-bold px-4" onclick="handleSaveRouter()">
-                        <i class="fas fa-save me-2"></i>確認並寫入資料庫
-                    </button>
+                    <button type="button" class="btn btn-primary" onclick="saveCompanyData()">儲存公司資料</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="staffModal" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header bg-success text-white">
+                    <h5 class="modal-title"><i class="fas fa-user-md me-2"></i>醫護人員資料</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body p-4">
+                    <div id="staffForm">
+                        <div class="row g-3">
+                            <div class="col-md-6"><label class="form-label fw-bold">姓名 *</label><input type="text" class="form-control" id="st-name"></div>
+                            <div class="col-md-6">
+                                <label class="form-label fw-bold">身分角色 *</label>
+                                <select class="form-select" id="st-role">
+                                    <option value="醫師">醫師</option>
+                                    <option value="護理人員">護理人員</option>
+                                    <option value="顧問">顧問 (職安/工安)</option>
+                                </select>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label fw-bold">職務型態 *</label>
+                                <select class="form-select" id="st-type">
+                                    <option value="兼職">兼職 (特約)</option>
+                                    <option value="全職">全職 (專任)</option>
+                                </select>
+                            </div>
+                            <div class="col-md-6"><label class="form-label">電話</label><input type="text" class="form-control" id="st-phone"></div>
+                            <div class="col-md-12"><label class="form-label">Email</label><input type="email" class="form-control" id="st-email"></div>
+                        </div>
+                    </div>
+                    <div id="staffExcelPreview" style="display:none;" class="mt-3">
+                        <div class="alert alert-warning small">即將匯入 <strong id="stPreviewCount">0</strong> 筆人員資料。</div>
+                        <div style="max-height:300px; overflow:auto;"><table class="table table-sm table-bordered" id="stPreviewTable"></table></div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                    <button type="button" class="btn btn-success" onclick="saveStaffData()">儲存人員資料</button>
                 </div>
             </div>
         </div>
@@ -206,242 +252,282 @@
     <script>
         pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.worker.min.js';
 
-        // 1. Supabase 連線
+        // 1. Supabase Init
         const SUPABASE_URL = 'https://ghpxaeenikochgrnczic.supabase.co';
         const SUPABASE_KEY = 'sb_publishable_v0ZN2OY08lh-8EC8ps8NdQ_ChYo1FRW';
         const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-        // 全域變數用來存 Excel 暫存檔
-        let currentBatchData = []; 
-        let currentMode = 'single'; // 'single' or 'batch'
+        // State
+        let currentImportType = ''; // 'company' or 'staff'
+        let companyBatchData = [];
+        let staffBatchData = [];
 
-        // 2. 初始載入
-        document.addEventListener('DOMContentLoaded', loadCompanies);
+        // 2. Initial Load
+        document.addEventListener('DOMContentLoaded', () => {
+            loadCompanies();
+            loadStaff();
+        });
 
+        // ----------------------------------------------------
+        // SECTION A: 公司管理邏輯
+        // ----------------------------------------------------
         async function loadCompanies() {
-            const tableBody = document.getElementById('tableBody');
-            const { data, error } = await supabase.from('companies').select('*').order('created_at', { ascending: false });
-
-            if (error) return tableBody.innerHTML = `<tr><td colspan="6" class="text-danger">讀取失敗：${error.message}</td></tr>`;
-            if (!data || data.length === 0) return tableBody.innerHTML = `<tr><td colspan="6" class="text-center py-4 text-muted">無資料</td></tr>`;
-
-            tableBody.innerHTML = '';
-            data.forEach(c => {
-                tableBody.innerHTML += `
-                    <tr class="animate__animated animate__fadeIn">
-                        <td class="ps-4 font-monospace">${c.tax_id || '-'}</td>
-                        <td class="fw-bold">${c.name}</td>
-                        <td>${c.contact_person || '-'}</td>
-                        <td>${c.phone || '-'}</td>
-                        <td class="small text-muted">${new Date(c.created_at).toLocaleDateString()}</td>
-                        <td class="text-end pe-4">
-                            <button class="btn btn-sm btn-outline-danger" onclick="deleteCompany('${c.id}', '${c.name}')"><i class="fas fa-trash-alt"></i></button>
-                        </td>
-                    </tr>`;
-            });
+            const tbody = document.getElementById('companyTableBody');
+            const { data, error } = await supabase.from('companies').select('*').order('created_at', {ascending:false});
+            
+            if(error || !data || data.length===0) {
+                tbody.innerHTML = `<tr><td colspan="6" class="text-center text-muted py-3">${error ? '讀取失敗' : '目前無公司資料'}</td></tr>`;
+                return;
+            }
+            tbody.innerHTML = data.map(c => `
+                <tr>
+                    <td class="font-monospace ps-4">${c.tax_id||''}</td>
+                    <td class="fw-bold text-primary">${c.name}</td>
+                    <td>${c.contact_person||'-'}</td>
+                    <td>${c.phone||'-'}</td>
+                    <td class="small text-muted">${new Date(c.created_at).toLocaleDateString()}</td>
+                    <td class="text-end pe-4">
+                        <button class="btn btn-sm btn-outline-danger" onclick="deleteData('companies', '${c.id}', '${c.name}')"><i class="fas fa-trash-alt"></i></button>
+                    </td>
+                </tr>
+            `).join('');
         }
 
-        // 3. 檔案處理路由 (PDF vs Excel)
-        function triggerImport() {
-            document.getElementById('importInput').value = ''; 
+        function openCompanyModal() {
+            currentImportType = 'company'; // Reset to manual
+            companyBatchData = [];
+            document.getElementById('companyForm').style.display = 'block';
+            document.getElementById('excelPreview').style.display = 'none';
+            // Clear inputs
+            ['co-taxid','co-name','co-addr','co-contact','co-phone'].forEach(id => document.getElementById(id).value = '');
+            new bootstrap.Modal(document.getElementById('companyModal')).show();
+        }
+
+        async function saveCompanyData() {
+            if (companyBatchData.length > 0) {
+                // Batch Import
+                const { error } = await supabase.from('companies').upsert(companyBatchData, { onConflict: 'tax_id' });
+                if(error) return alert('匯入失敗: ' + error.message);
+                await writeLog('批量匯入', 'companies', `匯入 ${companyBatchData.length} 筆公司資料`);
+            } else {
+                // Manual Add
+                const data = {
+                    tax_id: document.getElementById('co-taxid').value,
+                    name: document.getElementById('co-name').value,
+                    address: document.getElementById('co-addr').value,
+                    contact_person: document.getElementById('co-contact').value,
+                    phone: document.getElementById('co-phone').value
+                };
+                if(!data.tax_id || !data.name) return alert('請填寫統編與名稱');
+                const { error } = await supabase.from('companies').upsert(data, { onConflict: 'tax_id' });
+                if(error) return alert('儲存失敗: ' + error.message);
+                await writeLog('新增/修改', 'companies', `編輯公司: ${data.name}`);
+            }
+            alert('✅ 公司資料儲存成功');
+            bootstrap.Modal.getInstance(document.getElementById('companyModal')).hide();
+            loadCompanies();
+        }
+
+        // ----------------------------------------------------
+        // SECTION B: 醫護人員管理邏輯
+        // ----------------------------------------------------
+        async function loadStaff() {
+            const tbody = document.getElementById('staffTableBody');
+            const { data, error } = await supabase.from('medical_staff').select('*').order('created_at', {ascending:false});
+            
+            if(error || !data || data.length===0) {
+                tbody.innerHTML = `<tr><td colspan="6" class="text-center text-muted py-3">${error ? '讀取失敗' : '目前無人員資料'}</td></tr>`;
+                return;
+            }
+            tbody.innerHTML = data.map(s => `
+                <tr>
+                    <td class="ps-4 fw-bold">${s.name}</td>
+                    <td><span class="badge bg-success bg-opacity-10 text-success border border-success badge-role">${s.role}</span></td>
+                    <td><span class="badge bg-light text-dark border badge-role">${s.employment_type||'-'}</span></td>
+                    <td>${s.phone||'-'}</td>
+                    <td class="small text-muted">${s.email||'-'}</td>
+                    <td class="text-end pe-4">
+                        <button class="btn btn-sm btn-outline-danger" onclick="deleteData('medical_staff', '${s.id}', '${s.name}')"><i class="fas fa-trash-alt"></i></button>
+                    </td>
+                </tr>
+            `).join('');
+        }
+
+        function openStaffModal() {
+            currentImportType = 'staff'; // Manual mode
+            staffBatchData = [];
+            document.getElementById('staffForm').style.display = 'block';
+            document.getElementById('staffExcelPreview').style.display = 'none';
+            // Clear inputs
+            ['st-name','st-phone','st-email'].forEach(id => document.getElementById(id).value = '');
+            new bootstrap.Modal(document.getElementById('staffModal')).show();
+        }
+
+        async function saveStaffData() {
+            if (staffBatchData.length > 0) {
+                // Batch Import
+                const { error } = await supabase.from('medical_staff').insert(staffBatchData);
+                if(error) return alert('匯入失敗: ' + error.message);
+                await writeLog('批量匯入', 'medical_staff', `匯入 ${staffBatchData.length} 筆醫護人員`);
+            } else {
+                // Manual Add
+                const data = {
+                    name: document.getElementById('st-name').value,
+                    role: document.getElementById('st-role').value,
+                    employment_type: document.getElementById('st-type').value,
+                    phone: document.getElementById('st-phone').value,
+                    email: document.getElementById('st-email').value
+                };
+                if(!data.name) return alert('請填寫姓名');
+                const { error } = await supabase.from('medical_staff').insert(data);
+                if(error) return alert('儲存失敗: ' + error.message);
+                await writeLog('新增人員', 'medical_staff', `新增: ${data.name} (${data.role})`);
+            }
+            alert('✅ 人員資料儲存成功');
+            bootstrap.Modal.getInstance(document.getElementById('staffModal')).hide();
+            loadStaff();
+        }
+
+        // ----------------------------------------------------
+        // SHARED: 檔案匯入處理
+        // ----------------------------------------------------
+        function triggerImport(type) {
+            currentImportType = type;
+            document.getElementById('importInput').value = '';
             document.getElementById('importInput').click();
         }
 
         function handleFileSelect(input) {
-            if (!input.files[0]) return;
+            if(!input.files[0]) return;
             const file = input.files[0];
-            const fileType = file.name.split('.').pop().toLowerCase();
+            const ext = file.name.split('.').pop().toLowerCase();
 
             document.getElementById('loadingOverlay').style.display = 'block';
 
-            if (fileType === 'pdf') {
-                parsePDF(file);
-            } else if (fileType === 'xlsx' || fileType === 'xls') {
+            if (ext === 'pdf' && currentImportType === 'company') {
+                // PDF Parsing (Companies Only)
+                parsePDF(file); 
+            } else if (['xlsx','xls'].includes(ext)) {
+                // Excel Parsing (Both)
                 parseExcel(file);
             } else {
-                alert('不支援的檔案格式，請上傳 PDF 或 Excel。');
+                alert('不支援的檔案格式或該區塊僅支援特定格式。');
                 document.getElementById('loadingOverlay').style.display = 'none';
             }
         }
 
-        // 3-A. 解析 PDF
+        // PDF Parser (Company Only)
         async function parsePDF(file) {
             try {
                 const buffer = await file.arrayBuffer();
                 const pdf = await pdfjsLib.getDocument(buffer).promise;
                 const page = await pdf.getPage(1);
                 const text = (await page.getTextContent()).items.map(s => s.str).join(' ');
-
-                // 簡單規則抓取
-                const taxMatch = text.match(/(?<!\d)\d{8}(?!\d)/);
-                const extractedTax = taxMatch ? taxMatch[0] : '';
-                const extractedName = file.name.replace('.pdf', ''); // 預設用檔名
-
-                // 設定介面為單筆模式
-                setupSingleMode(extractedTax, extractedName, '', '', '');
                 
-            } catch (err) {
-                alert('PDF 解析失敗: ' + err.message);
-                setupSingleMode('', '', '', '', '');
+                const taxMatch = text.match(/(?<!\d)\d{8}(?!\d)/);
+                let name = file.name.replace('.pdf','');
+                const nameMatch = text.match(/[\u4e00-\u9fa5]{2,}公司/);
+                if(nameMatch) name = nameMatch[0];
+
+                openCompanyModal();
+                document.getElementById('co-taxid').value = taxMatch ? taxMatch[0] : '';
+                document.getElementById('co-name').value = name;
+            } catch(e) {
+                alert('PDF 解析失敗');
             } finally {
                 document.getElementById('loadingOverlay').style.display = 'none';
-                new bootstrap.Modal(document.getElementById('createModal')).show();
             }
         }
 
-        // 3-B. 解析 Excel
+        // Excel Parser (Shared Logic)
         function parseExcel(file) {
             const reader = new FileReader();
             reader.onload = function(e) {
                 try {
                     const data = new Uint8Array(e.target.result);
                     const workbook = XLSX.read(data, {type: 'array'});
-                    const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
-                    // 轉成 JSON, 假設第一列是標題
-                    const jsonData = XLSX.utils.sheet_to_json(firstSheet, {header: 1}); // 陣列的陣列
+                    const sheet = workbook.Sheets[workbook.SheetNames[0]];
+                    const json = XLSX.utils.sheet_to_json(sheet, {header:1});
 
-                    // 簡單對應：假設 A欄=統編, B欄=名稱, C欄=聯絡人, D欄=電話
-                    // 跳過標題列 (Index 0)
-                    currentBatchData = [];
-                    for(let i=1; i<jsonData.length; i++) {
-                        const row = jsonData[i];
-                        if(row.length > 0) {
-                            currentBatchData.push({
-                                tax_id: row[0] ? String(row[0]).trim() : '',
-                                name: row[1] ? String(row[1]).trim() : '',
-                                contact_person: row[2] || '',
-                                phone: row[3] || ''
-                            });
+                    if (currentImportType === 'company') {
+                        // Map to Company structure
+                        companyBatchData = [];
+                        let html = '<thead><tr><th>統編</th><th>名稱</th><th>聯絡人</th></tr></thead><tbody>';
+                        for(let i=1; i<json.length; i++){
+                            if(json[i].length){
+                                const row = {
+                                    tax_id: json[i][0] ? String(json[i][0]).trim() : '',
+                                    name: json[i][1] || '',
+                                    contact_person: json[i][2] || '',
+                                    phone: json[i][3] || ''
+                                };
+                                companyBatchData.push(row);
+                                html += `<tr><td>${row.tax_id}</td><td>${row.name}</td><td>${row.contact_person}</td></tr>`;
+                            }
                         }
+                        html += '</tbody>';
+                        
+                        openCompanyModal();
+                        document.getElementById('companyForm').style.display = 'none';
+                        document.getElementById('excelPreview').style.display = 'block';
+                        document.getElementById('previewCount').innerText = companyBatchData.length;
+                        document.getElementById('previewTable').innerHTML = html;
+
+                    } else if (currentImportType === 'staff') {
+                        // Map to Staff structure
+                        staffBatchData = [];
+                        let html = '<thead><tr><th>姓名</th><th>身分</th><th>型態</th></tr></thead><tbody>';
+                        for(let i=1; i<json.length; i++){
+                            if(json[i].length){
+                                const row = {
+                                    name: json[i][0] || '',
+                                    role: json[i][1] || '護理人員', // Default
+                                    employment_type: json[i][2] || '兼職', // Default
+                                    phone: json[i][3] || '',
+                                    email: json[i][4] || ''
+                                };
+                                staffBatchData.push(row);
+                                html += `<tr><td>${row.name}</td><td>${row.role}</td><td>${row.employment_type}</td></tr>`;
+                            }
+                        }
+                        html += '</tbody>';
+
+                        openStaffModal();
+                        document.getElementById('staffForm').style.display = 'none';
+                        document.getElementById('staffExcelPreview').style.display = 'block';
+                        document.getElementById('stPreviewCount').innerText = staffBatchData.length;
+                        document.getElementById('stPreviewTable').innerHTML = html;
                     }
 
-                    setupBatchMode();
-
-                } catch (err) {
-                    alert('Excel 解析失敗: ' + err.message);
+                } catch(e) {
+                    alert('Excel 解析失敗: ' + e.message);
                 } finally {
                     document.getElementById('loadingOverlay').style.display = 'none';
-                    new bootstrap.Modal(document.getElementById('createModal')).show();
                 }
             };
             reader.readAsArrayBuffer(file);
         }
 
-        // 4. 介面切換邏輯
-        function setupSingleMode(tax, name, addr, contact, phone) {
-            currentMode = 'single';
-            document.getElementById('singleModeForm').style.display = 'block';
-            document.getElementById('batchModeForm').style.display = 'none';
+        // ----------------------------------------------------
+        // UTILS
+        // ----------------------------------------------------
+        async function deleteData(table, id, name) {
+            if(!confirm(`確定要刪除 ${name} 嗎？此操作將記入稽核日誌。`)) return;
+            const { error } = await supabase.from(table).delete().eq('id', id);
+            if(error) return alert('刪除失敗');
+            await writeLog('刪除', table, `刪除: ${name}`);
             
-            document.getElementById('inp-taxid').value = tax;
-            document.getElementById('inp-name').value = name;
-            document.getElementById('inp-address').value = addr;
-            document.getElementById('inp-contact').value = contact;
-            document.getElementById('inp-phone').value = phone;
+            if(table === 'companies') loadCompanies();
+            else loadStaff();
         }
 
-        function setupBatchMode() {
-            currentMode = 'batch';
-            document.getElementById('singleModeForm').style.display = 'none';
-            document.getElementById('batchModeForm').style.display = 'block';
-            
-            document.getElementById('batchCount').innerText = currentBatchData.length;
-            const tbody = document.getElementById('batchTableBody');
-            tbody.innerHTML = '';
-            currentBatchData.forEach(row => {
-                tbody.innerHTML += `
-                    <tr>
-                        <td>${row.tax_id}</td>
-                        <td>${row.name}</td>
-                        <td>${row.contact_person}</td>
-                        <td>${row.phone}</td>
-                    </tr>
-                `;
-            });
-        }
-
-        function openCreateModal() {
-            setupSingleMode('', '', '', '', '');
-            new bootstrap.Modal(document.getElementById('createModal')).show();
-        }
-
-        // 5. 儲存路由 (Save Router)
-        async function handleSaveRouter() {
-            if (currentMode === 'single') {
-                await saveSingle();
-            } else {
-                await saveBatch();
-            }
-        }
-
-        async function saveSingle() {
-            const data = {
-                tax_id: document.getElementById('inp-taxid').value.trim(),
-                name: document.getElementById('inp-name').value.trim(),
-                address: document.getElementById('inp-address').value.trim(),
-                contact_person: document.getElementById('inp-contact').value.trim(),
-                phone: document.getElementById('inp-phone').value.trim()
-            };
-
-            if (!data.tax_id || !data.name) return alert('統編與名稱為必填');
-
-            // 1. 寫入資料
-            const { error } = await supabase.from('companies').upsert(data, { onConflict: 'tax_id' });
-            if (error) return alert('儲存失敗: ' + error.message);
-
-            // 2. 寫入 Log (重要!)
-            await writeLog('新增/修改', 'companies', `單筆編輯: ${data.name} (${data.tax_id})`);
-
-            alert('✅ 儲存成功');
-            finishSave();
-        }
-
-        async function saveBatch() {
-            if (currentBatchData.length === 0) return alert('沒有資料可匯入');
-
-            // 1. 批量寫入
-            const { error } = await supabase.from('companies').upsert(currentBatchData, { onConflict: 'tax_id' });
-            if (error) return alert('匯入失敗: ' + error.message);
-
-            // 2. 寫入 Log
-            await writeLog('批量匯入', 'companies', `Excel 匯入 ${currentBatchData.length} 筆資料`);
-
-            alert(`✅ 成功匯入 ${currentBatchData.length} 筆資料`);
-            finishSave();
-        }
-
-        function finishSave() {
-            bootstrap.Modal.getInstance(document.getElementById('createModal')).hide();
-            loadCompanies();
-        }
-
-        // 6. 核心功能: 寫入 Log 到 Supabase
         async function writeLog(action, table, detail) {
             const userRole = sessionStorage.getItem('currentUserRole') || 'unknown';
             const userName = sessionStorage.getItem('currentUserName') || 'unknown';
-
             await supabase.from('audit_logs').insert([{
-                user_role: userRole,
-                user_name: userName,
-                action_type: action,
-                target_table: table,
-                details: detail
+                user_role: userRole, user_name: userName, action_type: action, target_table: table, details: detail
             }]);
         }
-
-        // 7. 刪除
-        async function deleteCompany(id, name) {
-            if (!confirm('確定要刪除嗎？此操作將被記錄。')) return;
-
-            const { error } = await supabase.from('companies').delete().eq('id', id);
-            if (error) return alert('刪除失敗');
-
-            // 寫入 Log
-            await writeLog('刪除', 'companies', `刪除公司: ${name}`);
-            
-            loadCompanies();
-        }
-
     </script>
 </body>
 </html>
