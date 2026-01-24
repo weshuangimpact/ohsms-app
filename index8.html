@@ -52,7 +52,6 @@
             background-color: #0f172a; border-color: var(--accent); color: white; box-shadow: 0 0 0 0.25rem rgba(56, 189, 248, 0.25);
         }
         
-        /* 選項分組標題 */
         optgroup { color: #aaa; font-style: italic; }
     </style>
 
@@ -73,7 +72,7 @@
 
     <nav class="navbar navbar-dark bg-black py-3 border-bottom border-secondary">
         <div class="container-fluid px-4">
-            <a class="navbar-brand fw-bold text-info" href="#"><i class="fas fa-robot me-2"></i>OHSMS 自動化壓力測試代理人 (Agent)</a>
+            <a class="navbar-brand fw-bold text-info" href="#"><i class="fas fa-robot me-2"></i>OHSMS 自動化壓力測試代理人 (Agent V2)</a>
             <a href="dashboard.html" class="btn btn-outline-secondary btn-sm">退出測試 (EXIT)</a>
         </div>
     </nav>
@@ -143,12 +142,12 @@
                             <span id="statusDot" class="status-dot status-ready"></span>
                             <span id="statusText" class="fw-bold text-secondary font-monospace">SYSTEM READY</span>
                         </div>
-                        <div class="text-secondary small font-monospace">LOG_STREAM_V2.0</div>
+                        <div class="text-secondary small font-monospace">LOG_STREAM_V2.1</div>
                     </div>
                     
                     <div class="console-screen flex-grow-1" id="consoleOutput">
                         <div class="text-secondary">> Initializing Supabase Connection... [OK]</div>
-                        <div class="text-secondary">> Agent Module Loaded: Data Generator & User Simulator</div>
+                        <div class="text-secondary">> Agent Module Loaded: Built-in Data Generator</div>
                         <div class="text-secondary">> Waiting for command...</div>
                     </div>
 
@@ -169,26 +168,63 @@
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/Faker/3.1.0/faker.min.js"></script>
 
     <script>
         // =================================================
-        // 1. Supabase 設定
+        // 1. Supabase 設定 (已修正變數名稱衝突)
         // =================================================
         const SUPABASE_URL = 'https://ghpxaeenikochgrnczic.supabase.co';
         const SUPABASE_KEY = 'sb_publishable_v0ZN2OY08lh-8EC8ps8NdQ_ChYo1FRW';
-        const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+        
+        // 修正：使用 db 作為客戶端變數，避免與全域 supabase 衝突
+        const db = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
         // =================================================
-        // 2. 核心變數
+        // 2. 內建假資料生成器 (Built-in Faker)
+        // =================================================
+        // 為了確保不依賴外部 CDN，我們自己寫一個簡單的生成器
+        const FakeGen = {
+            surnames: ['王', '李', '張', '陳', '林', '黃', '吳', '劉', '蔡', '楊'],
+            names: ['大明', '小華', '美麗', '志豪', '雅婷', '建國', '淑芬', '冠宇', '怡君'],
+            industries: ['科技', '生技', '塑膠', '鋼鐵', '物流', '食品', '電子', '精密'],
+            cities: ['台北', '新北', '桃園', '台中', '台南', '高雄', '新竹'],
+            
+            getName: function() {
+                return this.surnames[Math.floor(Math.random() * this.surnames.length)] + 
+                       this.names[Math.floor(Math.random() * this.names.length)];
+            },
+            
+            getCompany: function() {
+                return this.getName() + '氏' + 
+                       this.industries[Math.floor(Math.random() * this.industries.length)] + 
+                       '股份有限公司';
+            },
+            
+            getPhone: function() {
+                return '09' + Math.floor(Math.random() * 100000000).toString().padStart(8, '0');
+            },
+            
+            getTaxId: function() {
+                return Math.floor(Math.random() * 90000000 + 10000000).toString();
+            },
+            
+            getAddress: function() {
+                return this.cities[Math.floor(Math.random() * this.cities.length)] + 
+                       '市工業路' + Math.floor(Math.random() * 500) + '號';
+            },
+
+            getIp: function() {
+                return `${Math.floor(Math.random()*255)}.${Math.floor(Math.random()*255)}.${Math.floor(Math.random()*255)}.${Math.floor(Math.random()*255)}`;
+            }
+        };
+
+        // =================================================
+        // 3. 核心變數與控制
         // =================================================
         let isRunning = false;
         let shouldStop = false;
         const consoleEl = document.getElementById('consoleOutput');
 
-        // =================================================
-        // 3. 控制邏輯
-        // =================================================
         async function startAgent() {
             if (isRunning) return;
 
@@ -218,16 +254,17 @@
                 try {
                     // 根據選擇的情境執行不同邏輯
                     if (scenario === 'full_suite') {
-                        await generateFullSuite(i + 1);
+                        await generateFullSuite();
                     } else if (scenario === 'company_only') {
                         await generateCompanyOnly();
                     } else if (scenario === 'event_only') {
                         await generateEventOnly();
                     } else if (scenario === 'user_behavior') {
-                        await generateUserBehavior(); // 新增的功能
+                        await generateUserBehavior();
                     }
                     successCount++;
                 } catch (e) {
+                    console.error(e);
                     log(`[ERROR] 第 ${i+1} 筆失敗: ${e.message}`, 'error');
                 }
 
@@ -266,7 +303,7 @@
             if (type === 'error') color = '#f87171';   // Red
             if (type === 'warning') color = '#fbbf24'; // Yellow
             if (type === 'system') color = '#38bdf8';  // Blue
-            if (type === 'security') color = '#f472b6'; // Pink (Security alert)
+            if (type === 'security') color = '#f472b6'; // Pink
 
             const line = document.createElement('div');
             line.style.color = color;
@@ -277,22 +314,21 @@
         }
 
         // =================================================
-        // 4. 資料生成器 (Data Generators)
+        // 4. 資料生成器 (Generators)
         // =================================================
         
         // 4-1. 全套資料生成
-        async function generateFullSuite(index) {
-            const industries = ['科技', '生技', '塑膠', '鋼鐵', '物流', '食品'];
-            const companyName = faker.name.lastName() + faker.name.firstName() + industries[index % industries.length] + "股份有限公司";
-            const taxId = Math.floor(Math.random() * 90000000 + 10000000).toString();
+        async function generateFullSuite() {
+            const companyName = FakeGen.getCompany();
+            const taxId = FakeGen.getTaxId();
             
             // 寫入公司
-            const { data: coData, error: coError } = await supabase.from('companies').insert([{
+            const { data: coData, error: coError } = await db.from('companies').insert([{
                 tax_id: taxId,
                 name: companyName,
-                address: faker.address.city() + '工業路' + Math.floor(Math.random()*999) + '號',
-                contact_person: faker.name.lastName() + '經理',
-                phone: '09' + Math.floor(Math.random() * 100000000)
+                address: FakeGen.getAddress(),
+                contact_person: FakeGen.getName() + '經理',
+                phone: FakeGen.getPhone()
             }]).select();
 
             if (coError) throw new Error(coError.message);
@@ -300,90 +336,68 @@
             log(`[DATA] 建立公司: ${companyName} (${taxId})`);
 
             // 寫入稽核
-            await supabase.from('audit_logs').insert([{
+            await db.from('audit_logs').insert([{
                 user_role: 'admin', user_name: 'AI_Agent', action_type: '資料生成', target_table: 'companies', details: `自動生成公司資料: ${companyName}`
+            }]);
+
+            // 順便建立行程
+            const pastDate = new Date(); pastDate.setDate(pastDate.getDate() - Math.floor(Math.random() * 20));
+            await db.from('compliance_events').insert([{
+                title: `急救人員複訓 (${companyName})`,
+                event_type: 'training',
+                event_date: pastDate.toISOString().split('T')[0],
+                priority: 'high',
+                company_id: companyId,
+                status: 'pending'
             }]);
         }
 
         // 4-2. 單獨生成公司
         async function generateCompanyOnly() {
-            const name = faker.name.lastName() + "氏企業社";
-            const tax = Math.floor(Math.random()*100000000).toString();
-            await supabase.from('companies').insert([{ tax_id: tax, name: name }]);
+            const name = FakeGen.getCompany();
+            const tax = FakeGen.getTaxId();
+            const { error } = await db.from('companies').insert([{ tax_id: tax, name: name }]);
+            if (error) throw error;
             log(`[DATA] 建立公司: ${name}`);
         }
 
         // 4-3. 單獨生成事件
         async function generateEventOnly() {
-            const title = "年度法規查核";
-            await supabase.from('compliance_events').insert([{
+            const title = "年度法規查核-" + FakeGen.getTaxId();
+            await db.from('compliance_events').insert([{
                 title: title, event_type: 'document', event_date: new Date().toISOString().split('T')[0]
             }]);
             log(`[DATA] 建立事件: ${title}`);
         }
 
-        // =================================================
-        // 5. 行為模擬器 (Behavior Simulator) [NEW!]
-        // =================================================
+        // 4-4. 行為模擬器
         async function generateUserBehavior() {
-            // 隨機角色與行為權重
             const dice = Math.random();
             let role, user, action, target, detail, type = 'info';
 
-            // 10% 機率是資安事件 (Security Event)
+            // 10% 機率資安事件
             if (dice < 0.1) {
-                role = 'unknown';
-                user = 'Anonymous';
-                
+                role = 'unknown'; user = 'Anonymous';
                 if (Math.random() > 0.5) {
-                    action = '異常登入';
-                    target = 'Login Page';
-                    detail = `密碼錯誤次數過多 (IP: ${faker.internet.ip()})`;
-                    type = 'error'; // 紅字
+                    action = '異常登入'; target = 'Login Page'; detail = `密碼錯誤次數過多 (IP: ${FakeGen.getIp()})`; type = 'error';
                 } else {
-                    action = '越權存取';
-                    target = 'admin_dashboard';
-                    detail = `嘗試存取受保護頁面 (IP: ${faker.internet.ip()})`;
-                    type = 'security'; // 粉紅字
+                    action = '越權存取'; target = 'admin_dashboard'; detail = `嘗試存取受保護頁面 (IP: ${FakeGen.getIp()})`; type = 'security';
                 }
-            } 
-            // 90% 機率是正常操作
-            else {
-                const users = [
-                    {role: 'admin', name: 'Admin'},
-                    {role: 'medical', name: 'Dr. Wang'},
-                    {role: 'medical', name: 'Nurse Li'},
-                    {role: 'general', name: 'User Chen'}
-                ];
-                const selected = users[Math.floor(Math.random() * users.length)];
-                role = selected.role;
-                user = selected.name;
-
-                const actions = ['登入', '登出', '瀏覽', '下載', '上傳', '修改'];
-                action = actions[Math.floor(Math.random() * actions.length)];
-                
-                if (action === '登入') {
-                    target = 'System'; detail = '登入成功';
-                } else if (action === '下載') {
-                    target = 'Reports'; detail = `下載報表: ${faker.date.month()}月健檢分析.pdf`;
-                } else {
-                    target = 'Companies'; detail = `瀏覽資料: ID-${Math.floor(Math.random()*1000)}`;
-                }
+            } else {
+                const users = [{r:'admin',n:'Admin'}, {r:'medical',n:'Dr. Wang'}, {r:'general',n:'User Chen'}];
+                const u = users[Math.floor(Math.random()*users.length)];
+                role = u.r; user = u.n;
+                const acts = ['登入', '登出', '瀏覽', '下載', '修改'];
+                action = acts[Math.floor(Math.random()*acts.length)];
+                target = 'System'; detail = '一般操作';
             }
 
-            // 寫入 audit_logs
-            const { error } = await supabase.from('audit_logs').insert([{
-                user_role: role,
-                user_name: user,
-                action_type: action,
-                target_table: target,
-                details: detail,
-                ip_address: faker.internet.ip()
+            const { error } = await db.from('audit_logs').insert([{
+                user_role: role, user_name: user, action_type: action, target_table: target, details: detail, ip_address: FakeGen.getIp()
             }]);
 
-            if (error) throw new Error(error.message);
-
-            log(`[BEHAVIOR] ${user} -> ${action} (${target})`, type);
+            if (error) throw error;
+            log(`[BEHAVIOR] ${user} -> ${action}`, type);
         }
 
     </script>
