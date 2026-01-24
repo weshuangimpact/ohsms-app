@@ -5,19 +5,19 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>勞工健康服務資料上傳</title>
 <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
-
 <style>
 body{background:#f5f9ff;font-family:"Microsoft JhengHei",system-ui}
 .page-title{font-weight:800;font-size:2rem}
 .version-tag{font-size:.85rem;font-weight:600;color:#2563eb;background:#e0f2fe;padding:2px 10px;border-radius:999px;margin-left:8px}
-.upload-card{background:#fff;border-radius:20px;padding:32px;box-shadow:0 10px 30px rgba(0,0,0,.08)}
+.card-box{background:#fff;border-radius:20px;padding:32px;box-shadow:0 10px 30px rgba(0,0,0,.08)}
 .drop-zone{border:2px dashed #60a5fa;border-radius:16px;padding:60px;text-align:center;cursor:pointer;background:#eff6ff}
 .drop-zone:hover{background:#dbeafe}
-.ocr-progress-box{margin-top:20px;padding:16px;background:#ecfeff;border-radius:14px}
-.ocr-status{font-weight:700;color:#0369a1;margin-bottom:10px}
+.ocr-box{margin-top:20px;padding:18px;background:#ecfeff;border-radius:14px}
 .progress{height:10px;border-radius:999px;overflow:hidden;background:#e5e7eb}
 .progress-bar{background:linear-gradient(90deg,#38bdf8,#2563eb);font-size:.7rem;line-height:10px;color:#fff;transition:width .3s}
 .hidden{display:none}
+.form-section{margin-top:30px}
+.form-section h5{font-weight:700;margin-bottom:12px}
 </style>
 </head>
 
@@ -25,11 +25,11 @@ body{background:#f5f9ff;font-family:"Microsoft JhengHei",system-ui}
 <div class="container py-5">
   <h1 class="page-title">
     勞工健康服務資料上傳
-    <span id="page-version" class="version-tag"></span>
+    <span class="version-tag">v1.01</span>
   </h1>
-  <p class="text-muted mb-4">自動辨識 → 校對 → 送審</p>
+  <p class="text-muted mb-4">自動辨識 → 校對 → 送審（預估回填時間：約 5–10 秒）</p>
 
-  <div class="upload-card">
+  <div class="card-box">
     <h4 class="fw-bold mb-3">STEP 1｜上傳執行紀錄表</h4>
 
     <div id="dropZone" class="drop-zone">
@@ -38,46 +38,83 @@ body{background:#f5f9ff;font-family:"Microsoft JhengHei",system-ui}
     </div>
     <input type="file" id="fileInput" accept=".pdf,.png,.jpg,.jpeg" class="hidden">
 
-    <div id="ocrBox" class="ocr-progress-box hidden">
-      <div class="ocr-status">OCR 辨識中…</div>
+    <div id="ocrBox" class="ocr-box hidden">
+      <div class="fw-bold text-primary mb-2">OCR 辨識中（約 5–10 秒）</div>
       <div class="progress">
         <div id="ocrBar" class="progress-bar" style="width:0%">0%</div>
+      </div>
+    </div>
+
+    <div id="formBox" class="form-section hidden">
+      <hr class="my-4">
+
+      <h4 class="fw-bold mb-3">STEP 2｜自動填入（可校對）</h4>
+
+      <div class="mb-3">
+        <label class="form-label fw-bold">執行日期</label>
+        <input type="date" class="form-control" id="execDate">
+      </div>
+
+      <h5>一、作業場所基本資料</h5>
+      <textarea class="form-control mb-3" rows="2" id="sec1"></textarea>
+
+      <h5>二、作業流程與危害概況</h5>
+      <textarea class="form-control mb-3" rows="2" id="sec2"></textarea>
+
+      <h5>三、臨場健康服務執行情形</h5>
+      <textarea class="form-control mb-3" rows="2" id="sec3"></textarea>
+
+      <h5>辦理事項</h5>
+      <div class="row">
+        <div class="col-6 col-md-3"><input type="checkbox" id="c91"> 9-1</div>
+        <div class="col-6 col-md-3"><input type="checkbox" id="c92"> 9-2</div>
+        <div class="col-6 col-md-3"><input type="checkbox" id="c93"> 9-3</div>
+        <div class="col-6 col-md-3"><input type="checkbox" id="c94"> 9-4</div>
+      </div>
+
+      <div class="text-end mt-4">
+        <button class="btn btn-primary fw-bold">確認無誤送審</button>
       </div>
     </div>
   </div>
 </div>
 
 <script>
-const APP_VERSION="1.01";
-document.getElementById("page-version").innerText="v"+APP_VERSION;
-
 const dropZone=document.getElementById("dropZone");
 const fileInput=document.getElementById("fileInput");
 const ocrBox=document.getElementById("ocrBox");
 const ocrBar=document.getElementById("ocrBar");
+const formBox=document.getElementById("formBox");
 
 dropZone.onclick=()=>fileInput.click();
-
-fileInput.onchange=()=>{
-  if(!fileInput.files.length)return;
-  startOCR();
-};
+fileInput.onchange=()=>{if(fileInput.files.length)startOCR();};
 
 function startOCR(){
   ocrBox.classList.remove("hidden");
-  let progress=0;
+  let p=0;
   const timer=setInterval(()=>{
-    progress+=Math.floor(Math.random()*7)+4;
-    if(progress>=90)progress=90;
-    ocrBar.style.width=progress+"%";
-    ocrBar.innerText=progress+"%";
-  },400);
+    p+=Math.floor(Math.random()*10)+5;
+    if(p>=90)p=90;
+    ocrBar.style.width=p+"%";
+    ocrBar.innerText=p+"%";
+  },500);
 
   setTimeout(()=>{
     clearInterval(timer);
     ocrBar.style.width="100%";
     ocrBar.innerText="100%";
-  },4500);
+    fillForm();
+  },6000);
+}
+
+function fillForm(){
+  formBox.classList.remove("hidden");
+  document.getElementById("execDate").value="2024-01-01";
+  document.getElementById("sec1").value="ABCDEF有限公司，台南廠，勞工人數 110 人。";
+  document.getElementById("sec2").value="主要製程包含織布、脫漿、成品檢驗，主要危害為噪音與高溫。";
+  document.getElementById("sec3").value="完成現場訪視、健康諮詢與異常追蹤。";
+  document.getElementById("c91").checked=true;
+  document.getElementById("c92").checked=true;
 }
 </script>
 </body>
