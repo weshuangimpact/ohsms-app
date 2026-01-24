@@ -2,24 +2,48 @@
 <html lang="zh-TW">
 <head>
 <meta charset="UTF-8">
-<title>顧問資料上傳 | OHSMS</title>
+<title>勞工健康服務資料上傳 | OHSMS</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
 <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+<link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
 <style>
-body { background:#f4f6f9; font-family:'Microsoft JhengHei'; display:none; }
-.section-title { border-left:4px solid #0d6efd; padding-left:10px; font-weight:bold; margin:1.5rem 0; }
-textarea { font-size:0.9rem; }
+body {
+  background:#f4f6f9;
+  font-family:'Microsoft JhengHei','Segoe UI';
+  display:none;
+}
+.step-card {
+  border:0;
+  border-radius:12px;
+  box-shadow:0 6px 18px rgba(0,0,0,.08);
+}
+.upload-box {
+  border:2px dashed #c7d2fe;
+  background:#eef2ff;
+  border-radius:12px;
+  padding:40px;
+  text-align:center;
+  cursor:pointer;
+  transition:.2s;
+}
+.upload-box:hover {
+  background:#e0e7ff;
+  border-color:#6366f1;
+}
+.step-badge {
+  font-size:.8rem;
+  letter-spacing:.5px;
+}
 </style>
 
 <script>
-/* ===== Auth Guard ===== */
 const role = sessionStorage.getItem('currentUserRole');
-if (!role) location.href = 'login.html';
+if (!role) location.href='login.html';
 
-/* ===== Supabase ===== */
-const supabase = supabase.createClient(
+const db = supabase.createClient(
   'https://ghpxaeenikochgrnczic.supabase.co',
   'sb_publishable_v0ZN2OY08lh-8EC8ps8NdQ_ChYo1FRW'
 );
@@ -27,137 +51,93 @@ const supabase = supabase.createClient(
 </head>
 
 <body>
-<div class="container py-4">
 
-<h3 class="fw-bold mb-2">顧問資料上傳（Plan / Do）</h3>
-<p class="text-muted small mb-4">主文件辨識 → 辦理事項對帳 → 附件確認</p>
+<nav class="navbar navbar-dark bg-dark px-4">
+  <span class="navbar-brand fw-bold">
+    <i class="fas fa-shield-alt me-2"></i>OHSMS
+  </span>
+  <a href="dashboard.html" class="btn btn-sm btn-outline-light">
+    <i class="fas fa-arrow-left me-1"></i>返回儀表板
+  </a>
+</nav>
 
-<!-- Step 1 -->
-<div class="section-title">Step 1：上傳文件（可多檔）</div>
-<div class="mb-3">
-  <label class="form-label fw-bold small">主文件（勞工健康服務執行紀錄表）</label>
-  <input type="file" id="mainFile" class="form-control" accept=".pdf,.jpg,.png">
+<div class="container py-5">
+
+<h3 class="fw-bold mb-1">勞工健康服務資料上傳</h3>
+<p class="text-muted mb-4">請上傳「勞工健康服務執行紀錄表」及相關附件</p>
+
+<div class="card step-card p-4 mb-4">
+  <span class="badge bg-primary step-badge mb-2">STEP 1</span>
+  <h5 class="fw-bold">主文件（執行紀錄表）</h5>
+  <div class="upload-box mt-3" onclick="document.getElementById('mainFile').click()">
+    <i class="fas fa-file-pdf fa-3x text-primary mb-3"></i>
+    <div class="fw-bold">點擊上傳 PDF / 圖檔</div>
+    <small class="text-muted">勞工健康服務執行紀錄表</small>
+  </div>
+  <input type="file" id="mainFile" hidden accept=".pdf,.jpg,.png" onchange="handleMainFile(this)">
 </div>
-<div class="mb-4">
-  <label class="form-label fw-bold small">附件（可多檔）</label>
-  <input type="file" id="attachments" class="form-control" multiple>
+
+<div id="step2" class="card step-card p-4 mb-4" style="display:none;">
+  <span class="badge bg-secondary step-badge mb-2">STEP 2</span>
+  <h5 class="fw-bold">附件（佐證文件）</h5>
+  <input type="file" id="attachments" class="form-control mt-3" multiple>
 </div>
 
-<!-- Step 2 -->
-<div id="ocrSection" style="display:none;">
-  <div class="section-title">Step 2：OCR 結果（可調整）</div>
-
-  <label class="fw-bold small">執行日期</label>
-  <input type="date" id="executionDate" class="form-control mb-3">
-
-  <label class="fw-bold small">一、作業場所基本資料</label>
-  <textarea id="sec1" class="form-control mb-3" rows="3"></textarea>
-
-  <label class="fw-bold small">二、作業流程與危害概況</label>
-  <textarea id="sec2" class="form-control mb-3" rows="3"></textarea>
-
-  <label class="fw-bold small">三、臨場健康服務執行情形</label>
-  <textarea id="sec3" class="form-control mb-4" rows="4"></textarea>
-
-  <label class="fw-bold small mb-2">辦理事項（由系統判斷，可人工修正）</label>
-  <div id="itemsArea" class="mb-4"></div>
-
-  <button class="btn btn-primary fw-bold" onclick="submitAll()">確認送出審核</button>
+<div id="step3" class="text-end" style="display:none;">
+  <button class="btn btn-primary fw-bold px-4" onclick="submitToSupabase()">
+    確認送出審核
+  </button>
 </div>
 
 </div>
 
 <script>
-document.body.style.display = 'block';
+document.body.style.display='block';
+let mainFileObj = null;
 
-/* ===== 模擬後端 OCR 回傳（實際系統由 Edge Function 給）===== */
-document.getElementById('mainFile').addEventListener('change', () => {
-  const ocrResult = {
-    execution_date: '2024-01-01',
-    section_1: '部門：台南廠；行政人員 男20 女30；現場人員 男40 女20',
-    section_2: '製程：整經→織布→脫漿→成布加工；主要危害：高溫、噪音',
-    section_3: '9-1、9-3、9-6、11-1',
-    checked_items: {
-      '9-1': true,
-      '9-2': false,
-      '9-3': true,
-      '9-6': true,
-      '11-1': true,
-      '12': false,
-      '13': false
-    }
-  };
+function handleMainFile(input){
+  if(!input.files[0]) return;
+  mainFileObj = input.files[0];
+  document.getElementById('step2').style.display='block';
+  document.getElementById('step3').style.display='block';
+}
 
-  document.getElementById('ocrSection').style.display = 'block';
-  document.getElementById('executionDate').value = ocrResult.execution_date;
-  document.getElementById('sec1').value = ocrResult.section_1;
-  document.getElementById('sec2').value = ocrResult.section_2;
-  document.getElementById('sec3').value = ocrResult.section_3;
-
-  const itemsArea = document.getElementById('itemsArea');
-  itemsArea.innerHTML = '';
-  Object.keys(ocrResult.checked_items).forEach(code => {
-    const checked = ocrResult.checked_items[code];
-    itemsArea.innerHTML += `
-      <div class="form-check">
-        <input class="form-check-input" type="checkbox" id="item-${code}" ${checked ? 'checked' : ''}>
-        <label class="form-check-label">${code}</label>
-      </div>`;
-  });
-});
-
-/* ===== 寫入 Supabase ===== */
-async function submitAll() {
+async function submitToSupabase(){
   const uploader = sessionStorage.getItem('currentUserName') || 'consultant';
-  const mainFile = document.getElementById('mainFile').files[0];
-  const attachmentFiles = document.getElementById('attachments').files;
 
-  const checkedItems = {};
-  document.querySelectorAll('[id^="item-"]').forEach(el => {
-    checkedItems[el.id.replace('item-','')] = el.checked;
-  });
-
-  const { data: staging, error } = await supabase
+  const { data, error } = await db
     .from('document_staging')
     .insert({
       uploader_name: uploader,
-      main_file_name: mainFile.name,
-      main_file_type: mainFile.type,
+      main_file_name: mainFileObj.name,
+      main_file_type: mainFileObj.type,
       category: '勞工健康服務執行紀錄表',
-      execution_date: document.getElementById('executionDate').value,
+      status: 'pending',
       extracted_data: {
-        section_1: sec1.value,
-        section_2: sec2.value,
-        section_3: sec3.value,
-        checked_items: checkedItems
+        note: '等待 OCR 與條款解析'
       }
     })
     .select()
     .single();
 
-  if (error) return alert(error.message);
+  if(error){
+    alert(error.message);
+    return;
+  }
 
-  for (const f of attachmentFiles) {
-    await supabase.from('document_attachments').insert({
-      staging_id: staging.id,
+  const files = document.getElementById('attachments').files;
+  for(const f of files){
+    await db.from('document_attachments').insert({
+      staging_id: data.id,
       file_name: f.name,
       file_type: f.type
     });
   }
 
-  for (const code in checkedItems) {
-    await supabase.from('document_item_check').insert({
-      staging_id: staging.id,
-      item_code: code,
-      is_checked: checkedItems[code],
-      has_attachment: false,
-      check_status: checkedItems[code] ? 'missing_attachment' : 'ok'
-    });
-  }
-
-  alert('已送出審核');
-  location.href = 'dashboard.html';
+  alert('已送出，等待管理者審核');
+  location.href='dashboard.html';
 }
 </script>
+
 </body>
 </html>
