@@ -7,31 +7,31 @@
 
 <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
 <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
 <style>
-body { background:#f4f6f9; font-family:'Microsoft JhengHei'; display:none; }
-.step-card { border:0; border-radius:14px; box-shadow:0 8px 20px rgba(0,0,0,.08); }
-.upload-box {
-  border:2px dashed #c7d2fe; background:#eef2ff;
-  border-radius:14px; padding:48px; text-align:center; cursor:pointer;
-}
-.upload-box:hover { background:#e0e7ff; border-color:#6366f1; }
+body{background:#f4f6f9;font-family:'Microsoft JhengHei';display:none;}
+.card{border-radius:14px;box-shadow:0 8px 20px rgba(0,0,0,.08);}
+.upload-box{border:2px dashed #c7d2fe;background:#eef2ff;border-radius:14px;padding:48px;text-align:center;cursor:pointer}
+.upload-box:hover{background:#e0e7ff;border-color:#6366f1}
 </style>
 
 <script>
-const role = sessionStorage.getItem('currentUserRole');
-if (!role) location.href='login.html';
+const role=sessionStorage.getItem('currentUserRole');
+if(!role)location.href='login.html';
 
-const db = supabase.createClient(
+const db=supabase.createClient(
   'https://ghpxaeenikochgrnczic.supabase.co',
   'sb_publishable_v0ZN2OY08lh-8EC8ps8NdQ_ChYo1FRW'
 );
+
+pdfjsLib.GlobalWorkerOptions.workerSrc =
+  'https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.worker.min.js';
 </script>
 </head>
 
 <body>
-
 <nav class="navbar navbar-dark bg-dark px-4">
   <span class="navbar-brand fw-bold"><i class="fas fa-shield-alt me-2"></i>OHSMS</span>
   <a href="dashboard.html" class="btn btn-sm btn-outline-light">
@@ -40,134 +40,122 @@ const db = supabase.createClient(
 </nav>
 
 <div class="container py-5">
-
 <h3 class="fw-bold mb-1">勞工健康服務資料上傳</h3>
-<p class="text-muted mb-4">上傳後系統將自動辨識，請先校對內容再送出</p>
+<p class="text-muted mb-4">上傳後系統將自動解析，請校對內容再送出</p>
 
-<!-- STEP 1 -->
-<div class="card step-card p-4 mb-4">
-  <h5 class="fw-bold mb-3">STEP 1｜上傳執行紀錄表</h5>
-  <div class="upload-box" onclick="document.getElementById('mainFile').click()">
-    <i class="fas fa-file-pdf fa-3x text-primary mb-3"></i>
-    <div class="fw-bold">點擊上傳 PDF / 圖檔</div>
-    <small class="text-muted">勞工健康服務執行紀錄表</small>
-  </div>
-  <input type="file" id="mainFile" hidden accept=".pdf,.jpg,.png" onchange="processOCR(this)">
+<div class="card p-4 mb-4">
+<h5 class="fw-bold mb-3">STEP 1｜上傳執行紀錄表（PDF）</h5>
+<div class="upload-box" onclick="document.getElementById('pdfInput').click()">
+  <i class="fas fa-file-pdf fa-3x text-primary mb-3"></i>
+  <div class="fw-bold">點擊上傳 PDF</div>
+</div>
+<input type="file" id="pdfInput" hidden accept=".pdf" onchange="parsePDF(this)">
 </div>
 
-<!-- STEP 2 OCR PREVIEW -->
-<div id="ocrPreview" class="card step-card p-4 mb-4" style="display:none;">
-  <h5 class="fw-bold mb-3">STEP 2｜OCR 辨識結果（請校對）</h5>
+<div id="preview" class="card p-4 mb-4" style="display:none">
+<h5 class="fw-bold mb-3">STEP 2｜自動填入（可校對）</h5>
 
-  <label class="fw-bold">執行日期</label>
-  <input type="date" id="executionDate" class="form-control mb-3">
+<label class="fw-bold">執行日期</label>
+<input type="date" id="executionDate" class="form-control mb-3">
 
-  <label class="fw-bold">一、作業場所基本資料</label>
-  <textarea id="sec1" class="form-control mb-3" rows="3"></textarea>
+<label class="fw-bold">一、作業場所基本資料</label>
+<textarea id="sec1" class="form-control mb-3" rows="3"></textarea>
 
-  <label class="fw-bold">二、作業流程與危害概況</label>
-  <textarea id="sec2" class="form-control mb-3" rows="3"></textarea>
+<label class="fw-bold">二、作業流程與危害概況</label>
+<textarea id="sec2" class="form-control mb-3" rows="3"></textarea>
 
-  <label class="fw-bold">三、臨場健康服務執行情形</label>
-  <textarea id="sec3" class="form-control mb-3" rows="4"></textarea>
+<label class="fw-bold">三、臨場健康服務執行情形</label>
+<textarea id="sec3" class="form-control mb-3" rows="4"></textarea>
 
-  <label class="fw-bold">辦理事項</label>
-  <div id="itemsArea" class="mb-3"></div>
+<label class="fw-bold">辦理事項</label>
+<div id="itemsArea" class="mb-3"></div>
 </div>
 
-<!-- STEP 3 -->
-<div id="step3" class="text-end" style="display:none;">
-  <button class="btn btn-primary fw-bold px-4" onclick="submitConfirmed()">
-    確認內容正確並送出審核
-  </button>
+<div id="submitArea" class="text-end" style="display:none">
+<button class="btn btn-primary fw-bold px-4" onclick="submitData()">確認送出審核</button>
 </div>
-
 </div>
 
 <script>
 document.body.style.display='block';
-let ocrData = null;
-let mainFileObj = null;
+let pdfText='';
+let mainFile=null;
 
-/* 呼叫 OCR Edge Function */
-async function processOCR(input){
-  if(!input.files[0]) return;
-  mainFileObj = input.files[0];
+async function parsePDF(input){
+  if(!input.files[0])return;
+  mainFile=input.files[0];
 
-  const formData = new FormData();
-  formData.append('file', mainFileObj);
+  const buffer=await mainFile.arrayBuffer();
+  const pdf=await pdfjsLib.getDocument({data:buffer}).promise;
 
-  const res = await fetch(
-    'https://ghpxaeenikochgrnczic.supabase.co/functions/v1/ocr-process',
-    { method:'POST', body:formData }
-  );
-
-  if(!res.ok){
-    alert('OCR 失敗');
-    return;
+  pdfText='';
+  for(let i=1;i<=pdf.numPages;i++){
+    const page=await pdf.getPage(i);
+    const content=await page.getTextContent();
+    pdfText+=content.items.map(it=>it.str).join(' ')+'\n';
   }
 
-  ocrData = await res.json();
-  applyOCRResult(ocrData);
+  autoFill(pdfText);
 }
 
-/* 套用 OCR 結果 */
-function applyOCRResult(data){
-  document.getElementById('ocrPreview').style.display='block';
-  document.getElementById('step3').style.display='block';
+function autoFill(text){
+  const dateMatch=text.match(/(\d{3,4})[\/\-\.](\d{1,2})[\/\-\.](\d{1,2})/);
+  if(dateMatch){
+    const y=dateMatch[1].length===3?Number(dateMatch[1])+1911:dateMatch[1];
+    executionDate.value=`${y}-${dateMatch[2].padStart(2,'0')}-${dateMatch[3].padStart(2,'0')}`;
+  }
 
-  executionDate.value = data.execution_date || '';
-  sec1.value = data.section_1 || '';
-  sec2.value = data.section_2 || '';
-  sec3.value = data.section_3 || '';
+  sec1.value=extractSection(text,'一','二');
+  sec2.value=extractSection(text,'二','三');
+  sec3.value=extractSection(text,'三','四');
 
-  itemsArea.innerHTML = '';
-  Object.entries(data.checked_items || {}).forEach(([code,val])=>{
-    itemsArea.innerHTML += `
+  const items=['9-1','9-2','9-3','9-4','9-5','9-6','11-1','11-2','12','13'];
+  itemsArea.innerHTML='';
+  items.forEach(code=>{
+    const checked=text.includes(code);
+    itemsArea.innerHTML+=`
       <div class="form-check">
-        <input class="form-check-input" type="checkbox" id="item-${code}" ${val?'checked':''}>
+        <input class="form-check-input" type="checkbox" id="item-${code}" ${checked?'checked':''}>
         <label class="form-check-label">${code}</label>
       </div>`;
   });
+
+  preview.style.display='block';
+  submitArea.style.display='block';
 }
 
-/* 顧問確認後才寫入暫存 */
-async function submitConfirmed(){
-  const uploader = sessionStorage.getItem('currentUserName') || 'consultant';
+function extractSection(text,start,end){
+  const reg=new RegExp(start+'[、.．]?([\\s\\S]*?)'+end+'[、.．]?');
+  const m=text.match(reg);
+  return m?m[1].trim():'';
+}
 
-  const checkedItems = {};
+async function submitData(){
+  const uploader=sessionStorage.getItem('currentUserName')||'consultant';
+  const checkedItems={};
   document.querySelectorAll('[id^="item-"]').forEach(el=>{
-    checkedItems[el.id.replace('item-','')] = el.checked;
+    checkedItems[el.id.replace('item-','')]=el.checked;
   });
 
-  const { data, error } = await db
-    .from('document_staging')
-    .insert({
-      uploader_name: uploader,
-      main_file_name: mainFileObj.name,
-      main_file_type: mainFileObj.type,
-      category: '勞工健康服務執行紀錄表',
-      execution_date: executionDate.value,
-      extracted_data: {
-        section_1: sec1.value,
-        section_2: sec2.value,
-        section_3: sec3.value,
-        checked_items: checkedItems
-      },
-      status: 'pending'
-    })
-    .select()
-    .single();
+  const {error}=await db.from('document_staging').insert({
+    uploader_name:uploader,
+    main_file_name:mainFile.name,
+    main_file_type:'pdf',
+    category:'勞工健康服務執行紀錄表',
+    execution_date:executionDate.value,
+    extracted_data:{
+      section_1:sec1.value,
+      section_2:sec2.value,
+      section_3:sec3.value,
+      checked_items:checkedItems
+    },
+    status:'pending'
+  });
 
-  if(error){
-    alert(error.message);
-    return;
-  }
-
-  alert('已確認並送交審核');
+  if(error){alert(error.message);return;}
+  alert('已送出審核');
   location.href='dashboard.html';
 }
 </script>
-
 </body>
 </html>
