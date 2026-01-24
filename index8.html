@@ -70,7 +70,7 @@
 
     <nav class="navbar navbar-dark bg-black py-3 border-bottom border-secondary">
         <div class="container-fluid px-4">
-            <a class="navbar-brand fw-bold text-info" href="#"><i class="fas fa-robot me-2"></i>OHSMS 自動化壓力測試代理人 (Agent V3)</a>
+            <a class="navbar-brand fw-bold text-info" href="#"><i class="fas fa-robot me-2"></i>OHSMS 自動化壓力測試代理人 (Agent V4.0)</a>
             <a href="dashboard.html" class="btn btn-outline-secondary btn-sm">退出測試 (EXIT)</a>
         </div>
     </nav>
@@ -87,26 +87,28 @@
                     <div class="mb-4">
                         <label class="form-label text-secondary small fw-bold">1. 測試情境 (Scenario)</label>
                         <select class="form-select form-control-dark" id="scenarioSelect">
-                            <optgroup label="資料庫填充 (Data Generation)">
-                                <option value="full_suite">🌟 全套生成 (公司+醫護+行事曆)</option>
-                                <option value="company_only">僅生成公司資料 (Companies)</option>
-                                <option value="service_records" selected>📄 生成完整臨場服務紀錄 (含PDF模擬)</option>
+                            <optgroup label="全流程整合 (Integrated)">
+                                <option value="full_suite" selected>🌟 全套生成 (公司+醫療+紀錄+行事曆同步)</option>
                             </optgroup>
-                            <optgroup label="行為模擬 (Behavior Stress Test)">
+                            <optgroup label="單項填充 (Single Table)">
+                                <option value="company_only">僅生成公司資料 (Companies)</option>
+                                <option value="event_only">僅生成行事曆 (Events)</option>
+                            </optgroup>
+                            <optgroup label="行為模擬 (Behavior)">
                                 <option value="user_behavior">👥 模擬使用者行為 (登入/操作/資安警示)</option>
                             </optgroup>
                         </select>
                         <div class="form-text text-secondary opacity-75 mt-2 small">
-                            <i class="fas fa-info-circle me-1"></i>
-                            <strong>臨場紀錄模式</strong>：會自動讀取現有公司，生成包含「作業環境、危害辨識、建議事項」的完整結構化資料，供評鑑系統調閱。
+                            <i class="fas fa-check-circle me-1 text-success"></i>
+                            <strong>全套生成 V4</strong>：建立公司 -> 建立作業場所 -> 產生臨場服務紀錄 -> 自動同步至行事曆 (設為已完成)。
                         </div>
                     </div>
 
                     <div class="mb-4">
-                        <label class="form-label text-secondary small fw-bold">2. 生成數量 (Transactions)</label>
+                        <label class="form-label text-secondary small fw-bold">2. 生成數量 (Sets)</label>
                         <div class="input-group">
-                            <input type="number" class="form-control form-control-dark fw-bold text-center fs-5" id="qtyInput" value="20" min="1" max="1000">
-                            <span class="input-group-text bg-secondary border-secondary text-white">筆</span>
+                            <input type="number" class="form-control form-control-dark fw-bold text-center fs-5" id="qtyInput" value="10" min="1" max="1000">
+                            <span class="input-group-text bg-secondary border-secondary text-white">套</span>
                         </div>
                     </div>
 
@@ -139,12 +141,12 @@
                             <span id="statusDot" class="status-dot status-ready"></span>
                             <span id="statusText" class="fw-bold text-secondary font-monospace">SYSTEM READY</span>
                         </div>
-                        <div class="text-secondary small font-monospace">LOG_STREAM_V3.0</div>
+                        <div class="text-secondary small font-monospace">LOG_STREAM_V4.0</div>
                     </div>
                     
                     <div class="console-screen flex-grow-1" id="consoleOutput">
                         <div class="text-secondary">> Initializing Supabase Connection... [OK]</div>
-                        <div class="text-secondary">> Agent Module Loaded: Service Record Generator</div>
+                        <div class="text-secondary">> Agent Module Loaded: Integrated Workflow Generator</div>
                         <div class="text-secondary">> Waiting for command...</div>
                     </div>
 
@@ -168,18 +170,18 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/Faker/3.1.0/faker.min.js"></script>
 
     <script>
-        // 1. Supabase Init (Key Included)
+        // 1. Supabase Init
         const SUPABASE_URL = 'https://ghpxaeenikochgrnczic.supabase.co';
         const SUPABASE_KEY = 'sb_publishable_v0ZN2OY08lh-8EC8ps8NdQ_ChYo1FRW';
         const db = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-        // 2. Data Generators (Template Library)
+        // 2. Data Generators (Updated)
         const FakeGen = {
-            surnames: ['王', '李', '張', '陳', '林', '黃', '吳', '劉'],
-            names: ['大明', '小華', '美麗', '志豪', '雅婷', '建國'],
-            industries: ['科技', '生技', '塑膠', '鋼鐵', '物流'],
+            surnames: ['王', '李', '張', '陳', '林', '黃', '吳', '劉', '蔡', '楊'],
+            names: ['大明', '小華', '美麗', '志豪', '雅婷', '建國', '淑芬', '冠宇', '怡君'],
+            industries: ['科技', '生技', '塑膠', '鋼鐵', '物流', '食品', '電子', '精密'],
+            cities: ['台北', '新北', '桃園', '台中', '台南', '高雄', '新竹'],
             
-            // 擬真語料庫 (from User PDF)
             processes: [
                 '整經漿紗 -> 織布 -> 脫漿 -> 成布加工 -> 品質檢驗',
                 '原料入庫 -> 裁切沖壓 -> 表面處理 -> 組裝測試 -> 包裝出貨',
@@ -202,7 +204,9 @@
             getCompany: function() { return this.surnames[Math.floor(Math.random()*this.surnames.length)] + this.names[Math.floor(Math.random()*this.names.length)] + this.industries[Math.floor(Math.random()*this.industries.length)] + '股份有限公司'; },
             getPhone: function() { return '09' + Math.floor(Math.random()*100000000).toString().padStart(8,'0'); },
             getTaxId: function() { return Math.floor(Math.random()*90000000+10000000).toString(); },
-            getIp: function() { return `192.168.${Math.floor(Math.random()*255)}.${Math.floor(Math.random()*255)}`; }
+            getIp: function() { return `192.168.${Math.floor(Math.random()*255)}.${Math.floor(Math.random()*255)}`; },
+            getAddress: function() { return this.cities[Math.floor(Math.random()*this.cities.length)] + '市工業路' + Math.floor(Math.random()*500) + '號'; },
+            getName: function() { return this.surnames[Math.floor(Math.random()*this.surnames.length)] + this.names[Math.floor(Math.random()*this.names.length)]; }
         };
 
         // 3. Core Logic
@@ -221,41 +225,29 @@
             const speed = parseInt(document.getElementById('speedSelect').value);
             const scenario = document.getElementById('scenarioSelect').value;
 
-            log(`>>> 任務啟動: 生成 ${qty} 筆 | 模式: ${scenario.toUpperCase()}`, 'system');
+            log(`>>> 任務啟動: 生成 ${qty} 套 | 模式: ${scenario.toUpperCase()}`, 'system');
 
             try {
                 let successCount = 0;
-                
-                // 若為 Service Record 模式，先撈取公司 ID 列表
-                let companyIds = [];
-                if (scenario === 'service_records') {
-                    const { data, error } = await db.from('companies').select('id, name');
-                    if (error) throw error;
-                    if (!data || data.length === 0) throw new Error("無公司資料，請先執行「全套生成」或建立公司。");
-                    companyIds = data;
-                    log(`[SYSTEM] 偵測到 ${companyIds.length} 家現有公司，準備進行資料填充...`, 'system');
-                }
-
                 for (let i = 0; i < qty; i++) {
                     if (shouldStop) { log('!!! 強制中止 !!!', 'error'); break; }
 
                     try {
                         if (scenario === 'full_suite') await generateFullSuite();
                         else if (scenario === 'company_only') await generateCompanyOnly();
-                        else if (scenario === 'service_records') await generateServiceRecord(companyIds);
+                        else if (scenario === 'event_only') await generateEventOnly();
                         else if (scenario === 'user_behavior') await generateUserBehavior();
                         successCount++;
                     } catch (e) {
                         log(`[ERROR] Item ${i+1}: ${e.message}`, 'error');
                     }
 
-                    // Progress
                     const percent = Math.round(((i+1)/qty)*100);
                     document.getElementById('progressBar').style.width = percent + '%';
                     document.getElementById('progressText').innerText = `${i+1} / ${qty}`;
                     await new Promise(r => setTimeout(r, speed));
                 }
-                log(`<<< 任務完成。成功 ${successCount} 筆。`, 'success');
+                log(`<<< 任務完成。成功 ${successCount} 套。`, 'success');
             } catch(e) {
                 log(`[CRITICAL] ${e.message}`, 'error');
             }
@@ -284,86 +276,109 @@
 
         // ================= Generator Functions ================= //
 
-        // 1. 生成臨場服務紀錄 (核心新功能)
-        async function generateServiceRecord(companyList) {
-            // 隨機挑一家公司
-            const company = companyList[Math.floor(Math.random() * companyList.length)];
-            
-            // 1. 建立作業場所 (Workplace)
-            const hazard = FakeGen.hazards[Math.floor(Math.random() * FakeGen.hazards.length)];
-            const { data: wpData, error: wpError } = await db.from('workplaces').insert([{
-                company_id: company.id,
-                department_name: ['生產部', '品管課', '倉儲區', '加工區'][Math.floor(Math.random()*4)],
-                admin_male: Math.floor(Math.random()*20)+5,
-                admin_female: Math.floor(Math.random()*20)+5,
-                site_male: Math.floor(Math.random()*50)+10,
-                site_female: Math.floor(Math.random()*50)+10,
-                hazard_type: hazard.type,
-                hazard_count: hazard.count
-            }]).select();
-            if (wpError) throw wpError;
-            const workplaceId = wpData[0].id;
-
-            // 2. 建立訪視紀錄 (Service Record) - 內容擬真
-            const process = FakeGen.processes[Math.floor(Math.random() * FakeGen.processes.length)];
-            const issue = FakeGen.issues[Math.floor(Math.random() * FakeGen.issues.length)];
-            const visitDate = new Date(); 
-            visitDate.setDate(visitDate.getDate() - Math.floor(Math.random() * 60)); // 過去60天內
-
-            await db.from('service_records').insert([{
-                workplace_id: workplaceId,
-                visit_date: visitDate.toISOString().split('T')[0],
-                start_time: '09:00', end_time: '12:00',
-                process_desc: process,
-                hazard_desc: hazard.desc,
-                execution_items: '9-3, 11-1, 11-2', // 勾選項目
-                issues_found: issue,
-                measures_taken: '已建議雇主進行改善，並預計於下次訪視時追蹤。',
-                doctor_signature: '王大明 醫師',
-                nurse_signature: '李雅婷 護理師'
-            }]);
-
-            log(`[RECORD] 為 [${company.name}] 建立訪視紀錄 (危害:${hazard.type})`, 'success');
-        }
-
-        // 2. 全套生成 (Legacy)
+        // 核心：全套生成 V4.0 (公司 -> 醫護 -> 紀錄 -> 行事曆同步)
         async function generateFullSuite() {
-            const name = FakeGen.getCompany();
-            const tax = FakeGen.getTaxId();
-            const { data, error } = await db.from('companies').insert([{
-                tax_id: tax, name: name, address: FakeGen.getAddress(),
+            // 1. 建立公司
+            const coName = FakeGen.getCompany();
+            const taxId = FakeGen.getTaxId();
+            const { data: coData, error: coError } = await db.from('companies').insert([{
+                tax_id: taxId, name: coName, address: FakeGen.getAddress(),
                 contact_person: FakeGen.getName()+'經理', phone: FakeGen.getPhone()
             }]).select();
-            if(error) throw error;
-            log(`[DATA] 建立公司: ${name} (${tax})`);
+            if (coError) throw coError;
+            const coId = coData[0].id;
             
-            // 順便建立行程
-            const cid = data[0].id;
+            // 2. 建立醫護 (指派)
+            const staffName = FakeGen.getName();
+            const staffRole = Math.random() > 0.6 ? '醫師' : '護理人員';
+            await db.from('medical_staff').insert([{
+                name: staffName, role: staffRole, employment_type: '兼職', phone: FakeGen.getPhone()
+            }]);
+
+            // 3. 建立作業場所 (Workplace)
+            const hazard = FakeGen.hazards[Math.floor(Math.random() * FakeGen.hazards.length)];
+            const { data: wpData, error: wpError } = await db.from('workplaces').insert([{
+                company_id: coId,
+                department_name: '生產部',
+                admin_male: 10, admin_female: 10, site_male: 30, site_female: 20,
+                hazard_type: hazard.type, hazard_count: hazard.count
+            }]).select();
+            if (wpError) throw wpError;
+            const wpId = wpData[0].id;
+
+            // 4. 生成臨場服務紀錄 (Service Record) - 日期設為最近 30 天內
+            const today = new Date();
+            const visitDate = new Date();
+            visitDate.setDate(today.getDate() - Math.floor(Math.random() * 30));
+            const visitDateStr = visitDate.toISOString().split('T')[0];
+
+            await db.from('service_records').insert([{
+                workplace_id: wpId,
+                visit_date: visitDateStr,
+                start_time: '09:00', end_time: '12:00',
+                process_desc: FakeGen.processes[0],
+                hazard_desc: hazard.desc,
+                execution_items: '9-3, 11-1',
+                doctor_signature: staffName + ' ' + staffRole
+            }]);
+
+            // 5. 同步至行事曆 (Calendar) - 讓管理者知道這天有服務且已完成
             await db.from('compliance_events').insert([{
-                title: `臨場服務 (${name})`, event_type: 'service',
-                event_date: new Date().toISOString().split('T')[0], priority: 'medium', company_id: cid, status: 'pending'
+                title: `臨場服務 (${coName})`,
+                event_type: 'service',
+                event_date: visitDateStr,
+                priority: 'medium',
+                company_id: coId,
+                status: 'completed', // 設定為已完成，因為紀錄已產生
+                details: `由 ${staffName} ${staffRole} 執行。危害類型：${hazard.type}`
+            }]);
+
+            // 6. 加一筆未來的待辦事項 (讓行事曆有點變化)
+            const futureDate = new Date();
+            futureDate.setDate(today.getDate() + Math.floor(Math.random() * 60) + 10);
+            await db.from('compliance_events').insert([{
+                title: `追蹤改善事項 (${coName})`,
+                event_type: 'meeting',
+                event_date: futureDate.toISOString().split('T')[0],
+                priority: 'high',
+                company_id: coId,
+                status: 'pending'
+            }]);
+
+            log(`[FULL] 建立完整生態系: ${coName} (含紀錄與行事曆)`, 'success');
+            
+            // 寫入 Log
+            await db.from('audit_logs').insert([{
+                user_role: 'admin', user_name: 'AI_Agent', action_type: '全套生成', target_table: 'SYSTEM', details: `Auto-generated suite for ${coName}`
             }]);
         }
 
-        // 3. 其他輔助生成
+        // 輔助生成：單獨公司
         async function generateCompanyOnly() {
             const name = FakeGen.getCompany();
             await db.from('companies').insert([{ tax_id: FakeGen.getTaxId(), name: name }]);
-            log(`[DATA] 建立公司: ${name}`);
+            log(`[DATA] 公司: ${name}`);
         }
-        
+
+        // 輔助生成：單獨行事曆
+        async function generateEventOnly() {
+            const title = "年度法規查核";
+            await db.from('compliance_events').insert([{
+                title: title, event_type: 'document', event_date: new Date().toISOString().split('T')[0]
+            }]);
+            log(`[DATA] 事件: ${title}`);
+        }
+
+        // 輔助生成：使用者行為
         async function generateUserBehavior() {
-            const acts = ['登入', '查詢報表', '下載文件', '修改資料'];
+            const acts = ['登入', '查詢', '下載', '修改'];
             const act = acts[Math.floor(Math.random()*acts.length)];
             await db.from('audit_logs').insert([{
                 user_role: 'general', user_name: FakeGen.getName(),
-                action_type: act, target_table: 'system', details: '壓力測試模擬', ip_address: FakeGen.getIp()
+                action_type: act, target_table: 'system', details: '壓力測試模擬'
             }]);
-            log(`[BEHAVIOR] 模擬操作: ${act}`);
+            log(`[BEHAVIOR] ${act}`);
         }
-
-        // Helper for FakeGen
-        FakeGen.getAddress = function() { return this.cities[Math.floor(Math.random()*this.cities.length)] + '市工業路' + Math.floor(Math.random()*500) + '號'; };
     </script>
 </body>
 </html>
