@@ -39,6 +39,7 @@
         
         tbody tr:hover { background-color: #f8fafc; }
         
+        /* 事件類型標籤 */
         .badge-event { font-size: 0.8em; padding: 5px 8px; width: 80px; text-align: center; display: inline-block;}
     </style>
 
@@ -86,17 +87,8 @@
         </div>
 
         <div class="info-card info-blue shadow-sm">
-            <strong><i class="fas fa-search me-2"></i>資料檢索指引</strong><br>
-            系統預設不載入所有資料。請輸入「統一編號」或「公司名稱」進行查詢，或直接使用匯入功能批量建立。
-        </div>
-
-        <div class="row mb-3">
-            <div class="col-md-4">
-                <div class="input-group">
-                    <input type="text" id="search-company-input" class="form-control" placeholder="輸入統編或名稱...">
-                    <button class="btn btn-primary" onclick="searchCompanies()"><i class="fas fa-search"></i> 查詢</button>
-                </div>
-            </div>
+            <strong><i class="fas fa-building me-2"></i>操作指引</strong><br>
+            您可以使用 <strong>PDF (單筆辨識)</strong> 或 <strong>Excel (批量匯入)</strong> 來建立資料。系統將自動記錄統編與合約資訊。
         </div>
 
         <div class="card border-0 shadow mb-3">
@@ -113,7 +105,7 @@
                             </tr>
                         </thead>
                         <tbody id="companyTableBody">
-                            <tr><td colspan="5" class="text-center py-4 text-muted">請輸入關鍵字進行查詢</td></tr>
+                            <tr><td colspan="5" class="text-center py-4 text-muted">連線資料庫中...</td></tr>
                         </tbody>
                     </table>
                 </div>
@@ -137,16 +129,7 @@
 
         <div class="info-card info-green shadow-sm">
             <strong><i class="fas fa-user-md me-2"></i>人員資料庫</strong><br>
-            請輸入姓名查詢現有人員，或建立完整的醫護團隊名單，以利系統自動計算評鑑報告中的人力配置分數。
-        </div>
-
-        <div class="row mb-3">
-            <div class="col-md-4">
-                <div class="input-group">
-                    <input type="text" id="search-staff-input" class="form-control" placeholder="輸入人員姓名...">
-                    <button class="btn btn-success" onclick="searchStaff()"><i class="fas fa-search"></i> 查詢</button>
-                </div>
-            </div>
+            建立完整的醫護團隊名單，以利系統自動計算評鑑報告中的人力配置分數。
         </div>
 
         <div class="card border-0 shadow mb-3">
@@ -163,7 +146,7 @@
                             </tr>
                         </thead>
                         <tbody id="staffTableBody">
-                            <tr><td colspan="5" class="text-center py-4 text-muted">請輸入姓名進行查詢</td></tr>
+                            <tr><td colspan="5" class="text-center py-4 text-muted">讀取人員名單中...</td></tr>
                         </tbody>
                     </table>
                 </div>
@@ -186,34 +169,9 @@
         </div>
 
         <div class="info-card info-red shadow-sm">
-            <strong><i class="fas fa-filter me-2"></i>行程篩選</strong><br>
-            請選擇年份與月份來檢視法規行程。資料將同步顯示於「工作儀表板」與「合規預警看板」。
-        </div>
-
-        <div class="row mb-3">
-            <div class="col-md-6 d-flex gap-2">
-                <select id="filter-year" class="form-select w-auto">
-                    <option value="2026">2026</option>
-                    <option value="2025" selected>2025</option>
-                    <option value="2024">2024</option>
-                </select>
-                <select id="filter-month" class="form-select w-auto">
-                    <option value="all">全年</option>
-                    <option value="01">1月</option>
-                    <option value="02">2月</option>
-                    <option value="03">3月</option>
-                    <option value="04">4月</option>
-                    <option value="05">5月</option>
-                    <option value="06">6月</option>
-                    <option value="07">7月</option>
-                    <option value="08">8月</option>
-                    <option value="09">9月</option>
-                    <option value="10">10月</option>
-                    <option value="11">11月</option>
-                    <option value="12">12月</option>
-                </select>
-                <button class="btn btn-danger" onclick="searchEvents()"><i class="fas fa-filter"></i> 篩選</button>
-            </div>
+            <strong><i class="fas fa-bell me-2"></i>預警系統同步</strong><br>
+            在此處建立的資料將同步顯示於<strong>「工作儀表板」</strong>與<strong>「合規預警看板」</strong>。
+            過期未完成的事項將自動標示為紅色警示。
         </div>
 
         <div class="card border-0 shadow">
@@ -231,7 +189,7 @@
                             </tr>
                         </thead>
                         <tbody id="eventTableBody">
-                            <tr><td colspan="6" class="text-center py-4 text-muted">請選擇年月進行篩選</td></tr>
+                            <tr><td colspan="6" class="text-center py-4 text-muted">讀取行事曆中...</td></tr>
                         </tbody>
                     </table>
                 </div>
@@ -355,7 +313,7 @@
                                 <label class="form-label">指派公司 (可選)</label>
                                 <select class="form-select" id="ev-company">
                                     <option value="">(通用事項)</option>
-                                </select>
+                                    </select>
                             </div>
                         </div>
                     </div>
@@ -385,105 +343,42 @@
 
         // Init
         document.addEventListener('DOMContentLoaded', () => {
-            // 不自動載入，改為等使用者查詢
+            loadCompanies();
+            loadStaff();
+            loadEvents();
             loadCompanyOptions();
         });
 
         // ========================
-        // Search Functions
+        // Load Functions
         // ========================
-        
-        // 1. 搜尋公司
-        async function searchCompanies() {
-            const query = document.getElementById('search-company-input').value.trim();
-            const tbody = document.getElementById('companyTableBody');
-            
-            tbody.innerHTML = '<tr><td colspan="5" class="text-center py-4"><div class="spinner-border spinner-border-sm"></div> 查詢中...</td></tr>';
-
-            let queryBuilder = supabase.from('companies').select('*').order('created_at', {ascending:false});
-            
-            if (query) {
-                // 模糊搜尋 (Name or Tax ID)
-                queryBuilder = queryBuilder.or(`name.ilike.%${query}%,tax_id.ilike.%${query}%`);
-            } else {
-                // 如果沒輸入，限制只抓前 20 筆
-                queryBuilder = queryBuilder.limit(20);
-            }
-
-            const { data, error } = await queryBuilder;
-
-            if(error || !data || data.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="5" class="text-center text-muted py-3">無符合資料</td></tr>`;
-                return;
-            }
-
-            tbody.innerHTML = data.map(c => `
+        async function loadCompanies() {
+            const { data } = await supabase.from('companies').select('*').order('created_at', {ascending:false});
+            document.getElementById('companyTableBody').innerHTML = (data||[]).map(c => `
                 <tr>
                     <td class="font-monospace ps-4">${c.tax_id||''}</td>
                     <td class="fw-bold text-primary">${c.name}</td>
                     <td>${c.contact_person||'-'}</td>
                     <td>${c.phone||'-'}</td>
                     <td class="text-end pe-4"><button class="btn btn-sm btn-outline-danger" onclick="deleteData('companies', '${c.id}', '${c.name}')"><i class="fas fa-trash"></i></button></td>
-                </tr>`).join('');
+                </tr>`).join('') || '<tr><td colspan="5" class="text-center py-3">無資料</td></tr>';
         }
 
-        // 2. 搜尋人員
-        async function searchStaff() {
-            const query = document.getElementById('search-staff-input').value.trim();
-            const tbody = document.getElementById('staffTableBody');
-            
-            tbody.innerHTML = '<tr><td colspan="5" class="text-center py-4"><div class="spinner-border spinner-border-sm"></div> 查詢中...</td></tr>';
-
-            let queryBuilder = supabase.from('medical_staff').select('*').order('created_at', {ascending:false});
-            
-            if (query) {
-                queryBuilder = queryBuilder.ilike('name', `%${query}%`);
-            } else {
-                queryBuilder = queryBuilder.limit(20);
-            }
-
-            const { data, error } = await queryBuilder;
-
-            if(error || !data || data.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="5" class="text-center text-muted py-3">無符合資料</td></tr>`;
-                return;
-            }
-
-            tbody.innerHTML = data.map(s => `
+        async function loadStaff() {
+            const { data } = await supabase.from('medical_staff').select('*').order('created_at', {ascending:false});
+            document.getElementById('staffTableBody').innerHTML = (data||[]).map(s => `
                 <tr>
                     <td class="ps-4 fw-bold">${s.name}</td>
                     <td><span class="badge bg-success bg-opacity-10 text-success border border-success">${s.role}</span></td>
                     <td>${s.employment_type||'-'}</td>
                     <td>${s.phone||'-'}</td>
                     <td class="text-end pe-4"><button class="btn btn-sm btn-outline-danger" onclick="deleteData('medical_staff', '${s.id}', '${s.name}')"><i class="fas fa-trash"></i></button></td>
-                </tr>`).join('');
+                </tr>`).join('') || '<tr><td colspan="5" class="text-center py-3">無資料</td></tr>';
         }
 
-        // 3. 搜尋行事曆
-        async function searchEvents() {
-            const year = document.getElementById('filter-year').value;
-            const month = document.getElementById('filter-month').value;
-            const tbody = document.getElementById('eventTableBody');
-
-            tbody.innerHTML = '<tr><td colspan="6" class="text-center py-4"><div class="spinner-border spinner-border-sm"></div> 載入中...</td></tr>';
-
-            let queryBuilder = supabase.from('compliance_events').select('*').order('event_date', {ascending:true});
-
-            // 日期區間篩選
-            if (month === 'all') {
-                queryBuilder = queryBuilder.gte('event_date', `${year}-01-01`).lte('event_date', `${year}-12-31`);
-            } else {
-                // 簡易處理每個月最後一天，這裡偷懶直接用 31，Supabase 會處理無效日期
-                queryBuilder = queryBuilder.gte('event_date', `${year}-${month}-01`).lte('event_date', `${year}-${month}-31`);
-            }
-
-            const { data, error } = await queryBuilder;
-
-            if(error || !data || data.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="6" class="text-center text-muted py-3">該期間無排程</td></tr>`;
-                return;
-            }
-
+        async function loadEvents() {
+            const { data } = await supabase.from('compliance_events').select('*').order('event_date', {ascending:true});
+            
             const typeMap = {
                 'training': {label:'教育訓練', class:'bg-info text-dark'},
                 'meeting': {label:'會議', class:'bg-warning text-dark'},
@@ -491,7 +386,7 @@
                 'document': {label:'文件修訂', class:'bg-secondary text-white'}
             };
 
-            tbody.innerHTML = data.map(e => {
+            document.getElementById('eventTableBody').innerHTML = (data||[]).map(e => {
                 const badge = typeMap[e.event_type] || {label:e.event_type, class:'bg-light text-dark'};
                 const isExpired = new Date(e.event_date) < new Date() && e.status !== 'completed';
                 const dateClass = isExpired ? 'text-danger fw-bold' : '';
@@ -505,11 +400,11 @@
                     <td>${e.status==='pending' ? '待辦' : '已完成'}</td>
                     <td class="text-end pe-4"><button class="btn btn-sm btn-outline-danger" onclick="deleteData('compliance_events', '${e.id}', '${e.title}')"><i class="fas fa-trash"></i></button></td>
                 </tr>`;
-            }).join('');
+            }).join('') || '<tr><td colspan="6" class="text-center py-3">無排程資料</td></tr>';
         }
 
         async function loadCompanyOptions() {
-            const { data } = await supabase.from('companies').select('id, name').limit(100); // 限制數量避免選單過長
+            const { data } = await supabase.from('companies').select('id, name');
             const select = document.getElementById('ev-company');
             if(data) {
                 data.forEach(c => {
@@ -522,7 +417,7 @@
         }
 
         // ========================
-        // Modal & Save Logic (Same as before)
+        // Modal & Save Logic
         // ========================
         function openCompanyModal() {
             currentType = 'company';
@@ -541,6 +436,7 @@
         function openEventModal() {
             currentType = 'event';
             batchData = [];
+            // Reset fields
             document.getElementById('ev-title').value = '';
             document.getElementById('ev-date').value = '';
             new bootstrap.Modal(document.getElementById('eventModal')).show();
@@ -584,10 +480,12 @@
             }
 
             if(Array.isArray(data)) {
+                // Batch
                 const { error } = await supabase.from(table).upsert(data, conflict ? {onConflict: conflict} : undefined);
                 if(error) return alert('匯入失敗: ' + error.message);
                 await writeLog('批量匯入', table, `匯入 ${data.length} 筆資料`);
             } else {
+                // Single
                 if(!data.name && !data.title) return alert('請填寫必要欄位');
                 const { error } = await supabase.from(table).upsert(data, conflict ? {onConflict: conflict} : undefined);
                 if(error) return alert('儲存失敗: ' + error.message);
@@ -595,16 +493,14 @@
             }
 
             alert('✅ 儲存成功');
+            // Close modals
             document.querySelectorAll('.modal').forEach(el => bootstrap.Modal.getInstance(el)?.hide());
-            
-            // Refresh current view if applicable
-            if(currentType === 'company') searchCompanies();
-            else if(currentType === 'staff') searchStaff();
-            else if(currentType === 'event') searchEvents();
+            // Reload
+            loadCompanies(); loadStaff(); loadEvents();
         }
 
         // ========================
-        // Import Logic (Same as before)
+        // Import Logic
         // ========================
         function triggerImport(type) {
             currentType = type;
@@ -630,6 +526,7 @@
         }
 
         async function parsePDF(file) {
+            // Simplified PDF Logic for Company
             try {
                 const buffer = await file.arrayBuffer();
                 const pdf = await pdfjsLib.getDocument(buffer).promise;
@@ -651,6 +548,7 @@
                 const json = XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]], {header:1});
                 
                 batchData = [];
+                // Skip header row 0
                 for(let i=1; i<json.length; i++) {
                     const r = json[i];
                     if(!r.length) continue;
@@ -660,18 +558,25 @@
                     } else if(currentType === 'staff') {
                         batchData.push({ name:r[0], role:r[1]||'護理人員', employment_type:r[2]||'兼職', phone:r[3] });
                     } else if(currentType === 'event') {
+                        // Excel columns: Date, Title, Type, Priority
+                        // Excel date handling needed usually, simplified here:
                         batchData.push({ event_date:r[0], title:r[1], event_type:r[2]||'document', priority:r[3]||'medium' });
                     }
                 }
 
+                // Show appropriate modal with preview
                 if(currentType === 'company') {
                     openCompanyModal();
                     document.getElementById('companyForm').style.display = 'none';
                     document.getElementById('previewArea').style.display = 'block';
                     document.getElementById('previewCount').innerText = batchData.length;
+                    // Simple table preview
                     document.getElementById('previewTable').innerHTML = batchData.map(d => `<tr><td>${d.name}</td></tr>`).join('');
-                } else {
+                } else if(currentType === 'staff') {
+                    // Direct save flow for staff/event for simplicity in this demo, or add preview logic
                     if(confirm(`解析出 ${batchData.length} 筆資料，是否直接匯入？`)) saveData();
+                } else if(currentType === 'event') {
+                    if(confirm(`解析出 ${batchData.length} 筆行程，是否直接匯入？`)) saveData();
                 }
                 
                 document.getElementById('loadingOverlay').style.display = 'none';
@@ -686,11 +591,9 @@
             if(!confirm('確定刪除?')) return;
             await supabase.from(table).delete().eq('id',id);
             await writeLog('刪除', table, `刪除: ${name}`);
-            
-            // Refresh
-            if(table==='companies') searchCompanies();
-            if(table==='medical_staff') searchStaff();
-            if(table==='compliance_events') searchEvents();
+            if(table==='companies') loadCompanies();
+            if(table==='medical_staff') loadStaff();
+            if(table==='compliance_events') loadEvents();
         }
 
         async function writeLog(action, table, detail) {
