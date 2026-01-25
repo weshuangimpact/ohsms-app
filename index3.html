@@ -140,11 +140,11 @@
                 <i class="fas fa-robot"></i>
             </div>
             <h3 class="fw-bold mb-3">評鑑資料查詢助手</h3>
-            <p class="text-muted mb-4">請輸入關鍵字，或從下方列表中點選顧問以調閱其服務履歷。</p>
+            <p class="text-muted mb-4">請輸入關鍵字，查詢歷史服務紀錄與當時負責顧問。</p>
 
             <div class="search-box-wrapper mx-auto" style="max-width: 700px;">
                 <i class="fas fa-search text-muted fs-5"></i>
-                <input type="text" id="searchInput" class="search-input" placeholder="輸入公司、年份或顧問姓名 (例如：2025 鐵高)..." autofocus>
+                <input type="text" id="searchInput" class="search-input" placeholder="輸入公司、年份或顧問姓名 (例如：2022 甲顧問)..." autofocus>
                 <button class="btn-search" onclick="executeSearch()">搜尋</button>
             </div>
         </div>
@@ -152,7 +152,7 @@
         <div class="row justify-content-center mt-4">
             <div class="col-lg-10">
                 <div id="loading" class="text-center my-5" style="display:none;">
-                    <div class="spinner-border text-primary"></div><br><span class="text-muted">AI 正在檢索資料庫...</span>
+                    <div class="spinner-border text-primary"></div><br><span class="text-muted">AI 正在檢索歷史卷宗...</span>
                 </div>
                 <div id="resultsArea"></div>
             </div>
@@ -199,17 +199,33 @@
             loader.style.display = 'block';
 
             try {
+                // ★★★ 核心修正 1：SQL 查詢 ★★★
+                // 這裡的 medical_staff (name) 是根據 service_records 中的 consultant_id (或 medical_staff_id) 外鍵
+                // 去關聯 medical_staff 表。這能確保我們抓到的是「紀錄當下」連結的那位員工。
                 const { data, error } = await supabaseClient
                     .from('service_records')
-                    .select(`*, workplaces(department_name, companies(name, tax_id))`)
+                    .select(`
+                        *, 
+                        medical_staff (name), 
+                        workplaces (
+                            department_name, 
+                            companies(name, tax_id)
+                        )
+                    `)
                     .order('visit_date', { ascending: false })
                     .limit(50);
 
                 if(error) throw error;
 
                 const filtered = data.filter(r => {
-                    const str = `${r.workplaces?.companies?.name} ${r.service_year} ${r.raw_data}`.toLowerCase();
-                    return str.includes(query.toLowerCase());
+                    // ★★★ 核心修正 2：搜尋比對 ★★★
+                    // 比對時，我們也使用關聯過來的 medical_staff.name
+                    // 這樣如果搜尋 "甲"，就能找到甲以前做過的所有紀錄
+                    const historicalConsultantName = r.medical_staff?.name || '';
+                    const companyName = r.workplaces?.companies?.name || '';
+                    
+                    const searchTarget = `${companyName} ${r.service_year} ${historicalConsultantName} ${r.raw_data}`.toLowerCase();
+                    return searchTarget.includes(query.toLowerCase());
                 });
 
                 loader.style.display = 'none';
@@ -222,14 +238,29 @@
                 container.innerHTML = filtered.map(rec => {
                     const company = rec.workplaces?.companies?.name || '未知公司';
                     const date = rec.visit_date || 'N/A';
-                    let consultant = '未知顧問';
-                    try { consultant = JSON.parse(rec.raw_data).consultant_name; } catch(e){}
+                    
+                    // ★★★ 核心修正 3：顯示邏輯 ★★★
+                    // 1. 先抓取 FK 關聯的 medical_staff.name (這是最準確的歷史紀錄)
+                    // 2. 如果沒有 FK (舊資料可能沒有)，才去 parse raw_data
+                    let displayConsultant = '未知顧問';
+
+                    if (rec.medical_staff && rec.medical_staff.name) {
+                        displayConsultant = rec.medical_staff.name; // 這是歷史真相
+                    } else {
+                        // 後備方案：解析 JSON 備註
+                        try { 
+                            const parsed = JSON.parse(rec.raw_data);
+                            if(parsed && parsed.consultant_name) displayConsultant = parsed.consultant_name;
+                        } catch(e){}
+                    }
 
                     const dataStr = encodeURIComponent(JSON.stringify(rec));
                     const compStr = encodeURIComponent(company);
+                    // 傳遞 consultant 名字給預覽視窗
+                    const consultStr = encodeURIComponent(displayConsultant);
 
                     return `
-                        <div class="result-card" onclick="openFullPreview('${rec.id}', '${compStr}', '${dataStr}')">
+                        <div class="result-card" onclick="openFullPreview('${rec.id}', '${compStr}', '${dataStr}', '${consultStr}')">
                             <div class="d-flex justify-content-between">
                                 <div>
                                     <span class="tag-year me-2">${rec.service_year}</span>
@@ -237,7 +268,7 @@
                                     <h4 class="result-title mt-1">${company}</h4>
                                 </div>
                                 <div class="text-end">
-                                    <span class="badge bg-secondary">${consultant}</span>
+                                    <span class="badge bg-secondary">${displayConsultant}</span>
                                 </div>
                             </div>
                             <p class="text-muted mt-2 mb-0 text-truncate">${rec.hazard_desc || '無危害描述'}</p>
@@ -250,14 +281,16 @@
 
             } catch (err) {
                 loader.style.display = 'none';
-                if(err.message) console.log(err.message);
-                container.innerHTML = `<div class="alert alert-warning">資料庫連線演示模式 (尚未連接真實 DB)</div>`;
+                console.error(err);
+                container.innerHTML = `<div class="alert alert-warning">資料讀取錯誤或連線異常</div>`;
             }
         }
 
-        async function openFullPreview(recordId, compNameEncoded, dataEncoded) {
+        async function openFullPreview(recordId, compNameEncoded, dataEncoded, consultNameEncoded) {
             const companyName = decodeURIComponent(compNameEncoded);
             const recordData = JSON.parse(decodeURIComponent(dataEncoded));
+            const consultantName = decodeURIComponent(consultNameEncoded); // 接收正確的顧問名
+            
             const container = document.getElementById('previewContainer');
             
             container.innerHTML = `<div class="text-white text-center mt-5"><div class="spinner-border"></div><p>正在組合完整卷宗...</p></div>`;
@@ -297,6 +330,9 @@
                         <div class="row mb-3">
                             <div class="col-6"><strong>事業單位：</strong> ${companyName}</div>
                             <div class="col-6"><strong>訪視日期：</strong> ${recordData.visit_date}</div>
+                        </div>
+                        <div class="row mb-3">
+                            <div class="col-12"><strong>負責顧問 (當時)：</strong> <span class="text-primary fw-bold">${consultantName}</span></div>
                         </div>
                         <div class="bg-light p-3 border rounded mb-3">
                             <h5 class="fw-bold"><i class="fas fa-clipboard-list me-2"></i>作業描述與危害</h5>
