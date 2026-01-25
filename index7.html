@@ -32,7 +32,7 @@
         .th-green { background-color: #059669; }
         .th-red { background-color: #dc3545; }
         
-        tbody tr:hover { background-color: #f8fafc; }
+        tbody tr:hover { background-color: #f8fafc; cursor: pointer; }
         .badge-event { font-size: 0.8em; padding: 5px 8px; width: 80px; text-align: center; display: inline-block;}
         .search-group { max-width: 600px; }
     </style>
@@ -67,7 +67,7 @@
         
         <div class="d-flex justify-content-between align-items-end mb-3">
             <div class="section-title mb-0">
-                <h4 class="fw-bold text-dark mb-0">1. 客戶主檔管理 (Companies) V1.02</h4>
+                <h4 class="fw-bold text-dark mb-0">1. 客戶主檔管理 (Companies) V1.04</h4>
                 <small class="text-muted">管理服務之事業單位清單</small>
             </div>
             <div class="d-flex gap-2">
@@ -79,7 +79,8 @@
         <div class="row mb-3">
             <div class="col-md-5">
                 <div class="info-card info-blue shadow-sm h-100 mb-0">
-                    <strong><i class="fas fa-building me-2"></i>操作指引</strong><br>輸入統編或名稱查詢。
+                    <strong><i class="fas fa-building me-2"></i>操作指引</strong><br>
+                    點擊列表右側的「編輯按鈕 (筆)」可修改資料或執行刪除。
                 </div>
             </div>
             <div class="col-md-7 d-flex align-items-center justify-content-end">
@@ -107,7 +108,7 @@
                                 <th class="th-blue">事業單位名稱</th>
                                 <th class="th-blue">聯絡人</th>
                                 <th class="th-blue">電話</th>
-                                <th class="th-blue text-end pe-4">操作</th>
+                                <th class="th-blue text-end pe-4">編輯</th>
                             </tr>
                         </thead>
                         <tbody id="companyTableBody">
@@ -120,8 +121,8 @@
 
         <div class="d-flex justify-content-between align-items-end mb-3">
             <div class="section-title staff mb-0">
-                <h4 class="fw-bold text-dark mb-0">2. 職護與顧問人員管理 (Staff) V1.03</h4>
-                <small class="text-muted">建立醫師、護理師與顧問名單 (含履歷管理)</small>
+                <h4 class="fw-bold text-dark mb-0">2. 職護與顧問人員管理 (Staff)</h4>
+                <small class="text-muted">建立醫師、護理師與顧問名單</small>
             </div>
             <div class="d-flex gap-2">
                 <button class="btn btn-outline-success fw-bold btn-sm" onclick="triggerImport('staff')"><i class="fas fa-file-excel me-2"></i>匯入</button>
@@ -133,7 +134,7 @@
             <div class="col-md-5">
                 <div class="info-card info-green shadow-sm h-100 mb-0">
                     <strong><i class="fas fa-user-clock me-2"></i>年度人員查詢</strong><br>
-                    切換年度可查詢該年份「當時在職」的人員名單，包含已離職但當時有效的紀錄。
+                    包含在職與離職紀錄管理。
                 </div>
             </div>
             <div class="col-md-7 d-flex align-items-center justify-content-end">
@@ -161,7 +162,7 @@
                                 <th class="th-green">身分角色</th>
                                 <th class="th-green">服務期間</th>
                                 <th class="th-green">電話</th>
-                                <th class="th-green text-end pe-4">操作</th>
+                                <th class="th-green text-end pe-4">編輯</th>
                             </tr>
                         </thead>
                         <tbody id="staffTableBody">
@@ -220,7 +221,7 @@
                                 <th class="th-red">事項名稱</th>
                                 <th class="th-red">優先級</th>
                                 <th class="th-red">狀態</th>
-                                <th class="th-red text-end pe-4">操作</th>
+                                <th class="th-red text-end pe-4">編輯</th>
                             </tr>
                         </thead>
                         <tbody id="eventTableBody">
@@ -242,9 +243,12 @@
     <div class="modal fade" id="companyModal" tabindex="-1">
         <div class="modal-dialog modal-lg">
             <div class="modal-content">
-                <div class="modal-header bg-primary text-white"><h5 class="modal-title">事業單位資料</h5><button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button></div>
+                <div class="modal-header bg-primary text-white">
+                    <h5 class="modal-title" id="companyModalTitle">新增事業單位</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
                 <div class="modal-body p-4">
-                    <div id="companyForm">
+                    <input type="hidden" id="co-id"> <div id="companyForm">
                         <div class="row g-3">
                             <div class="col-md-4"><label class="form-label fw-bold">統一編號 *</label><input type="text" class="form-control" id="co-taxid"></div>
                             <div class="col-md-8"><label class="form-label fw-bold">公司名稱 *</label><input type="text" class="form-control" id="co-name"></div>
@@ -259,7 +263,17 @@
                         <div style="max-height:300px; overflow:auto;"><table class="table table-sm table-bordered" id="previewTable"></table></div>
                     </div>
                 </div>
-                <div class="modal-footer"><button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button><button type="button" class="btn btn-primary" onclick="saveData()">儲存資料</button></div>
+                <div class="modal-footer d-flex justify-content-between">
+                    <div>
+                        <button type="button" class="btn btn-outline-danger" id="btn-delete-company" onclick="deleteData('companies')" style="display:none;">
+                            <i class="fas fa-trash-alt me-1"></i>刪除資料
+                        </button>
+                    </div>
+                    <div>
+                        <button type="button" class="btn btn-secondary me-1" data-bs-dismiss="modal">取消</button>
+                        <button type="button" class="btn btn-primary" onclick="saveData()">儲存變更</button>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
@@ -267,9 +281,12 @@
     <div class="modal fade" id="staffModal" tabindex="-1">
         <div class="modal-dialog modal-lg">
             <div class="modal-content">
-                <div class="modal-header bg-success text-white"><h5 class="modal-title">醫護人員資料</h5><button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button></div>
+                <div class="modal-header bg-success text-white">
+                    <h5 class="modal-title" id="staffModalTitle">新增醫護人員</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
                 <div class="modal-body p-4">
-                    <div id="staffForm">
+                    <input type="hidden" id="st-id"> <div id="staffForm">
                         <div class="row g-3">
                             <div class="col-md-6"><label class="form-label fw-bold">姓名 *</label><input type="text" class="form-control" id="st-name"></div>
                             <div class="col-md-6">
@@ -287,25 +304,29 @@
                             <div class="col-md-12"><label class="form-label">Email</label><input type="email" class="form-control" id="st-email"></div>
                             
                             <div class="col-12"><hr></div>
+                            <div class="col-md-4"><label class="form-label fw-bold text-success">入職年度</label><input type="number" class="form-control" id="st-start-year" value="2024"></div>
                             <div class="col-md-4">
-                                <label class="form-label fw-bold text-success">入職年度 (Start)</label>
-                                <input type="number" class="form-control" id="st-start-year" value="2024">
-                            </div>
-                            <div class="col-md-4">
-                                <label class="form-label fw-bold text-success">是否在職 (Active)</label>
+                                <label class="form-label fw-bold text-success">是否在職</label>
                                 <div class="form-check form-switch mt-2">
                                     <input class="form-check-input" type="checkbox" id="st-is-active" checked onchange="toggleResignYear(this)">
-                                    <label class="form-check-label" for="st-is-active">目前在職中</label>
+                                    <label class="form-check-label" for="st-is-active">在職中</label>
                                 </div>
                             </div>
-                            <div class="col-md-4">
-                                <label class="form-label text-muted">離職年度 (End)</label>
-                                <input type="number" class="form-control" id="st-end-year" disabled placeholder="在職中...">
-                            </div>
+                            <div class="col-md-4"><label class="form-label text-muted">離職年度</label><input type="number" class="form-control" id="st-end-year" disabled placeholder="在職中..."></div>
                         </div>
                     </div>
                 </div>
-                <div class="modal-footer"><button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button><button type="button" class="btn btn-success" onclick="saveData()">儲存資料</button></div>
+                <div class="modal-footer d-flex justify-content-between">
+                    <div>
+                        <button type="button" class="btn btn-outline-danger" id="btn-delete-staff" onclick="deleteData('medical_staff')" style="display:none;">
+                            <i class="fas fa-trash-alt me-1"></i>刪除資料
+                        </button>
+                    </div>
+                    <div>
+                        <button type="button" class="btn btn-secondary me-1" data-bs-dismiss="modal">取消</button>
+                        <button type="button" class="btn btn-success" onclick="saveData()">儲存變更</button>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
@@ -313,17 +334,20 @@
     <div class="modal fade" id="eventModal" tabindex="-1">
         <div class="modal-dialog modal-lg">
             <div class="modal-content">
-                <div class="modal-header bg-danger text-white"><h5 class="modal-title">行事曆與預警設定</h5><button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button></div>
+                <div class="modal-header bg-danger text-white">
+                    <h5 class="modal-title" id="eventModalTitle">新增行事曆事項</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
                 <div class="modal-body p-4">
-                    <div id="eventForm">
+                    <input type="hidden" id="ev-id"> <div id="eventForm">
                         <div class="row g-3">
-                            <div class="col-md-12"><label class="form-label fw-bold">事項名稱 (Title) *</label><input type="text" class="form-control" id="ev-title"></div>
+                            <div class="col-md-12"><label class="form-label fw-bold">事項名稱 *</label><input type="text" class="form-control" id="ev-title"></div>
                             <div class="col-md-6"><label class="form-label fw-bold">事項類型 *</label>
                                 <select class="form-select" id="ev-type">
-                                    <option value="training">教育訓練 (Training)</option>
-                                    <option value="meeting">委員會議 (Meeting)</option>
-                                    <option value="service">臨場服務 (Service)</option>
-                                    <option value="document">文件/計畫修訂 (Doc)</option>
+                                    <option value="training">教育訓練</option>
+                                    <option value="meeting">委員會議</option>
+                                    <option value="service">臨場服務</option>
+                                    <option value="document">文件修訂</option>
                                 </select>
                             </div>
                             <div class="col-md-6"><label class="form-label fw-bold">預定日期/期限 *</label><input type="date" class="form-control" id="ev-date"></div>
@@ -332,7 +356,17 @@
                         </div>
                     </div>
                 </div>
-                <div class="modal-footer"><button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button><button type="button" class="btn btn-danger" onclick="saveData()">儲存設定</button></div>
+                <div class="modal-footer d-flex justify-content-between">
+                    <div>
+                        <button type="button" class="btn btn-outline-danger" id="btn-delete-event" onclick="deleteData('compliance_events')" style="display:none;">
+                            <i class="fas fa-trash-alt me-1"></i>刪除資料
+                        </button>
+                    </div>
+                    <div>
+                        <button type="button" class="btn btn-secondary me-1" data-bs-dismiss="modal">取消</button>
+                        <button type="button" class="btn btn-danger" onclick="saveData()">儲存變更</button>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
@@ -378,20 +412,28 @@
                 const { data, error } = await query;
                 if(error) throw error;
 
-                tbody.innerHTML = (data||[]).map(c => `
+                // V1.04 修改：將刪除按鈕改為編輯 (onclick 事件會傳入完整物件)
+                tbody.innerHTML = (data||[]).map(c => {
+                    const json = JSON.stringify(c).replace(/"/g, '&quot;');
+                    return `
                     <tr class="animate__animated animate__fadeIn">
                         <td><span class="badge bg-secondary">${c.service_year || '未設定'}</span></td>
                         <td class="font-monospace ps-4">${c.tax_id||''}</td>
                         <td class="fw-bold text-primary">${c.name}</td>
                         <td>${c.contact_person||'-'}</td>
                         <td>${c.phone||'-'}</td>
-                        <td class="text-end pe-4"><button class="btn btn-sm btn-outline-danger" onclick="deleteData('companies', '${c.id}', '${c.name}')"><i class="fas fa-trash"></i></button></td>
-                    </tr>`).join('') || '<tr><td colspan="6" class="text-center py-3">查無資料</td></tr>';
+                        <td class="text-end pe-4">
+                            <button class="btn btn-sm btn-outline-primary" onclick="openCompanyModal(${json})">
+                                <i class="fas fa-pen"></i>
+                            </button>
+                        </td>
+                    </tr>`;
+                }).join('') || '<tr><td colspan="6" class="text-center py-3">查無資料</td></tr>';
             } catch(e) { alert('查詢失敗: ' + e.message); } 
             finally { btn.innerHTML = '<i class="fas fa-search me-1"></i>查詢'; }
         }
 
-        // 2. 人員查詢 (修正：依據服務年份判斷)
+        // 2. 人員查詢
         async function loadStaff() {
             const keyword = document.getElementById('search-staff').value.trim();
             const year = document.getElementById('filter-staff-year').value;
@@ -402,34 +444,28 @@
 
             try {
                 let query = supabaseClient.from('medical_staff').select('*').order('created_at', {ascending:false});
-                
-                // 基礎篩選：關鍵字
                 if(keyword) query = query.ilike('name', `%${keyword}%`);
                 
                 const { data, error } = await query;
                 if(error) throw error;
 
-                // 記憶體內篩選：根據「入職/離職」年份判斷是否符合查詢年份
                 let filteredData = data;
                 if (year) {
                     const targetYear = parseInt(year);
                     filteredData = data.filter(s => {
-                        const start = s.onboard_year || 0; // 若沒填當作很久以前
-                        const end = s.resignation_year || 9999; // 若沒填當作很久以後
+                        const start = s.onboard_year || 0;
+                        const end = s.resignation_year || 9999;
                         return targetYear >= start && targetYear <= end;
                     });
                 } else {
-                    filteredData = data.slice(0, 50); // 沒年份限制取前50
+                    filteredData = data.slice(0, 50);
                 }
 
                 tbody.innerHTML = filteredData.map(s => {
-                    const isActive = s.is_active !== false; // default true
-                    const statusBadge = isActive ? 
-                        '<span class="badge bg-success">在職中</span>' : 
-                        '<span class="badge bg-secondary">已離職</span>';
-                    
-                    const period = s.onboard_year ? 
-                        `${s.onboard_year} ~ ${s.resignation_year || '至今'}` : '-';
+                    const json = JSON.stringify(s).replace(/"/g, '&quot;');
+                    const isActive = s.is_active !== false; 
+                    const statusBadge = isActive ? '<span class="badge bg-success">在職中</span>' : '<span class="badge bg-secondary">已離職</span>';
+                    const period = s.onboard_year ? `${s.onboard_year} ~ ${s.resignation_year || '至今'}` : '-';
 
                     return `
                     <tr class="animate__animated animate__fadeIn">
@@ -438,7 +474,11 @@
                         <td>${s.role}</td>
                         <td>${period}</td>
                         <td>${s.phone||'-'}</td>
-                        <td class="text-end pe-4"><button class="btn btn-sm btn-outline-danger" onclick="deleteData('medical_staff', '${s.id}', '${s.name}')"><i class="fas fa-trash"></i></button></td>
+                        <td class="text-end pe-4">
+                            <button class="btn btn-sm btn-outline-success" onclick="openStaffModal(${json})">
+                                <i class="fas fa-pen"></i>
+                            </button>
+                        </td>
                     </tr>`;
                 }).join('') || '<tr><td colspan="6" class="text-center py-3">查無資料</td></tr>';
             } catch(e) { alert('查詢失敗'); } 
@@ -476,15 +516,22 @@
                 if(error) throw error;
                 
                 const typeMap = {'training': '教育訓練', 'meeting': '會議', 'service': '臨場服務', 'document': '文件修訂'};
-                tbody.innerHTML = (data||[]).map(e => `
+                tbody.innerHTML = (data||[]).map(e => {
+                    const json = JSON.stringify(e).replace(/"/g, '&quot;');
+                    return `
                     <tr class="animate__animated animate__fadeIn">
                         <td class="ps-4">${e.event_date}</td>
                         <td><span class="badge bg-light text-dark border">${typeMap[e.event_type]||e.event_type}</span></td>
                         <td class="fw-bold">${e.title}</td>
                         <td>${e.priority==='high' ? '<span class="text-danger">緊急</span>' : '一般'}</td>
                         <td>${e.status==='pending' ? '待辦' : '已完成'}</td>
-                        <td class="text-end pe-4"><button class="btn btn-sm btn-outline-danger" onclick="deleteData('compliance_events', '${e.id}', '${e.title}')"><i class="fas fa-trash"></i></button></td>
-                    </tr>`).join('') || '<tr><td colspan="6" class="text-center py-3">查無資料</td></tr>';
+                        <td class="text-end pe-4">
+                            <button class="btn btn-sm btn-outline-danger" onclick="openEventModal(${json})">
+                                <i class="fas fa-pen"></i>
+                            </button>
+                        </td>
+                    </tr>`;
+                }).join('') || '<tr><td colspan="6" class="text-center py-3">查無資料</td></tr>';
             } catch(e) { alert('查詢失敗'); } 
             finally { btn.innerHTML = '<i class="fas fa-search me-1"></i>查詢'; }
         }
@@ -493,6 +540,7 @@
             const { data } = await supabaseClient.from('companies').select('id, name').limit(100); 
             const select = document.getElementById('ev-company');
             if(data) {
+                select.innerHTML = '<option value="">(通用事項)</option>'; // Reset
                 data.forEach(c => {
                     const opt = document.createElement('option');
                     opt.value = c.id;
@@ -503,27 +551,82 @@
         }
 
         // ========================
-        // Modal & Save Logic
+        // Modal & Save Logic (V1.04 Updated)
         // ========================
-        function openCompanyModal() {
+        function openCompanyModal(data = null) {
             currentType = 'company';
             batchData = [];
             document.getElementById('companyForm').style.display = 'block';
             document.getElementById('previewArea').style.display = 'none';
+            
+            // 帶入資料或重置
+            if (data) {
+                document.getElementById('companyModalTitle').innerText = '編輯事業單位';
+                document.getElementById('co-id').value = data.id;
+                document.getElementById('co-taxid').value = data.tax_id;
+                document.getElementById('co-name').value = data.name;
+                document.getElementById('co-addr').value = data.address || '';
+                document.getElementById('co-contact').value = data.contact_person || '';
+                document.getElementById('co-phone').value = data.phone || '';
+                document.getElementById('co-year').value = data.service_year || 2025;
+                document.getElementById('btn-delete-company').style.display = 'block';
+            } else {
+                document.getElementById('companyModalTitle').innerText = '新增事業單位';
+                document.getElementById('co-id').value = '';
+                document.querySelectorAll('#companyForm input').forEach(i => { if(i.id!=='co-year') i.value = ''; });
+                document.getElementById('btn-delete-company').style.display = 'none';
+            }
             new bootstrap.Modal(document.getElementById('companyModal')).show();
         }
 
-        function openStaffModal() {
+        function openStaffModal(data = null) {
             currentType = 'staff';
             batchData = [];
-            // Reset fields
-            document.getElementById('st-name').value = '';
-            document.getElementById('st-phone').value = '';
-            document.getElementById('st-email').value = '';
-            document.getElementById('st-start-year').value = new Date().getFullYear();
-            document.getElementById('st-is-active').checked = true;
-            toggleResignYear(document.getElementById('st-is-active'));
+            
+            if (data) {
+                document.getElementById('staffModalTitle').innerText = '編輯醫護人員';
+                document.getElementById('st-id').value = data.id;
+                document.getElementById('st-name').value = data.name;
+                document.getElementById('st-role').value = data.role;
+                document.getElementById('st-type').value = data.employment_type;
+                document.getElementById('st-phone').value = data.phone || '';
+                document.getElementById('st-email').value = data.email || '';
+                document.getElementById('st-start-year').value = data.onboard_year || '';
+                document.getElementById('st-is-active').checked = data.is_active !== false;
+                document.getElementById('st-end-year').value = data.resignation_year || '';
+                toggleResignYear(document.getElementById('st-is-active'));
+                document.getElementById('btn-delete-staff').style.display = 'block';
+            } else {
+                document.getElementById('staffModalTitle').innerText = '新增醫護人員';
+                document.getElementById('st-id').value = '';
+                document.querySelectorAll('#staffForm input').forEach(i => i.value = '');
+                document.getElementById('st-is-active').checked = true;
+                toggleResignYear(document.getElementById('st-is-active'));
+                document.getElementById('btn-delete-staff').style.display = 'none';
+            }
             new bootstrap.Modal(document.getElementById('staffModal')).show();
+        }
+
+        function openEventModal(data = null) {
+            currentType = 'event';
+            batchData = [];
+            
+            if (data) {
+                document.getElementById('eventModalTitle').innerText = '編輯行事曆事項';
+                document.getElementById('ev-id').value = data.id;
+                document.getElementById('ev-title').value = data.title;
+                document.getElementById('ev-type').value = data.event_type;
+                document.getElementById('ev-date').value = data.event_date;
+                document.getElementById('ev-priority').value = data.priority;
+                document.getElementById('ev-company').value = data.company_id || '';
+                document.getElementById('btn-delete-event').style.display = 'block';
+            } else {
+                document.getElementById('eventModalTitle').innerText = '新增行事曆事項';
+                document.getElementById('ev-id').value = '';
+                document.querySelectorAll('#eventForm input').forEach(i => i.value = '');
+                document.getElementById('btn-delete-event').style.display = 'none';
+            }
+            new bootstrap.Modal(document.getElementById('eventModal')).show();
         }
 
         function toggleResignYear(checkbox) {
@@ -538,20 +641,13 @@
             }
         }
 
-        function openEventModal() {
-            currentType = 'event';
-            batchData = [];
-            document.getElementById('ev-title').value = '';
-            document.getElementById('ev-date').value = '';
-            new bootstrap.Modal(document.getElementById('eventModal')).show();
-        }
-
         async function saveData() {
-            let table = '', data = {}, conflict = null;
+            let table = '', data = {}, id = '';
 
+            // 1. 收集資料
             if (currentType === 'company') {
                 table = 'companies';
-                conflict = 'tax_id';
+                id = document.getElementById('co-id').value;
                 if(batchData.length > 0) data = batchData; 
                 else data = {
                     tax_id: document.getElementById('co-taxid').value,
@@ -563,6 +659,7 @@
                 };
             } else if (currentType === 'staff') {
                 table = 'medical_staff';
+                id = document.getElementById('st-id').value;
                 if(batchData.length > 0) data = batchData;
                 else {
                     const isActive = document.getElementById('st-is-active').checked;
@@ -579,6 +676,7 @@
                 }
             } else if (currentType === 'event') {
                 table = 'compliance_events';
+                id = document.getElementById('ev-id').value;
                 if(batchData.length > 0) data = batchData;
                 else data = {
                     title: document.getElementById('ev-title').value,
@@ -590,16 +688,33 @@
                 };
             }
 
+            // 2. 執行寫入 (Insert 或 Update)
+            let error = null;
             if(Array.isArray(data)) {
-                const { error } = await supabaseClient.from(table).upsert(data, conflict ? {onConflict: conflict} : undefined);
-                if(error) return alert('匯入失敗: ' + error.message);
+                // 批量匯入 (Insert)
+                const conflict = currentType === 'company' ? 'tax_id' : undefined;
+                const res = await supabaseClient.from(table).upsert(data, conflict ? {onConflict: conflict} : undefined);
+                error = res.error;
                 await writeLog('批量匯入', table, `匯入 ${data.length} 筆資料`);
             } else {
+                // 單筆 (Update if ID exists, else Insert)
                 if(!data.name && !data.title) return alert('請填寫必要欄位');
-                const { error } = await supabaseClient.from(table).upsert(data, conflict ? {onConflict: conflict} : undefined);
-                if(error) return alert('儲存失敗: ' + error.message);
-                await writeLog('新增', table, `新增資料`);
+                
+                if (id) {
+                    // Update
+                    const res = await supabaseClient.from(table).update(data).eq('id', id);
+                    error = res.error;
+                    await writeLog('更新', table, `更新 ID: ${id}`);
+                } else {
+                    // Insert
+                    const conflict = currentType === 'company' ? 'tax_id' : undefined;
+                    const res = await supabaseClient.from(table).upsert(data, conflict ? {onConflict: conflict} : undefined);
+                    error = res.error;
+                    await writeLog('新增', table, `新增資料`);
+                }
             }
+
+            if(error) return alert('儲存失敗: ' + error.message);
 
             alert('✅ 儲存成功');
             document.querySelectorAll('.modal').forEach(el => bootstrap.Modal.getInstance(el)?.hide());
@@ -607,6 +722,42 @@
             if(currentType === 'company') loadCompanies();
             if(currentType === 'staff') loadStaff();
             if(currentType === 'event') loadEvents();
+        }
+
+        // ========================
+        // Delete Logic
+        // ========================
+        async function deleteData(table) {
+            let id = '', name = '';
+            
+            if(table === 'companies') {
+                id = document.getElementById('co-id').value;
+                name = document.getElementById('co-name').value;
+            } else if(table === 'medical_staff') {
+                id = document.getElementById('st-id').value;
+                name = document.getElementById('st-name').value;
+            } else if(table === 'compliance_events') {
+                id = document.getElementById('ev-id').value;
+                name = document.getElementById('ev-title').value;
+            }
+
+            if(!id) return;
+
+            if(!confirm(`⚠️ 警告：您確定要刪除「${name}」嗎？\n此動作無法復原！`)) return;
+            if(!confirm(`再次確認：真的要永久刪除嗎？`)) return;
+
+            const { error } = await supabaseClient.from(table).delete().eq('id', id);
+            
+            if(error) {
+                alert('刪除失敗: ' + error.message);
+            } else {
+                await writeLog('刪除', table, `刪除: ${name} (ID: ${id})`);
+                alert('資料已刪除');
+                document.querySelectorAll('.modal').forEach(el => bootstrap.Modal.getInstance(el)?.hide());
+                if(table==='companies') loadCompanies();
+                if(table==='medical_staff') loadStaff();
+                if(table==='compliance_events') loadEvents();
+            }
         }
 
         // ========================
@@ -677,15 +828,6 @@
                 document.getElementById('loadingOverlay').style.display = 'none';
             };
             reader.readAsArrayBuffer(file);
-        }
-
-        async function deleteData(table, id, name) {
-            if(!confirm('確定刪除?')) return;
-            await supabaseClient.from(table).delete().eq('id',id);
-            await writeLog('刪除', table, `刪除: ${name}`);
-            if(table==='companies') loadCompanies();
-            if(table==='medical_staff') loadStaff();
-            if(table==='compliance_events') loadEvents();
         }
 
         async function writeLog(action, table, detail) {
