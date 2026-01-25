@@ -15,7 +15,7 @@
             display: none; 
         }
 
-        /* 樣式區 */
+        /* 樣式保持不變 */
         .demo-info-card { background-color: #fffbeb; border-left: 4px solid #f59e0b; color: #92400e; padding: 1rem; margin-bottom: 1.5rem; border-radius: 0.375rem; font-size: 0.9rem; line-height: 1.6; }
         .input-readonly { background-color: #f8fafc; border: 1px solid #cbd5e1; color: #475569; cursor: default; }
         .input-readonly:focus { outline: none; box-shadow: none; }
@@ -66,7 +66,7 @@
         <div class="d-flex justify-content-between align-items-center mb-4">
             <div>
                 <h2 class="fw-bold text-dark"><i class="fas fa-file-arrow-up me-2 text-primary"></i>顧問資料上傳</h2>
-                <p class="text-muted mb-0">Plan & Do 階段：建立基準與執行紀錄 V1.14 (交叉搜尋修正版)</p>
+                <p class="text-muted mb-0">Plan & Do 階段：建立基準與執行紀錄 V1.15 (穩定修正版)</p>
             </div>
         </div>
 
@@ -75,9 +75,10 @@
 
                 <div class="demo-info-card">
                     <i class="fas fa-compass me-2"></i>
-                    <strong>操作流程：</strong><br>
-                    1. <strong>[Step 1 搜尋]</strong>：可單選年份、單輸入統編，或兩者交叉搜尋。<br>
-                    2. <strong>[Step 2 選擇模式]</strong>：資料帶出後，系統自動判斷並讓您選擇「建立新年度」或「修正舊年度」。
+                    <strong>彈性搜尋邏輯：</strong><br>
+                    1. <strong>[只選年份]</strong>：瀏覽該年度所有客戶 (不用記統編)。<br>
+                    2. <strong>[只打關鍵字]</strong>：搜尋該公司的所有年度紀錄。<br>
+                    3. <strong>[兩者都填]</strong>：精準交叉搜尋。
                 </div>
 
                 <div class="bg-light p-4 rounded mb-4 border">
@@ -85,7 +86,7 @@
                     <div class="row g-3 align-items-end">
                         <div class="col-md-4">
                             <label class="form-label fw-bold small text-muted">關鍵字 (統編 / 名稱)</label>
-                            <input type="text" id="input-keyword" class="form-control" placeholder="可留空...">
+                            <input type="text" id="input-keyword" class="form-control" placeholder="輸入名稱或統編 (可留空)">
                         </div>
                         <div class="col-md-4">
                             <label class="form-label fw-bold small text-muted">資料庫年度 (Filter)</label>
@@ -259,23 +260,29 @@
     <script>
         const SUPABASE_URL = 'https://yhehfucgemxnfrdvpdhw.supabase.co';
         const SUPABASE_KEY = 'sb_publishable_52emtU-9l-SDxcJTWVTPTA_Yu6qEogh';
-        const { createClient } = supabase;
-        const supabaseClient = createClient(SUPABASE_URL, SUPABASE_KEY);
-
+        
+        // 延遲變數宣告
+        let supabaseClient;
         let currentModalBtn = null; 
         const originalBtnText = '<i class="fas fa-magnifying-glass me-2"></i> 查詢並帶入資料';
 
         document.addEventListener('DOMContentLoaded', function() {
+            // 1. 初始化 Supabase
+            const { createClient } = supabase;
+            supabaseClient = createClient(SUPABASE_URL, SUPABASE_KEY);
+
+            // 2. 顯示畫面
             document.body.style.display = 'block';
             const userName = sessionStorage.getItem('currentUserName') || 'User';
             document.getElementById('user-display').innerHTML = `<small>Hi, ${userName}</small>`;
             
+            // 3. 綁定上傳
             document.getElementById('fileUpload').addEventListener('change', function(e){
                 document.getElementById('fileNameDisplay').innerText = e.target.files[0]?.name || '尚未選擇檔案';
                 document.getElementById('fileNameDisplay').classList.add('text-primary', 'fw-bold');
             });
 
-            // 監聽 Modal 關閉，重置按鈕
+            // 4. 監聽 Modal 關閉，重置按鈕 (Fix: 按鈕防卡死)
             const modalEl = document.getElementById('companySelectModal');
             modalEl.addEventListener('hidden.bs.modal', function () {
                 resetSearchBtn();
@@ -290,9 +297,9 @@
             }
         }
 
-        // 1. 查詢公司 (V1.14: 交叉搜尋 / 疊加條件)
+        // 1. 查詢公司 (V1.15: 交叉搜尋 + 防呆)
         async function fetchCompanyData(btn) {
-            const taxId = document.getElementById('input-tax-id').value.trim();
+            const keyword = document.getElementById('input-keyword').value.trim();
             const year = document.getElementById('input-year').value;
             currentModalBtn = btn; 
 
@@ -302,17 +309,18 @@
             try {
                 let query = supabaseClient.from('companies').select('*').order('created_at', {ascending:false});
                 
-                // 條件疊加邏輯：有輸入就加條件，沒輸入就不加
+                // 條件 1: 若選了年份，加年份篩選
                 if (year) {
                     query = query.eq('service_year', parseInt(year));
                 }
                 
-                if (taxId) {
-                    query = query.or(`tax_id.eq.${taxId},name.ilike.%${taxId}%`);
+                // 條件 2: 若有關鍵字，加關鍵字篩選 (會與年份疊加)
+                if (keyword) {
+                    query = query.or(`tax_id.eq.${keyword},name.ilike.%${keyword}%`);
                 }
                 
-                // 若兩者都沒輸入，限制數量避免過多
-                if (!year && !taxId) {
+                // 條件 3: 若全空，限制數量
+                if (!year && !keyword) {
                     query = query.limit(50);
                 }
 
@@ -320,12 +328,12 @@
                 if(error) throw error;
 
                 if(!data || data.length === 0) {
-                    alert(`查無資料。請確認年份或關鍵字。`);
+                    alert('查無資料。請確認年份或關鍵字。');
                     resetSearchBtn();
                     return;
                 }
 
-                // 傳遞「搜尋用的年份」給下一步。若搜尋時選了「不限」，則預設為今年(2025)供操作。
+                // 決定「基準年份」 (若無選擇，預設今年)
                 const opYear = year ? year : new Date().getFullYear();
 
                 if(data.length === 1) {
@@ -334,7 +342,8 @@
                     showSelectionModal(data, opYear);
                 }
             } catch(e) { 
-                alert(e.message); 
+                console.error(e);
+                alert('查詢發生錯誤: ' + e.message); 
                 resetSearchBtn();
             }
         }
@@ -349,7 +358,7 @@
                     <div class="d-flex justify-content-between align-items-center">
                         <div>
                             <h6 class="mb-1 text-primary fw-bold">${co.name}</h6>
-                            <small class="text-muted">統編: ${co.tax_id} | 建檔年: ${co.service_year || '-'}</small>
+                            <small class="text-muted">統編: ${co.tax_id} | 建檔: ${co.service_year || '-'}</small>
                         </div>
                         <i class="fas fa-chevron-right text-secondary"></i>
                     </div>`;
@@ -379,11 +388,9 @@
         // 2. 載入資料 (Auto-Init Workplace)
         async function loadCompanyDetails(company, opYear) {
             try {
-                // 基本資料
                 document.getElementById('hidden-company-id').value = company.id;
                 document.getElementById('disp-name').value = company.name;
-                document.getElementById('input-tax-id').value = company.tax_id; // 反填統編方便確認
-
+                
                 // 設定 UI 年份文字
                 const currentYear = parseInt(opYear);
                 const nextYear = currentYear + 1;
@@ -414,7 +421,7 @@
                 });
                 document.getElementById('disp-hazard-type').value = workplace.hazard_type || '無';
 
-                // 2-3. 查詢「基準年度 (opYear)」是否有紀錄
+                // 2-3. 查詢「基準年度」紀錄
                 const { data: exactRecord } = await supabaseClient
                     .from('service_records')
                     .select('*')
@@ -425,12 +432,11 @@
                 const hasRecord = exactRecord && exactRecord.length > 0;
 
                 // 2-4. 判斷預設模式
-                // 邏輯：有資料就預設補件，沒資料就預設新增
                 if (hasRecord) {
                     fillForm(exactRecord[0]);
                     setMode('amend', currentYear);
                 } else {
-                    // 抓最近一筆底稿
+                    // 抓最近一次底稿
                     const { data: lastRecord } = await supabaseClient
                         .from('service_records')
                         .select('*')
@@ -463,16 +469,12 @@
             }
         }
 
-        // V1.14: 模式切換邏輯
         function setMode(mode, baseYear) {
             document.getElementById('current-mode').value = mode;
             
-            // 若 baseYear 沒傳入(手動點擊時)，則抓 hidden 或 UI 上的值
             if (!baseYear) {
-                // 從畫面文字反推，或從 hidden 暫存
-                // 這裡簡化：重新讀取 input-year，若為空則預設 2025
                 const rawYear = document.getElementById('input-year').value;
-                baseYear = rawYear ? parseInt(rawYear) : 2025;
+                baseYear = rawYear ? parseInt(rawYear) : new Date().getFullYear();
             }
 
             const targetYear = mode === 'new' ? (baseYear + 1) : baseYear;
