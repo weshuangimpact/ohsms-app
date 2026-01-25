@@ -11,35 +11,16 @@
         :root { --primary-bg: #f8f9fa; --accent-orange: #f57c00; --accent-blue: #1967d2; }
         body { background-color: var(--primary-bg); font-family: 'Segoe UI', 'Microsoft JhengHei', sans-serif; color: #333; }
         
-        /* --- 導覽列樣式 --- */
-        .navbar { background-color: #202124 !important; height: 65px; }
-        .navbar-brand { font-weight: 600; font-size: 1.25rem; letter-spacing: 0.5px; }
-        .user-greeting { color: #e8eaed; font-size: 0.95rem; font-weight: 500; }
-        .btn-back-dashboard {
-            border: 1px solid rgba(255,255,255,0.8);
-            color: #fff;
-            background: transparent;
-            padding: 5px 15px;
-            border-radius: 4px;
-            font-size: 0.9rem;
-            transition: all 0.3s;
-            text-decoration: none;
-            display: inline-flex;
-            align-items: center;
-        }
-        .btn-back-dashboard:hover {
-            background: rgba(255,255,255,0.1);
-            color: #fff;
-            border-color: #fff;
-        }
-
-        /* 主要內容容器 */
+        /* 導覽列 */
+        .navbar { background-color: #202124 !important; }
+        
+        /* 主要內容容器限制寬度，讓視覺集中 */
         .main-content { max-width: 900px; margin: 3rem auto; }
 
-        /* PDCA 說明區塊 */
+        /* --- 新增：PDCA 說明區塊樣式 --- */
         .instruction-box {
-            background-color: #fff9e6;
-            border-left: 5px solid var(--accent-orange);
+            background-color: #fff9e6; /* 淺黃底 */
+            border-left: 5px solid var(--accent-orange); /* 左側橘色線條 */
             padding: 20px 25px;
             border-radius: 4px;
             margin-bottom: 40px;
@@ -48,20 +29,20 @@
         }
         .instruction-title { color: #d35400; font-weight: 700; margin-bottom: 10px; }
 
-        /* 機器人圖示 */
+        /* --- 新增：機器人圖示樣式 --- */
         .robot-wrapper {
             width: 100px; height: 100px;
-            background-color: #e8f0fe;
+            background-color: #e8f0fe; /* 淺藍圓底 */
             color: var(--accent-blue);
             border-radius: 50%;
             display: flex; align-items: center; justify-content: center;
             font-size: 3rem;
-            margin: 0 auto 20px auto;
+            margin: 0 auto 20px auto; /* 置中 */
         }
 
         /* 搜尋區 */
         .search-box-wrapper {
-            background: #fff; border: 1px solid #dfe1e5; border-radius: 50px;
+            background: #fff; border: 1px solid #dfe1e5; border-radius: 50px; /* 更加圓潤 */
             padding: 15px 30px; box-shadow: 0 4px 12px rgba(32,33,36,.15);
             display: flex; align-items: center;
             transition: box-shadow 0.3s;
@@ -102,19 +83,9 @@
 </head>
 <body>
 
-    <nav class="navbar navbar-expand-lg navbar-dark px-4">
-        <div class="container-fluid d-flex justify-content-between align-items-center p-0">
-            <a class="navbar-brand d-flex align-items-center" href="#">
-                <i class="fas fa-shield-alt me-2"></i>
-                OHSMS 職安管理系統
-            </a>
-
-            <div class="d-flex align-items-center">
-                <span class="user-greeting me-4">Hi ! 系統管理員</span>
-                <a href="https://weshuangimpact.github.io/ohsms-app/dashboard.html" class="btn-back-dashboard">
-                    <i class="fas fa-arrow-left me-2"></i>返回儀表板
-                </a>
-            </div>
+    <nav class="navbar navbar-expand-lg navbar-dark py-2">
+        <div class="container-fluid px-4">
+            <a class="navbar-brand" href="#"><i class="fas fa-robot me-2"></i>歷程稽核系統 V1.02</a>
         </div>
     </nav>
 
@@ -122,16 +93,16 @@
         
         <div class="mb-4">
             <h2 class="fw-bold text-dark mb-1">評鑑支援 AI 智慧助理</h2>
-            <p class="text-secondary">Evaluation 階段：智慧稽核與佐證調閱</p>
+            <p class="text-secondary">Evaluation 階段：智慧稽核、資格勾稽與佐證調閱</p>
         </div>
 
         <div class="instruction-box">
             <div class="instruction-title">
-                <i class="fas fa-clipboard-check me-2"></i>PDCA 設計理念：Evaluation (評鑑) —— 智慧稽核
+                <i class="fas fa-clipboard-check me-2"></i>PDCA 設計理念：Evaluation (評鑑) —— 智慧稽核與人員資格勾稽
             </div>
             <p class="mb-0 text-dark" style="line-height: 1.6;">
-                此模組專注於提供高效的「資料搜索」功能：<br>
-                <strong>NLP 智慧搜索：</strong>透過自然語言快速撈取佐證資料，協助使用者即時調閱相關紀錄。
+                此模組整合「資料搜索」功能：<br>
+                <strong>NLP 智慧搜索：</strong>透過關鍵字快速撈取佐證資料。
             </p>
         </div>
 
@@ -183,9 +154,10 @@
     
     <script>
         const SUPABASE_URL = 'https://yhehfucgemxnfrdvpdhw.supabase.co';
-        const SUPABASE_KEY = 'sb_publishable_52emtU-9l-SDxcJTWVTPTA_Yu6qEogh'; 
+        const SUPABASE_KEY = 'sb_publishable_52emtU-9l-SDxcJTWVTPTA_Yu6qEogh'; // 注意：請確保 Key 有效
         const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
+        // 綁定 Enter 搜尋
         document.getElementById('searchInput').addEventListener('keyup', (e) => { if(e.key === 'Enter') executeSearch(); });
 
         async function executeSearch() {
@@ -199,6 +171,7 @@
             loader.style.display = 'block';
 
             try {
+                // 模擬真實搜尋 (資料庫讀取)
                 const { data, error } = await supabaseClient
                     .from('service_records')
                     .select(`*, workplaces(department_name, companies(name, tax_id))`)
@@ -207,6 +180,7 @@
 
                 if(error) throw error;
 
+                // 前端過濾
                 const filtered = data.filter(r => {
                     const str = `${r.workplaces?.companies?.name} ${r.service_year} ${r.raw_data}`.toLowerCase();
                     return str.includes(query.toLowerCase());
@@ -250,11 +224,13 @@
 
             } catch (err) {
                 loader.style.display = 'none';
+                // 在無後端連接時，顯示假資料供介面測試
                 if(err.message) console.log(err.message);
                 container.innerHTML = `<div class="alert alert-warning">資料庫連線演示模式 (尚未連接真實 DB)</div>`;
             }
         }
 
+        // --- 完整歷程預覽 (主表 + 附件) ---
         async function openFullPreview(recordId, compNameEncoded, dataEncoded) {
             const companyName = decodeURIComponent(compNameEncoded);
             const recordData = JSON.parse(decodeURIComponent(dataEncoded));
@@ -264,6 +240,7 @@
             new bootstrap.Modal(document.getElementById('previewModal')).show();
 
             try {
+                // 搜尋該案件的所有附件
                 const storagePath = `service_records/${recordData.service_year}/${recordId}/`;
                 const { data: fileList } = await supabaseClient.storage.from('documents').list(storagePath);
 
@@ -290,6 +267,7 @@
                     attachmentsHtml = `<div class="alert alert-warning text-center">本案件尚無上傳佐證附件。</div>`;
                 }
 
+                // 組合主表與附件
                 container.innerHTML = `
                     <div class="paper-sheet">
                         <div class="watermark">${companyName} 評鑑專用</div>
