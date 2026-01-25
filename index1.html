@@ -235,13 +235,16 @@
     <script>
         const SUPABASE_URL = 'https://yhehfucgemxnfrdvpdhw.supabase.co';
         const SUPABASE_KEY = 'sb_publishable_52emtU-9l-SDxcJTWVTPTA_Yu6qEogh';
-        const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+        
+        // 【修正】將變數名稱改為 supabaseClient 以避免與 CDN 的全域變數衝突
+        const { createClient } = supabase;
+        const supabaseClient = createClient(SUPABASE_URL, SUPABASE_KEY);
 
         // 分頁參數設定
         const PAGE_SIZE = 50;
         let currentPage = 1;
         let totalRecords = 0;
-        let currentModalBtn = null; // 暫存按鈕狀態用
+        let currentModalBtn = null; 
 
         document.addEventListener('DOMContentLoaded', function() {
             document.body.style.display = 'block';
@@ -260,7 +263,7 @@
         async function fetchCompanyData(btn) {
             const taxId = document.getElementById('input-tax-id').value.trim();
             const originalText = btn.innerHTML;
-            currentModalBtn = { btn, originalText }; // 存起來給分頁用
+            currentModalBtn = { btn, originalText }; 
             
             btn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>查詢中...';
             btn.disabled = true;
@@ -268,7 +271,7 @@
             try {
                 if (taxId) {
                     // A. 有輸入統編：精準搜尋 (不分頁)
-                    const { data: companies, error } = await supabase
+                    const { data: companies, error } = await supabaseClient
                         .from('companies')
                         .select('*')
                         .eq('tax_id', taxId);
@@ -285,17 +288,16 @@
                         await fillCompanyData(companies[0]);
                         showSuccessButton(btn, originalText);
                     } else {
-                        // 理論上統編是 unique，但若多筆仍顯示列表
                         showSelectionModal(companies, false); 
                         resetBtn(btn, originalText);
                     }
 
                 } else {
                     // B. 空值：分頁搜尋模式
-                    currentPage = 1; // 重置為第一頁
+                    currentPage = 1; 
                     
                     // 1. 先抓總筆數
-                    const { count, error: countError } = await supabase
+                    const { count, error: countError } = await supabaseClient
                         .from('companies')
                         .select('*', { count: 'exact', head: true });
                     
@@ -328,17 +330,15 @@
             const container = document.getElementById('companyListContainer');
             const loading = document.getElementById('modalLoading');
             
-            // UI 狀態切換
             container.style.display = 'none';
             loading.style.display = 'block';
-            document.getElementById('paginationContainer').innerHTML = ''; // 清空分頁條
+            document.getElementById('paginationContainer').innerHTML = ''; 
 
-            // 計算 Range (Supabase 是 0-based index)
             const from = (page - 1) * PAGE_SIZE;
             const to = from + PAGE_SIZE - 1;
 
             try {
-                const { data: companies, error } = await supabase
+                const { data: companies, error } = await supabaseClient
                     .from('companies')
                     .select('*')
                     .order('created_at', { ascending: false })
@@ -390,7 +390,7 @@
             const pagination = document.getElementById('paginationContainer');
             const totalPages = Math.ceil(totalRecords / PAGE_SIZE);
             
-            if (totalPages <= 1) return; // 只有一頁就不顯示分頁條
+            if (totalPages <= 1) return; 
 
             let html = '';
             
@@ -399,10 +399,8 @@
                         <a class="page-link" onclick="loadCompanyPage(${currentPage - 1})">上一頁</a>
                      </li>`;
 
-            // Page Numbers (簡單實作：若頁數過多可再優化為 1...5 6 7...10 格式)
-            // 這裡為了版面整潔，最多顯示前後 2 頁 + 第一頁 + 最後一頁
+            // Page Numbers
             for (let i = 1; i <= totalPages; i++) {
-                // 簡單優化：只顯示當前頁附近的頁碼
                 if (i === 1 || i === totalPages || (i >= currentPage - 2 && i <= currentPage + 2)) {
                     html += `<li class="page-item ${i === currentPage ? 'active' : ''}">
                                 <a class="page-link" onclick="loadCompanyPage(${i})">${i}</a>
@@ -428,7 +426,7 @@
             document.getElementById('disp-name').value = company.name;
             document.getElementById('hidden-company-id').value = company.id;
 
-            const { data: workplaces } = await supabase
+            const { data: workplaces } = await supabaseClient
                 .from('workplaces')
                 .select('*')
                 .eq('company_id', company.id)
@@ -471,7 +469,6 @@
             }, 1500);
         }
 
-        // 這裡的 submitServiceRecord, toggleEditMode 與前版相同，省略重複代碼
         async function submitServiceRecord(btn) {
              const workplaceId = document.getElementById('hidden-workplace-id').value;
             if (!workplaceId) return alert('錯誤：無法取得場所 ID。');
@@ -486,9 +483,9 @@
                 const fileExt = file.name.split('.').pop();
                 const filePath = `service_records/${Date.now()}_${file.name}`;
                 
-                await supabase.storage.from('documents').upload(filePath, file);
+                await supabaseClient.storage.from('documents').upload(filePath, file);
 
-                await supabase.from('document_staging').insert([{
+                await supabaseClient.from('document_staging').insert([{
                     uploader_name: sessionStorage.getItem('currentUserName') || 'Unknown',
                     file_name: file.name,
                     file_path: filePath,
