@@ -6,19 +6,20 @@
     <title>評鑑支援 AI 智慧助理 (Evaluation) | OHSMS</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" onerror="alert('錯誤：無法載入 Supabase SDK，請檢查網路連線或防火牆。')"></script>
     
     <style>
         :root {
             --primary-bg: #f4f6f9;
             --card-hover-transform: translateY(-3px);
         }
-        /* 預設隱藏，等待 JS 載入完成 */
+        
+        /* ★★★ 重點修正：絕對不隱藏 Body ★★★ */
         body {
             background-color: var(--primary-bg);
             font-family: 'Segoe UI', 'Microsoft JhengHei', sans-serif;
-            opacity: 0; 
-            transition: opacity 0.5s ease;
+            /* 移除 display: none 或 opacity: 0 */
         }
 
         /* 導航列 */
@@ -131,7 +132,7 @@
         <div class="container-fluid px-4">
             <a class="navbar-brand" href="dashboard.html"><i class="fas fa-shield-alt me-2"></i>OHSMS</a>
             <div class="d-flex align-items-center">
-                <span class="text-light me-3" id="user-display"></span>
+                <span class="text-light me-3" id="user-display">User</span>
                 <a href="dashboard.html" class="btn btn-outline-light btn-sm"><i class="fas fa-arrow-left me-1"></i> 返回儀表板</a>
             </div>
         </div>
@@ -145,6 +146,8 @@
                 <p class="text-muted mb-0">Evaluation 階段：智慧稽核、資格勾稽與佐證調閱</p>
             </div>
         </div>
+
+        <div id="error-box" class="alert alert-danger" style="display:none;"></div>
 
         <div class="demo-info-card">
             <i class="fas fa-clipboard-check me-2"></i>
@@ -174,7 +177,7 @@
                             <div class="col-md-5">
                                 <label class="small text-muted mb-1">選擇顧問/醫護人員</label>
                                 <select id="consultantSelect" class="form-select form-select-lg border-0 bg-light">
-                                    <option value="">載入中...</option>
+                                    <option value="">(系統初始化中...)</option>
                                 </select>
                             </div>
                             <div class="col-md-4">
@@ -235,49 +238,51 @@
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 
     <script>
-        // ================= 設定區 =================
+        // 全域錯誤捕捉
+        window.onerror = function(message, source, lineno, colno, error) {
+            document.getElementById('error-box').style.display = 'block';
+            document.getElementById('error-box').innerText = "發生錯誤: " + message;
+        };
+
         const SUPABASE_URL = 'https://yhehfucgemxnfrdvpdhw.supabase.co';
         const SUPABASE_KEY = 'sb_publishable_52emtU-9l-SDxcJTWVTPTA_Yu6qEogh';
-        
-        // ★★★ 關鍵修正：這裡要用 window.supabase.createClient ★★★
-        // CDN 版本的全域變數是 supabase，而非 createClient
-        let supabase;
+        let supabaseClient;
 
         document.addEventListener('DOMContentLoaded', async function() {
             try {
-                // 安全初始化 Supabase
-                if (window.supabase) {
-                    supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-                } else {
-                    throw new Error("Supabase SDK 載入失敗");
+                // 檢查 Supabase 是否載入
+                if (typeof supabase === 'undefined') {
+                    throw new Error("Supabase SDK 未能載入，請檢查 CDN 連線。");
                 }
+
+                // 初始化
+                const { createClient } = supabase;
+                supabaseClient = createClient(SUPABASE_URL, SUPABASE_KEY);
 
                 const userName = sessionStorage.getItem('currentUserName') || 'User';
                 document.getElementById('user-display').innerHTML = `<small>Hi, ${userName}</small>`;
                 
                 // 載入顧問清單
                 await loadConsultants();
-                
-                // 顯示畫面 (淡入)
-                document.body.style.opacity = '1';
 
             } catch (e) {
-                console.error("Initialization Error:", e);
-                // 就算出錯也要顯示畫面，方便除錯
-                document.body.style.opacity = '1'; 
-                alert("系統初始化失敗，請檢查 Console: " + e.message);
+                console.error(e);
+                const select = document.getElementById('consultantSelect');
+                select.innerHTML = '<option>連線失敗</option>';
+                document.getElementById('error-box').style.display = 'block';
+                document.getElementById('error-box').innerHTML = `<strong>系統初始化錯誤：</strong> ${e.message}`;
             }
         });
 
         // 1. 載入真實顧問名單
         async function loadConsultants() {
             const select = document.getElementById('consultantSelect');
-            // 從 medical_staff 撈取
-            const { data, error } = await supabase.from('medical_staff').select('name, role').order('name');
+            const { data, error } = await supabaseClient.from('medical_staff').select('name, role').order('name');
             
+            if (error) throw error;
+
             select.innerHTML = '<option value="">請選擇顧問 (不限)</option>';
             if (data) {
-                // 去重
                 const uniqueNames = [...new Set(data.map(i => i.name))];
                 uniqueNames.forEach(name => {
                     const opt = document.createElement('option');
@@ -286,8 +291,7 @@
                     select.appendChild(opt);
                 });
                 
-                // 補上種子資料可能有的名字
-                ['尤志偉', '陳美珍', '鄭雅萍', '黃慧玲'].forEach(n => {
+                ['職護人員', '尤志偉', '陳美珍', '鄭雅萍', '黃慧玲'].forEach(n => {
                     if(!uniqueNames.includes(n)) {
                         const opt = document.createElement('option');
                         opt.value = n; opt.textContent = n; select.appendChild(opt);
@@ -302,16 +306,14 @@
             if (!keyword) return alert('請輸入關鍵字');
             showLoading(true);
 
-            // 先找公司
-            const { data: companies } = await supabase.from('companies').select('id').ilike('name', `%${keyword}%`);
+            const { data: companies } = await supabaseClient.from('companies').select('id').ilike('name', `%${keyword}%`);
             if (!companies || companies.length === 0) {
                 renderEmpty();
                 return;
             }
             const ids = companies.map(c => c.id);
 
-            // 再找紀錄
-            const { data: records } = await supabase
+            const { data: records } = await supabaseClient
                 .from('service_records')
                 .select(`*, workplaces!inner(id, department_name, companies!inner(id, name, tax_id))`)
                 .in('workplaces.company_id', ids)
@@ -326,7 +328,7 @@
             const year = document.getElementById('yearSelect').value;
             showLoading(true);
 
-            let query = supabase
+            let query = supabaseClient
                 .from('service_records')
                 .select(`*, workplaces(id, department_name, companies(id, name, tax_id))`)
                 .order('visit_date', { ascending: false });
@@ -334,8 +336,12 @@
             if (year) query = query.eq('service_year', parseInt(year));
 
             const { data, error } = await query;
+            if (error) {
+                alert("查詢失敗：" + error.message);
+                showLoading(false);
+                return;
+            }
             
-            // 前端過濾顧問 (JSON 欄位)
             let finalData = data || [];
             if (consultant) {
                 finalData = finalData.filter(r => {
@@ -348,7 +354,6 @@
             renderResults(finalData);
         }
 
-        // 4. 渲染卡片 (美化版)
         function renderResults(records) {
             const container = document.getElementById('cardsContainer');
             container.innerHTML = '';
@@ -364,7 +369,6 @@
                 const date = rec.visit_date;
                 const year = rec.service_year;
                 
-                // 解析顧問
                 let cName = '職護人員';
                 let raw = rec.raw_data;
                 if (typeof raw === 'string') { try{raw=JSON.parse(raw)}catch{} }
@@ -390,7 +394,6 @@
                                 <i class="fas fa-chevron-down text-muted"></i>
                             </div>
                         </div>
-                        
                         <div id="attach-${rec.id}" class="attachment-zone mt-3 rounded">
                             <div class="d-flex align-items-center text-muted">
                                 <span class="spinner-border spinner-border-sm me-2"></span> 正在掃描雲端附件...
@@ -402,19 +405,17 @@
             });
         }
 
-        // 5. 抓取附件 (邏輯與前版相同，但樣式更美)
         async function toggleAttachments(recId, taxId, visitDate, year) {
             const zone = document.getElementById(`attach-${recId}`);
             if (zone.style.display === 'block') { zone.style.display = 'none'; return; }
             zone.style.display = 'block';
             if (zone.getAttribute('data-loaded') === 'true') return;
 
-            // 搜尋邏輯
             const safeDate = visitDate.replace(/\//g, '-');
             const prefix = `${taxId}_${safeDate}`;
             const path = `service_records/${year}`;
 
-            const { data: files } = await supabase.storage.from('documents').list(path, { limit: 100 });
+            const { data: files } = await supabaseClient.storage.from('documents').list(path, { limit: 100 });
             const myFiles = files ? files.filter(f => f.name.startsWith(prefix)) : [];
 
             zone.innerHTML = '';
@@ -422,7 +423,7 @@
                 zone.innerHTML = '<span class="text-muted small ms-2">無附件</span>';
             } else {
                 myFiles.forEach(f => {
-                    const { data: { publicUrl } } = supabase.storage.from('documents').getPublicUrl(`${path}/${f.name}`);
+                    const { data: { publicUrl } } = supabaseClient.storage.from('documents').getPublicUrl(`${path}/${f.name}`);
                     
                     let name = f.name.replace(prefix + '_', '').replace('.pdf', '');
                     let isMain = f.name.includes('Main');
