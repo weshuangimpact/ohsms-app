@@ -44,6 +44,7 @@
 
         @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.4; } 100% { opacity: 1; } }
 
+        /* 輸入框美化 */
         .form-control-dark {
             background-color: #0f172a; border: 1px solid #475569; color: white;
         }
@@ -56,6 +57,7 @@
 
     <script>
         document.addEventListener('DOMContentLoaded', function() {
+            // 簡易權限檢查
             const role = sessionStorage.getItem('currentUserRole');
             if (role !== 'admin') {
                 alert('權限不足：此區域僅限系統管理員進行壓力測試。');
@@ -70,7 +72,7 @@
 
     <nav class="navbar navbar-dark bg-black py-3 border-bottom border-secondary">
         <div class="container-fluid px-4">
-            <a class="navbar-brand fw-bold text-info" href="#"><i class="fas fa-robot me-2"></i>OHSMS 自動化壓力測試代理人 (Agent V4.0)</a>
+            <a class="navbar-brand fw-bold text-info" href="#"><i class="fas fa-robot me-2"></i>OHSMS 自動化壓力測試代理人 (Agent V2)</a>
             <a href="dashboard.html" class="btn btn-outline-secondary btn-sm">退出測試 (EXIT)</a>
         </div>
     </nav>
@@ -87,37 +89,36 @@
                     <div class="mb-4">
                         <label class="form-label text-secondary small fw-bold">1. 測試情境 (Scenario)</label>
                         <select class="form-select form-control-dark" id="scenarioSelect">
-                            <optgroup label="全流程整合 (Integrated)">
-                                <option value="full_suite" selected>🌟 全套生成 (公司+醫療+紀錄+行事曆同步)</option>
-                            </optgroup>
-                            <optgroup label="單項填充 (Single Table)">
+                            <optgroup label="資料庫填充 (Data Generation)">
+                                <option value="full_suite" selected>🌟 全套生成 (公司+醫護+行事曆)</option>
                                 <option value="company_only">僅生成公司資料 (Companies)</option>
                                 <option value="event_only">僅生成行事曆 (Events)</option>
                             </optgroup>
-                            <optgroup label="行為模擬 (Behavior)">
+                            <optgroup label="行為模擬 (Behavior Stress Test)">
                                 <option value="user_behavior">👥 模擬使用者行為 (登入/操作/資安警示)</option>
                             </optgroup>
                         </select>
                         <div class="form-text text-secondary opacity-75 mt-2 small">
-                            <i class="fas fa-check-circle me-1 text-success"></i>
-                            <strong>全套生成 V4</strong>：建立公司 -> 建立作業場所 -> 產生臨場服務紀錄 -> 自動同步至行事曆 (設為已完成)。
+                            <i class="fas fa-info-circle me-1"></i>
+                            <strong>全套生成</strong>：建立靜態主檔資料。<br>
+                            <strong>使用者行為</strong>：模擬登入/登出/下載與入侵嘗試，產生大量 Log。
                         </div>
                     </div>
 
                     <div class="mb-4">
-                        <label class="form-label text-secondary small fw-bold">2. 生成數量 (Sets)</label>
+                        <label class="form-label text-secondary small fw-bold">2. 生成數量 (Transactions)</label>
                         <div class="input-group">
-                            <input type="number" class="form-control form-control-dark fw-bold text-center fs-5" id="qtyInput" value="10" min="1" max="1000">
-                            <span class="input-group-text bg-secondary border-secondary text-white">套</span>
+                            <input type="number" class="form-control form-control-dark fw-bold text-center fs-5" id="qtyInput" value="50" min="1" max="1000">
+                            <span class="input-group-text bg-secondary border-secondary text-white">筆</span>
                         </div>
                     </div>
 
                     <div class="mb-4">
                         <label class="form-label text-secondary small fw-bold">3. 執行速度 (Rate Limit)</label>
                         <select class="form-select form-control-dark" id="speedSelect">
-                            <option value="200">極速 (0.2s/筆) - 壓力測試</option>
-                            <option value="800" selected>正常 (0.8s/筆) - 模擬人工</option>
-                            <option value="2000">慢速 (2.0s/筆) - 演示用</option>
+                            <option value="100">🔥 極速 (0.1s/筆) - 暴力測試</option>
+                            <option value="500" selected>⚡ 快速 (0.5s/筆) - 效率優先</option>
+                            <option value="1000">🚶 正常 (1.0s/筆) - 模擬人工</option>
                         </select>
                     </div>
 
@@ -141,12 +142,12 @@
                             <span id="statusDot" class="status-dot status-ready"></span>
                             <span id="statusText" class="fw-bold text-secondary font-monospace">SYSTEM READY</span>
                         </div>
-                        <div class="text-secondary small font-monospace">LOG_STREAM_V4.0</div>
+                        <div class="text-secondary small font-monospace">LOG_STREAM_V2.1</div>
                     </div>
                     
                     <div class="console-screen flex-grow-1" id="consoleOutput">
                         <div class="text-secondary">> Initializing Supabase Connection... [OK]</div>
-                        <div class="text-secondary">> Agent Module Loaded: Integrated Workflow Generator</div>
+                        <div class="text-secondary">> Agent Module Loaded: Built-in Data Generator</div>
                         <div class="text-secondary">> Waiting for command...</div>
                     </div>
 
@@ -167,218 +168,238 @@
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/Faker/3.1.0/faker.min.js"></script>
 
     <script>
-        // 1. Supabase Init
+        // =================================================
+        // 1. Supabase 設定 (已修正變數名稱衝突)
+        // =================================================
         const SUPABASE_URL = 'https://ghpxaeenikochgrnczic.supabase.co';
         const SUPABASE_KEY = 'sb_publishable_v0ZN2OY08lh-8EC8ps8NdQ_ChYo1FRW';
+        
+        // 修正：使用 db 作為客戶端變數，避免與全域 supabase 衝突
         const db = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-        // 2. Data Generators (Updated)
+        // =================================================
+        // 2. 內建假資料生成器 (Built-in Faker)
+        // =================================================
+        // 為了確保不依賴外部 CDN，我們自己寫一個簡單的生成器
         const FakeGen = {
             surnames: ['王', '李', '張', '陳', '林', '黃', '吳', '劉', '蔡', '楊'],
             names: ['大明', '小華', '美麗', '志豪', '雅婷', '建國', '淑芬', '冠宇', '怡君'],
             industries: ['科技', '生技', '塑膠', '鋼鐵', '物流', '食品', '電子', '精密'],
             cities: ['台北', '新北', '桃園', '台中', '台南', '高雄', '新竹'],
             
-            processes: [
-                '整經漿紗 -> 織布 -> 脫漿 -> 成布加工 -> 品質檢驗',
-                '原料入庫 -> 裁切沖壓 -> 表面處理 -> 組裝測試 -> 包裝出貨',
-                '化學品調配 -> 反應槽聚合 -> 離心乾燥 -> 粉碎過篩',
-                '進貨驗收 -> 倉儲上架 -> 揀貨理貨 -> 配送運輸'
-            ],
-            hazards: [
-                {type: '高溫', count: 5, desc: '鍋爐區作業環境溫度高'},
-                {type: '噪音', count: 20, desc: '織布機運轉聲響大於85分貝'},
-                {type: '人因', count: 15, desc: '長期搬運20kg以上物料'},
-                {type: '化學', count: 3, desc: '有機溶劑(甲苯)暴露風險'}
-            ],
-            issues: [
-                '9-3 辦理健康檢查結果異常者之追蹤管理及健康指導。',
-                '11-1 辨識與評估工作場所環境危害因子，建議增設局部排氣。',
-                '11-2 提出作業環境安全衛生設施改善規劃 (防音防護具)。',
-                '9-7 工作相關傷病之預防：人因性肌肉骨骼危害預防宣導。'
-            ],
+            getName: function() {
+                return this.surnames[Math.floor(Math.random() * this.surnames.length)] + 
+                       this.names[Math.floor(Math.random() * this.names.length)];
+            },
             
-            getCompany: function() { return this.surnames[Math.floor(Math.random()*this.surnames.length)] + this.names[Math.floor(Math.random()*this.names.length)] + this.industries[Math.floor(Math.random()*this.industries.length)] + '股份有限公司'; },
-            getPhone: function() { return '09' + Math.floor(Math.random()*100000000).toString().padStart(8,'0'); },
-            getTaxId: function() { return Math.floor(Math.random()*90000000+10000000).toString(); },
-            getIp: function() { return `192.168.${Math.floor(Math.random()*255)}.${Math.floor(Math.random()*255)}`; },
-            getAddress: function() { return this.cities[Math.floor(Math.random()*this.cities.length)] + '市工業路' + Math.floor(Math.random()*500) + '號'; },
-            getName: function() { return this.surnames[Math.floor(Math.random()*this.surnames.length)] + this.names[Math.floor(Math.random()*this.names.length)]; }
+            getCompany: function() {
+                return this.getName() + '氏' + 
+                       this.industries[Math.floor(Math.random() * this.industries.length)] + 
+                       '股份有限公司';
+            },
+            
+            getPhone: function() {
+                return '09' + Math.floor(Math.random() * 100000000).toString().padStart(8, '0');
+            },
+            
+            getTaxId: function() {
+                return Math.floor(Math.random() * 90000000 + 10000000).toString();
+            },
+            
+            getAddress: function() {
+                return this.cities[Math.floor(Math.random() * this.cities.length)] + 
+                       '市工業路' + Math.floor(Math.random() * 500) + '號';
+            },
+
+            getIp: function() {
+                return `${Math.floor(Math.random()*255)}.${Math.floor(Math.random()*255)}.${Math.floor(Math.random()*255)}.${Math.floor(Math.random()*255)}`;
+            }
         };
 
-        // 3. Core Logic
-        let isRunning = false, shouldStop = false;
+        // =================================================
+        // 3. 核心變數與控制
+        // =================================================
+        let isRunning = false;
+        let shouldStop = false;
         const consoleEl = document.getElementById('consoleOutput');
 
         async function startAgent() {
             if (isRunning) return;
-            isRunning = true; shouldStop = false;
+
+            // UI 鎖定
+            isRunning = true;
+            shouldStop = false;
             document.getElementById('btnStart').disabled = true;
             document.getElementById('btnStop').disabled = false;
             document.getElementById('statusDot').className = 'status-dot status-active';
+            document.getElementById('statusText').className = 'fw-bold text-success font-monospace';
             document.getElementById('statusText').innerText = 'AGENT RUNNING...';
 
             const qty = parseInt(document.getElementById('qtyInput').value);
             const speed = parseInt(document.getElementById('speedSelect').value);
             const scenario = document.getElementById('scenarioSelect').value;
 
-            log(`>>> 任務啟動: 生成 ${qty} 套 | 模式: ${scenario.toUpperCase()}`, 'system');
+            log(`>>> 任務啟動: 目標 ${qty} 筆 | 模式: ${scenario.toUpperCase()}`, 'system');
 
-            try {
-                let successCount = 0;
-                for (let i = 0; i < qty; i++) {
-                    if (shouldStop) { log('!!! 強制中止 !!!', 'error'); break; }
+            let successCount = 0;
 
-                    try {
-                        if (scenario === 'full_suite') await generateFullSuite();
-                        else if (scenario === 'company_only') await generateCompanyOnly();
-                        else if (scenario === 'event_only') await generateEventOnly();
-                        else if (scenario === 'user_behavior') await generateUserBehavior();
-                        successCount++;
-                    } catch (e) {
-                        log(`[ERROR] Item ${i+1}: ${e.message}`, 'error');
-                    }
-
-                    const percent = Math.round(((i+1)/qty)*100);
-                    document.getElementById('progressBar').style.width = percent + '%';
-                    document.getElementById('progressText').innerText = `${i+1} / ${qty}`;
-                    await new Promise(r => setTimeout(r, speed));
+            for (let i = 0; i < qty; i++) {
+                if (shouldStop) {
+                    log('!!! 使用者強制中止任務 !!!', 'error');
+                    break;
                 }
-                log(`<<< 任務完成。成功 ${successCount} 套。`, 'success');
-            } catch(e) {
-                log(`[CRITICAL] ${e.message}`, 'error');
+
+                try {
+                    // 根據選擇的情境執行不同邏輯
+                    if (scenario === 'full_suite') {
+                        await generateFullSuite();
+                    } else if (scenario === 'company_only') {
+                        await generateCompanyOnly();
+                    } else if (scenario === 'event_only') {
+                        await generateEventOnly();
+                    } else if (scenario === 'user_behavior') {
+                        await generateUserBehavior();
+                    }
+                    successCount++;
+                } catch (e) {
+                    console.error(e);
+                    log(`[ERROR] 第 ${i+1} 筆失敗: ${e.message}`, 'error');
+                }
+
+                // 更新進度條
+                const percent = Math.round(((i + 1) / qty) * 100);
+                document.getElementById('progressBar').style.width = percent + '%';
+                document.getElementById('progressText').innerText = `${i + 1} / ${qty}`;
+
+                // 模擬延遲
+                await new Promise(r => setTimeout(r, speed));
             }
+
+            // 結束
+            log(`<<< 任務完成。成功執行 ${successCount} 次操作。`, 'success');
             resetUI();
         }
 
-        function stopAgent() { shouldStop = true; log('正在中止...', 'warning'); }
+        function stopAgent() {
+            shouldStop = true;
+            log('正在中止...', 'warning');
+        }
+
         function resetUI() {
             isRunning = false;
             document.getElementById('btnStart').disabled = false;
             document.getElementById('btnStop').disabled = true;
             document.getElementById('statusDot').className = 'status-dot status-ready';
+            document.getElementById('statusText').className = 'fw-bold text-secondary font-monospace';
             document.getElementById('statusText').innerText = 'SYSTEM READY';
         }
-        function log(msg, type='info') {
-            const time = new Date().toLocaleTimeString('zh-TW',{hour12:false});
+
+        function log(msg, type = 'info') {
+            const time = new Date().toLocaleTimeString('zh-TW', { hour12: false });
             let color = '#ccc';
-            if(type==='success') color='#4ade80'; if(type==='error') color='#f87171';
-            if(type==='warning') color='#fbbf24'; if(type==='system') color='#38bdf8';
-            const div = document.createElement('div');
-            div.style.color = color;
-            div.innerHTML = `<span style="opacity:0.5">[${time}]</span> ${msg}`;
-            consoleEl.appendChild(div);
+            if (type === 'success') color = '#4ade80'; // Green
+            if (type === 'error') color = '#f87171';   // Red
+            if (type === 'warning') color = '#fbbf24'; // Yellow
+            if (type === 'system') color = '#38bdf8';  // Blue
+            if (type === 'security') color = '#f472b6'; // Pink
+
+            const line = document.createElement('div');
+            line.style.color = color;
+            line.style.marginBottom = '4px';
+            line.innerHTML = `<span style="opacity:0.5; font-size:0.8em;">[${time}]</span> ${msg}`;
+            consoleEl.appendChild(line);
             consoleEl.scrollTop = consoleEl.scrollHeight;
         }
 
-        // ================= Generator Functions ================= //
-
-        // 核心：全套生成 V4.0 (公司 -> 醫護 -> 紀錄 -> 行事曆同步)
+        // =================================================
+        // 4. 資料生成器 (Generators)
+        // =================================================
+        
+        // 4-1. 全套資料生成
         async function generateFullSuite() {
-            // 1. 建立公司
-            const coName = FakeGen.getCompany();
+            const companyName = FakeGen.getCompany();
             const taxId = FakeGen.getTaxId();
-            const { data: coData, error: coError } = await db.from('companies').insert([{
-                tax_id: taxId, name: coName, address: FakeGen.getAddress(),
-                contact_person: FakeGen.getName()+'經理', phone: FakeGen.getPhone()
-            }]).select();
-            if (coError) throw coError;
-            const coId = coData[0].id;
             
-            // 2. 建立醫護 (指派)
-            const staffName = FakeGen.getName();
-            const staffRole = Math.random() > 0.6 ? '醫師' : '護理人員';
-            await db.from('medical_staff').insert([{
-                name: staffName, role: staffRole, employment_type: '兼職', phone: FakeGen.getPhone()
-            }]);
-
-            // 3. 建立作業場所 (Workplace)
-            const hazard = FakeGen.hazards[Math.floor(Math.random() * FakeGen.hazards.length)];
-            const { data: wpData, error: wpError } = await db.from('workplaces').insert([{
-                company_id: coId,
-                department_name: '生產部',
-                admin_male: 10, admin_female: 10, site_male: 30, site_female: 20,
-                hazard_type: hazard.type, hazard_count: hazard.count
+            // 寫入公司
+            const { data: coData, error: coError } = await db.from('companies').insert([{
+                tax_id: taxId,
+                name: companyName,
+                address: FakeGen.getAddress(),
+                contact_person: FakeGen.getName() + '經理',
+                phone: FakeGen.getPhone()
             }]).select();
-            if (wpError) throw wpError;
-            const wpId = wpData[0].id;
 
-            // 4. 生成臨場服務紀錄 (Service Record) - 日期設為最近 30 天內
-            const today = new Date();
-            const visitDate = new Date();
-            visitDate.setDate(today.getDate() - Math.floor(Math.random() * 30));
-            const visitDateStr = visitDate.toISOString().split('T')[0];
+            if (coError) throw new Error(coError.message);
+            const companyId = coData[0].id;
+            log(`[DATA] 建立公司: ${companyName} (${taxId})`);
 
-            await db.from('service_records').insert([{
-                workplace_id: wpId,
-                visit_date: visitDateStr,
-                start_time: '09:00', end_time: '12:00',
-                process_desc: FakeGen.processes[0],
-                hazard_desc: hazard.desc,
-                execution_items: '9-3, 11-1',
-                doctor_signature: staffName + ' ' + staffRole
+            // 寫入稽核
+            await db.from('audit_logs').insert([{
+                user_role: 'admin', user_name: 'AI_Agent', action_type: '資料生成', target_table: 'companies', details: `自動生成公司資料: ${companyName}`
             }]);
 
-            // 5. 同步至行事曆 (Calendar) - 讓管理者知道這天有服務且已完成
+            // 順便建立行程
+            const pastDate = new Date(); pastDate.setDate(pastDate.getDate() - Math.floor(Math.random() * 20));
             await db.from('compliance_events').insert([{
-                title: `臨場服務 (${coName})`,
-                event_type: 'service',
-                event_date: visitDateStr,
-                priority: 'medium',
-                company_id: coId,
-                status: 'completed', // 設定為已完成，因為紀錄已產生
-                details: `由 ${staffName} ${staffRole} 執行。危害類型：${hazard.type}`
-            }]);
-
-            // 6. 加一筆未來的待辦事項 (讓行事曆有點變化)
-            const futureDate = new Date();
-            futureDate.setDate(today.getDate() + Math.floor(Math.random() * 60) + 10);
-            await db.from('compliance_events').insert([{
-                title: `追蹤改善事項 (${coName})`,
-                event_type: 'meeting',
-                event_date: futureDate.toISOString().split('T')[0],
+                title: `急救人員複訓 (${companyName})`,
+                event_type: 'training',
+                event_date: pastDate.toISOString().split('T')[0],
                 priority: 'high',
-                company_id: coId,
+                company_id: companyId,
                 status: 'pending'
             }]);
-
-            log(`[FULL] 建立完整生態系: ${coName} (含紀錄與行事曆)`, 'success');
-            
-            // 寫入 Log
-            await db.from('audit_logs').insert([{
-                user_role: 'admin', user_name: 'AI_Agent', action_type: '全套生成', target_table: 'SYSTEM', details: `Auto-generated suite for ${coName}`
-            }]);
         }
 
-        // 輔助生成：單獨公司
+        // 4-2. 單獨生成公司
         async function generateCompanyOnly() {
             const name = FakeGen.getCompany();
-            await db.from('companies').insert([{ tax_id: FakeGen.getTaxId(), name: name }]);
-            log(`[DATA] 公司: ${name}`);
+            const tax = FakeGen.getTaxId();
+            const { error } = await db.from('companies').insert([{ tax_id: tax, name: name }]);
+            if (error) throw error;
+            log(`[DATA] 建立公司: ${name}`);
         }
 
-        // 輔助生成：單獨行事曆
+        // 4-3. 單獨生成事件
         async function generateEventOnly() {
-            const title = "年度法規查核";
+            const title = "年度法規查核-" + FakeGen.getTaxId();
             await db.from('compliance_events').insert([{
                 title: title, event_type: 'document', event_date: new Date().toISOString().split('T')[0]
             }]);
-            log(`[DATA] 事件: ${title}`);
+            log(`[DATA] 建立事件: ${title}`);
         }
 
-        // 輔助生成：使用者行為
+        // 4-4. 行為模擬器
         async function generateUserBehavior() {
-            const acts = ['登入', '查詢', '下載', '修改'];
-            const act = acts[Math.floor(Math.random()*acts.length)];
-            await db.from('audit_logs').insert([{
-                user_role: 'general', user_name: FakeGen.getName(),
-                action_type: act, target_table: 'system', details: '壓力測試模擬'
+            const dice = Math.random();
+            let role, user, action, target, detail, type = 'info';
+
+            // 10% 機率資安事件
+            if (dice < 0.1) {
+                role = 'unknown'; user = 'Anonymous';
+                if (Math.random() > 0.5) {
+                    action = '異常登入'; target = 'Login Page'; detail = `密碼錯誤次數過多 (IP: ${FakeGen.getIp()})`; type = 'error';
+                } else {
+                    action = '越權存取'; target = 'admin_dashboard'; detail = `嘗試存取受保護頁面 (IP: ${FakeGen.getIp()})`; type = 'security';
+                }
+            } else {
+                const users = [{r:'admin',n:'Admin'}, {r:'medical',n:'Dr. Wang'}, {r:'general',n:'User Chen'}];
+                const u = users[Math.floor(Math.random()*users.length)];
+                role = u.r; user = u.n;
+                const acts = ['登入', '登出', '瀏覽', '下載', '修改'];
+                action = acts[Math.floor(Math.random()*acts.length)];
+                target = 'System'; detail = '一般操作';
+            }
+
+            const { error } = await db.from('audit_logs').insert([{
+                user_role: role, user_name: user, action_type: action, target_table: target, details: detail, ip_address: FakeGen.getIp()
             }]);
-            log(`[BEHAVIOR] ${act}`);
+
+            if (error) throw error;
+            log(`[BEHAVIOR] ${user} -> ${action}`, type);
         }
+
     </script>
 </body>
 </html>
