@@ -6,82 +6,86 @@
     <title>評鑑支援 AI 智慧助理 | OHSMS</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link href="style-ohsms.css" rel="stylesheet">
     
     <style>
-        :root { --primary-bg: #f8f9fa; --accent-orange: #f57c00; --accent-blue: #1967d2; }
-        body { background-color: var(--primary-bg); font-family: 'Segoe UI', 'Microsoft JhengHei', sans-serif; color: #333; }
-        
-        /* --- 導覽列樣式 --- */
-        .navbar { background-color: #202124 !important; height: 65px; }
-        .navbar-brand { font-weight: 600; font-size: 1.25rem; letter-spacing: 0.5px; }
-        .user-greeting { color: #e8eaed; font-size: 0.95rem; font-weight: 500; }
+        /* =========================================
+           本頁面專屬樣式 (Page Specific Styles)
+           僅保留 CSS 檔案中沒有的特定元件樣式
+           ========================================= */
+
+        /* 返回按鈕微調 (配合 Navbar 高度) */
         .btn-back-dashboard {
-            border: 1px solid rgba(255,255,255,0.8);
+            border: 1px solid rgba(255,255,255,0.5);
             color: #fff;
             background: transparent;
             padding: 5px 15px;
             border-radius: 4px;
             font-size: 0.9rem;
-            transition: all 0.3s;
             text-decoration: none;
-            display: inline-flex;
-            align-items: center;
+            transition: all 0.2s;
         }
         .btn-back-dashboard:hover {
-            background: rgba(255,255,255,0.1);
+            background: rgba(255,255,255,0.2);
             color: #fff;
             border-color: #fff;
         }
 
-        /* 主要內容容器 */
-        .main-content { max-width: 900px; margin: 3rem auto; }
-
-        /* PDCA 說明區塊 */
-        .instruction-box {
-            background-color: #fff9e6;
-            border-left: 5px solid var(--accent-orange);
-            padding: 20px 25px;
-            border-radius: 4px;
-            margin-bottom: 40px;
-            text-align: left;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
-        }
-        .instruction-title { color: #d35400; font-weight: 700; margin-bottom: 10px; }
-
-        /* 機器人圖示 */
+        /* 機器人圖示容器 */
         .robot-wrapper {
             width: 100px; height: 100px;
-            background-color: #e8f0fe;
-            color: var(--accent-blue);
+            background-color: #e7f1ff; /* 對應 var(--primary-blue) 的淺色系 */
+            color: var(--primary-blue);
             border-radius: 50%;
             display: flex; align-items: center; justify-content: center;
             font-size: 3rem;
             margin: 0 auto 20px auto;
         }
 
-        /* 搜尋區 */
+        /* 搜尋框 (保留圓角設計，但顏色改用變數) */
         .search-box-wrapper {
-            background: #fff; border: 1px solid #dfe1e5; border-radius: 50px;
-            padding: 15px 30px; box-shadow: 0 4px 12px rgba(32,33,36,.15);
+            background: #fff; 
+            border: 2px solid #e9ecef; /* 預設灰邊框 */
+            border-radius: 50px;
+            padding: 15px 30px; 
+            box-shadow: 0 .125rem .25rem rgba(0,0,0,.075);
             display: flex; align-items: center;
-            transition: box-shadow 0.3s;
+            transition: all 0.3s;
         }
         .search-box-wrapper:hover, .search-box-wrapper:focus-within {
-            box-shadow: 0 6px 16px rgba(32,33,36,.25);
+            border-color: var(--primary-blue);
+            box-shadow: 0 0 0 4px rgba(13, 110, 253, 0.15);
         }
-        .search-input { border: none; outline: none; width: 100%; font-size: 1.2rem; margin-left: 15px; color: #555; }
-        .btn-search { background: none; border: none; color: #4285f4; font-weight: bold; font-size: 1.1rem; }
+        .search-input { border: none; outline: none; width: 100%; font-size: 1.1rem; margin-left: 15px; color: var(--text-dark); background: transparent; }
+        .btn-search { background: none; border: none; color: var(--primary-blue); font-weight: bold; font-size: 1.1rem; }
         
-        /* 結果卡片 */
+        /* 搜尋結果卡片優化 */
         .result-card {
-            background: #fff; border: 1px solid #e0e0e0; border-radius: 8px; padding: 20px;
-            margin-bottom: 15px; cursor: pointer; transition: all 0.2s;
+            background: #fff; 
+            border: 1px solid #e9ecef; 
+            border-radius: 8px; 
+            padding: 20px;
+            margin-bottom: 15px; 
+            cursor: pointer; 
+            transition: all 0.2s;
         }
-        .result-card:hover { transform: translateY(-3px); box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
-        .result-title { color: #1a0dab; font-size: 1.25rem; font-weight: 600; margin-bottom: 5px; }
-        .tag-year { background: #e8f0fe; color: #1967d2; padding: 2px 8px; border-radius: 4px; font-weight: bold; font-size: 0.85rem; }
+        .result-card:hover { 
+            transform: translateY(-3px); 
+            border-color: var(--primary-blue);
+            box-shadow: 0 .5rem 1rem rgba(0,0,0,.1); 
+        }
+        .result-title { color: var(--primary-blue); font-size: 1.25rem; font-weight: 600; margin-bottom: 5px; }
+        
+        .tag-year { 
+            background: #e7f1ff; 
+            color: var(--primary-blue); 
+            padding: 2px 8px; 
+            border-radius: 4px; 
+            font-weight: bold; 
+            font-size: 0.85rem; 
+        }
 
-        /* 預覽與附件樣式 */
+        /* 預覽視窗樣式 (維持紙張質感) */
         .preview-modal-body {
             background: #525659; padding: 30px; height: 80vh; overflow-y: auto;
             display: flex; flex-direction: column; align-items: center; user-select: none;
@@ -89,28 +93,28 @@
         .paper-sheet {
             background: white; width: 100%; max-width: 800px; min-height: 1000px;
             padding: 50px; margin-bottom: 20px; box-shadow: 0 0 15px rgba(0,0,0,0.5); position: relative;
+            color: #000; /* 紙張內容保持純黑 */
         }
-        .attachment-item { border: 1px solid #eee; padding: 10px; margin-bottom: 15px; text-align: center; }
-        .attachment-img { max-width: 100%; height: auto; border: 1px solid #ddd; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+        .attachment-item { border: 1px solid #dee2e6; padding: 10px; margin-bottom: 15px; text-align: center; background: #fff; }
+        .attachment-img { max-width: 100%; height: auto; border: 1px solid #eee; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
         .attachment-pdf-frame { width: 100%; height: 500px; border: 1px solid #ddd; }
         .watermark {
             position: absolute; top: 40%; left: 50%; transform: translate(-50%, -50%) rotate(-45deg);
-            font-size: 5rem; color: rgba(255,0,0,0.08); border: 5px solid rgba(255,0,0,0.08);
+            font-size: 5rem; color: rgba(220, 53, 69, 0.08); border: 5px solid rgba(220, 53, 69, 0.08);
             padding: 20px; pointer-events: none; z-index: 10; white-space: nowrap;
         }
     </style>
 </head>
-<body>
+<body style="display: none;">
 
     <nav class="navbar navbar-expand-lg navbar-dark px-4">
         <div class="container-fluid d-flex justify-content-between align-items-center p-0">
-            <a class="navbar-brand d-flex align-items-center" href="#">
-                <i class="fas fa-shield-alt me-2"></i>
-                OHSMS 職安管理系統
+            <a class="navbar-brand" href="#">
+                <i class="fas fa-shield-alt text-primary me-2"></i> <span class="text-white">OHSMS 職安管理系統</span>
             </a>
 
             <div class="d-flex align-items-center">
-                <span class="user-greeting me-4">Hi ! 系統管理員</span>
+                <span class="text-light me-4 small opacity-75">Hi ! 系統管理員</span>
                 <a href="https://weshuangimpact.github.io/ohsms-app/dashboard.html" class="btn-back-dashboard">
                     <i class="fas fa-arrow-left me-2"></i>返回儀表板
                 </a>
@@ -118,25 +122,25 @@
         </div>
     </nav>
 
-    <div class="container main-content">
+    <div class="container main-content mt-5" style="max-width: 900px;">
         
-        <div class="mb-4">
+        <div class="mb-4 text-center text-lg-start">
             <h2 class="fw-bold text-dark mb-1">評鑑支援 AI 智慧助理</h2>
             <p class="text-secondary">Evaluation 階段：智慧稽核與佐證調閱</p>
         </div>
 
-        <div class="instruction-box">
-            <div class="instruction-title">
+        <div class="demo-info-card">
+            <div class="fw-bold mb-2">
                 <i class="fas fa-clipboard-check me-2"></i>PDCA 設計理念：Evaluation (評鑑) —— 智慧稽核
             </div>
-            <p class="mb-0 text-dark" style="line-height: 1.6;">
+            <p class="mb-0">
                 此模組專注於提供高效的「資料搜索」功能：<br>
                 <strong>NLP 智慧搜索：</strong>透過自然語言快速撈取佐證資料，協助使用者即時調閱相關紀錄。
             </p>
         </div>
 
         <div class="text-center mt-5">
-            <div class="robot-wrapper">
+            <div class="robot-wrapper shadow-sm">
                 <i class="fas fa-robot"></i>
             </div>
             <h3 class="fw-bold mb-3">評鑑資料查詢助手</h3>
@@ -182,6 +186,9 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     
     <script>
+        // ★★★ 關鍵設定：顯示 Body (對應 style-ohsms.css 的要求) ★★★
+        document.body.style.display = 'block';
+
         const SUPABASE_URL = 'https://yhehfucgemxnfrdvpdhw.supabase.co';
         const SUPABASE_KEY = 'sb_publishable_52emtU-9l-SDxcJTWVTPTA_Yu6qEogh'; 
         const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
@@ -199,9 +206,6 @@
             loader.style.display = 'block';
 
             try {
-                // ★★★ 核心修正 1：SQL 查詢 ★★★
-                // 這裡的 medical_staff (name) 是根據 service_records 中的 consultant_id (或 medical_staff_id) 外鍵
-                // 去關聯 medical_staff 表。這能確保我們抓到的是「紀錄當下」連結的那位員工。
                 const { data, error } = await supabaseClient
                     .from('service_records')
                     .select(`
@@ -218,9 +222,6 @@
                 if(error) throw error;
 
                 const filtered = data.filter(r => {
-                    // ★★★ 核心修正 2：搜尋比對 ★★★
-                    // 比對時，我們也使用關聯過來的 medical_staff.name
-                    // 這樣如果搜尋 "甲"，就能找到甲以前做過的所有紀錄
                     const historicalConsultantName = r.medical_staff?.name || '';
                     const companyName = r.workplaces?.companies?.name || '';
                     
@@ -239,15 +240,11 @@
                     const company = rec.workplaces?.companies?.name || '未知公司';
                     const date = rec.visit_date || 'N/A';
                     
-                    // ★★★ 核心修正 3：顯示邏輯 ★★★
-                    // 1. 先抓取 FK 關聯的 medical_staff.name (這是最準確的歷史紀錄)
-                    // 2. 如果沒有 FK (舊資料可能沒有)，才去 parse raw_data
                     let displayConsultant = '未知顧問';
 
                     if (rec.medical_staff && rec.medical_staff.name) {
-                        displayConsultant = rec.medical_staff.name; // 這是歷史真相
+                        displayConsultant = rec.medical_staff.name;
                     } else {
-                        // 後備方案：解析 JSON 備註
                         try { 
                             const parsed = JSON.parse(rec.raw_data);
                             if(parsed && parsed.consultant_name) displayConsultant = parsed.consultant_name;
@@ -256,23 +253,23 @@
 
                     const dataStr = encodeURIComponent(JSON.stringify(rec));
                     const compStr = encodeURIComponent(company);
-                    // 傳遞 consultant 名字給預覽視窗
                     const consultStr = encodeURIComponent(displayConsultant);
 
+                    // 使用更新後的 CSS 類別
                     return `
-                        <div class="result-card" onclick="openFullPreview('${rec.id}', '${compStr}', '${dataStr}', '${consultStr}')">
-                            <div class="d-flex justify-content-between">
+                        <div class="result-card shadow-sm" onclick="openFullPreview('${rec.id}', '${compStr}', '${dataStr}', '${consultStr}')">
+                            <div class="d-flex justify-content-between align-items-start">
                                 <div>
                                     <span class="tag-year me-2">${rec.service_year}</span>
                                     <span class="text-muted small">${date}</span>
-                                    <h4 class="result-title mt-1">${company}</h4>
+                                    <h4 class="result-title mt-2">${company}</h4>
                                 </div>
                                 <div class="text-end">
                                     <span class="badge bg-secondary">${displayConsultant}</span>
                                 </div>
                             </div>
-                            <p class="text-muted mt-2 mb-0 text-truncate">${rec.hazard_desc || '無危害描述'}</p>
-                            <div class="mt-3 pt-2 border-top text-primary small">
+                            <p class="text-muted mt-2 mb-0 text-truncate" style="max-width: 90%;">${rec.hazard_desc || '無危害描述'}</p>
+                            <div class="mt-3 pt-2 border-top small" style="color: var(--primary-blue);">
                                 <i class="fas fa-paperclip me-1"></i> 包含執行紀錄表與相關附件
                             </div>
                         </div>
@@ -289,7 +286,7 @@
         async function openFullPreview(recordId, compNameEncoded, dataEncoded, consultNameEncoded) {
             const companyName = decodeURIComponent(compNameEncoded);
             const recordData = JSON.parse(decodeURIComponent(dataEncoded));
-            const consultantName = decodeURIComponent(consultNameEncoded); // 接收正確的顧問名
+            const consultantName = decodeURIComponent(consultNameEncoded);
             
             const container = document.getElementById('previewContainer');
             
@@ -323,6 +320,7 @@
                     attachmentsHtml = `<div class="alert alert-warning text-center">本案件尚無上傳佐證附件。</div>`;
                 }
 
+                // 這裡的 HTML 使用了 CSS 中的 primary-blue 等變數
                 container.innerHTML = `
                     <div class="paper-sheet">
                         <div class="watermark">${companyName} 評鑑專用</div>
@@ -332,7 +330,7 @@
                             <div class="col-6"><strong>訪視日期：</strong> ${recordData.visit_date}</div>
                         </div>
                         <div class="row mb-3">
-                            <div class="col-12"><strong>負責顧問 (當時)：</strong> <span class="text-primary fw-bold">${consultantName}</span></div>
+                            <div class="col-12"><strong>負責顧問 (當時)：</strong> <span class="fw-bold" style="color: var(--primary-blue)">${consultantName}</span></div>
                         </div>
                         <div class="bg-light p-3 border rounded mb-3">
                             <h5 class="fw-bold"><i class="fas fa-clipboard-list me-2"></i>作業描述與危害</h5>
@@ -350,7 +348,7 @@
                     </div>
                     <div class="paper-sheet">
                         <div class="watermark">佐證資料</div>
-                        <h4 class="fw-bold border-start border-4 border-primary ps-3 mb-4">相關附件憑證 (Evidence)</h4>
+                        <h4 class="fw-bold border-start border-4 ps-3 mb-4" style="border-color: var(--primary-blue)!important;">相關附件憑證 (Evidence)</h4>
                         ${attachmentsHtml}
                         <div class="text-center mt-5 text-muted small border-top pt-3">--- 卷宗結束 ---</div>
                     </div>
