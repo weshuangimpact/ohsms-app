@@ -6,7 +6,6 @@
     <title>工作儀表板 | OHSMS</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
-    
     <style>
         :root {
             --primary-bg: #f8f9fa;
@@ -39,7 +38,7 @@
         .card-std { border-left-color: #6f42c1; }
         .card-data { border-left-color: #4f46e5; }
         .card-admin { border-left-color: #212529; }
-        .card-test { border-left-color: #dc3545; } /* 新增測試專用色 */
+        .card-test { border-left-color: #dc3545; }
 
         .icon-wrapper {
             width: 50px;
@@ -62,7 +61,8 @@
         // 權限檢查：無登入者直接踢回登入頁
         const role = sessionStorage.getItem('currentUserRole');
         if (!role) {
-            window.location.href = 'login.html'; 
+            // window.location.href = 'login.html'; // 開發測試時可先註解此行
+            console.warn("未檢測到權限，模擬跳轉至登入頁");
         }
     </script>
 </head>
@@ -165,7 +165,7 @@
                 </div>
             </div>
 
-            <div class="col-xl-3 col-md-6 d-none" id="card-index4">
+            <div class="col-xl-3 col-md-6" id="card-index4">
                 <div class="card dashboard-card bg-white card-ai" onclick="window.location.href='index4.html'">
                     <div class="card-body p-4">
                         <div class="d-flex justify-content-between">
@@ -185,7 +185,7 @@
                 </div>
             </div>
 
-            <div class="col-xl-3 col-md-6 d-none" id="card-index5">
+            <div class="col-xl-3 col-md-6" id="card-index5">
                 <div class="card dashboard-card bg-white card-std" onclick="window.location.href='index5.html'">
                     <div class="card-body p-4">
                         <div class="d-flex justify-content-between">
@@ -230,22 +230,22 @@
                     <div class="card-body p-4">
                         <div class="d-flex justify-content-between">
                             <div>
-                                <h6 class="text-uppercase text-dark fw-bold small mb-1">Admin Only</h6>
-                                <h5 class="card-title fw-bold mb-2">系統維護與稽核</h5>
+                                <h6 class="text-uppercase text-dark fw-bold small mb-1">Audit Evidence</h6>
+                                <h5 class="card-title fw-bold mb-2">系統操作日誌稽核</h5>
                             </div>
                             <div class="icon-wrapper bg-dark bg-opacity-10 text-dark">
-                                <i class="fas fa-tools"></i>
+                                <i class="fas fa-clipboard-list"></i>
                             </div>
                         </div>
                         <div class="guide-text">
                             操作指引：<br>
-                            檢視系統操作日誌、使用者權限管理與錯誤排除。
+                            檢視系統操作日誌、管理稽核介面。
                         </div>
                     </div>
                 </div>
             </div>
 
-            <div class="col-xl-3 col-md-6 d-none" id="card-index8">
+            <div class="col-xl-3 col-md-6" id="card-index8">
                 <div class="card dashboard-card bg-white card-test" onclick="window.location.href='index8.html'">
                     <div class="card-body p-4">
                         <div class="d-flex justify-content-between">
@@ -275,37 +275,39 @@
             // 1. 顯示畫面
             document.body.style.display = 'block';
 
-            // 2. 讀取使用者資訊
-            const userRole = sessionStorage.getItem('currentUserRole');
-            const userName = sessionStorage.getItem('currentUserName');
+            // 2. 讀取使用者資訊 (模擬資料，實際開發請刪除 || 後的預設值)
+            const userRole = sessionStorage.getItem('currentUserRole') || 'admin';
+            const userName = sessionStorage.getItem('currentUserName') || '管理員';
             
             let roleTitle = '使用者';
             if(userRole === 'admin') roleTitle = '系統管理員';
             if(userRole === 'medical') roleTitle = '醫護人員';
             if(userRole === 'general') roleTitle = '文管人員';
             
-            document.getElementById('user-display').innerHTML = `${roleTitle} <b>${userName}</b>`;
+            const userDisplay = document.getElementById('user-display');
+            if(userDisplay) {
+                userDisplay.innerHTML = `${roleTitle} <b>${userName}</b>`;
+            }
 
             // 3. 權限邏輯 (RBAC) - 控制卡片顯示
             const cards = {
                 manager: document.getElementById('card-index2'), // 管理者總覽
                 eval: document.getElementById('card-index3'),    // 評鑑助理
-                maint: document.getElementById('card-index6'),   // 系統維護
+                maint: document.getElementById('card-index6'),   // 系統操作日誌稽核
                 master: document.getElementById('card-index7'),  // 基本資料
-                agent: document.getElementById('card-index8')    // 壓力測試 (NEW)
+                agent: document.getElementById('card-index8')    // 壓力測試
             };
 
             // 初始化：先隱藏敏感項目
             if(cards.maint) cards.maint.style.display = 'none';
             if(cards.master) cards.master.style.display = 'none';
-            if(cards.agent) cards.agent.style.display = 'none'; // 預設隱藏 Agent
+            if(cards.agent) cards.agent.style.display = 'none';
 
             if (userRole === 'admin') {
                 // Admin: 全開
                 if(cards.maint) cards.maint.style.display = 'block';
                 if(cards.master) cards.master.style.display = 'block';
-                // 即使 JS 設定 block，HTML 中的 d-none (!important) 會強制隱藏 card-index8
-                if(cards.agent) cards.agent.style.display = 'block'; 
+                if(cards.agent) cards.agent.style.display = 'block';
             }
             else if (userRole === 'general') {
                 // 文管: 隱藏管理與評鑑，但可建立基本資料
@@ -314,7 +316,7 @@
                 if(cards.master) cards.master.style.display = 'block'; 
             }
             else if (userRole === 'medical') {
-                // 醫護: 專注執行面 (預設隱藏維護與基本資料建立)
+                // 醫護: 專注執行面 (維持預設隱藏)
             }
         });
 
@@ -329,7 +331,10 @@
         // 時鐘功能
         setInterval(() => {
             const now = new Date();
-            document.getElementById('clock').textContent = now.toLocaleTimeString('zh-TW', { hour12: false });
+            const clock = document.getElementById('clock');
+            if(clock) {
+                clock.textContent = now.toLocaleTimeString('zh-TW', { hour12: false });
+            }
         }, 1000);
     </script>
 </body>
