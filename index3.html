@@ -3,325 +3,317 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>評鑑支援 AI 智慧助理 | OHSMS</title>
+    <title>文件管理 AI 智慧助理 (AI Support) | OHSMS</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     
     <style>
-        :root { --primary-bg: #f8f9fa; --accent-orange: #f57c00; --accent-blue: #1967d2; }
-        body { background-color: var(--primary-bg); font-family: 'Segoe UI', 'Microsoft JhengHei', sans-serif; color: #333; }
-        
-        /* --- 導覽列樣式 --- */
-        .navbar { background-color: #202124 !important; height: 65px; }
-        .navbar-brand { font-weight: 600; font-size: 1.25rem; letter-spacing: 0.5px; }
-        .user-greeting { color: #e8eaed; font-size: 0.95rem; font-weight: 500; }
-        .btn-back-dashboard {
-            border: 1px solid rgba(255,255,255,0.8);
-            color: #fff;
-            background: transparent;
-            padding: 5px 15px;
-            border-radius: 4px;
+        :root {
+            --primary-bg: #f4f6f9;
+        }
+        body {
+            background-color: var(--primary-bg);
+            font-family: 'Segoe UI', 'Microsoft JhengHei', sans-serif;
+            display: none; /* Auth Guard: 預設隱藏，驗證後顯示 */
+        }
+
+        /* PDCA 說明字卡 */
+        .demo-info-card {
+            background-color: #fffbeb;
+            border-left: 4px solid #f59e0b;
+            color: #92400e;
+            padding: 1rem;
+            margin-bottom: 1.5rem;
+            border-radius: 0.375rem;
             font-size: 0.9rem;
-            transition: all 0.3s;
-            text-decoration: none;
-            display: inline-flex;
-            align-items: center;
-        }
-        .btn-back-dashboard:hover {
-            background: rgba(255,255,255,0.1);
-            color: #fff;
-            border-color: #fff;
+            line-height: 1.6;
         }
 
-        /* 主要內容容器 */
-        .main-content { max-width: 900px; margin: 3rem auto; }
-
-        /* PDCA 說明區塊 */
-        .instruction-box {
-            background-color: #fff9e6;
-            border-left: 5px solid var(--accent-orange);
-            padding: 20px 25px;
-            border-radius: 4px;
-            margin-bottom: 40px;
-            text-align: left;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+        /* 上傳區塊 */
+        .upload-zone {
+            border: 2px dashed #a5b4fc;
+            background-color: #eef2ff;
+            border-radius: 1rem;
+            padding: 3rem;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
         }
-        .instruction-title { color: #d35400; font-weight: 700; margin-bottom: 10px; }
-
-        /* 機器人圖示 */
-        .robot-wrapper {
-            width: 100px; height: 100px;
-            background-color: #e8f0fe;
-            color: var(--accent-blue);
-            border-radius: 50%;
-            display: flex; align-items: center; justify-content: center;
-            font-size: 3rem;
-            margin: 0 auto 20px auto;
+        .upload-zone:hover {
+            background-color: #e0e7ff;
+            transform: scale(1.02);
+            border-color: #6366f1;
         }
 
-        /* 搜尋區 */
-        .search-box-wrapper {
-            background: #fff; border: 1px solid #dfe1e5; border-radius: 50px;
-            padding: 15px 30px; box-shadow: 0 4px 12px rgba(32,33,36,.15);
-            display: flex; align-items: center;
-            transition: box-shadow 0.3s;
+        /* AI 處理動畫 */
+        .ai-processing {
+            display: none;
         }
-        .search-box-wrapper:hover, .search-box-wrapper:focus-within {
-            box-shadow: 0 6px 16px rgba(32,33,36,.25);
-        }
-        .search-input { border: none; outline: none; width: 100%; font-size: 1.2rem; margin-left: 15px; color: #555; }
-        .btn-search { background: none; border: none; color: #4285f4; font-weight: bold; font-size: 1.1rem; }
-        
-        /* 結果卡片 */
-        .result-card {
-            background: #fff; border: 1px solid #e0e0e0; border-radius: 8px; padding: 20px;
-            margin-bottom: 15px; cursor: pointer; transition: all 0.2s;
-        }
-        .result-card:hover { transform: translateY(-3px); box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
-        .result-title { color: #1a0dab; font-size: 1.25rem; font-weight: 600; margin-bottom: 5px; }
-        .tag-year { background: #e8f0fe; color: #1967d2; padding: 2px 8px; border-radius: 4px; font-weight: bold; font-size: 0.85rem; }
-
-        /* 預覽與附件樣式 */
-        .preview-modal-body {
-            background: #525659; padding: 30px; height: 80vh; overflow-y: auto;
-            display: flex; flex-direction: column; align-items: center; user-select: none;
-        }
-        .paper-sheet {
-            background: white; width: 100%; max-width: 800px; min-height: 1000px;
-            padding: 50px; margin-bottom: 20px; box-shadow: 0 0 15px rgba(0,0,0,0.5); position: relative;
-        }
-        .attachment-item { border: 1px solid #eee; padding: 10px; margin-bottom: 15px; text-align: center; }
-        .attachment-img { max-width: 100%; height: auto; border: 1px solid #ddd; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
-        .attachment-pdf-frame { width: 100%; height: 500px; border: 1px solid #ddd; }
-        .watermark {
-            position: absolute; top: 40%; left: 50%; transform: translate(-50%, -50%) rotate(-45deg);
-            font-size: 5rem; color: rgba(255,0,0,0.08); border: 5px solid rgba(255,0,0,0.08);
-            padding: 20px; pointer-events: none; z-index: 10; white-space: nowrap;
+        .progress {
+            height: 10px;
+            border-radius: 5px;
         }
     </style>
 </head>
 <body>
 
-    <nav class="navbar navbar-expand-lg navbar-dark px-4">
-        <div class="container-fluid d-flex justify-content-between align-items-center p-0">
-            <a class="navbar-brand d-flex align-items-center" href="#">
-                <i class="fas fa-shield-alt me-2"></i>
-                OHSMS 職安管理系統
-            </a>
-
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark py-3 mb-4">
+        <div class="container-fluid px-4">
+            <a class="navbar-brand" href="dashboard.html"><i class="fas fa-shield-alt me-2"></i>OHSMS</a>
             <div class="d-flex align-items-center">
-                <span class="user-greeting me-4">Hi ! 系統管理員</span>
-                <a href="https://weshuangimpact.github.io/ohsms-app/dashboard.html" class="btn-back-dashboard">
-                    <i class="fas fa-arrow-left me-2"></i>返回儀表板
-                </a>
+                <span class="text-light me-3" id="user-display">
+                    <i class="fas fa-spinner fa-spin"></i> 載入中...
+                </span>
+                <a href="dashboard.html" class="btn btn-outline-light btn-sm"><i class="fas fa-arrow-left me-1"></i> 返回儀表板</a>
             </div>
         </div>
     </nav>
 
-    <div class="container main-content">
+    <div class="container pb-5">
         
-        <div class="mb-4">
-            <h2 class="fw-bold text-dark mb-1">評鑑支援 AI 智慧助理</h2>
-            <p class="text-secondary">Evaluation 階段：智慧稽核與佐證調閱</p>
-        </div>
-
-        <div class="instruction-box">
-            <div class="instruction-title">
-                <i class="fas fa-clipboard-check me-2"></i>PDCA 設計理念：Evaluation (評鑑) —— 智慧稽核
-            </div>
-            <p class="mb-0 text-dark" style="line-height: 1.6;">
-                此模組專注於提供高效的「資料搜索」功能：<br>
-                <strong>NLP 智慧搜索：</strong>透過自然語言快速撈取佐證資料，協助使用者即時調閱相關紀錄。
-            </p>
-        </div>
-
-        <div class="text-center mt-5">
-            <div class="robot-wrapper">
-                <i class="fas fa-robot"></i>
-            </div>
-            <h3 class="fw-bold mb-3">評鑑資料查詢助手</h3>
-            <p class="text-muted mb-4">請輸入關鍵字，或從下方列表中點選顧問以調閱其服務履歷。</p>
-
-            <div class="search-box-wrapper mx-auto" style="max-width: 700px;">
-                <i class="fas fa-search text-muted fs-5"></i>
-                <input type="text" id="searchInput" class="search-input" placeholder="輸入公司、年份或顧問姓名 (例如：2025 鐵高)..." autofocus>
-                <button class="btn-search" onclick="executeSearch()">搜尋</button>
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <div>
+                <h2 class="fw-bold text-dark"><i class="fas fa-robot me-2 text-indigo-500" style="color: #6610f2;"></i>文件管理 AI 智慧助理</h2>
+                <p class="text-muted mb-0">AI Support 階段：資料攝取與 OCR 預判</p>
             </div>
         </div>
 
-        <div class="row justify-content-center mt-4">
-            <div class="col-lg-10">
-                <div id="loading" class="text-center my-5" style="display:none;">
-                    <div class="spinner-border text-primary"></div><br><span class="text-muted">AI 正在檢索資料庫...</span>
-                </div>
-                <div id="resultsArea"></div>
-            </div>
+        <div class="demo-info-card">
+            <i class="fas fa-microchip me-2"></i>
+            <strong>PDCA 設計理念：AI Support (智能輔助) —— 資料攝取中心</strong><br>
+            此為系統的「資料入口」。AI 僅作為「分類助手」而非決策者，負責對掃描文件進行 OCR 辨識與屬性預判。所有資料皆需傳送至「管理者總覽 (Check/Act)」進行人工確認（Human-in-the-Loop）。
         </div>
-    </div>
 
-    <div class="modal fade" id="previewModal" tabindex="-1" data-bs-backdrop="static">
-        <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
-            <div class="modal-content">
-                <div class="modal-header bg-dark text-white">
-                    <h5 class="modal-title"><i class="fas fa-file-contract me-2"></i>完整歷程與稽核憑證</h5>
-                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
-                </div>
-                <div class="modal-body p-0" oncontextmenu="return false;">
-                    <div class="preview-modal-body" id="previewContainer">
+        <div class="row justify-content-center">
+            <div class="col-lg-8">
+                
+                <div class="card border-0 shadow-lg">
+                    <div class="card-body p-5 text-center">
+                        
+                        <div class="mb-5">
+                            <div class="d-inline-flex align-items-center justify-content-center bg-indigo-50 rounded-circle mb-3" style="width: 80px; height: 80px; background-color: #eef2ff;">
+                                <i class="fas fa-cloud-arrow-up fa-3x" style="color: #6366f1;"></i>
+                            </div>
+                            <h3 class="fw-bold text-dark">資料攝取中心</h3>
+                            <p class="text-muted">請將掃描後的 PDF 文件拖曳至此，系統將自動進行 OCR 辨識與分類。</p>
+                        </div>
+
+                        <div id="upload-step-1" class="upload-zone" onclick="startSimulation()">
+                            <i class="fas fa-file-import fa-3x mb-3 text-secondary"></i>
+                            <h5 class="fw-bold text-primary mb-2">點擊此處模擬上傳文件</h5>
+                            <small class="text-muted d-block">支援格式：PDF, JPG, PNG (Max 20MB)</small>
+                            <small class="text-muted mt-2 d-block fst-italic">（點擊後將展示 AI 辨識流程）</small>
+                        </div>
+
+                        <div id="upload-step-2" class="ai-processing text-start py-4 px-3">
+                            <h6 class="fw-bold text-dark mb-3"><i class="fas fa-spinner fa-spin me-2"></i>AI 智慧助理處理中...</h6>
+                            
+                            <div class="mb-3">
+                                <div class="d-flex justify-content-between small mb-1">
+                                    <span>文件上傳</span>
+                                    <span id="prog-text-1">0%</span>
+                                </div>
+                                <div class="progress">
+                                    <div id="prog-bar-1" class="progress-bar bg-primary" style="width: 0%"></div>
+                                </div>
+                            </div>
+
+                            <div class="mb-3">
+                                <div class="d-flex justify-content-between small mb-1">
+                                    <span>OCR 文字辨識與擷取</span>
+                                    <span id="prog-text-2">等待中...</span>
+                                </div>
+                                <div class="progress">
+                                    <div id="prog-bar-2" class="progress-bar bg-info" style="width: 0%"></div>
+                                </div>
+                            </div>
+
+                            <div>
+                                <div class="d-flex justify-content-between small mb-1">
+                                    <span>法規條款自動分類</span>
+                                    <span id="prog-text-3">等待中...</span>
+                                </div>
+                                <div class="progress">
+                                    <div id="prog-bar-3" class="progress-bar bg-warning" style="width: 0%"></div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div id="upload-step-3" class="ai-processing mt-4">
+                            <div class="alert alert-success border-success d-flex align-items-center" role="alert">
+                                <i class="fas fa-check-circle fa-2x me-3 text-success"></i>
+                                <div class="text-start">
+                                    <h6 class="fw-bold mb-1">上傳成功！AI 已完成初步分析</h6>
+                                    <small>資料已傳送至「管理者總覽」等待人工確認。</small>
+                                </div>
+                            </div>
+
+                            <div class="card bg-light border-0 text-start mt-3">
+                                <div class="card-header bg-transparent border-0 fw-bold text-secondary">
+                                    <i class="fas fa-robot me-2"></i>AI 擷取結果預覽
+                                </div>
+                                <div class="card-body pt-0">
+                                    <div class="row g-2">
+                                        <div class="col-md-6">
+                                            <small class="text-muted d-block">偵測檔名</small>
+                                            <strong>2024_年度適性評估報告.pdf</strong>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <small class="text-muted d-block">預判事業單位</small>
+                                            <strong>ABCDEF 有限公司</strong>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <small class="text-muted d-block">預判法規類別</small>
+                                            <span class="badge bg-primary">9-2 適性評估</span>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <small class="text-muted d-block">辨識信心度</small>
+                                            <span class="text-success fw-bold">98.5%</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="mt-4 d-flex justify-content-center gap-2">
+                                <button class="btn btn-outline-secondary" onclick="resetSimulation()">繼續上傳下一份</button>
+                                <button class="btn btn-primary fw-bold" onclick="window.location.href='index2.html'">前往審查歸檔 <i class="fas fa-arrow-right ms-1"></i></button>
+                            </div>
+                        </div>
+
                     </div>
                 </div>
-                <div class="modal-footer bg-light">
-                    <small class="text-danger fw-bold me-auto"><i class="fas fa-lock me-1"></i>系統浮水印保護中，禁止下載與截圖</small>
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">關閉</button>
-                </div>
+
             </div>
         </div>
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
     <script>
+        // ==========================================
+        // 設定 Supabase
+        // ==========================================
         const SUPABASE_URL = 'https://yhehfucgemxnfrdvpdhw.supabase.co';
-        const SUPABASE_KEY = 'sb_publishable_52emtU-9l-SDxcJTWVTPTA_Yu6qEogh'; 
+        const SUPABASE_KEY = 'sb_publishable_52emtU-9l-SDxcJTWVTPTA_Yu6qEogh';
         const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-        document.getElementById('searchInput').addEventListener('keyup', (e) => { if(e.key === 'Enter') executeSearch(); });
-
-        async function executeSearch() {
-            const query = document.getElementById('searchInput').value.trim();
-            const container = document.getElementById('resultsArea');
-            const loader = document.getElementById('loading');
+        // ==========================================
+        // 核心邏輯：驗證登入並抓取顧問名稱
+        // ==========================================
+        document.addEventListener('DOMContentLoaded', async function() {
+            const userDisplay = document.getElementById('user-display');
             
-            if(!query) return;
-            
-            container.innerHTML = '';
-            loader.style.display = 'block';
-
             try {
-                const { data, error } = await supabaseClient
-                    .from('service_records')
-                    .select(`*, workplaces(department_name, companies(name, tax_id))`)
-                    .order('visit_date', { ascending: false })
-                    .limit(50);
+                // 1. 取得登入者資訊
+                const { data: { user } } = await supabaseClient.auth.getUser();
 
-                if(error) throw error;
-
-                const filtered = data.filter(r => {
-                    const str = `${r.workplaces?.companies?.name} ${r.service_year} ${r.raw_data}`.toLowerCase();
-                    return str.includes(query.toLowerCase());
-                });
-
-                loader.style.display = 'none';
-                
-                if(filtered.length === 0) {
-                    container.innerHTML = `<div class="text-center text-muted mt-4">查無資料</div>`;
+                if (!user) {
+                    // 若未登入，導回登入頁 (開發測試可先註解掉這行)
+                    // window.location.href = 'login.html'; 
+                    document.body.style.display = 'block';
+                    userDisplay.innerHTML = '<small class="text-warning">訪客模式 (未登入)</small>';
                     return;
                 }
 
-                container.innerHTML = filtered.map(rec => {
-                    const company = rec.workplaces?.companies?.name || '未知公司';
-                    const date = rec.visit_date || 'N/A';
-                    let consultant = '未知顧問';
-                    try { consultant = JSON.parse(rec.raw_data).consultant_name; } catch(e){}
+                // 2. 登入成功，顯示頁面
+                document.body.style.display = 'block';
 
-                    const dataStr = encodeURIComponent(JSON.stringify(rec));
-                    const compStr = encodeURIComponent(company);
+                // 3. 查詢 medical_staff 表格
+                // 優先嘗試用 user_id 查詢 (正規作法)
+                let { data: staffData, error } = await supabaseClient
+                    .from('medical_staff')
+                    .select('name, role')
+                    .eq('user_id', user.id)
+                    .maybeSingle(); // 使用 maybeSingle 避免找不到時報錯
 
-                    return `
-                        <div class="result-card" onclick="openFullPreview('${rec.id}', '${compStr}', '${dataStr}')">
-                            <div class="d-flex justify-content-between">
-                                <div>
-                                    <span class="tag-year me-2">${rec.service_year}</span>
-                                    <span class="text-muted small">${date}</span>
-                                    <h4 class="result-title mt-1">${company}</h4>
-                                </div>
-                                <div class="text-end">
-                                    <span class="badge bg-secondary">${consultant}</span>
-                                </div>
-                            </div>
-                            <p class="text-muted mt-2 mb-0 text-truncate">${rec.hazard_desc || '無危害描述'}</p>
-                            <div class="mt-3 pt-2 border-top text-primary small">
-                                <i class="fas fa-paperclip me-1"></i> 包含執行紀錄表與相關附件
-                            </div>
-                        </div>
-                    `;
-                }).join('');
-
-            } catch (err) {
-                loader.style.display = 'none';
-                if(err.message) console.log(err.message);
-                container.innerHTML = `<div class="alert alert-warning">資料庫連線演示模式 (尚未連接真實 DB)</div>`;
-            }
-        }
-
-        async function openFullPreview(recordId, compNameEncoded, dataEncoded) {
-            const companyName = decodeURIComponent(compNameEncoded);
-            const recordData = JSON.parse(decodeURIComponent(dataEncoded));
-            const container = document.getElementById('previewContainer');
-            
-            container.innerHTML = `<div class="text-white text-center mt-5"><div class="spinner-border"></div><p>正在組合完整卷宗...</p></div>`;
-            new bootstrap.Modal(document.getElementById('previewModal')).show();
-
-            try {
-                const storagePath = `service_records/${recordData.service_year}/${recordId}/`;
-                const { data: fileList } = await supabaseClient.storage.from('documents').list(storagePath);
-
-                let attachmentsHtml = '';
-                
-                if (fileList && fileList.length > 0) {
-                    const filesWithUrl = await Promise.all(fileList.map(async (f) => {
-                        const { data } = await supabaseClient.storage.from('documents').createSignedUrl(`${storagePath}${f.name}`, 600);
-                        return { name: f.name, url: data?.signedUrl };
-                    }));
-
-                    attachmentsHtml = filesWithUrl.map(f => {
-                        if(!f.url) return '';
-                        const isImg = f.name.match(/\.(jpeg|jpg|png)$/i);
-                        const isPdf = f.name.match(/\.pdf$/i);
-                        let content = '';
-                        if (isImg) content = `<img src="${f.url}" class="attachment-img" alt="${f.name}">`;
-                        else if (isPdf) content = `<iframe src="${f.url}#toolbar=0" class="attachment-pdf-frame"></iframe>`;
-                        else content = `<div class="p-4 bg-light border">附件格式歸檔 (${f.name})</div>`;
-
-                        return `<div class="attachment-item"><div class="badge bg-dark mb-2">${f.name}</div>${content}</div>`;
-                    }).join('');
-                } else {
-                    attachmentsHtml = `<div class="alert alert-warning text-center">本案件尚無上傳佐證附件。</div>`;
+                // 4. (備案) 如果用 ID 找不到，嘗試用 Email 反查
+                // 原因：匯入的 CSV 資料中，user_id 欄位可能是空的
+                if (!staffData && user.email) {
+                    console.log("以 ID 查無資料，嘗試以 Email 查詢...");
+                    const { data: staffByEmail } = await supabaseClient
+                        .from('medical_staff')
+                        .select('name, role')
+                        .eq('email', user.email)
+                        .maybeSingle();
+                    staffData = staffByEmail;
                 }
 
-                container.innerHTML = `
-                    <div class="paper-sheet">
-                        <div class="watermark">${companyName} 評鑑專用</div>
-                        <h2 class="text-center fw-bold mb-4 border-bottom pb-3">勞工健康服務執行紀錄表</h2>
-                        <div class="row mb-3">
-                            <div class="col-6"><strong>事業單位：</strong> ${companyName}</div>
-                            <div class="col-6"><strong>訪視日期：</strong> ${recordData.visit_date}</div>
-                        </div>
-                        <div class="bg-light p-3 border rounded mb-3">
-                            <h5 class="fw-bold"><i class="fas fa-clipboard-list me-2"></i>作業描述與危害</h5>
-                            <p>${recordData.process_desc || '無'}</p>
-                            <hr>
-                            <p class="text-danger"><strong>危害特性：</strong> ${recordData.hazard_desc || '無'}</p>
-                        </div>
-                        <div class="mb-4">
-                            <h5 class="fw-bold"><i class="fas fa-user-md me-2"></i>執行項目確認</h5>
-                            <ul class="list-group list-group-flush">
-                                <li class="list-group-item"><i class="far fa-check-square text-success me-2"></i>工作環境現場訪視</li>
-                                <li class="list-group-item"><i class="far fa-check-square text-success me-2"></i>健康檢查分級管理</li>
-                            </ul>
-                        </div>
-                    </div>
-                    <div class="paper-sheet">
-                        <div class="watermark">佐證資料</div>
-                        <h4 class="fw-bold border-start border-4 border-primary ps-3 mb-4">相關附件憑證 (Evidence)</h4>
-                        ${attachmentsHtml}
-                        <div class="text-center mt-5 text-muted small border-top pt-3">--- 卷宗結束 ---</div>
-                    </div>
-                `;
-            } catch (e) {
-                container.innerHTML = `<div class="alert alert-danger">讀取失敗: ${e.message}</div>`;
+                // 5. 更新 UI
+                if (staffData) {
+                    // 成功抓到顧問資料
+                    userDisplay.innerHTML = `<small>${staffData.role || '成員'}: ${staffData.name}</small>`;
+                    // 存入 Session 供其他頁面快速使用
+                    sessionStorage.setItem('currentUserName', staffData.name);
+                    sessionStorage.setItem('currentUserRole', staffData.role);
+                } else {
+                    // 抓不到資料 (可能 medical_staff 表格裡沒有這個 Email)
+                    const shortEmail = user.email.split('@')[0];
+                    userDisplay.innerHTML = `<small>User: ${shortEmail}</small>`;
+                }
+
+            } catch (err) {
+                console.error("Auth Error:", err);
+                document.body.style.display = 'block';
+                userDisplay.innerHTML = `<small>系統離線</small>`;
             }
+        });
+
+        // ==========================================
+        // 模擬上傳與進度條動畫 (保持不變)
+        // ==========================================
+        function startSimulation() {
+            document.getElementById('upload-step-1').style.display = 'none';
+            document.getElementById('upload-step-2').style.display = 'block';
+
+            simulateProgress('prog-bar-1', 'prog-text-1', 1000, () => {
+                simulateProgress('prog-bar-2', 'prog-text-2', 1500, () => {
+                    simulateProgress('prog-bar-3', 'prog-text-3', 800, () => {
+                        setTimeout(() => {
+                            document.getElementById('upload-step-2').style.display = 'none';
+                            document.getElementById('upload-step-3').style.display = 'block';
+                        }, 500);
+                    });
+                });
+            });
+        }
+
+        function simulateProgress(barId, textId, duration, callback) {
+            const bar = document.getElementById(barId);
+            const text = document.getElementById(textId);
+            let width = 0;
+            const interval = 20; 
+            const step = 100 / (duration / interval);
+
+            const timer = setInterval(() => {
+                width += step;
+                if (width >= 100) {
+                    width = 100;
+                    clearInterval(timer);
+                    bar.style.width = '100%';
+                    text.innerText = '完成';
+                    text.classList.add('text-success', 'fw-bold');
+                    if (callback) callback();
+                } else {
+                    bar.style.width = width + '%';
+                    text.innerText = Math.round(width) + '%';
+                }
+            }, interval);
+        }
+
+        function resetSimulation() {
+            document.getElementById('upload-step-3').style.display = 'none';
+            document.getElementById('upload-step-1').style.display = 'block';
+            ['1', '2', '3'].forEach(id => {
+                const bar = document.getElementById(`prog-bar-${id}`);
+                const text = document.getElementById(`prog-text-${id}`);
+                if(bar) bar.style.width = '0%';
+                if(text) {
+                    text.innerText = id === '1' ? '0%' : '等待中...';
+                    text.classList.remove('text-success', 'fw-bold');
+                }
+            });
         }
     </script>
 </body>
