@@ -165,7 +165,7 @@
                 </div>
             </div>
 
-            <div class="col-xl-3 col-md-6" id="card-index4">
+            <div class="col-xl-3 col-md-6 d-none" id="card-index4">
                 <div class="card dashboard-card bg-white card-ai" onclick="window.location.href='index4.html'">
                     <div class="card-body p-4">
                         <div class="d-flex justify-content-between">
@@ -185,7 +185,7 @@
                 </div>
             </div>
 
-            <div class="col-xl-3 col-md-6" id="card-index5">
+            <div class="col-xl-3 col-md-6 d-none" id="card-index5">
                 <div class="card dashboard-card bg-white card-std" onclick="window.location.href='index5.html'">
                     <div class="card-body p-4">
                         <div class="d-flex justify-content-between">
@@ -245,7 +245,7 @@
                 </div>
             </div>
 
-            <div class="col-xl-3 col-md-6" id="card-index8">
+            <div class="col-xl-3 col-md-6 d-none" id="card-index8">
                 <div class="card dashboard-card bg-white card-test" onclick="window.location.href='index8.html'">
                     <div class="card-body p-4">
                         <div class="d-flex justify-content-between">
@@ -304,7 +304,8 @@
                 // Admin: 全開
                 if(cards.maint) cards.maint.style.display = 'block';
                 if(cards.master) cards.master.style.display = 'block';
-                if(cards.agent) cards.agent.style.display = 'block'; // 只有 Admin 看得到 Agent
+                // 即使 JS 設定 block，HTML 中的 d-none (!important) 會強制隱藏 card-index8
+                if(cards.agent) cards.agent.style.display = 'block'; 
             }
             else if (userRole === 'general') {
                 // 文管: 隱藏管理與評鑑，但可建立基本資料
