@@ -3,495 +3,429 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>評鑑支援 AI 智慧助理 | OHSMS</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
-    
+    <title>服務執行歷程查詢助手 V1.01</title>
     <style>
-        :root { --primary-bg: #f8f9fa; --search-focus: #fff; }
-        body {
-            background-color: var(--primary-bg);
-            font-family: 'Segoe UI', 'Microsoft JhengHei', sans-serif;
-            color: #202124;
+        :root {
+            --primary-color: #2c3e50;
+            --accent-color: #3498db;
+            --bg-color: #f8f9fa;
+            --text-color: #333;
         }
 
-        /* 導覽列微調 */
-        .navbar { background-color: #202124 !important; }
-        
-        /* 搜尋區域樣式 */
-        .search-container {
-            max-width: 800px;
-            margin: 3rem auto 2rem;
-            text-align: center;
-            transition: all 0.3s ease;
+        body {
+            font-family: "Microsoft JhengHei", Arial, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            margin: 0;
+            padding: 20px;
         }
-        
-        /* 搜尋框仿 Google 設計 */
-        .search-box-wrapper {
-            position: relative;
-            background: #fff;
-            border: 1px solid #dfe1e5;
-            border-radius: 24px;
-            padding: 10px 20px;
-            box-shadow: 0 1px 6px rgba(32,33,36,.28);
+
+        /* 標題區塊 */
+        header {
+            margin-bottom: 30px;
+            border-bottom: 1px solid #ddd;
+            padding-bottom: 10px;
+        }
+
+        h1 {
+            color: var(--primary-color);
             display: flex;
+            align-items: baseline;
+            gap: 10px;
+            margin: 0;
+        }
+
+        .version-tag {
+            font-size: 0.5em;
+            color: gray;
+            font-weight: normal;
+            background: #e9ecef;
+            padding: 2px 6px;
+            border-radius: 4px;
+        }
+
+        /* 搜尋區塊 */
+        .search-panel {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+            display: flex;
+            gap: 15px;
+            align-items: center;
+            flex-wrap: wrap;
+            margin-bottom: 20px;
+        }
+
+        .form-group {
+            display: flex;
+            flex-direction: column;
+        }
+
+        label {
+            font-size: 0.9em;
+            margin-bottom: 5px;
+            color: #666;
+        }
+
+        input, select {
+            padding: 8px 12px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            font-size: 1em;
+            min-width: 150px;
+        }
+
+        button#search-btn {
+            background-color: var(--accent-color);
+            color: white;
+            border: none;
+            padding: 10px 25px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 1em;
+            margin-top: auto; /* 對齊底部 */
+            transition: background 0.2s;
+        }
+
+        button#search-btn:hover {
+            background-color: #2980b9;
+        }
+
+        /* 結果顯示區塊 */
+        #result-area {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+            min-height: 200px;
+        }
+
+        /* 初始狀態提示 */
+        .empty-state {
+            text-align: center;
+            color: #888;
+            padding: 50px 0;
+        }
+        .empty-state i {
+            font-size: 3em;
+            margin-bottom: 15px;
+            display: block;
+            opacity: 0.5;
+        }
+
+        /* 表格樣式 */
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 10px;
+        }
+
+        th, td {
+            padding: 12px 15px;
+            text-align: left;
+            border-bottom: 1px solid #eee;
+        }
+
+        th {
+            background-color: #f1f3f5;
+            color: var(--primary-color);
+            font-weight: bold;
+        }
+
+        tr:hover {
+            background-color: #f8f9fa;
+        }
+
+        .status-badge {
+            padding: 4px 8px;
+            border-radius: 12px;
+            font-size: 0.85em;
+        }
+        .status-done { background-color: #d4edda; color: #155724; }
+        .status-pending { background-color: #fff3cd; color: #856404; }
+
+        .btn-preview {
+            background-color: #6c757d;
+            color: white;
+            border: none;
+            padding: 6px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.9em;
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+        }
+        .btn-preview:hover {
+            background-color: #5a6268;
+        }
+
+        /* 跳窗 (Modal) 樣式 */
+        .modal-overlay {
+            display: none; /* 預設隱藏 */
+            position: fixed;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            background: rgba(0,0,0,0.7);
+            z-index: 1000;
+            justify-content: center;
             align-items: center;
         }
-        .search-box-wrapper:hover, .search-box-wrapper:focus-within {
-            background-color: #fff;
-            box-shadow: 0 1px 6px rgba(32,33,36,.28), 0 2px 10px rgba(0,0,0,0.1);
-            border-color: rgba(223,225,229,0);
-        }
-        .search-input {
-            border: none;
-            outline: none;
-            width: 100%;
-            font-size: 1.1rem;
-            margin-left: 10px;
-            background: transparent;
-        }
-        
-        /* 結果卡片樣式 */
-        .result-card {
-            background: #fff;
-            border: 1px solid #e0e0e0;
-            border-radius: 8px;
-            padding: 20px;
-            margin-bottom: 15px;
-            transition: transform 0.2s, box-shadow 0.2s;
-            cursor: pointer;
-            position: relative;
-        }
-        .result-card:hover {
-            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-            border-color: #ced4da;
-            transform: translateY(-2px);
-        }
-        .result-meta { font-size: 0.85rem; color: #5f6368; }
-        .result-title { color: #1a0dab; font-size: 1.25rem; font-weight: 600; text-decoration: none; margin-bottom: 5px; display: block; }
-        .result-snippet { color: #4d5156; font-size: 0.95rem; line-height: 1.5; margin-top: 8px; }
-        
-        /* 標籤樣式 */
-        .tag-year { background-color: #e8f0fe; color: #1967d2; font-weight: bold; font-size: 0.8rem; padding: 2px 8px; border-radius: 4px; }
-        .tag-consultant { background-color: #fce8e6; color: #c5221f; font-size: 0.8rem; padding: 2px 8px; border-radius: 4px; margin-left: 5px; }
 
-        /* 檔案列表 Modal */
-        .file-list-item {
+        .modal-content {
+            background: white;
+            width: 80%;
+            max-width: 800px;
+            height: 80vh;
+            border-radius: 8px;
+            position: relative;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .modal-header {
+            padding: 15px 20px;
+            border-bottom: 1px solid #eee;
             display: flex;
             justify-content: space-between;
             align-items: center;
-            padding: 12px;
-            border-bottom: 1px solid #eee;
+            background: #f1f3f5;
+            border-radius: 8px 8px 0 0;
         }
-        .file-list-item:last-child { border-bottom: none; }
-        .file-icon { color: #ea4335; font-size: 1.5rem; margin-right: 15px; }
 
-        /* 載入動畫 */
-        .loading-skeleton {
-            height: 120px;
-            background: #e0e0e0;
-            margin-bottom: 15px;
-            border-radius: 8px;
-            animation: pulse 1.5s infinite;
+        .close-btn {
+            background: none;
+            border: none;
+            font-size: 1.5em;
+            cursor: pointer;
+            color: #666;
         }
-        @keyframes pulse { 0% { opacity: 0.6; } 50% { opacity: 1; } 100% { opacity: 0.6; } }
 
-        .search-stats { font-size: 0.85rem; color: #70757a; margin-bottom: 1rem; padding-left: 5px; }
+        .modal-body {
+            flex: 1;
+            padding: 20px;
+            overflow-y: auto;
+            background: #e9ecef;
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+            position: relative;
+            
+            /* 禁止選取文字 (防複製) */
+            user-select: none;
+            -webkit-user-select: none;
+        }
+
+        /* 模擬文件預覽區 */
+        .document-viewer {
+            background: white;
+            width: 100%;
+            max-width: 700px;
+            min-height: 800px;
+            padding: 40px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.2);
+            position: relative;
+        }
+
+        /* 浮水印 */
+        .watermark {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%) rotate(-45deg);
+            font-size: 3em;
+            color: rgba(255, 0, 0, 0.15);
+            font-weight: bold;
+            pointer-events: none; /* 讓點擊穿透 */
+            white-space: nowrap;
+            z-index: 10;
+        }
+
+        /* 隱藏下載相關提示 (模擬) */
+        @media print {
+            body { display: none; }
+        }
+
     </style>
 </head>
 <body>
 
-    <nav class="navbar navbar-expand-lg navbar-dark py-2">
-        <div class="container-fluid px-4">
-            <a class="navbar-brand" href="dashboard.html"><i class="fas fa-shield-alt me-2"></i>OHSMS</a>
-            <div class="d-flex align-items-center">
-                <span class="text-light me-3 small" id="user-display"></span>
-                <a href="dashboard.html" class="btn btn-outline-light btn-sm rounded-pill px-3">
-                    <i class="fas fa-th me-1"></i> 應用程式
-                </a>
-            </div>
+    <header>
+        <h1>
+            🤖 服務執行歷程查詢助手 
+            <span class="version-tag">V1.01</span>
+        </h1>
+    </header>
+
+    <div class="search-panel">
+        <div class="form-group">
+            <label>📅 年份/月份</label>
+            <input type="month" id="search-date" value="2026-06">
         </div>
-    </nav>
+        <div class="form-group">
+            <label>🏢 公司名稱 / 統編</label>
+            <input type="text" id="search-company" placeholder="例如：台灣鐵高">
+        </div>
+        <div class="form-group">
+            <label>📋 紀錄類型</label>
+            <select id="search-type">
+                <option value="all">全部類型</option>
+                <option value="site">臨場服務</option>
+                <option value="doc">文件審查</option>
+                <option value="meet">會議紀錄</option>
+            </select>
+        </div>
+        <button id="search-btn" onclick="performSearch()">🔍 搜尋</button>
+    </div>
 
-    <div class="container pb-5">
-        
-        <div class="search-container">
-            <h2 class="mb-4 fw-bold text-secondary"><i class="fab fa-google text-primary me-2"></i>歷程搜尋</h2>
-            <div class="search-box-wrapper">
-                <i class="fas fa-search text-muted"></i>
-                <input type="text" id="searchInput" class="search-input" placeholder="搜尋公司名稱、年份、顧問姓名 (例如：2025 鐵高 鄭雅萍)..." autofocus>
-                <button class="btn btn-link text-decoration-none text-muted" onclick="clearSearch()" style="display:none;" id="clearBtn">
-                    <i class="fas fa-times"></i>
-                </button>
-            </div>
+    <div id="result-area">
+        <div id="initial-message" class="empty-state">
+            <i>ℹ️</i>
+            <h3>等待輸入...</h3>
+            <p>請輸入篩選條件並點擊「搜尋」按鈕，<br>AI 助手將為您調閱相關履歷。</p>
         </div>
 
-        <div class="row justify-content-center">
-            <div class="col-lg-8">
-                <div id="searchStats" class="search-stats"></div>
-                
-                <div id="resultsArea">
-                    <div class="text-center text-muted mt-5" id="initialState">
-                        <i class="fas fa-history fa-3x mb-3 text-light-gray"></i>
-                        <p>正在載入最近的服務案件...</p>
-                    </div>
-                </div>
-
-                <div id="loadingSkeleton" style="display: none;">
-                    <div class="loading-skeleton"></div>
-                    <div class="loading-skeleton"></div>
-                    <div class="loading-skeleton"></div>
-                </div>
-            </div>
+        <div id="result-table-container" style="display: none;">
+            <table id="data-table">
+                <thead>
+                    <tr>
+                        <th>訪視日期 ▼</th>
+                        <th>企業名稱</th>
+                        <th>紀錄類型</th>
+                        <th>執行人員</th>
+                        <th>狀態</th>
+                        <th>操作功能</th>
+                    </tr>
+                </thead>
+                <tbody id="table-body">
+                    </tbody>
+            </table>
         </div>
     </div>
 
-    <div class="modal fade" id="filesModal" tabindex="-1">
-        <div class="modal-dialog modal-lg modal-dialog-centered">
-            <div class="modal-content">
-                <div class="modal-header border-0 pb-0">
-                    <h5 class="modal-title fw-bold" id="fileModalTitle">相關附件</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                </div>
-                <div class="modal-body">
-                    <div class="alert alert-light border-start border-4 border-primary">
-                        <small class="text-muted d-block">檔案存放路徑：</small>
-                        <code class="text-primary" id="storagePathDisplay">documents/service_records/...</code>
-                    </div>
-                    <div id="fileListContainer" class="mt-3">
-                        </div>
-                    <div id="noFilesMsg" class="text-center py-4 text-muted" style="display:none;">
-                        <i class="fas fa-folder-open fa-2x mb-2"></i>
-                        <p>查無相關上傳紀錄</p>
-                    </div>
-                </div>
-                <div class="modal-footer border-0">
-                    <button type="button" class="btn btn-light rounded-pill px-4" data-bs-dismiss="modal">關閉</button>
-                </div>
+    <div id="preview-modal" class="modal-overlay" onclick="closeModal(event)">
+        <div class="modal-content" onclick="event.stopPropagation()"> <div class="modal-header">
+                <h3 style="margin:0">📄 文件預覽模式</h3>
+                <button class="close-btn" onclick="closeModalDirect()">×</button>
             </div>
-        </div>
-    </div>
-
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    
-    <script>
-        // 設定 Supabase
-        const SUPABASE_URL = 'https://yhehfucgemxnfrdvpdhw.supabase.co';
-        const SUPABASE_KEY = 'sb_publishable_52emtU-9l-SDxcJTWVTPTA_Yu6qEogh'; // 請確認這是正確的 Key
-        const { createClient } = supabase;
-        const supabaseClient = createClient(SUPABASE_URL, SUPABASE_KEY);
-
-        // 全域變數存儲資料以供前端快速過濾
-        let allRecords = [];
-        let isDataLoaded = false;
-
-        document.addEventListener('DOMContentLoaded', async function() {
-            const userName = sessionStorage.getItem('currentUserName') || 'Guest';
-            document.getElementById('user-display').innerText = userName;
-
-            // 1. 預先載入資料 (最近 100 筆)
-            await fetchInitialData();
-
-            // 2. 綁定搜尋事件
-            const searchInput = document.getElementById('searchInput');
-            searchInput.addEventListener('input', debounce(function(e) {
-                handleSearch(e.target.value);
-            }, 300));
-
-            searchInput.addEventListener('keyup', function(e) {
-                if (e.key === 'Enter') handleSearch(e.target.value);
-            });
-        });
-
-        // 防抖動函數
-        function debounce(func, wait) {
-            let timeout;
-            return function(...args) {
-                clearTimeout(timeout);
-                timeout = setTimeout(() => func.apply(this, args), wait);
-            };
-        }
-
-        function clearSearch() {
-            document.getElementById('searchInput').value = '';
-            handleSearch('');
-            document.getElementById('clearBtn').style.display = 'none';
-        }
-
-        // 核心：撈取資料 (Join Table)
-        async function fetchInitialData() {
-            toggleLoading(true);
-            try {
-                // 關聯查詢：Service Records -> Workplaces -> Companies
-                // 語法：選取 service_records 所有欄位，並展開 workplaces (及其中的 companies)
-                const { data, error } = await supabaseClient
-                    .from('service_records')
-                    .select(`
-                        id,
-                        service_year,
-                        visit_date,
-                        process_desc,
-                        hazard_desc,
-                        raw_data,
-                        created_at,
-                        workplace_id,
-                        workplaces (
-                            id,
-                            department_name,
-                            companies (
-                                id,
-                                name,
-                                tax_id
-                            )
-                        )
-                    `)
-                    .order('visit_date', { ascending: false }) // 按訪視日期排序
-                    .order('created_at', { ascending: false }) 
-                    .limit(200); // 限制筆數以優化效能
-
-                if (error) throw error;
-                
-                allRecords = data || [];
-                isDataLoaded = true;
-                
-                // 初始顯示全部
-                renderResults(allRecords);
-                
-            } catch (err) {
-                console.error('Error fetching data:', err);
-                document.getElementById('resultsArea').innerHTML = `
-                    <div class="alert alert-danger">資料載入失敗，請檢查網路連線或權限。<br><small>${err.message}</small></div>
-                `;
-            } finally {
-                toggleLoading(false);
-            }
-        }
-
-        // 核心：搜尋邏輯 (前端過濾)
-        function handleSearch(query) {
-            const rawQuery = query.trim().toLowerCase();
-            const clearBtn = document.getElementById('clearBtn');
-            clearBtn.style.display = rawQuery ? 'block' : 'none';
-
-            if (!isDataLoaded) return;
-
-            if (!rawQuery) {
-                renderResults(allRecords);
-                return;
-            }
-
-            // 支援多關鍵字 (例如 "2025 鐵高")
-            const keywords = rawQuery.split(/\s+/);
-
-            const filtered = allRecords.filter(record => {
-                // 準備搜尋字串
-                const companyName = record.workplaces?.companies?.name || '';
-                const taxId = record.workplaces?.companies?.tax_id || '';
-                const deptName = record.workplaces?.department_name || '';
-                const year = (record.service_year || '').toString();
-                
-                // 解析 JSON 中的顧問姓名
-                let consultant = '';
-                try {
-                    const raw = typeof record.raw_data === 'string' ? JSON.parse(record.raw_data) : record.raw_data;
-                    consultant = raw?.consultant_name || '';
-                } catch(e) {}
-
-                // 組合所有可搜尋文字
-                const fullText = `${companyName} ${taxId} ${deptName} ${year} ${consultant}`.toLowerCase();
-
-                // 檢查是否所有關鍵字都存在
-                return keywords.every(k => fullText.includes(k));
-            });
-
-            renderResults(filtered, rawQuery);
-        }
-
-        // 渲染畫面
-        function renderResults(records, highlightTerm = '') {
-            const container = document.getElementById('resultsArea');
-            const stats = document.getElementById('searchStats');
             
-            if (records.length === 0) {
-                container.innerHTML = `
-                    <div class="text-center mt-5">
-                        <img src="https://cdn-icons-png.flaticon.com/512/6134/6134065.png" width="64" class="mb-3 opacity-50">
-                        <p class="text-muted">找不到符合「${highlightTerm}」的搜尋結果</p>
-                    </div>`;
-                stats.innerText = '';
-                return;
-            }
-
-            stats.innerHTML = `約有 ${records.length} 項結果 <span class="ms-2 badge bg-light text-dark border">搜尋耗時 ${(Math.random() * 0.5).toFixed(2)} 秒</span>`;
-
-            let html = '';
-            records.forEach(rec => {
-                const company = rec.workplaces?.companies?.name || '未知公司';
-                const dept = rec.workplaces?.department_name || '';
-                const date = rec.visit_date || rec.created_at?.split('T')[0] || '無日期';
-                
-                // 解析顧問
-                let consultantName = '未指定';
-                try {
-                    const raw = typeof rec.raw_data === 'string' ? JSON.parse(rec.raw_data) : rec.raw_data;
-                    if (raw?.consultant_name) consultantName = raw.consultant_name;
-                } catch(e) {}
-
-                // 生成摘要 (優先顯示危害描述，若無則顯示製程)
-                let snippet = rec.hazard_desc ? `<strong>危害特性：</strong>${rec.hazard_desc}` : (rec.process_desc || '無詳細描述');
-                if (snippet.length > 80) snippet = snippet.substring(0, 80) + '...';
-
-                // 視覺標記：年份不同顏色
-                const yearBadgeColor = rec.service_year == 2026 ? 'bg-primary' : (rec.service_year == 2025 ? 'bg-success' : 'bg-secondary');
-
-                html += `
-                <div class="result-card" onclick="openFiles('${rec.id}', '${rec.workplace_id}', ${rec.service_year}, '${company}')">
-                    <div class="d-flex justify-content-between align-items-start">
-                        <div>
-                            <span class="result-meta mb-1 d-block">
-                                <span class="badge ${yearBadgeColor} me-1">${rec.service_year || 'N/A'}</span> 
-                                ${date} · ${dept}
-                            </span>
-                            <h3 class="result-title">${company}</h3>
-                        </div>
-                        <div class="text-end">
-                            <span class="tag-consultant"><i class="fas fa-user-md me-1"></i>${consultantName}</span>
-                        </div>
-                    </div>
-                    <div class="result-snippet text-muted">${snippet}</div>
-                    <div class="mt-3 border-top pt-2 d-flex justify-content-between align-items-center">
-                        <small class="text-primary"><i class="fas fa-paperclip me-1"></i>查看相關附件</small>
-                        <i class="fas fa-chevron-right text-muted small"></i>
-                    </div>
-                </div>
-                `;
-            });
-
-            container.innerHTML = html;
-        }
-
-        function toggleLoading(show) {
-            document.getElementById('loadingSkeleton').style.display = show ? 'block' : 'none';
-            document.getElementById('initialState').style.display = 'none';
-            if (show) document.getElementById('resultsArea').innerHTML = '';
-        }
-
-        // --- 檔案處理邏輯 ---
-
-        // 1. 開啟 Modal 並撈取檔案
-        async function openFiles(recordId, workplaceId, year, companyName) {
-            const modal = new bootstrap.Modal(document.getElementById('filesModal'));
-            document.getElementById('fileModalTitle').innerText = `${companyName} (${year})`;
-            document.getElementById('storagePathDisplay').innerText = `documents/service_records/${year}/`;
-            
-            const container = document.getElementById('fileListContainer');
-            container.innerHTML = '<div class="text-center py-3"><i class="fas fa-spinner fa-spin text-primary"></i> 正在搜尋檔案...</div>';
-            document.getElementById('noFilesMsg').style.display = 'none';
-            
-            modal.show();
-
-            try {
-                // 策略 A: 先查 document_staging 表 (最準確，若有透過系統上傳)
-                const { data: dbFiles, error: dbError } = await supabaseClient
-                    .from('document_staging')
-                    .select('*')
-                    .eq('service_year', year)
-                    .contains('extracted_data', { workplace_id: workplaceId }) // 檢查 JSON 欄位
-                    .order('created_at', { ascending: false });
-
-                let filesToShow = [];
-
-                if (dbFiles && dbFiles.length > 0) {
-                    filesToShow = dbFiles.map(f => ({
-                        name: f.file_name,
-                        path: f.file_path, // document_staging 存的是完整路徑
-                        date: f.created_at
-                    }));
-                } else {
-                    // 策略 B: 若 document_staging 沒資料，嘗試直接列出 Storage 該年份資料夾下的檔案
-                    // 注意：這會列出該年份所有檔案，我們需要在前端做簡單過濾 (檔名包含公司ID或名稱?)
-                    // 由於這裡無法精確匹配，我們列出該年份下最新的 20 個檔案，這是一個妥協方案
+            <div class="modal-body" oncontextmenu="return false;">
+                <div class="document-viewer">
+                    <div class="watermark">僅供線上審查 - 嚴禁下載</div>
                     
-                    const { data: storageFiles, error: storageError } = await supabaseClient
-                        .storage
-                        .from('documents')
-                        .list(`service_records/${year}`, {
-                            limit: 50,
-                            offset: 0,
-                            sortBy: { column: 'created_at', order: 'desc' },
-                        });
+                    <h2 style="text-align:center; border-bottom:2px solid #333; padding-bottom:10px;">臨場服務執行紀錄表</h2>
+                    <p><strong>企業名稱：</strong> <span id="modal-company"></span></p>
+                    <p><strong>訪視日期：</strong> <span id="modal-date"></span></p>
+                    <p><strong>執行人員：</strong> <span id="modal-staff"></span></p>
+                    <hr>
+                    <h4>訪視內容摘要：</h4>
+                    <p>1. 檢視作業環境監測報告，噪音區域已標示。</p>
+                    <p>2. 員工健康檢查分級管理（二級管理人員衛教）。</p>
+                    <p>3. 呼吸防護具佩戴指導。</p>
+                    <br><br><br>
+                    <p style="text-align:right;">(此處為文件掃描檔預覽區)</p>
+                </div>
+            </div>
+        </div>
+    </div>
 
-                    if (!storageError && storageFiles) {
-                        // 這裡只列出可能是相關的 (實務上建議上傳時要規範檔名或資料夾結構)
-                        // 這裡假設全部列出，讓使用者自己看
-                        filesToShow = storageFiles.map(f => ({
-                            name: f.name,
-                            path: `service_records/${year}/${f.name}`,
-                            date: f.created_at
-                        }));
-                    }
-                }
+    <script>
+        // 模擬後端資料庫 (包含不同日期的資料以測試排序)
+        const mockDatabase = [
+            { date: "2025-08-31", company: "台灣鐵高資訊", type: "臨場服務", staff: "尤志偉", status: "finished" },
+            { date: "2026-01-25", company: "台灣鐵高資訊", type: "臨場服務", staff: "鄭雅萍", status: "finished" },
+            { date: "2024-12-10", company: "愛味之資訊", type: "文件審查", staff: "林世明", status: "finished" },
+            { date: "2026-06-14", company: "台灣鐵高資訊", type: "臨場服務", staff: "黃慧玲", status: "finished" },
+            { date: "2026-03-02", company: "見遠雜誌資訊", type: "會議紀錄", staff: "楊恩碩", status: "pending" }
+        ];
 
-                renderFiles(filesToShow);
+        // 執行搜尋功能
+        function performSearch() {
+            // 1. 取得使用者輸入 (此處僅做簡單模擬，實際會傳送給後端 API)
+            const keyword = document.getElementById('search-company').value;
+            
+            // 2. 切換 UI 狀態：隱藏初始訊息，顯示表格
+            document.getElementById('initial-message').style.display = 'none';
+            document.getElementById('result-table-container').style.display = 'block';
 
-            } catch (e) {
-                console.error(e);
-                container.innerHTML = '<div class="text-danger">讀取檔案列表失敗</div>';
+            // 3. 篩選資料 (簡單模擬：若沒輸入就顯示全部)
+            let results = mockDatabase;
+            if (keyword) {
+                results = results.filter(item => item.company.includes(keyword));
             }
+
+            // 4. ★ 重要：排序邏輯 (指令 5)
+            // 使用 sort 進行降冪排序 (最新的日期在前面)
+            // Date b - Date a
+            results.sort((a, b) => new Date(b.date) - new Date(a.date));
+
+            // 5. 渲染表格
+            renderTable(results);
         }
 
-        // 2. 渲染檔案列表
-        function renderFiles(files) {
-            const container = document.getElementById('fileListContainer');
-            const noMsg = document.getElementById('noFilesMsg');
+        function renderTable(data) {
+            const tbody = document.getElementById('table-body');
+            tbody.innerHTML = ''; // 清空舊資料
 
-            if (files.length === 0) {
-                container.innerHTML = '';
-                noMsg.style.display = 'block';
+            if (data.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;">查無資料</td></tr>';
                 return;
             }
 
-            let html = '<div class="list-group list-group-flush">';
-            files.forEach(f => {
-                const dateStr = new Date(f.date).toLocaleDateString('zh-TW');
-                html += `
-                    <div class="list-group-item list-group-item-action d-flex align-items-center justify-content-between">
-                        <div class="d-flex align-items-center overflow-hidden">
-                            <i class="fas fa-file-pdf text-danger me-3 fs-4"></i>
-                            <div class="text-truncate">
-                                <h6 class="mb-0 text-dark text-truncate" title="${f.name}">${f.name}</h6>
-                                <small class="text-muted">上傳日期: ${dateStr}</small>
-                            </div>
-                        </div>
-                        <button class="btn btn-outline-primary btn-sm ms-2 flex-shrink-0" onclick="downloadFile('${f.path}')">
-                            <i class="fas fa-download"></i>
+            data.forEach(item => {
+                const tr = document.createElement('tr');
+                
+                // 狀態顯示處理
+                const statusHtml = item.status === 'finished' 
+                    ? '<span class="status-badge status-done">✅ 完成</span>'
+                    : '<span class="status-badge status-pending">🕒 待處理</span>';
+
+                tr.innerHTML = `
+                    <td>${item.date}</td>
+                    <td>${item.company}</td>
+                    <td>${item.type}</td>
+                    <td>${item.staff}</td>
+                    <td>${statusHtml}</td>
+                    <td>
+                        <button class="btn-preview" onclick="openPreview('${item.company}', '${item.date}', '${item.staff}')">
+                            👁️ 點選跳窗預覽
                         </button>
-                    </div>
+                    </td>
                 `;
+                tbody.appendChild(tr);
             });
-            html += '</div>';
-            container.innerHTML = html;
         }
 
-        // 3. 下載/預覽檔案
-        async function downloadFile(path) {
-            try {
-                // 取得簽署 URL (有效期 60 秒)
-                const { data, error } = await supabaseClient
-                    .storage
-                    .from('documents')
-                    .createSignedUrl(path, 60);
+        // --- 跳窗預覽相關功能 (指令 4) ---
 
-                if (error) throw error;
-                
-                // 開新視窗
-                window.open(data.signedUrl, '_blank');
-            } catch (e) {
-                alert('無法開啟檔案：' + e.message);
+        function openPreview(company, date, staff) {
+            // 填入資料到 Modal
+            document.getElementById('modal-company').innerText = company;
+            document.getElementById('modal-date').innerText = date;
+            document.getElementById('modal-staff').innerText = staff;
+
+            // 顯示 Modal
+            document.getElementById('preview-modal').style.display = 'flex';
+        }
+
+        function closeModal(event) {
+            // 點擊背景才關閉
+            if (event.target.id === 'preview-modal') {
+                document.getElementById('preview-modal').style.display = 'none';
             }
         }
 
+        function closeModalDirect() {
+            document.getElementById('preview-modal').style.display = 'none';
+        }
+
+        // 鍵盤 ESC 關閉支援
+        document.addEventListener('keydown', function(event) {
+            if (event.key === "Escape") {
+                closeModalDirect();
+            }
+        });
     </script>
 </body>
 </html>
