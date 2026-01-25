@@ -35,15 +35,17 @@
         <div class="d-flex justify-content-between align-items-center mb-4">
             <div>
                 <h2 class="fw-bold text-dark"><i class="fas fa-magnifying-glass-chart me-2 text-primary"></i>評鑑支援 AI 智慧助理</h2>
-                <p class="text-muted mb-0">Evaluation 階段：查詢現有資料庫架構 (Service Records)</p>
+                <p class="text-muted mb-0">Evaluation 階段：查詢 Service Records (Schema V2)</p>
             </div>
         </div>
 
         <div class="demo-info-card">
-            <i class="fas fa-project-diagram me-2"></i>
-            <strong>資料架構解析模式：</strong><span id="db-status" class="fw-bold text-primary">待命</span><br>
-            系統將自動串聯：Service Records (紀錄) ➞ Workplaces (廠區) ➞ Companies (公司)。<br>
-            說明：支援以「公司名稱」、「2024」、「顧問姓名」進行混合搜尋。
+            <i class="fas fa-check-circle me-2"></i>
+            <strong>系統狀態：已對接真實資料結構</strong><br>
+            修正邏輯：<br>
+            1. 年份讀取 <code>service_year</code><br>
+            2. 顧問讀取 <code>raw_data.consultant_name</code><br>
+            3. 公司關聯路徑：Record → Workplace → Company
         </div>
 
         <div id="search-view" class="py-4">
@@ -57,7 +59,7 @@
                     <div class="search-input-group d-flex mb-3">
                         <span class="input-group-text bg-white border-0 ps-3"><i class="fas fa-search text-muted"></i></span>
                         <input type="text" id="search-input" class="form-control" 
-                               placeholder="請輸入關鍵字 (例如: 鐵高, 2024, 陳美珍)">
+                               placeholder="請輸入關鍵字 (例如: 2024, 尤志偉)">
                         <button class="btn btn-primary px-4 fw-bold" onclick="performSearch()">
                             查詢
                         </button>
@@ -69,13 +71,13 @@
                 <div class="col-lg-8">
                     <div class="row g-3">
                         <div class="col-md-6">
-                            <div class="list-group-item p-4 consultant-card text-center" onclick="performSearch('2024')">
+                            <div class="list-group-item p-4 consultant-card text-center" onclick="setKeyword('2024');performSearch()">
                                 <h5 class="fw-bold mb-1"><i class="far fa-calendar-alt me-2 text-primary"></i>查詢 2024 年度案件</h5>
                             </div>
                         </div>
                         <div class="col-md-6">
-                            <div class="list-group-item p-4 consultant-card text-center" onclick="performSearch('2025')">
-                                <h5 class="fw-bold mb-1"><i class="fas fa-history me-2 text-success"></i>查詢 2025 年度案件</h5>
+                            <div class="list-group-item p-4 consultant-card text-center" onclick="setKeyword('尤志偉');performSearch()">
+                                <h5 class="fw-bold mb-1"><i class="fas fa-user-md me-2 text-success"></i>查詢 尤志偉 顧問</h5>
                             </div>
                         </div>
                     </div>
@@ -94,7 +96,7 @@
             <div class="card border-0 shadow-lg">
                 <div class="card-header bg-light border-bottom p-4">
                     <h4 class="fw-bold text-dark mb-1" id="report-title">查詢結果</h4>
-                    <small class="text-muted">資料來源：Supabase (Hybrid Join)</small>
+                    <small class="text-muted">資料來源：Supabase (Real Schema)</small>
                 </div>
                 <div class="card-body p-4">
                     <div id="report-content"></div>
@@ -105,75 +107,86 @@
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script>
-        // 1. 初始化 Supabase
+        // 1. 初始化 Supabase (使用您的 Key)
         const SUPABASE_URL = 'https://yhehfucgemxnfrdvpdhw.supabase.co';
-        const SUPABASE_KEY = 'sb_publishable_52emtU-9l-SDxcJTWVTPTA_Yu6qEogh';
+        // 請確保這裡填入的是您 Debug 程式測試成功的那個 Key (若是 public key 則沒問題)
+        const SUPABASE_KEY = 'sb_publishable_52emtU-9l-SDxcJTWVTPTA_Yu6qEogh'; 
         const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
+        function setKeyword(kw) {
+            document.getElementById('search-input').value = kw;
+        }
+
         // 2. 核心搜尋函式
-        async function performSearch(presetKeyword) {
+        async function performSearch() {
             const btn = document.querySelector('button.btn-primary');
             const originalText = btn.innerHTML;
             const searchInput = document.getElementById('search-input').value;
-            const finalKeyword = (presetKeyword ? presetKeyword : searchInput).trim();
+            const finalKeyword = searchInput.trim();
             
             if (!finalKeyword) { alert("請輸入關鍵字"); return; }
             
             btn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>資料串接中...';
-            document.getElementById('db-status').innerText = "下載並組裝資料中...";
-
+            
             try {
-                // 平行下載三個表格的資料 (這比 SQL Join 更穩健，因為不受限於 FK 設定)
+                // 平行下載三個表格的資料 (前端 Join 策略，最穩健)
+                // 1. service_records (主要紀錄)
+                // 2. workplaces (取得 company_id)
+                // 3. companies (取得 name)
                 const [recordsRes, workplacesRes, companiesRes] = await Promise.all([
-                    supabase.from('service_records').select('*').order('created_at', { ascending: false }).limit(200), // 限制筆數避免過慢
-                    supabase.from('workplaces').select('*'),
-                    supabase.from('companies').select('*')
+                    supabase.from('service_records').select('*').limit(500), 
+                    supabase.from('workplaces').select('id, company_id, name'),
+                    supabase.from('companies').select('id, name')
                 ]);
 
-                if (recordsRes.error) throw recordsRes.error;
-                if (workplacesRes.error) throw workplacesRes.error;
-                if (companiesRes.error) throw companiesRes.error;
+                if (recordsRes.error) throw new Error("Service Records Error: " + recordsRes.error.message);
+                if (workplacesRes.error) throw new Error("Workplaces Error: " + workplacesRes.error.message);
+                if (companiesRes.error) throw new Error("Companies Error: " + companiesRes.error.message);
 
                 const records = recordsRes.data;
                 const workplaces = workplacesRes.data;
                 const companies = companiesRes.data;
 
-                // 建立快速查找表 (Map)
-                // Workplace ID -> Company ID
-                const workplaceMap = {};
-                workplaces.forEach(wp => { workplaceMap[wp.id] = wp.company_id; });
+                // 建立快速查找表 (Lookup Maps)
+                // Map: Workplace ID -> Company ID & Name
+                const wpMap = {};
+                workplaces.forEach(wp => { 
+                    wpMap[wp.id] = { company_id: wp.company_id, wp_name: wp.name };
+                });
 
-                // Company ID -> Company Name
-                const companyMap = {};
-                companies.forEach(comp => { companyMap[comp.id] = comp.name; });
+                // Map: Company ID -> Company Name
+                const compMap = {};
+                companies.forEach(comp => { 
+                    compMap[comp.id] = comp.name; 
+                });
 
                 // 關鍵字準備
                 const keywords = finalKeyword.toLowerCase().split(/\s+/);
 
                 // 3. 資料組裝與過濾
                 const filteredResults = records.map(record => {
-                    // 找出關聯的公司名稱
-                    const wpId = record.workplace_id;
-                    const compId = workplaceMap[wpId];
-                    const companyName = companyMap[compId] || '(未知公司)';
-
-                    // 解析顧問姓名 (從 raw_data JSON 中取出)
+                    // A. 解析公司名稱
+                    // 路徑: record.workplace_id -> workplaces -> companies
+                    const wpInfo = wpMap[record.workplace_id] || {};
+                    const compName = compMap[wpInfo.company_id] || '(未知公司)';
+                    
+                    // B. 解析顧問姓名 (從 raw_data JSON 取出)
                     let consultantName = '未指派';
-                    if (record.raw_data) {
-                        try {
-                            // 如果 raw_data 是字串，解析它；如果是物件，直接使用
-                            const raw = typeof record.raw_data === 'string' ? JSON.parse(record.raw_data) : record.raw_data;
-                            consultantName = raw.consultant_name || '未指派';
-                        } catch (e) { console.warn('JSON Parse Error', e); }
+                    if (record.raw_data && record.raw_data.consultant_name) {
+                        consultantName = record.raw_data.consultant_name;
                     }
 
-                    // 組合所有可搜尋的文字
-                    const fullText = `${companyName} ${consultantName} ${record.service_year} ${record.id}`.toLowerCase();
+                    // C. 解析年份 (欄位名: service_year)
+                    const year = String(record.service_year || '');
+
+                    // D. 組合所有可搜尋的文字
+                    const fullText = `${compName} ${consultantName} ${year} ${record.process_desc || ''}`.toLowerCase();
 
                     return {
                         ...record,
-                        company_name_display: companyName,
+                        company_name_display: compName,
                         consultant_name_display: consultantName,
+                        year_display: year,
                         full_text: fullText
                     };
                 }).filter(item => {
@@ -182,12 +195,10 @@
                 });
 
                 renderResults(filteredResults, finalKeyword);
-                document.getElementById('db-status').innerText = "查詢完成";
 
             } catch (err) {
                 console.error("Search Error:", err);
                 alert("資料讀取錯誤：\n" + err.message);
-                document.getElementById('db-status').innerText = "錯誤";
             } finally {
                 btn.innerHTML = originalText;
             }
@@ -202,7 +213,7 @@
             document.getElementById('report-title').textContent = `查詢結果：${keyword}`;
 
             if (data.length === 0) {
-                container.innerHTML = `<div class="alert alert-info">查無符合 "${keyword}" 的資料。</div>`;
+                container.innerHTML = `<div class="alert alert-info">查無符合 "${keyword}" 的資料。<br><small>請確認您的搜尋關鍵字是否正確 (例如年份是否為 2024)。</small></div>`;
                 return;
             }
 
@@ -217,19 +228,19 @@
                                     <h5 class="fw-bold text-dark mb-1">${item.company_name_display}</h5>
                                     <div class="text-muted small mt-2">
                                         <span class="me-3 badge bg-light text-dark border">
-                                            <i class="far fa-calendar me-1"></i>${item.service_year}
+                                            <i class="far fa-calendar me-1"></i>${item.year_display}
                                         </span>
                                         <span class="badge bg-info bg-opacity-10 text-dark">
                                             <i class="fas fa-user-md me-1"></i>${item.consultant_name_display}
                                         </span>
-                                        <div class="mt-1 text-secondary" style="font-size: 0.8rem;">
-                                            ID: ${item.id.substring(0,8)}...
-                                        </div>
+                                    </div>
+                                    <div class="mt-2 text-secondary small">
+                                        危害描述: ${item.hazard_desc ? item.hazard_desc.substring(0, 30) + '...' : '無'}
                                     </div>
                                 </div>
                                 <div>
                                     ${folderId ? 
-                                        `<button class="btn btn-outline-primary btn-sm" onclick="alert('附件資料夾 ID: ${folderId}\\n(需實作 Storage List API 才能瀏覽內容)')">
+                                        `<button class="btn btn-outline-primary btn-sm" onclick="alert('附件資料夾 ID: ${folderId}')">
                                             <i class="fas fa-folder-open me-1"></i>查看附件
                                          </button>` : 
                                         `<button class="btn btn-outline-secondary btn-sm" disabled>無附件</button>`
@@ -247,7 +258,6 @@
         function resetSearch() {
             document.getElementById('report-view').style.display = 'none';
             document.getElementById('search-view').style.display = 'block';
-            document.getElementById('db-status').innerText = "待命";
             document.getElementById('search-input').value = '';
         }
     </script>
