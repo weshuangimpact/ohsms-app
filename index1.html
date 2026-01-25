@@ -18,9 +18,12 @@
         /* 樣式保持不變 */
         .demo-info-card { background-color: #fffbeb; border-left: 4px solid #f59e0b; color: #92400e; padding: 1rem; margin-bottom: 1.5rem; border-radius: 0.375rem; font-size: 0.9rem; line-height: 1.6; }
         .tracking-info-card { background-color: #eff6ff; border-left: 4px solid #3b82f6; color: #1e40af; padding: 1rem; margin-bottom: 1rem; border-radius: 0.375rem; font-size: 0.9rem; }
+        
         .input-readonly { background-color: #f8fafc; border: 1px solid #cbd5e1; color: #475569; cursor: default; }
         .input-readonly:focus { outline: none; box-shadow: none; }
+        
         .input-editable { background-color: #ffffff; border: 1px solid #3b82f6; color: #1e293b; box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2); }
+        
         .step-title { border-left: 4px solid #0d6efd; padding-left: 10px; font-weight: bold; color: #0d6efd; margin-bottom: 1rem; }
         .select-row:hover { background-color: #f1f5f9; cursor: pointer; }
         
@@ -32,6 +35,24 @@
         .mode-card.active { border-color: #0d6efd; background-color: #e7f1ff; }
         .mode-icon { font-size: 2.5rem; margin-bottom: 10px; color: #6c757d; }
         .mode-card.active .mode-icon { color: #0d6efd; }
+
+        /* [新增] 動態危害清單樣式 */
+        .hazard-row {
+            transition: all 0.3s ease;
+            border-bottom: 1px dashed #e0e0e0;
+            padding-bottom: 10px;
+            margin-bottom: 10px;
+        }
+        .hazard-row:last-child { border-bottom: none; margin-bottom: 0; }
+        .btn-remove-hazard {
+            color: #dc3545; cursor: pointer; transition: all 0.2s; padding: 8px; border-radius: 50%;
+        }
+        .btn-remove-hazard:hover { background-color: #fee2e2; transform: scale(1.1); }
+        .border-dashed { border-style: dashed !important; }
+        
+        /* [新增] 法規檢核表樣式 */
+        .check-list-item { padding: 5px 0; }
+        .check-list-item label { cursor: pointer; line-height: 1.5; font-size: 0.95rem; }
     </style>
 
     <script>
@@ -56,7 +77,7 @@
         <div class="d-flex justify-content-between align-items-center mb-4">
             <div>
                 <h2 class="fw-bold text-dark"><i class="fas fa-file-arrow-up me-2 text-primary"></i>顧問資料上傳</h2>
-                <p class="text-muted mb-0">Plan & Do 階段：建立基準與執行紀錄 V1.04 (雙模式分流)</p>
+                <p class="text-muted mb-0">Plan & Do 階段：建立基準與執行紀錄 V1.05 (動態危害/完整法規版)</p>
             </div>
         </div>
 
@@ -132,13 +153,27 @@
 
                     <div class="card mb-4 border">
                         <div class="card-header bg-light fw-bold text-dark d-flex justify-content-between">
-                            <span>特別危害健康作業 (1~2)</span><span class="badge bg-warning text-dark"><i class="fas fa-exclamation-triangle me-1"></i>風險關注</span>
+                            <span>特別危害健康作業 (1~2)</span>
+                            <span class="badge bg-warning text-dark"><i class="fas fa-exclamation-triangle me-1"></i>風險關注</span>
                         </div>
                         <div class="card-body">
-                            <div class="d-flex flex-wrap gap-3">
-                                <div class="input-group" style="width: 300px;"><span class="input-group-text bg-white">危害類型</span><input type="text" id="disp-hazard-type" class="form-control input-readonly data-field text-center" readonly></div>
-                                <div class="input-group" style="width: 200px;"><span class="input-group-text bg-white">人數</span><input type="number" id="disp-hazard-count" class="form-control input-readonly data-field text-center" readonly><span class="input-group-text bg-light">人</span></div>
+                            <div class="row mb-2 small text-muted fw-bold ps-2">
+                                <div class="col-7">危害類型 (環境變更)</div>
+                                <div class="col-4">暴露人數</div>
+                                <div class="col-1"></div>
                             </div>
+
+                            <div id="hazard-list-container">
+                                </div>
+
+                            <div class="mt-2">
+                                <button id="btn-add-hazard" type="button" class="btn btn-outline-primary btn-sm border-dashed w-100" style="display: none;" onclick="addHazardRow()">
+                                    <i class="fas fa-plus me-1"></i> 新增危害項目
+                                </button>
+                            </div>
+                            
+                            <input type="hidden" id="disp-hazard-type" class="data-field">
+                            <input type="hidden" id="disp-hazard-count" class="data-field">
                         </div>
                     </div>
 
@@ -154,15 +189,37 @@
                     <div class="mt-5">
                         <h5 class="step-title">Step 2：臨場服務項目 (法規檢核)</h5>
                         <div class="tracking-info-card"><i class="fas fa-link me-2"></i><strong>系統自動化連動通知：</strong><br>勾選項目將同步至管理者介面。</div>
+                        
                         <div class="card border border-primary bg-primary bg-opacity-10 mb-3">
-                            <div class="card-body d-flex align-items-center">
+                            <div class="card-body d-flex align-items-center py-2">
                                 <input class="form-check-input me-3" type="checkbox" checked disabled style="transform: scale(1.2);">
                                 <div><h6 class="mb-0 fw-bold text-primary">勞工健康服務執行紀錄表 (核心必要)</h6></div>
                             </div>
                         </div>
-                        <div class="row g-3 ps-2">
-                             <div class="col-md-6"><div class="form-check"><input class="form-check-input check-item" type="checkbox" id="c9-1" value="9-1" checked><label class="form-check-label" for="c9-1">9-1 勞工體格(健康)檢查結果分析與評估</label></div></div>
-                             <div class="col-12"><div class="form-check"><input class="form-check-input" type="checkbox" id="other-attach"><label class="form-check-label fw-bold text-dark" for="other-attach">其他附件或證明文件</label></div></div>
+
+                        <div class="row g-2 ps-2">
+                            <div class="col-12 check-list-item"><div class="form-check"><input class="form-check-input check-item" type="checkbox" id="c9-1" value="9-1"><label class="form-check-label" for="c9-1">9-1 勞工體格(健康)檢查結果之分析與評估、健康管理及資料保存。</label></div></div>
+                            <div class="col-12 check-list-item"><div class="form-check"><input class="form-check-input check-item" type="checkbox" id="c9-2" value="9-2"><label class="form-check-label" for="c9-2">9-2 協助雇主選配勞工從事適當之工作。</label></div></div>
+                            <div class="col-12 check-list-item"><div class="form-check"><input class="form-check-input check-item" type="checkbox" id="c9-3" value="9-3"><label class="form-check-label" for="c9-3">9-3 辦理健康檢查結果異常者之追蹤管理及健康指導。</label></div></div>
+                            <div class="col-12 check-list-item"><div class="form-check"><input class="form-check-input check-item" type="checkbox" id="c9-4" value="9-4"><label class="form-check-label" for="c9-4">9-4 辦理未滿十八歲勞工、有母性健康危害之虞之勞工、職業傷病勞工與職業健康相關高風險勞工之評估及個案管理。</label></div></div>
+                            <div class="col-12 check-list-item"><div class="form-check"><input class="form-check-input check-item" type="checkbox" id="c9-5" value="9-5"><label class="form-check-label" for="c9-5">9-5 職業衛生或職業健康之相關研究報告及傷害、疾病紀錄之保存。</label></div></div>
+                            <div class="col-12 check-list-item"><div class="form-check"><input class="form-check-input check-item" type="checkbox" id="c9-6" value="9-6"><label class="form-check-label" for="c9-6">9-6 勞工之健康教育、衛生指導、身心健康保護、健康促進等措施之策劃及實施。</label></div></div>
+                            <div class="col-12 check-list-item"><div class="form-check"><input class="form-check-input check-item" type="checkbox" id="c9-7" value="9-7"><label class="form-check-label" for="c9-7">9-7 工作相關傷病之預防、健康諮詢與急救及緊急處置。</label></div></div>
+                            <div class="col-12 check-list-item"><div class="form-check"><input class="form-check-input check-item" type="checkbox" id="c9-8" value="9-8"><label class="form-check-label" for="c9-8">9-8 定期向雇主報告及勞工健康服務之建議。</label></div></div>
+                            
+                            <hr class="my-2 text-muted">
+                            
+                            <div class="col-12 check-list-item"><div class="form-check"><input class="form-check-input check-item" type="checkbox" id="c11-1" value="11-1"><label class="form-check-label" for="c11-1">11-1 辨識與評估工作場所環境、作業及組織內部影響勞工身心健康之危害因子，並提出改善措施之建議。</label></div></div>
+                            <div class="col-12 check-list-item"><div class="form-check"><input class="form-check-input check-item" type="checkbox" id="c11-2" value="11-2"><label class="form-check-label" for="c11-2">11-2 提出作業環境安全衛生設施改善規劃之建議。</label></div></div>
+                            <div class="col-12 check-list-item"><div class="form-check"><input class="form-check-input check-item" type="checkbox" id="c11-3" value="11-3"><label class="form-check-label" for="c11-3">11-3 調查勞工健康情形與作業之關連性，並採取必要之預防及健康促進措施。</label></div></div>
+                            <div class="col-12 check-list-item"><div class="form-check"><input class="form-check-input check-item" type="checkbox" id="c11-4" value="11-4"><label class="form-check-label" for="c11-4">11-4 提供復工勞工之職能評估、職務再設計或調整之諮詢及建議。</label></div></div>
+                            <div class="col-12 check-list-item"><div class="form-check"><input class="form-check-input check-item" type="checkbox" id="c11-5" value="11-5"><label class="form-check-label" for="c11-5">11-5 其他經中央主管機關指定公告者。</label></div></div>
+                            
+                            <hr class="my-2 text-muted">
+
+                            <div class="col-12 check-list-item"><div class="form-check"><input class="form-check-input check-item" type="checkbox" id="c12" value="12"><label class="form-check-label" for="c12">12 訂定勞工健康服務計畫，據以執行，每年評估成效及檢討。</label></div></div>
+                            <div class="col-12 check-list-item"><div class="form-check"><input class="form-check-input check-item" type="checkbox" id="c13" value="13"><label class="form-check-label" for="c13">13 訂定勞工健康管理方案，據以辦理，每年評估成效及檢討。</label></div></div>
+                            <div class="col-12 check-list-item"><div class="form-check"><input class="form-check-input" type="checkbox" id="other-attach"><label class="form-check-label fw-bold text-dark" for="other-attach">其他附件</label></div></div>
                         </div>
                     </div>
 
@@ -376,13 +433,42 @@
             document.getElementById('hidden-workplace-id').value = workplace.id;
             document.getElementById('disp-dept').value = workplace.department_name || '全廠';
             
-            // 填入基本人數危害 (這些是 Master Data，通常不隨年度變)
+            // 填入基本人數
             document.getElementById('disp-admin-m').value = workplace.admin_male || 0;
             document.getElementById('disp-admin-f').value = workplace.admin_female || 0;
             document.getElementById('disp-site-m').value = workplace.site_male || 0;
             document.getElementById('disp-site-f').value = workplace.site_female || 0;
-            document.getElementById('disp-hazard-type').value = workplace.hazard_type || '無';
-            document.getElementById('disp-hazard-count').value = workplace.hazard_count || 0;
+            
+            // [修改] 填入危害資料 (處理動態列表的初始化)
+            const typeStr = workplace.hazard_type || '';
+            const countTotal = workplace.hazard_count || 0;
+            
+            // 填入隱藏欄位 (維持資料一致)
+            document.getElementById('disp-hazard-type').value = typeStr;
+            document.getElementById('disp-hazard-count').value = countTotal;
+
+            // 清空並重建列表
+            const container = document.getElementById('hazard-list-container');
+            container.innerHTML = '';
+            
+            if (typeStr && typeStr !== '無') {
+                // 因為後端舊資料無法分辨細項人數，故初始化時將總數顯示在第一列
+                // 之後使用者可以在編輯模式下自行修改
+                addHazardRow(typeStr, countTotal); 
+            } else {
+                // 如果完全沒資料，這裡不預設產生，等待使用者點選編輯後新增
+                if (mode === 'new') addHazardRow('', 0); // 若是新增模式，給一個空格方便填寫
+            }
+            
+            // 確保初始狀態是唯讀的 (因為預設還沒按「啟用編輯」)
+            const hazardInputs = container.querySelectorAll('input');
+            hazardInputs.forEach(input => {
+                input.readOnly = true;
+                input.classList.add('input-readonly');
+            });
+            // 隱藏刪除按鈕
+            container.querySelectorAll('.btn-remove-hazard').forEach(btn => btn.style.display = 'none');
+
 
             // 2. 撈歷史紀錄 (Service Record)
             let query = supabaseClient.from('service_records').select('*').eq('workplace_id', workplace.id);
@@ -421,6 +507,65 @@
             document.getElementById('company-data-section').scrollIntoView({ behavior: 'smooth' });
         }
 
+        // [新增] 動態增加危害列
+        function addHazardRow(name = '', count = 0) {
+            const container = document.getElementById('hazard-list-container');
+            const rowId = 'row-' + Date.now();
+            
+            const div = document.createElement('div');
+            div.className = 'hazard-row row align-items-center';
+            div.id = rowId;
+            
+            // 判斷當前是否為編輯模式，決定樣式
+            const isEditing = document.getElementById('edit-btn').classList.contains('btn-primary');
+            const inputClass = isEditing ? 'form-control input-editable hazard-input' : 'form-control input-readonly hazard-input';
+            const readonlyAttr = isEditing ? '' : 'readonly';
+            const btnDisplay = isEditing ? 'block' : 'none';
+
+            div.innerHTML = `
+                <div class="col-7">
+                    <input type="text" class="${inputClass} hazard-name-input" value="${name}" placeholder="輸入危害名稱 (如: 噪音)" ${readonlyAttr} oninput="calculateHazardTotals()">
+                </div>
+                <div class="col-4">
+                    <input type="number" class="${inputClass} hazard-count-input" value="${count}" placeholder="人數" ${readonlyAttr} oninput="calculateHazardTotals()">
+                </div>
+                <div class="col-1 text-center">
+                    <i class="fas fa-trash-alt btn-remove-hazard" style="display: ${btnDisplay};" onclick="removeHazardRow(this)"></i>
+                </div>
+            `;
+            container.appendChild(div);
+            
+            // 如果是透過按鈕新增的 (沒有傳參數)，要記得重新計算一次 (雖然是 0)
+            if(name === '' && count === 0) calculateHazardTotals();
+        }
+
+        // [新增] 移除危害列
+        function removeHazardRow(btn) {
+            const row = btn.closest('.hazard-row');
+            row.remove();
+            calculateHazardTotals();
+        }
+
+        // [新增] 計算並同步回隱藏欄位
+        function calculateHazardTotals() {
+            const names = [];
+            let totalCount = 0;
+            
+            document.querySelectorAll('.hazard-row').forEach(row => {
+                const nameVal = row.querySelector('.hazard-name-input').value.trim();
+                const countVal = parseInt(row.querySelector('.hazard-count-input').value) || 0;
+                
+                if (nameVal) {
+                    names.push(nameVal);
+                }
+                totalCount += countVal;
+            });
+
+            // 同步回隱藏欄位 (舊資料庫格式)
+            document.getElementById('disp-hazard-type').value = names.join('、');
+            document.getElementById('disp-hazard-count').value = totalCount;
+        }
+
         // 4. 送出資料
         async function submitServiceRecord(btn) {
             const workplaceId = document.getElementById('hidden-workplace-id').value;
@@ -435,6 +580,24 @@
             btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 處理中...';
 
             try {
+                // 這裡要先把危害資料 (Workplaces) 寫回去，因為使用者可能修改了
+                // 如果是編輯模式下，我們需要更新 workplaces 表
+                // 注意：這會更新 Master Data
+                if (isEditMode) {
+                     const hazardType = document.getElementById('disp-hazard-type').value;
+                     const hazardCount = parseInt(document.getElementById('disp-hazard-count').value) || 0;
+                     
+                     // 這裡還可以加入更新其他欄位 (如人數、製程等)
+                     // 範例簡單處理危害部分
+                     await supabaseClient.from('workplaces').update({
+                         hazard_type: hazardType,
+                         hazard_count: hazardCount,
+                         process_desc: document.getElementById('disp-process').value,
+                         work_pattern: document.getElementById('disp-pattern').value,
+                         hazard_desc: document.getElementById('disp-desc').value
+                     }).eq('id', workplaceId);
+                }
+
                 const file = fileInput.files[0];
                 const filePath = `service_records/${year}/${Date.now()}_${file.name}`;
                 
@@ -452,13 +615,10 @@
                     service_year: parseInt(year),
                     extracted_data: { 
                         workplace_id: workplaceId,
-                        mode: mode, // 標記是補件還是新增
+                        mode: mode, 
                         note: mode === 'new' ? "年度例行服務" : "文件補件/修正"
                     }
                 }]);
-
-                // 若是 'new' 模式，這裡其實還可以同時 insert 一筆新的 service_records 佔位
-                // 但為了簡化，我們假設審核通過後才由 Admin 寫入正式紀錄
 
                 alert('✅ 上傳成功！資料已送出審核。');
                 location.reload();
@@ -473,13 +633,31 @@
         function toggleEditMode() {
             const btn = document.getElementById('edit-btn');
             const fields = document.querySelectorAll('.data-field');
+            // 抓取動態產生的 inputs
+            const hazardInputs = document.querySelectorAll('.hazard-input');
+            const addBtn = document.getElementById('btn-add-hazard');
+            const removeBtns = document.querySelectorAll('.btn-remove-hazard');
+
             isEditMode = !isEditMode;
+            
             if (isEditMode) {
+                // 進入編輯模式
                 fields.forEach(f => { f.readOnly = false; f.classList.remove('input-readonly'); f.classList.add('input-editable'); });
+                hazardInputs.forEach(f => { f.readOnly = false; f.classList.remove('input-readonly'); f.classList.add('input-editable'); });
+                
+                addBtn.style.display = 'block';
+                removeBtns.forEach(b => b.style.display = 'block');
+
                 btn.innerHTML = '<i class="fas fa-save me-1"></i> 儲存變更';
                 btn.classList.add('btn-primary');
             } else {
+                // 離開編輯模式 (變回唯讀)
                 fields.forEach(f => { f.readOnly = true; f.classList.remove('input-editable'); f.classList.add('input-readonly'); });
+                hazardInputs.forEach(f => { f.readOnly = true; f.classList.remove('input-editable'); f.classList.add('input-readonly'); });
+                
+                addBtn.style.display = 'none';
+                removeBtns.forEach(b => b.style.display = 'none');
+
                 btn.innerHTML = '<i class="fas fa-pen-to-square me-1"></i> 啟用編輯';
                 btn.classList.remove('btn-primary');
             }
