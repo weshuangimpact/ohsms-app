@@ -67,10 +67,11 @@
         
         <div class="d-flex justify-content-between align-items-end mb-3">
             <div class="section-title mb-0">
-                <h4 class="fw-bold text-dark mb-0">1. 客戶主檔管理 (Companies) V1.04</h4>
+                <h4 class="fw-bold text-dark mb-0">1. 客戶主檔管理 (Companies) V1.05</h4>
                 <small class="text-muted">管理服務之事業單位清單</small>
             </div>
             <div class="d-flex gap-2">
+                <button class="btn btn-secondary btn-sm" onclick="downloadTemplate('company')"><i class="fas fa-download me-1"></i>下載範本</button>
                 <button class="btn btn-outline-primary fw-bold btn-sm" onclick="triggerImport('company')"><i class="fas fa-file-import me-2"></i>匯入</button>
                 <button class="btn btn-primary fw-bold btn-sm" onclick="openCompanyModal()"><i class="fas fa-plus me-2"></i>新增單位</button>
             </div>
@@ -125,6 +126,7 @@
                 <small class="text-muted">建立醫師、護理師與顧問名單</small>
             </div>
             <div class="d-flex gap-2">
+                <button class="btn btn-secondary btn-sm" onclick="downloadTemplate('staff')"><i class="fas fa-download me-1"></i>下載範本</button>
                 <button class="btn btn-outline-success fw-bold btn-sm" onclick="triggerImport('staff')"><i class="fas fa-file-excel me-2"></i>匯入</button>
                 <button class="btn btn-success fw-bold btn-sm" onclick="openStaffModal()"><i class="fas fa-user-plus me-2"></i>新增人員</button>
             </div>
@@ -179,6 +181,7 @@
                 <small class="text-muted">設定稽核行程、證照效期與會議排程</small>
             </div>
             <div class="d-flex gap-2">
+                <button class="btn btn-secondary btn-sm" onclick="downloadTemplate('event')"><i class="fas fa-download me-1"></i>下載範本</button>
                 <button class="btn btn-outline-danger fw-bold btn-sm" onclick="triggerImport('event')"><i class="fas fa-calendar-alt me-2"></i>匯入</button>
                 <button class="btn btn-danger fw-bold btn-sm" onclick="openEventModal()"><i class="fas fa-plus me-2"></i>新增事項</button>
             </div>
@@ -548,6 +551,33 @@
                     select.appendChild(opt);
                 });
             }
+        }
+
+        // ========================
+        // V1.05 新增：範本下載功能 (使用 SheetJS)
+        // ========================
+        function downloadTemplate(type) {
+            let data = [];
+            let filename = '';
+
+            if (type === 'company') {
+                data = [['統一編號', '事業單位名稱', '聯絡人', '電話', '服務年度(YYYY)'],
+                        ['12345678', '範例科技有限公司', '王小明', '02-12345678', '2025']];
+                filename = '公司主檔匯入範本.xlsx';
+            } else if (type === 'staff') {
+                data = [['姓名', '身分角色(醫師/護理人員/顧問)', '職務型態(全職/兼職)', '電話', 'Email'],
+                        ['陳大文', '護理人員', '兼職', '0912345678', 'nurse@example.com']];
+                filename = '醫護人員匯入範本.xlsx';
+            } else if (type === 'event') {
+                data = [['預定日期(YYYY-MM-DD)', '事項名稱', '類型(training/meeting/service)', '優先級(medium/high)'],
+                        ['2025-06-30', '急救人員複訓', 'training', 'high']];
+                filename = '行事曆匯入範本.xlsx';
+            }
+
+            const wb = XLSX.utils.book_new();
+            const ws = XLSX.utils.aoa_to_sheet(data);
+            XLSX.utils.book_append_sheet(wb, ws, "Template");
+            XLSX.writeFile(wb, filename);
         }
 
         // ========================
