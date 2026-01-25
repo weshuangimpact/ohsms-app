@@ -17,32 +17,22 @@
 
         /* 樣式保持不變 */
         .demo-info-card { background-color: #fffbeb; border-left: 4px solid #f59e0b; color: #92400e; padding: 1rem; margin-bottom: 1.5rem; border-radius: 0.375rem; font-size: 0.9rem; line-height: 1.6; }
-        .tracking-info-card { background-color: #eff6ff; border-left: 4px solid #3b82f6; color: #1e40af; padding: 1rem; margin-bottom: 1rem; border-radius: 0.375rem; font-size: 0.9rem; }
         .input-readonly { background-color: #f8fafc; border: 1px solid #cbd5e1; color: #475569; cursor: default; }
         .input-readonly:focus { outline: none; box-shadow: none; }
         .input-editable { background-color: #ffffff; border: 1px solid #3b82f6; color: #1e293b; box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2); }
         .step-title { border-left: 4px solid #0d6efd; padding-left: 10px; font-weight: bold; color: #0d6efd; margin-bottom: 1rem; }
         .select-row:hover { background-color: #f1f5f9; cursor: pointer; }
         
-        /* 模式選擇區塊樣式 */
+        /* 模式選擇區塊 */
         .mode-selection-bar {
             background-color: #fff;
             border: 2px solid #dee2e6;
-            border-radius: 12px;
-            padding: 20px;
-            margin-bottom: 25px;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.08);
-        }
-        .mode-option {
-            border: 2px solid #e9ecef;
             border-radius: 8px;
             padding: 15px;
-            cursor: pointer;
-            transition: all 0.2s;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.05);
         }
-        .mode-option:hover { background-color: #f8f9fa; border-color: #adb5bd; }
-        .mode-option.selected-new { border-color: #198754; background-color: #d1e7dd; }
-        .mode-option.selected-amend { border-color: #ffc107; background-color: #fff3cd; }
+        .form-check-input:checked { background-color: #0d6efd; border-color: #0d6efd; }
     </style>
 
     <script>
@@ -67,7 +57,7 @@
         <div class="d-flex justify-content-between align-items-center mb-4">
             <div>
                 <h2 class="fw-bold text-dark"><i class="fas fa-file-arrow-up me-2 text-primary"></i>顧問資料上傳</h2>
-                <p class="text-muted mb-0">Plan & Do 階段：建立基準與執行紀錄 V1.13 (關鍵字搜尋版)</p>
+                <p class="text-muted mb-0">Plan & Do 階段：建立基準與執行紀錄 V1.13 (按鈕修復版)</p>
             </div>
         </div>
 
@@ -76,21 +66,21 @@
 
                 <div class="demo-info-card">
                     <i class="fas fa-compass me-2"></i>
-                    <strong>操作流程：</strong><br>
-                    1. <strong>[必選]</strong> 設定「目標服務年度」(您要建立/修正哪一年的資料)。<br>
-                    2. <strong>[搜尋]</strong> 輸入「名稱」或「統編」找出公司 (不限建檔年份)。若留空則列出該年度所有公司。<br>
-                    3. 系統將自動判斷進入 <strong>「更新歷程」</strong> 或 <strong>「補件」</strong> 模式。
+                    <strong>操作邏輯：</strong><br>
+                    1. <strong>[必選]</strong> 選擇資料庫中的「公司建檔年度」。<br>
+                    2. <strong>[可選]</strong> 輸入統編或名稱 (交叉比對)，若留空則列出該年度所有公司。<br>
+                    3. 載入後，選擇「建立新歷程」或「補件」。
                 </div>
 
                 <div class="bg-light p-4 rounded mb-4 border">
-                    <h5 class="step-title">Step 1：搜尋公司與設定年度</h5>
+                    <h5 class="step-title">Step 1：搜尋公司與年度</h5>
                     <div class="row g-3 align-items-end">
                         <div class="col-md-4">
-                            <label class="form-label fw-bold small text-muted">關鍵字搜尋 (統編/名稱)</label>
-                            <input type="text" id="input-keyword" class="form-control" placeholder="輸入公司名稱或統一編號...">
+                            <label class="form-label fw-bold small text-muted">統一編號 / 名稱 (留空列出全部)</label>
+                            <input type="text" id="input-tax-id" class="form-control" placeholder="輸入統編 或 公司名稱">
                         </div>
                         <div class="col-md-4">
-                            <label class="form-label fw-bold small text-muted">目標服務年度 <span class="text-danger">*</span></label>
+                            <label class="form-label fw-bold small text-muted">資料庫年度 <span class="text-danger">*</span></label>
                             <select id="input-year" class="form-select">
                                 <option value="2026">2026 (115年)</option>
                                 <option value="2025" selected>2025 (114年)</option>
@@ -114,29 +104,27 @@
                     <input type="hidden" id="current-mode">
 
                     <div class="mode-selection-bar">
-                        <h5 class="step-title mb-4">Step 2：請選擇執行動作</h5>
-                        <div class="row g-3">
-                            <div class="col-md-6">
-                                <div class="mode-option" onclick="setMode('new')" id="option-new">
-                                    <div class="d-flex align-items-center">
-                                        <i class="fas fa-history fa-2x text-success me-3"></i>
-                                        <div>
-                                            <h6 class="fw-bold mb-1">更新服務歷程 (New Journey)</h6>
-                                            <small class="text-muted">建立 <strong class="text-success lbl-target-year"></strong> 年的新紀錄 (自動帶入底稿)。</small>
-                                        </div>
-                                    </div>
+                        <h5 class="step-title mb-3">Step 2：確認作業模式</h5>
+                        <div class="d-flex align-items-center justify-content-between flex-wrap gap-3">
+                            <div>
+                                <div class="form-check mb-2">
+                                    <input class="form-check-input" type="radio" name="operationMode" id="mode-new" value="new">
+                                    <label class="form-check-label fw-bold" for="mode-new">
+                                        <i class="fas fa-history me-1 text-success"></i> 更新服務歷程 (建立新資料)
+                                    </label>
+                                    <div class="form-text ms-4 mt-0">建立 <strong class="text-success" id="lbl-new-year"></strong> 年度紀錄 (自動帶入底稿)。</div>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="radio" name="operationMode" id="mode-amend" value="amend">
+                                    <label class="form-check-label fw-bold" for="mode-amend">
+                                        <i class="fas fa-file-signature me-1 text-warning"></i> 補件 / 修正 (Update)
+                                    </label>
+                                    <div class="form-text ms-4 mt-0">修正 <strong class="text-warning" id="lbl-amend-year"></strong> 年度現有紀錄。</div>
                                 </div>
                             </div>
-                            <div class="col-md-6">
-                                <div class="mode-option" onclick="setMode('amend')" id="option-amend">
-                                    <div class="d-flex align-items-center">
-                                        <i class="fas fa-file-signature fa-2x text-warning me-3"></i>
-                                        <div>
-                                            <h6 class="fw-bold mb-1">補件 / 修正 (Amend)</h6>
-                                            <small class="text-muted">針對 <strong class="text-warning lbl-target-year"></strong> 年的現有資料進行修正。</small>
-                                        </div>
-                                    </div>
-                                </div>
+                            <div class="text-end border-start ps-4">
+                                <small class="text-muted d-block mb-1">目前載入來源：</small>
+                                <strong class="text-primary fs-5" id="data-source-status">載入中...</strong>
                             </div>
                         </div>
                     </div>
@@ -273,7 +261,7 @@
                 document.getElementById('fileNameDisplay').classList.add('text-primary', 'fw-bold');
             });
 
-            // Modal 關閉監聽
+            // ★ Bug Fix: 監聽 Modal 關閉，重置按鈕 (確保點擊背景關閉時也能重置)
             const modalEl = document.getElementById('companySelectModal');
             modalEl.addEventListener('hidden.bs.modal', function () {
                 resetSearchBtn();
@@ -288,34 +276,35 @@
             }
         }
 
-        // 1. 查詢公司 (V1.13: 關鍵字搜尋邏輯)
+        // 1. 查詢公司 (修正邏輯：年份 + 關鍵字)
         async function fetchCompanyData(btn) {
-            const keyword = document.getElementById('input-keyword').value.trim();
+            const taxId = document.getElementById('input-tax-id').value.trim();
             const year = document.getElementById('input-year').value;
             currentModalBtn = btn; 
 
             btn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>查詢中...';
             btn.disabled = true;
 
+            // 使用 try-finally 確保按鈕一定會重置 (除非成功進入下一步)
             try {
-                let query = supabaseClient.from('companies').select('*').order('created_at', {ascending:false});
+                // 基礎：先過濾年份
+                let query = supabaseClient.from('companies')
+                    .select('*')
+                    .eq('service_year', parseInt(year)) 
+                    .order('created_at', {ascending:false});
                 
-                // ★ V1.13 邏輯分流：
-                if (keyword) {
-                    // 情境 A: 有輸入關鍵字 -> 搜尋 Name 或 TaxID，忽略年份 (為了找出所有可能符合的公司)
-                    query = query.or(`tax_id.eq.${keyword},name.ilike.%${keyword}%`);
+                // 選用：若有輸入關鍵字，則進行模糊搜尋
+                if(taxId) {
+                    query = query.or(`tax_id.eq.${taxId},name.ilike.%${taxId}%`);
                 } else {
-                    // 情境 B: 沒輸入關鍵字 -> 列出「選定年度」的所有公司 (瀏覽模式)
-                    query = query.eq('service_year', parseInt(year));
-                    query = query.limit(50);
+                    query = query.limit(50); // 若無關鍵字，列出前50筆
                 }
 
                 const { data, error } = await query;
                 if(error) throw error;
 
                 if(!data || data.length === 0) {
-                    const msg = keyword ? `找不到符合「${keyword}」的公司資料。` : `查無 ${year} 年度的公司資料。`;
-                    alert(msg);
+                    alert(`查無 ${year} 年度的符合資料。\n提示：請確認該公司是否建立於 ${year} 年度。`);
                     resetSearchBtn();
                     return;
                 }
@@ -326,7 +315,7 @@
                     showSelectionModal(data, year);
                 }
             } catch(e) { 
-                alert(e.message); 
+                alert('查詢錯誤: ' + e.message); 
                 resetSearchBtn();
             }
         }
@@ -341,7 +330,7 @@
                     <div class="d-flex justify-content-between align-items-center">
                         <div>
                             <h6 class="mb-1 text-primary fw-bold">${co.name}</h6>
-                            <small class="text-muted">統編: ${co.tax_id} | 建檔年: ${co.service_year || '-'}</small>
+                            <small class="text-muted">統編: ${co.tax_id} | 年度: ${co.service_year}</small>
                         </div>
                         <i class="fas fa-chevron-right text-secondary"></i>
                     </div>`;
@@ -350,6 +339,7 @@
                     const modal = bootstrap.Modal.getInstance(modalEl);
                     modal.hide();
                     
+                    // 立即將按鈕設為處理中
                     const btn = document.getElementById('btn-search');
                     btn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>載入資料中...';
                     btn.disabled = true;
@@ -375,9 +365,11 @@
                 document.getElementById('hidden-company-id').value = company.id;
                 document.getElementById('disp-name').value = company.name;
                 
-                // 顯示標籤年份
-                const targets = document.querySelectorAll('.lbl-target-year');
-                targets.forEach(el => el.innerText = targetYear);
+                // 設定 UI 年份顯示
+                const searchYear = parseInt(targetYear);
+                const nextYear = searchYear + 1;
+                document.getElementById('lbl-amend-year').innerText = searchYear;
+                document.getElementById('lbl-new-year').innerText = nextYear;
                 
                 // Auto-Init Workplace
                 let { data: wp } = await supabaseClient.from('workplaces').select('*').eq('company_id', company.id).limit(1);
@@ -403,22 +395,23 @@
                 });
                 document.getElementById('disp-hazard-type').value = workplace.hazard_type || '無';
 
-                // 2-3. 查詢「目標年度」是否有紀錄
+                // 查詢「目標年度」是否有紀錄
                 const { data: exactRecord } = await supabaseClient
                     .from('service_records')
                     .select('*')
                     .eq('workplace_id', workplace.id)
-                    .eq('service_year', parseInt(targetYear))
+                    .eq('service_year', searchYear)
                     .limit(1);
                 
                 const hasRecord = exactRecord && exactRecord.length > 0;
 
-                // 2-4. 判斷預設模式
+                // 判斷預設模式
                 if (hasRecord) {
+                    // 有 -> 補件 (Amend)
                     fillForm(exactRecord[0]);
                     setMode('amend');
                 } else {
-                    // 抓最近一次底稿
+                    // 無 -> 新增歷程 (New) -> 嘗試抓最近一次底稿
                     const { data: lastRecord } = await supabaseClient
                         .from('service_records')
                         .select('*')
@@ -427,9 +420,9 @@
                         .limit(1);
                     
                     if (lastRecord && lastRecord.length > 0) {
-                        fillForm(lastRecord[0]);
+                        fillForm(lastRecord[0]); // 帶入底稿
                     } else {
-                        clearForm();
+                        clearForm(); // 全新空白
                     }
                     setMode('new');
                 }
@@ -453,9 +446,11 @@
 
         function setMode(mode) {
             document.getElementById('current-mode').value = mode;
-            const year = document.getElementById('input-year').value;
-            document.getElementById('final-target-year').value = year;
+            const searchYear = parseInt(document.getElementById('input-year').value);
+            const targetYear = mode === 'new' ? (searchYear + 1) : searchYear;
+            document.getElementById('final-target-year').value = targetYear;
 
+            // UI Style
             document.getElementById('option-new').className = 'mode-option ' + (mode==='new' ? 'selected-new' : '');
             document.getElementById('option-amend').className = 'mode-option ' + (mode==='amend' ? 'selected-amend' : '');
         }
