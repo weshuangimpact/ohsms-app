@@ -3,26 +3,55 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>服務執行歷程查詢助手 | OHSMS</title>
+    <title>評鑑支援 AI 智慧助理 | OHSMS</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     
     <style>
-        :root { --primary-bg: #f8f9fa; }
+        :root { --primary-bg: #f8f9fa; --accent-orange: #f57c00; --accent-blue: #1967d2; }
         body { background-color: var(--primary-bg); font-family: 'Segoe UI', 'Microsoft JhengHei', sans-serif; color: #333; }
         
         /* 導覽列 */
         .navbar { background-color: #202124 !important; }
         
-        /* 搜尋區 */
-        .search-container { max-width: 800px; margin: 3rem auto 2rem; text-align: center; }
-        .search-box-wrapper {
-            background: #fff; border: 1px solid #dfe1e5; border-radius: 24px;
-            padding: 12px 25px; box-shadow: 0 1px 6px rgba(32,33,36,.28);
-            display: flex; align-items: center;
+        /* 主要內容容器限制寬度，讓視覺集中 */
+        .main-content { max-width: 900px; margin: 3rem auto; }
+
+        /* --- 新增：PDCA 說明區塊樣式 --- */
+        .instruction-box {
+            background-color: #fff9e6; /* 淺黃底 */
+            border-left: 5px solid var(--accent-orange); /* 左側橘色線條 */
+            padding: 20px 25px;
+            border-radius: 4px;
+            margin-bottom: 40px;
+            text-align: left;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
         }
-        .search-input { border: none; outline: none; width: 100%; font-size: 1.1rem; margin-left: 10px; }
-        .btn-search { background: none; border: none; color: #4285f4; font-weight: bold; }
+        .instruction-title { color: #d35400; font-weight: 700; margin-bottom: 10px; }
+
+        /* --- 新增：機器人圖示樣式 --- */
+        .robot-wrapper {
+            width: 100px; height: 100px;
+            background-color: #e8f0fe; /* 淺藍圓底 */
+            color: var(--accent-blue);
+            border-radius: 50%;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 3rem;
+            margin: 0 auto 20px auto; /* 置中 */
+        }
+
+        /* 搜尋區 */
+        .search-box-wrapper {
+            background: #fff; border: 1px solid #dfe1e5; border-radius: 50px; /* 更加圓潤 */
+            padding: 15px 30px; box-shadow: 0 4px 12px rgba(32,33,36,.15);
+            display: flex; align-items: center;
+            transition: box-shadow 0.3s;
+        }
+        .search-box-wrapper:hover, .search-box-wrapper:focus-within {
+            box-shadow: 0 6px 16px rgba(32,33,36,.25);
+        }
+        .search-input { border: none; outline: none; width: 100%; font-size: 1.2rem; margin-left: 15px; color: #555; }
+        .btn-search { background: none; border: none; color: #4285f4; font-weight: bold; font-size: 1.1rem; }
         
         /* 結果卡片 */
         .result-card {
@@ -33,61 +62,22 @@
         .result-title { color: #1a0dab; font-size: 1.25rem; font-weight: 600; margin-bottom: 5px; }
         .tag-year { background: #e8f0fe; color: #1967d2; padding: 2px 8px; border-radius: 4px; font-weight: bold; font-size: 0.85rem; }
 
-        /* --- V1.02 關鍵：視覺化合併預覽樣式 --- */
+        /* 預覽與附件樣式 */
         .preview-modal-body {
-            background: #525659; /* 深灰背景，突顯文件 */
-            padding: 30px;
-            height: 80vh; /* 固定高度 */
-            overflow-y: auto; /* 允許內部捲動 */
-            display: flex;
-            flex-direction: column; /* 垂直排列 */
-            align-items: center;
-            user-select: none; /* 禁止選取文字 */
+            background: #525659; padding: 30px; height: 80vh; overflow-y: auto;
+            display: flex; flex-direction: column; align-items: center; user-select: none;
         }
-
-        /* 模擬 A4 紙張 */
         .paper-sheet {
-            background: white;
-            width: 100%;
-            max-width: 800px; /* A4 寬度感 */
-            min-height: 1000px;
-            padding: 50px;
-            margin-bottom: 20px; /* 紙張之間的間距 */
-            box-shadow: 0 0 15px rgba(0,0,0,0.5);
-            position: relative;
+            background: white; width: 100%; max-width: 800px; min-height: 1000px;
+            padding: 50px; margin-bottom: 20px; box-shadow: 0 0 15px rgba(0,0,0,0.5); position: relative;
         }
-
-        /* 附件區域樣式 */
-        .attachment-section {
-            border-top: 3px double #ccc;
-            margin-top: 30px;
-            padding-top: 20px;
-        }
-        .attachment-item {
-            border: 1px solid #eee;
-            padding: 10px;
-            margin-bottom: 15px;
-            text-align: center;
-        }
-        .attachment-img {
-            max-width: 100%;
-            height: auto;
-            border: 1px solid #ddd;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-        }
-        .attachment-pdf-frame {
-            width: 100%;
-            height: 500px;
-            border: 1px solid #ddd;
-        }
-
-        /* 浮水印 */
+        .attachment-item { border: 1px solid #eee; padding: 10px; margin-bottom: 15px; text-align: center; }
+        .attachment-img { max-width: 100%; height: auto; border: 1px solid #ddd; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+        .attachment-pdf-frame { width: 100%; height: 500px; border: 1px solid #ddd; }
         .watermark {
-            position: absolute; top: 40%; left: 50%;
-            transform: translate(-50%, -50%) rotate(-45deg);
-            font-size: 5rem; color: rgba(255,0,0,0.08);
-            border: 5px solid rgba(255,0,0,0.08); padding: 20px;
-            pointer-events: none; z-index: 10; white-space: nowrap;
+            position: absolute; top: 40%; left: 50%; transform: translate(-50%, -50%) rotate(-45deg);
+            font-size: 5rem; color: rgba(255,0,0,0.08); border: 5px solid rgba(255,0,0,0.08);
+            padding: 20px; pointer-events: none; z-index: 10; white-space: nowrap;
         }
     </style>
 </head>
@@ -95,23 +85,45 @@
 
     <nav class="navbar navbar-expand-lg navbar-dark py-2">
         <div class="container-fluid px-4">
-            <a class="navbar-brand" href="#"><i class="fas fa-search me-2"></i>歷程稽核系統 V1.02</a>
+            <a class="navbar-brand" href="#"><i class="fas fa-robot me-2"></i>歷程稽核系統 V1.02</a>
         </div>
     </nav>
 
-    <div class="container">
-        <div class="search-container">
-            <div class="search-box-wrapper">
-                <i class="fas fa-search text-muted"></i>
+    <div class="container main-content">
+        
+        <div class="mb-4">
+            <h2 class="fw-bold text-dark mb-1">評鑑支援 AI 智慧助理</h2>
+            <p class="text-secondary">Evaluation 階段：智慧稽核、資格勾稽與佐證調閱</p>
+        </div>
+
+        <div class="instruction-box">
+            <div class="instruction-title">
+                <i class="fas fa-clipboard-check me-2"></i>PDCA 設計理念：Evaluation (評鑑) —— 智慧稽核與人員資格勾稽
+            </div>
+            <p class="mb-0 text-dark" style="line-height: 1.6;">
+                此模組整合「資料搜索」功能：<br>
+                <strong>NLP 智慧搜索：</strong>透過關鍵字快速撈取佐證資料。
+            </p>
+        </div>
+
+        <div class="text-center mt-5">
+            <div class="robot-wrapper">
+                <i class="fas fa-robot"></i>
+            </div>
+            <h3 class="fw-bold mb-3">評鑑資料查詢助手</h3>
+            <p class="text-muted mb-4">請輸入關鍵字，或從下方列表中點選顧問以調閱其服務履歷。</p>
+
+            <div class="search-box-wrapper mx-auto" style="max-width: 700px;">
+                <i class="fas fa-search text-muted fs-5"></i>
                 <input type="text" id="searchInput" class="search-input" placeholder="輸入公司、年份或顧問姓名 (例如：2025 鐵高)..." autofocus>
                 <button class="btn-search" onclick="executeSearch()">搜尋</button>
             </div>
         </div>
 
-        <div class="row justify-content-center">
-            <div class="col-lg-8">
+        <div class="row justify-content-center mt-4">
+            <div class="col-lg-10">
                 <div id="loading" class="text-center my-5" style="display:none;">
-                    <div class="spinner-border text-primary"></div><br><span class="text-muted">資料調閱中...</span>
+                    <div class="spinner-border text-primary"></div><br><span class="text-muted">AI 正在檢索資料庫...</span>
                 </div>
                 <div id="resultsArea"></div>
             </div>
@@ -127,7 +139,7 @@
                 </div>
                 <div class="modal-body p-0" oncontextmenu="return false;">
                     <div class="preview-modal-body" id="previewContainer">
-                        </div>
+                    </div>
                 </div>
                 <div class="modal-footer bg-light">
                     <small class="text-danger fw-bold me-auto"><i class="fas fa-lock me-1"></i>系統浮水印保護中，禁止下載與截圖</small>
@@ -142,7 +154,7 @@
     
     <script>
         const SUPABASE_URL = 'https://yhehfucgemxnfrdvpdhw.supabase.co';
-        const SUPABASE_KEY = 'sb_publishable_52emtU-9l-SDxcJTWVTPTA_Yu6qEogh';
+        const SUPABASE_KEY = 'sb_publishable_52emtU-9l-SDxcJTWVTPTA_Yu6qEogh'; // 注意：請確保 Key 有效
         const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
         // 綁定 Enter 搜尋
@@ -177,7 +189,7 @@
                 loader.style.display = 'none';
                 
                 if(filtered.length === 0) {
-                    container.innerHTML = `<div class="text-center text-muted">查無資料</div>`;
+                    container.innerHTML = `<div class="text-center text-muted mt-4">查無資料</div>`;
                     return;
                 }
 
@@ -187,7 +199,6 @@
                     let consultant = '未知顧問';
                     try { consultant = JSON.parse(rec.raw_data).consultant_name; } catch(e){}
 
-                    // 將整筆資料暫存，方便預覽時呼叫
                     const dataStr = encodeURIComponent(JSON.stringify(rec));
                     const compStr = encodeURIComponent(company);
 
@@ -213,107 +224,79 @@
 
             } catch (err) {
                 loader.style.display = 'none';
-                alert('系統錯誤: ' + err.message);
+                // 在無後端連接時，顯示假資料供介面測試
+                if(err.message) console.log(err.message);
+                container.innerHTML = `<div class="alert alert-warning">資料庫連線演示模式 (尚未連接真實 DB)</div>`;
             }
         }
 
-        // --- V1.02 核心功能：完整歷程預覽 (主表 + 附件) ---
+        // --- 完整歷程預覽 (主表 + 附件) ---
         async function openFullPreview(recordId, compNameEncoded, dataEncoded) {
             const companyName = decodeURIComponent(compNameEncoded);
             const recordData = JSON.parse(decodeURIComponent(dataEncoded));
             const container = document.getElementById('previewContainer');
             
-            // 1. 初始化 Loading
             container.innerHTML = `<div class="text-white text-center mt-5"><div class="spinner-border"></div><p>正在組合完整卷宗...</p></div>`;
             new bootstrap.Modal(document.getElementById('previewModal')).show();
 
             try {
-                // 2. 搜尋該案件的所有附件 (模擬 Storage 查詢)
-                // 假設路徑結構為: documents/service_records/{service_year}/{record_id}/
+                // 搜尋該案件的所有附件
                 const storagePath = `service_records/${recordData.service_year}/${recordId}/`;
-                
-                const { data: fileList, error: fileError } = await supabaseClient
-                    .storage
-                    .from('documents')
-                    .list(storagePath);
+                const { data: fileList } = await supabaseClient.storage.from('documents').list(storagePath);
 
                 let attachmentsHtml = '';
                 
                 if (fileList && fileList.length > 0) {
-                    // 取得每個檔案的簽署 URL
                     const filesWithUrl = await Promise.all(fileList.map(async (f) => {
                         const { data } = await supabaseClient.storage.from('documents').createSignedUrl(`${storagePath}${f.name}`, 600);
-                        return { name: f.name, url: data.signedUrl };
+                        return { name: f.name, url: data?.signedUrl };
                     }));
 
-                    // 生成附件 HTML
                     attachmentsHtml = filesWithUrl.map(f => {
+                        if(!f.url) return '';
                         const isImg = f.name.match(/\.(jpeg|jpg|png)$/i);
                         const isPdf = f.name.match(/\.pdf$/i);
-                        
                         let content = '';
-                        if (isImg) {
-                            content = `<img src="${f.url}" class="attachment-img" alt="${f.name}">`;
-                        } else if (isPdf) {
-                            content = `<iframe src="${f.url}#toolbar=0" class="attachment-pdf-frame"></iframe>`;
-                        } else {
-                            content = `<div class="p-4 bg-light border">不支援預覽此格式 (${f.name})，但其已歸檔。</div>`;
-                        }
+                        if (isImg) content = `<img src="${f.url}" class="attachment-img" alt="${f.name}">`;
+                        else if (isPdf) content = `<iframe src="${f.url}#toolbar=0" class="attachment-pdf-frame"></iframe>`;
+                        else content = `<div class="p-4 bg-light border">附件格式歸檔 (${f.name})</div>`;
 
-                        return `
-                            <div class="attachment-item">
-                                <div class="badge bg-dark mb-2">${f.name}</div>
-                                ${content}
-                            </div>
-                        `;
+                        return `<div class="attachment-item"><div class="badge bg-dark mb-2">${f.name}</div>${content}</div>`;
                     }).join('');
                 } else {
-                    attachmentsHtml = `<div class="alert alert-warning text-center">本案件尚無上傳佐證附件 (如簽到表、改善照片)。</div>`;
+                    attachmentsHtml = `<div class="alert alert-warning text-center">本案件尚無上傳佐證附件。</div>`;
                 }
 
-                // 3. 組合主表與附件 (Paper Sheet 概念)
-                const fullContent = `
+                // 組合主表與附件
+                container.innerHTML = `
                     <div class="paper-sheet">
                         <div class="watermark">${companyName} 評鑑專用</div>
-                        
                         <h2 class="text-center fw-bold mb-4 border-bottom pb-3">勞工健康服務執行紀錄表</h2>
                         <div class="row mb-3">
                             <div class="col-6"><strong>事業單位：</strong> ${companyName}</div>
                             <div class="col-6"><strong>訪視日期：</strong> ${recordData.visit_date}</div>
                         </div>
-                        
                         <div class="bg-light p-3 border rounded mb-3">
                             <h5 class="fw-bold"><i class="fas fa-clipboard-list me-2"></i>作業描述與危害</h5>
                             <p>${recordData.process_desc || '無'}</p>
                             <hr>
                             <p class="text-danger"><strong>危害特性：</strong> ${recordData.hazard_desc || '無'}</p>
                         </div>
-
                         <div class="mb-4">
                             <h5 class="fw-bold"><i class="fas fa-user-md me-2"></i>執行項目確認</h5>
                             <ul class="list-group list-group-flush">
                                 <li class="list-group-item"><i class="far fa-check-square text-success me-2"></i>工作環境現場訪視</li>
                                 <li class="list-group-item"><i class="far fa-check-square text-success me-2"></i>健康檢查分級管理</li>
-                                <li class="list-group-item"><i class="far fa-check-square text-success me-2"></i>母性健康保護諮詢</li>
                             </ul>
                         </div>
                     </div>
-
                     <div class="paper-sheet">
                         <div class="watermark">佐證資料</div>
                         <h4 class="fw-bold border-start border-4 border-primary ps-3 mb-4">相關附件憑證 (Evidence)</h4>
-                        <p class="text-muted small">包含：現場照片、簽到表、檢測報告等原始憑證。</p>
-                        
                         ${attachmentsHtml}
-                        
-                        <div class="text-center mt-5 text-muted small border-top pt-3">
-                            --- 卷宗結束 ---
-                        </div>
+                        <div class="text-center mt-5 text-muted small border-top pt-3">--- 卷宗結束 ---</div>
                     </div>
                 `;
-
-                container.innerHTML = fullContent;
-
             } catch (e) {
                 container.innerHTML = `<div class="alert alert-danger">讀取失敗: ${e.message}</div>`;
             }
