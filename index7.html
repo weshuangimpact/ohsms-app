@@ -41,6 +41,9 @@
         
         /* 事件類型標籤 */
         .badge-event { font-size: 0.8em; padding: 5px 8px; width: 80px; text-align: center; display: inline-block;}
+
+        /* 搜尋框樣式 */
+        .search-group { max-width: 400px; }
     </style>
 
     <script>
@@ -71,9 +74,9 @@
 
     <div class="container-fluid px-4 pb-5">
         
-        <div class="d-flex justify-content-between align-items-center mb-3">
-            <div class="section-title">
-                <h4 class="fw-bold text-dark mb-0">1. 客戶主檔管理 (Companies)</h4>
+        <div class="d-flex justify-content-between align-items-end mb-3">
+            <div class="section-title mb-0">
+                <h4 class="fw-bold text-dark mb-0">1. 客戶主檔管理 (Companies) V1.01</h4>
                 <small class="text-muted">管理服務之事業單位清單</small>
             </div>
             <div class="d-flex gap-2">
@@ -86,9 +89,19 @@
             </div>
         </div>
 
-        <div class="info-card info-blue shadow-sm">
-            <strong><i class="fas fa-building me-2"></i>操作指引</strong><br>
-            您可以使用 <strong>PDF (單筆辨識)</strong> 或 <strong>Excel (批量匯入)</strong> 來建立資料。系統將自動記錄統編與合約資訊。
+        <div class="row mb-3">
+            <div class="col-md-6">
+                <div class="info-card info-blue shadow-sm h-100 mb-0">
+                    <strong><i class="fas fa-building me-2"></i>操作指引</strong><br>
+                    請輸入統編或名稱進行查詢，或直接點擊「查詢」列出最近 50 筆資料。
+                </div>
+            </div>
+            <div class="col-md-6 d-flex align-items-center justify-content-end">
+                <div class="input-group search-group shadow-sm">
+                    <input type="text" id="search-company" class="form-control" placeholder="輸入名稱或統編...">
+                    <button class="btn btn-primary" onclick="loadCompanies()"><i class="fas fa-search me-1"></i>查詢</button>
+                </div>
+            </div>
         </div>
 
         <div class="card border-0 shadow mb-3">
@@ -105,15 +118,15 @@
                             </tr>
                         </thead>
                         <tbody id="companyTableBody">
-                            <tr><td colspan="5" class="text-center py-4 text-muted">連線資料庫中...</td></tr>
+                            <tr><td colspan="5" class="text-center py-4 text-muted">請點擊上方按鈕進行查詢</td></tr>
                         </tbody>
                     </table>
                 </div>
             </div>
         </div>
 
-        <div class="d-flex justify-content-between align-items-center mb-3">
-            <div class="section-title staff">
+        <div class="d-flex justify-content-between align-items-end mb-3">
+            <div class="section-title staff mb-0">
                 <h4 class="fw-bold text-dark mb-0">2. 職護與顧問人員管理 (Staff)</h4>
                 <small class="text-muted">建立醫師、護理師與顧問名單</small>
             </div>
@@ -127,9 +140,19 @@
             </div>
         </div>
 
-        <div class="info-card info-green shadow-sm">
-            <strong><i class="fas fa-user-md me-2"></i>人員資料庫</strong><br>
-            建立完整的醫護團隊名單，以利系統自動計算評鑑報告中的人力配置分數。
+        <div class="row mb-3">
+            <div class="col-md-6">
+                <div class="info-card info-green shadow-sm h-100 mb-0">
+                    <strong><i class="fas fa-user-md me-2"></i>人員資料庫</strong><br>
+                    建立完整的醫護團隊名單，以利系統自動計算評鑑報告中的人力配置分數。
+                </div>
+            </div>
+            <div class="col-md-6 d-flex align-items-center justify-content-end">
+                <div class="input-group search-group shadow-sm">
+                    <input type="text" id="search-staff" class="form-control" placeholder="輸入人員姓名...">
+                    <button class="btn btn-success text-white" onclick="loadStaff()"><i class="fas fa-search me-1"></i>查詢</button>
+                </div>
+            </div>
         </div>
 
         <div class="card border-0 shadow mb-3">
@@ -146,15 +169,15 @@
                             </tr>
                         </thead>
                         <tbody id="staffTableBody">
-                            <tr><td colspan="5" class="text-center py-4 text-muted">讀取人員名單中...</td></tr>
+                            <tr><td colspan="5" class="text-center py-4 text-muted">請點擊上方按鈕進行查詢</td></tr>
                         </tbody>
                     </table>
                 </div>
             </div>
         </div>
 
-        <div class="d-flex justify-content-between align-items-center mb-3">
-            <div class="section-title calendar">
+        <div class="d-flex justify-content-between align-items-end mb-3">
+            <div class="section-title calendar mb-0">
                 <h4 class="fw-bold text-dark mb-0">3. 法規行事曆與預警 (Calendar)</h4>
                 <small class="text-muted">設定稽核行程、證照效期與會議排程</small>
             </div>
@@ -168,10 +191,19 @@
             </div>
         </div>
 
-        <div class="info-card info-red shadow-sm">
-            <strong><i class="fas fa-bell me-2"></i>預警系統同步</strong><br>
-            在此處建立的資料將同步顯示於<strong>「工作儀表板」</strong>與<strong>「合規預警看板」</strong>。
-            過期未完成的事項將自動標示為紅色警示。
+        <div class="row mb-3">
+            <div class="col-md-6">
+                <div class="info-card info-red shadow-sm h-100 mb-0">
+                    <strong><i class="fas fa-bell me-2"></i>預警系統同步</strong><br>
+                    在此處建立的資料將同步顯示於<strong>「工作儀表板」</strong>。過期事項將標示為紅色警示。
+                </div>
+            </div>
+            <div class="col-md-6 d-flex align-items-center justify-content-end">
+                <div class="input-group search-group shadow-sm">
+                    <input type="text" id="search-event" class="form-control" placeholder="輸入事項名稱...">
+                    <button class="btn btn-danger" onclick="loadEvents()"><i class="fas fa-search me-1"></i>查詢</button>
+                </div>
+            </div>
         </div>
 
         <div class="card border-0 shadow">
@@ -189,7 +221,7 @@
                             </tr>
                         </thead>
                         <tbody id="eventTableBody">
-                            <tr><td colspan="6" class="text-center py-4 text-muted">讀取行事曆中...</td></tr>
+                            <tr><td colspan="6" class="text-center py-4 text-muted">請點擊上方按鈕進行查詢</td></tr>
                         </tbody>
                     </table>
                 </div>
@@ -334,77 +366,149 @@
     <script>
         pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.worker.min.js';
 
-        const SUPABASE_URL = 'https://ghpxaeenikochgrnczic.supabase.co';
-        const SUPABASE_KEY = 'sb_publishable_v0ZN2OY08lh-8EC8ps8NdQ_ChYo1FRW';
+        // 1. 更新連線資訊
+        const SUPABASE_URL = 'https://yhehfucgemxnfrdvpdhw.supabase.co';
+        const SUPABASE_KEY = 'sb_publishable_52emtU-9l-SDxcJTWVTPTA_Yu6qEogh';
         const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
         let currentType = ''; 
         let batchData = [];
 
-        // Init
+        // Init: 只載入選單，不載入表格
         document.addEventListener('DOMContentLoaded', () => {
-            loadCompanies();
-            loadStaff();
-            loadEvents();
             loadCompanyOptions();
         });
 
         // ========================
-        // Load Functions
+        // Load Functions (Search Logic)
         // ========================
+        
+        // 1. 公司查詢
         async function loadCompanies() {
-            const { data } = await supabase.from('companies').select('*').order('created_at', {ascending:false});
-            document.getElementById('companyTableBody').innerHTML = (data||[]).map(c => `
-                <tr>
-                    <td class="font-monospace ps-4">${c.tax_id||''}</td>
-                    <td class="fw-bold text-primary">${c.name}</td>
-                    <td>${c.contact_person||'-'}</td>
-                    <td>${c.phone||'-'}</td>
-                    <td class="text-end pe-4"><button class="btn btn-sm btn-outline-danger" onclick="deleteData('companies', '${c.id}', '${c.name}')"><i class="fas fa-trash"></i></button></td>
-                </tr>`).join('') || '<tr><td colspan="5" class="text-center py-3">無資料</td></tr>';
-        }
-
-        async function loadStaff() {
-            const { data } = await supabase.from('medical_staff').select('*').order('created_at', {ascending:false});
-            document.getElementById('staffTableBody').innerHTML = (data||[]).map(s => `
-                <tr>
-                    <td class="ps-4 fw-bold">${s.name}</td>
-                    <td><span class="badge bg-success bg-opacity-10 text-success border border-success">${s.role}</span></td>
-                    <td>${s.employment_type||'-'}</td>
-                    <td>${s.phone||'-'}</td>
-                    <td class="text-end pe-4"><button class="btn btn-sm btn-outline-danger" onclick="deleteData('medical_staff', '${s.id}', '${s.name}')"><i class="fas fa-trash"></i></button></td>
-                </tr>`).join('') || '<tr><td colspan="5" class="text-center py-3">無資料</td></tr>';
-        }
-
-        async function loadEvents() {
-            const { data } = await supabase.from('compliance_events').select('*').order('event_date', {ascending:true});
+            const keyword = document.getElementById('search-company').value.trim();
+            const btn = document.querySelector('button[onclick="loadCompanies()"]');
+            const tbody = document.getElementById('companyTableBody');
             
-            const typeMap = {
-                'training': {label:'教育訓練', class:'bg-info text-dark'},
-                'meeting': {label:'會議', class:'bg-warning text-dark'},
-                'service': {label:'臨場服務', class:'bg-success text-white'},
-                'document': {label:'文件修訂', class:'bg-secondary text-white'}
-            };
-
-            document.getElementById('eventTableBody').innerHTML = (data||[]).map(e => {
-                const badge = typeMap[e.event_type] || {label:e.event_type, class:'bg-light text-dark'};
-                const isExpired = new Date(e.event_date) < new Date() && e.status !== 'completed';
-                const dateClass = isExpired ? 'text-danger fw-bold' : '';
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+            
+            try {
+                let query = supabase.from('companies').select('*').order('created_at', {ascending:false});
                 
-                return `
-                <tr>
-                    <td class="ps-4 ${dateClass}">${e.event_date} ${isExpired?'(已逾期)':''}</td>
-                    <td><span class="badge ${badge.class} badge-event">${badge.label}</span></td>
-                    <td class="fw-bold">${e.title}</td>
-                    <td>${e.priority==='high' ? '<span class="text-danger"><i class="fas fa-exclamation-circle"></i> 緊急</span>' : '一般'}</td>
-                    <td>${e.status==='pending' ? '待辦' : '已完成'}</td>
-                    <td class="text-end pe-4"><button class="btn btn-sm btn-outline-danger" onclick="deleteData('compliance_events', '${e.id}', '${e.title}')"><i class="fas fa-trash"></i></button></td>
-                </tr>`;
-            }).join('') || '<tr><td colspan="6" class="text-center py-3">無排程資料</td></tr>';
+                // 搜尋邏輯
+                if(keyword) {
+                    query = query.or(`name.ilike.%${keyword}%,tax_id.eq.${keyword}`);
+                } else {
+                    query = query.limit(50); // 沒輸入則抓前50筆
+                }
+
+                const { data, error } = await query;
+                
+                if(error) throw error;
+
+                tbody.innerHTML = (data||[]).map(c => `
+                    <tr class="animate__animated animate__fadeIn">
+                        <td class="font-monospace ps-4">${c.tax_id||''}</td>
+                        <td class="fw-bold text-primary">${c.name}</td>
+                        <td>${c.contact_person||'-'}</td>
+                        <td>${c.phone||'-'}</td>
+                        <td class="text-end pe-4"><button class="btn btn-sm btn-outline-danger" onclick="deleteData('companies', '${c.id}', '${c.name}')"><i class="fas fa-trash"></i></button></td>
+                    </tr>`).join('') || '<tr><td colspan="5" class="text-center py-3">查無資料</td></tr>';
+
+            } catch(e) {
+                alert('查詢失敗: ' + e.message);
+            } finally {
+                btn.innerHTML = '<i class="fas fa-search me-1"></i>查詢';
+            }
+        }
+
+        // 2. 人員查詢
+        async function loadStaff() {
+            const keyword = document.getElementById('search-staff').value.trim();
+            const btn = document.querySelector('button[onclick="loadStaff()"]');
+            const tbody = document.getElementById('staffTableBody');
+
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+
+            try {
+                let query = supabase.from('medical_staff').select('*').order('created_at', {ascending:false});
+                
+                if(keyword) {
+                    query = query.ilike('name', `%${keyword}%`);
+                } else {
+                    query = query.limit(50);
+                }
+
+                const { data, error } = await query;
+                if(error) throw error;
+
+                tbody.innerHTML = (data||[]).map(s => `
+                    <tr class="animate__animated animate__fadeIn">
+                        <td class="ps-4 fw-bold">${s.name}</td>
+                        <td><span class="badge bg-success bg-opacity-10 text-success border border-success">${s.role}</span></td>
+                        <td>${s.employment_type||'-'}</td>
+                        <td>${s.phone||'-'}</td>
+                        <td class="text-end pe-4"><button class="btn btn-sm btn-outline-danger" onclick="deleteData('medical_staff', '${s.id}', '${s.name}')"><i class="fas fa-trash"></i></button></td>
+                    </tr>`).join('') || '<tr><td colspan="5" class="text-center py-3">查無資料</td></tr>';
+            } catch(e) {
+                alert('查詢失敗');
+            } finally {
+                btn.innerHTML = '<i class="fas fa-search me-1"></i>查詢';
+            }
+        }
+
+        // 3. 行事曆查詢
+        async function loadEvents() {
+            const keyword = document.getElementById('search-event').value.trim();
+            const btn = document.querySelector('button[onclick="loadEvents()"]');
+            const tbody = document.getElementById('eventTableBody');
+
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+
+            try {
+                let query = supabase.from('compliance_events').select('*').order('event_date', {ascending:true});
+                
+                if(keyword) {
+                    query = query.ilike('title', `%${keyword}%`);
+                } else {
+                    query = query.limit(50);
+                }
+
+                const { data, error } = await query;
+                if(error) throw error;
+                
+                const typeMap = {
+                    'training': {label:'教育訓練', class:'bg-info text-dark'},
+                    'meeting': {label:'會議', class:'bg-warning text-dark'},
+                    'service': {label:'臨場服務', class:'bg-success text-white'},
+                    'document': {label:'文件修訂', class:'bg-secondary text-white'}
+                };
+
+                tbody.innerHTML = (data||[]).map(e => {
+                    const badge = typeMap[e.event_type] || {label:e.event_type, class:'bg-light text-dark'};
+                    const isExpired = new Date(e.event_date) < new Date() && e.status !== 'completed';
+                    const dateClass = isExpired ? 'text-danger fw-bold' : '';
+                    
+                    return `
+                    <tr class="animate__animated animate__fadeIn">
+                        <td class="ps-4 ${dateClass}">${e.event_date} ${isExpired?'(已逾期)':''}</td>
+                        <td><span class="badge ${badge.class} badge-event">${badge.label}</span></td>
+                        <td class="fw-bold">${e.title}</td>
+                        <td>${e.priority==='high' ? '<span class="text-danger"><i class="fas fa-exclamation-circle"></i> 緊急</span>' : '一般'}</td>
+                        <td>${e.status==='pending' ? '待辦' : '已完成'}</td>
+                        <td class="text-end pe-4"><button class="btn btn-sm btn-outline-danger" onclick="deleteData('compliance_events', '${e.id}', '${e.title}')"><i class="fas fa-trash"></i></button></td>
+                    </tr>`;
+                }).join('') || '<tr><td colspan="6" class="text-center py-3">查無資料</td></tr>';
+            } catch(e) {
+                alert('查詢失敗');
+            } finally {
+                btn.innerHTML = '<i class="fas fa-search me-1"></i>查詢';
+            }
         }
 
         async function loadCompanyOptions() {
-            const { data } = await supabase.from('companies').select('id, name');
+            // 這個選單還是需要載入，不然沒辦法新增行程
+            // 只抓 id, name 輕量化
+            const { data } = await supabase.from('companies').select('id, name').limit(100); 
             const select = document.getElementById('ev-company');
             if(data) {
                 data.forEach(c => {
@@ -495,8 +599,10 @@
             alert('✅ 儲存成功');
             // Close modals
             document.querySelectorAll('.modal').forEach(el => bootstrap.Modal.getInstance(el)?.hide());
-            // Reload
-            loadCompanies(); loadStaff(); loadEvents();
+            // Reload Current Table
+            if(currentType === 'company') loadCompanies();
+            if(currentType === 'staff') loadStaff();
+            if(currentType === 'event') loadEvents();
         }
 
         // ========================
@@ -558,8 +664,6 @@
                     } else if(currentType === 'staff') {
                         batchData.push({ name:r[0], role:r[1]||'護理人員', employment_type:r[2]||'兼職', phone:r[3] });
                     } else if(currentType === 'event') {
-                        // Excel columns: Date, Title, Type, Priority
-                        // Excel date handling needed usually, simplified here:
                         batchData.push({ event_date:r[0], title:r[1], event_type:r[2]||'document', priority:r[3]||'medium' });
                     }
                 }
@@ -570,10 +674,8 @@
                     document.getElementById('companyForm').style.display = 'none';
                     document.getElementById('previewArea').style.display = 'block';
                     document.getElementById('previewCount').innerText = batchData.length;
-                    // Simple table preview
                     document.getElementById('previewTable').innerHTML = batchData.map(d => `<tr><td>${d.name}</td></tr>`).join('');
                 } else if(currentType === 'staff') {
-                    // Direct save flow for staff/event for simplicity in this demo, or add preview logic
                     if(confirm(`解析出 ${batchData.length} 筆資料，是否直接匯入？`)) saveData();
                 } else if(currentType === 'event') {
                     if(confirm(`解析出 ${batchData.length} 筆行程，是否直接匯入？`)) saveData();
@@ -591,6 +693,8 @@
             if(!confirm('確定刪除?')) return;
             await supabase.from(table).delete().eq('id',id);
             await writeLog('刪除', table, `刪除: ${name}`);
+            
+            // Reload based on context
             if(table==='companies') loadCompanies();
             if(table==='medical_staff') loadStaff();
             if(table==='compliance_events') loadEvents();
