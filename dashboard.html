@@ -6,6 +6,7 @@
     <title>工作儀表板 | OHSMS</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    
     <style>
         :root {
             --primary-bg: #f8f9fa;
@@ -34,11 +35,9 @@
         .card-plan { border-left-color: #0d6efd; }
         .card-check { border-left-color: #198754; }
         .card-eval { border-left-color: #ffc107; }
-        .card-ai { border-left-color: #0dcaf0; }
-        .card-std { border-left-color: #6f42c1; }
+        /* Index 4, 5, 8 的顏色定義已移除，保持 CSS 乾淨 */
         .card-data { border-left-color: #4f46e5; }
         .card-admin { border-left-color: #212529; }
-        .card-test { border-left-color: #dc3545; }
 
         .icon-wrapper {
             width: 50px;
@@ -165,46 +164,6 @@
                 </div>
             </div>
 
-            <div class="col-xl-3 col-md-6" id="card-index4">
-                <div class="card dashboard-card bg-white card-ai" onclick="window.location.href='index4.html'">
-                    <div class="card-body p-4">
-                        <div class="d-flex justify-content-between">
-                            <div>
-                                <h6 class="text-uppercase text-info fw-bold small mb-1">AI 輔助</h6>
-                                <h5 class="card-title fw-bold mb-2">文件管理助理</h5>
-                            </div>
-                            <div class="icon-wrapper bg-info bg-opacity-10 text-info">
-                                <i class="fas fa-robot"></i>
-                            </div>
-                        </div>
-                        <div class="guide-text">
-                            操作指引：<br>
-                            協助舊檔案自動分類歸檔、偵測缺件與補件提醒。
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <div class="col-xl-3 col-md-6" id="card-index5">
-                <div class="card dashboard-card bg-white card-std" onclick="window.location.href='index5.html'">
-                    <div class="card-body p-4">
-                        <div class="d-flex justify-content-between">
-                            <div>
-                                <h6 class="text-uppercase fw-bold small mb-1" style="color: #6f42c1;">Resources</h6>
-                                <h5 class="card-title fw-bold mb-2">文件資源中心</h5>
-                            </div>
-                            <div class="icon-wrapper bg-light text-purple" style="color: #6f42c1;">
-                                <i class="fas fa-folder-open"></i>
-                            </div>
-                        </div>
-                        <div class="guide-text">
-                            操作指引：<br>
-                            下載最新公版表單、標準合約範本與教育訓練教材。
-                        </div>
-                    </div>
-                </div>
-            </div>
-
             <div class="col-xl-3 col-md-6" id="card-index7">
                 <div class="card dashboard-card bg-white card-data" onclick="window.location.href='index7.html'">
                     <div class="card-body p-4">
@@ -245,26 +204,6 @@
                 </div>
             </div>
 
-            <div class="col-xl-3 col-md-6" id="card-index8">
-                <div class="card dashboard-card bg-white card-test" onclick="window.location.href='index8.html'">
-                    <div class="card-body p-4">
-                        <div class="d-flex justify-content-between">
-                            <div>
-                                <h6 class="text-uppercase text-danger fw-bold small mb-1">Stress Test</h6>
-                                <h5 class="card-title fw-bold mb-2">AI 壓力測試代理人</h5>
-                            </div>
-                            <div class="icon-wrapper bg-danger bg-opacity-10 text-danger">
-                                <i class="fas fa-robot"></i>
-                            </div>
-                        </div>
-                        <div class="guide-text">
-                            操作指引：<br>
-                            自動化生成大量測試數據 (公司/人員/行程)，驗證系統負載。
-                        </div>
-                    </div>
-                </div>
-            </div>
-
         </div>
     </div>
 
@@ -275,7 +214,7 @@
             // 1. 顯示畫面
             document.body.style.display = 'block';
 
-            // 2. 讀取使用者資訊 (模擬資料，實際開發請刪除 || 後的預設值)
+            // 2. 讀取使用者資訊
             const userRole = sessionStorage.getItem('currentUserRole') || 'admin';
             const userName = sessionStorage.getItem('currentUserName') || '管理員';
             
@@ -294,20 +233,17 @@
                 manager: document.getElementById('card-index2'), // 管理者總覽
                 eval: document.getElementById('card-index3'),    // 評鑑助理
                 maint: document.getElementById('card-index6'),   // 系統操作日誌稽核
-                master: document.getElementById('card-index7'),  // 基本資料
-                agent: document.getElementById('card-index8')    // 壓力測試
+                master: document.getElementById('card-index7')   // 基本資料
             };
 
             // 初始化：先隱藏敏感項目
             if(cards.maint) cards.maint.style.display = 'none';
             if(cards.master) cards.master.style.display = 'none';
-            if(cards.agent) cards.agent.style.display = 'none';
 
             if (userRole === 'admin') {
                 // Admin: 全開
                 if(cards.maint) cards.maint.style.display = 'block';
                 if(cards.master) cards.master.style.display = 'block';
-                if(cards.agent) cards.agent.style.display = 'block';
             }
             else if (userRole === 'general') {
                 // 文管: 隱藏管理與評鑑，但可建立基本資料
