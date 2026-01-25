@@ -24,10 +24,14 @@
         .step-title { border-left: 4px solid #0d6efd; padding-left: 10px; font-weight: bold; color: #0d6efd; margin-bottom: 1rem; }
         .select-row:hover { background-color: #f1f5f9; cursor: pointer; }
         
-        /* 分頁按鈕樣式 */
-        .pagination { margin-bottom: 0; }
-        .page-link { color: #333; cursor: pointer; }
-        .page-item.active .page-link { background-color: #0d6efd; border-color: #0d6efd; color: white; }
+        /* 操作模式卡片 */
+        .mode-card {
+            border: 2px solid #e9ecef; border-radius: 12px; padding: 20px; text-align: center; cursor: pointer; transition: all 0.2s;
+        }
+        .mode-card:hover { border-color: #0d6efd; background-color: #f8f9fa; transform: translateY(-3px); }
+        .mode-card.active { border-color: #0d6efd; background-color: #e7f1ff; }
+        .mode-icon { font-size: 2.5rem; margin-bottom: 10px; color: #6c757d; }
+        .mode-card.active .mode-icon { color: #0d6efd; }
     </style>
 
     <script>
@@ -52,7 +56,7 @@
         <div class="d-flex justify-content-between align-items-center mb-4">
             <div>
                 <h2 class="fw-bold text-dark"><i class="fas fa-file-arrow-up me-2 text-primary"></i>顧問資料上傳</h2>
-                <p class="text-muted mb-0">Plan & Do 階段：建立基準與執行紀錄 V1.03 (年份修正版)</p>
+                <p class="text-muted mb-0">Plan & Do 階段：建立基準與執行紀錄 V1.04 (雙模式分流)</p>
             </div>
         </div>
 
@@ -62,28 +66,20 @@
                 <div class="demo-info-card">
                     <i class="fas fa-compass me-2"></i>
                     <strong>PDCA 設計理念：Plan (計畫) —— 基準確立與歷史繼承</strong><br>
-                    系統透過「統編」與「年度」自動調閱歷史歸檔，建立當次服務的「基準線（Baseline）」。
+                    系統支援「更新歷程」與「補件」雙模式，確保資料脈絡清晰且具備不可否認性。
                 </div>
 
                 <div class="bg-light p-4 rounded mb-4 border">
-                    <h5 class="step-title">Step 1：帶入作業場所資料</h5>
+                    <h5 class="step-title">Step 1：選擇對象與模式</h5>
                     <div class="row g-3 align-items-end">
-                        <div class="col-md-4">
-                            <label class="form-label fw-bold small text-muted">統一編號 (留空可列出全部)</label>
-                            <input type="text" id="input-tax-id" class="form-control" placeholder="輸入統編 或 直接點擊查詢">
-                        </div>
-                        <div class="col-md-4">
-                            <label class="form-label fw-bold small text-muted">服務年度 <span class="text-danger">*</span></label>
-                            <select id="input-year" class="form-select">
-                                <option value="2026">2026 (115年)</option>
-                                <option value="2025" selected>2025 (114年)</option>
-                                <option value="2024">2024 (113年)</option>
-                            </select>
-                        </div>
-                        <div class="col-md-4">
-                            <button onclick="fetchCompanyData(this)" class="btn btn-primary w-100 fw-bold">
-                                <i class="fas fa-magnifying-glass me-2"></i> 查詢 / 選擇公司
-                            </button>
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold small text-muted">統一編號 / 公司名稱</label>
+                            <div class="input-group">
+                                <input type="text" id="input-tax-id" class="form-control" placeholder="輸入統編 或 直接點擊查詢">
+                                <button class="btn btn-primary" onclick="fetchCompanyData(this)">
+                                    <i class="fas fa-magnifying-glass me-1"></i> 查詢
+                                </button>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -93,9 +89,13 @@
                     <hr class="my-5">
                     <input type="hidden" id="hidden-company-id">
                     <input type="hidden" id="hidden-workplace-id">
+                    <input type="hidden" id="current-mode" value=""> <input type="hidden" id="target-year" value="">
 
-                    <div class="alert alert-warning d-flex justify-content-between align-items-center" role="alert">
-                        <small><i class="fas fa-database me-2 text-danger"></i>資料來源：<strong>Supabase 資料庫</strong> (可手動修正)</small>
+                    <div class="alert alert-info d-flex justify-content-between align-items-center border-info" role="alert">
+                        <div>
+                            <span class="badge bg-primary me-2" id="mode-badge">模式</span>
+                            <span id="mode-text" class="fw-bold text-dark"></span>
+                        </div>
                         <button id="edit-btn" onclick="toggleEditMode()" class="btn btn-light btn-sm border fw-bold">
                             <i class="fas fa-pen-to-square me-1"></i> 啟用編輯
                         </button>
@@ -145,9 +145,9 @@
                     <div class="card mb-4 border">
                         <div class="card-header bg-light fw-bold text-dark">二、作業場所與勞動條件概況</div>
                         <div class="card-body">
-                            <div class="mb-3"><label class="form-label small text-muted fw-bold">1. 工作流程 (製程)</label><textarea id="disp-process" class="form-control input-readonly data-field" rows="2" readonly>整經漿紗->織布->脫漿->成布加工->品質檢驗->儲運。(預設)</textarea></div>
-                            <div class="mb-3"><label class="form-label small text-muted fw-bold">2. 工作型態與時間</label><textarea id="disp-pattern" class="form-control input-readonly data-field" rows="2" readonly>行政人員常日班,產線人員輪值三班。(預設)</textarea></div>
-                            <div class="mb-0"><label class="form-label small text-muted fw-bold">3. 人員及危害特性概述</label><textarea id="disp-desc" class="form-control input-readonly data-field" rows="2" readonly>潛在工作危害特性:高溫、噪音、人因性危害、精密作業、長時間夜間工作、切割捲夾。(預設)</textarea></div>
+                            <div class="mb-3"><label class="form-label small text-muted fw-bold">1. 工作流程 (製程)</label><textarea id="disp-process" class="form-control input-readonly data-field" rows="2" readonly></textarea></div>
+                            <div class="mb-3"><label class="form-label small text-muted fw-bold">2. 工作型態與時間</label><textarea id="disp-pattern" class="form-control input-readonly data-field" rows="2" readonly></textarea></div>
+                            <div class="mb-0"><label class="form-label small text-muted fw-bold">3. 人員及危害特性概述</label><textarea id="disp-desc" class="form-control input-readonly data-field" rows="2" readonly></textarea></div>
                         </div>
                     </div>
 
@@ -162,23 +162,7 @@
                         </div>
                         <div class="row g-3 ps-2">
                              <div class="col-md-6"><div class="form-check"><input class="form-check-input check-item" type="checkbox" id="c9-1" value="9-1" checked><label class="form-check-label" for="c9-1">9-1 勞工體格(健康)檢查結果分析與評估</label></div></div>
-                             <div class="col-md-6"><div class="form-check"><input class="form-check-input check-item" type="checkbox" id="c9-2" value="9-2" checked><label class="form-check-label" for="c9-2">9-2 勞工適性工作評估與配置建議</label></div></div>
-                             <div class="col-md-6"><div class="form-check"><input class="form-check-input check-item" type="checkbox" id="c9-3" value="9-3" checked><label class="form-check-label" for="c9-3">9-3 健康檢查異常追蹤與健康指導</label></div></div>
-                             <div class="col-md-6"><div class="form-check"><input class="form-check-input check-item" type="checkbox" id="c9-4" value="9-4"><label class="form-check-label" for="c9-4">9-4 特別危害/母性/職傷勞工評估管理</label></div></div>
-                             <div class="col-md-6"><div class="form-check"><input class="form-check-input check-item" type="checkbox" id="c9-5" value="9-5"><label class="form-check-label" for="c9-5">9-5 職業傷病與健康相關資料保存</label></div></div>
-                             
-                             <div class="col-12"><hr class="my-1 text-muted"></div>
-                             
-                             <div class="col-md-6"><div class="form-check"><input class="form-check-input check-item" type="checkbox" id="c11-1" value="11-1" checked><label class="form-check-label" for="c11-1">11-1 辨識與評估工作場所危害因子</label></div></div>
-                             <div class="col-md-6"><div class="form-check"><input class="form-check-input check-item" type="checkbox" id="c11-2" value="11-2"><label class="form-check-label" for="c11-2">11-2 提出作業環境安全衛生設施改善規劃</label></div></div>
-                             
-                             <div class="col-12"><hr class="my-1 text-muted"></div>
-                             <div class="col-12">
-                                 <div class="form-check">
-                                     <input class="form-check-input" type="checkbox" id="other-attach">
-                                     <label class="form-check-label fw-bold text-dark" for="other-attach">其他附件或證明文件</label>
-                                 </div>
-                             </div>
+                             <div class="col-12"><div class="form-check"><input class="form-check-input" type="checkbox" id="other-attach"><label class="form-check-label fw-bold text-dark" for="other-attach">其他附件或證明文件</label></div></div>
                         </div>
                     </div>
 
@@ -211,20 +195,51 @@
                     <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
                 </div>
                 <div class="modal-body p-0" style="min-height: 300px;">
-                    <div id="modalLoading" class="text-center py-5" style="display: none;">
-                        <div class="spinner-border text-primary" role="status"></div>
-                        <p class="mt-2 text-muted">資料載入中...</p>
-                    </div>
                     <div class="list-group list-group-flush" id="companyListContainer"></div>
                 </div>
-                <div class="modal-footer bg-light justify-content-between align-items-center">
-                    <div class="text-muted small">
-                        共 <span id="totalCount" class="fw-bold text-dark">0</span> 筆資料
+                <div class="modal-footer bg-light"><small class="text-muted me-auto">共 <span id="totalCount">0</span> 筆</small><button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button></div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="modeSelectModal" tabindex="-1" data-bs-backdrop="static">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header bg-dark text-white">
+                    <h5 class="modal-title fw-bold"><i class="fas fa-sliders-h me-2"></i>請選擇操作模式</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body p-4">
+                    <h6 class="fw-bold mb-3 text-center text-primary" id="selected-company-name">目標公司</h6>
+                    
+                    <div class="row g-3">
+                        <div class="col-6">
+                            <div class="mode-card h-100" onclick="selectMode('new')">
+                                <i class="fas fa-history mode-icon"></i>
+                                <h6 class="fw-bold">更新服務歷程</h6>
+                                <p class="small text-muted mb-0">建立新年度或新日期的服務紀錄 (自動帶入舊資料)</p>
+                            </div>
+                        </div>
+                        <div class="col-6">
+                            <div class="mode-card h-100" onclick="selectMode('amend')">
+                                <i class="fas fa-file-signature mode-icon"></i>
+                                <h6 class="fw-bold">補件 / 修正</h6>
+                                <p class="small text-muted mb-0">針對「既有」的年度紀錄進行檔案補充或修改</p>
+                            </div>
+                        </div>
                     </div>
-                    <nav aria-label="Company pagination">
-                        <ul class="pagination pagination-sm mb-0" id="paginationContainer">
-                            </ul>
-                    </nav>
+
+                    <div id="year-selector-area" class="mt-4 pt-3 border-top" style="display:none;">
+                        <label class="form-label fw-bold small text-muted">請選擇目標年度</label>
+                        <select class="form-select" id="mode-year-select">
+                            <option value="2026">2026 (115年)</option>
+                            <option value="2025" selected>2025 (114年)</option>
+                            <option value="2024">2024 (113年)</option>
+                        </select>
+                        <button class="btn btn-success w-100 mt-3 fw-bold" onclick="confirmMode()">
+                            確認並開始 <i class="fas fa-arrow-right ms-1"></i>
+                        </button>
+                    </div>
                 </div>
             </div>
         </div>
@@ -236,312 +251,221 @@
     <script>
         const SUPABASE_URL = 'https://yhehfucgemxnfrdvpdhw.supabase.co';
         const SUPABASE_KEY = 'sb_publishable_52emtU-9l-SDxcJTWVTPTA_Yu6qEogh';
-        
         const { createClient } = supabase;
         const supabaseClient = createClient(SUPABASE_URL, SUPABASE_KEY);
 
-        // 分頁參數設定
-        const PAGE_SIZE = 50;
-        let currentPage = 1;
-        let totalRecords = 0;
-        let currentModalBtn = null; 
-        
-        // ★ V1.03 新增：記錄當前篩選的年份
-        let currentFilterYear = ''; 
+        let currentCompany = null; // 暫存選中的公司物件
+        let selectedMode = '';     // 'new' or 'amend'
 
         document.addEventListener('DOMContentLoaded', function() {
             document.body.style.display = 'block';
             const userName = sessionStorage.getItem('currentUserName') || 'User';
             document.getElementById('user-display').innerHTML = `<small>Hi, ${userName}</small>`;
+            
             document.getElementById('fileUpload').addEventListener('change', function(e){
-                const fileName = e.target.files[0]?.name || '尚未選擇檔案';
-                document.getElementById('fileNameDisplay').innerText = fileName;
-                document.getElementById('fileNameDisplay').classList.add('text-primary', 'fw-bold');
+                document.getElementById('fileNameDisplay').innerText = e.target.files[0]?.name || '尚未選擇檔案';
             });
         });
 
-        // ============================================
-        // 核心查詢入口
-        // ============================================
+        // 1. 查詢公司
         async function fetchCompanyData(btn) {
             const taxId = document.getElementById('input-tax-id').value.trim();
-            const selectedYear = document.getElementById('input-year').value; // 取得選單年份
-            const originalText = btn.innerHTML;
-            currentModalBtn = { btn, originalText }; 
-            
-            // ★ 設定全局年份變數，供分頁使用
-            currentFilterYear = selectedYear;
-
-            btn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>查詢中...';
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
             btn.disabled = true;
 
             try {
-                if (taxId) {
-                    // A. 有輸入統編：精準搜尋 + 年份檢查
-                    const { data: companies, error } = await supabaseClient
-                        .from('companies')
-                        .select('*')
-                        .eq('tax_id', taxId)
-                        .eq('service_year', parseInt(selectedYear)); // ★ 加上年份篩選
+                let query = supabaseClient.from('companies').select('*').order('created_at', {ascending:false});
+                if(taxId) query = query.or(`tax_id.eq.${taxId},name.ilike.%${taxId}%`);
+                else query = query.limit(50);
 
-                    if (error) throw error;
+                const { data, error } = await query;
+                if(error) throw error;
 
-                    if (!companies || companies.length === 0) {
-                        alert(`查無此統編 (${taxId}) 於 ${selectedYear} 年度的資料。\n請確認統編或年度是否正確。`);
-                        resetBtn(btn, originalText);
-                        return;
-                    }
-                    
-                    if (companies.length === 1) {
-                        await fillCompanyData(companies[0]);
-                        showSuccessButton(btn, originalText);
-                    } else {
-                        showSelectionModal(companies, false); 
-                        resetBtn(btn, originalText);
-                    }
-
-                } else {
-                    // B. 空值：分頁搜尋模式 (必須包含年份)
-                    currentPage = 1; 
-                    
-                    // 1. 先抓符合該年度的總筆數
-                    const { count, error: countError } = await supabaseClient
-                        .from('companies')
-                        .select('*', { count: 'exact', head: true })
-                        .eq('service_year', parseInt(selectedYear)); // ★ 加上年份篩選
-                    
-                    if (countError) throw countError;
-                    totalRecords = count || 0;
-
-                    if (totalRecords === 0) {
-                        alert(`資料庫中目前沒有 ${selectedYear} 年度的公司資料。`);
-                        resetBtn(btn, originalText);
-                        return;
-                    }
-
-                    // 2. 顯示 Modal 並載入第一頁
-                    new bootstrap.Modal(document.getElementById('companySelectModal')).show();
-                    await loadCompanyPage(1);
-                    resetBtn(btn, originalText);
+                if(!data || data.length === 0) {
+                    alert('查無資料');
+                    return;
                 }
 
-            } catch (err) {
-                alert('查詢失敗：' + err.message);
-                resetBtn(btn, originalText);
+                if(data.length === 1) {
+                    openModeModal(data[0]);
+                } else {
+                    showSelectionModal(data);
+                }
+            } catch(e) { alert(e.message); }
+            finally { 
+                btn.innerHTML = '<i class="fas fa-magnifying-glass me-1"></i> 查詢';
+                btn.disabled = false; 
             }
         }
 
-        // ============================================
-        // 分頁邏輯控制
-        // ============================================
-        async function loadCompanyPage(page) {
-            currentPage = page;
-            const container = document.getElementById('companyListContainer');
-            const loading = document.getElementById('modalLoading');
-            
-            container.style.display = 'none';
-            loading.style.display = 'block';
-            document.getElementById('paginationContainer').innerHTML = ''; 
-
-            const from = (page - 1) * PAGE_SIZE;
-            const to = from + PAGE_SIZE - 1;
-
-            try {
-                // ★ 這裡一定要加上年份篩選，否則會撈出所有年份
-                const { data: companies, error } = await supabaseClient
-                    .from('companies')
-                    .select('*')
-                    .eq('service_year', parseInt(currentFilterYear)) // ★ 關鍵修正
-                    .order('created_at', { ascending: false })
-                    .range(from, to);
-
-                if (error) throw error;
-
-                renderList(companies);
-                renderPagination();
-                document.getElementById('totalCount').innerText = totalRecords;
-
-            } catch (err) {
-                container.innerHTML = `<div class="p-3 text-danger text-center">載入失敗: ${err.message}</div>`;
-            } finally {
-                loading.style.display = 'none';
-                container.style.display = 'block';
-            }
-        }
-
-        function renderList(companies) {
+        function showSelectionModal(companies) {
             const container = document.getElementById('companyListContainer');
             container.innerHTML = '';
-            
             companies.forEach(co => {
                 const item = document.createElement('a');
-                item.className = 'list-group-item list-group-item-action p-3 select-row';
-                // 顯示年份標籤方便識別
-                item.innerHTML = `
-                    <div class="d-flex justify-content-between align-items-center">
-                        <div>
-                            <h6 class="mb-1 fw-bold text-primary">
-                                <span class="badge bg-secondary me-2">${co.service_year}</span>${co.name}
-                            </h6>
-                            <small class="text-muted"><i class="fas fa-hashtag me-1"></i>統編: ${co.tax_id}</small>
-                            <span class="mx-2">|</span>
-                            <small class="text-muted"><i class="fas fa-user me-1"></i>${co.contact_person || '未設定'}</small>
-                        </div>
-                        <i class="fas fa-chevron-right text-secondary"></i>
-                    </div>
-                `;
-                item.onclick = async () => {
-                    const modal = bootstrap.Modal.getInstance(document.getElementById('companySelectModal'));
-                    modal.hide();
-                    await fillCompanyData(co);
-                    if(currentModalBtn) showSuccessButton(currentModalBtn.btn, currentModalBtn.originalText);
+                item.className = 'list-group-item list-group-item-action p-3';
+                item.innerHTML = `<h6 class="mb-1 text-primary fw-bold">${co.name}</h6><small class="text-muted">統編: ${co.tax_id}</small>`;
+                item.onclick = () => {
+                    bootstrap.Modal.getInstance(document.getElementById('companySelectModal')).hide();
+                    openModeModal(co);
                 };
                 container.appendChild(item);
             });
+            document.getElementById('totalCount').innerText = companies.length;
+            new bootstrap.Modal(document.getElementById('companySelectModal')).show();
         }
 
-        function renderPagination() {
-            const pagination = document.getElementById('paginationContainer');
-            const totalPages = Math.ceil(totalRecords / PAGE_SIZE);
-            
-            if (totalPages <= 1) return; 
-
-            let html = '';
-            
-            // Previous
-            html += `<li class="page-item ${currentPage === 1 ? 'disabled' : ''}">
-                        <a class="page-link" onclick="loadCompanyPage(${currentPage - 1})">上一頁</a>
-                     </li>`;
-
-            // Page Numbers
-            for (let i = 1; i <= totalPages; i++) {
-                if (i === 1 || i === totalPages || (i >= currentPage - 2 && i <= currentPage + 2)) {
-                    html += `<li class="page-item ${i === currentPage ? 'active' : ''}">
-                                <a class="page-link" onclick="loadCompanyPage(${i})">${i}</a>
-                             </li>`;
-                } else if (i === currentPage - 3 || i === currentPage + 3) {
-                     html += `<li class="page-item disabled"><a class="page-link">...</a></li>`;
-                }
-            }
-
-            // Next
-            html += `<li class="page-item ${currentPage === totalPages ? 'disabled' : ''}">
-                        <a class="page-link" onclick="loadCompanyPage(${currentPage + 1})">下一頁</a>
-                     </li>`;
-
-            pagination.innerHTML = html;
+        // 2. 開啟模式選擇
+        function openModeModal(company) {
+            currentCompany = company;
+            document.getElementById('selected-company-name').innerText = company.name;
+            document.getElementById('year-selector-area').style.display = 'none';
+            document.querySelectorAll('.mode-card').forEach(el => el.classList.remove('active'));
+            selectedMode = '';
+            new bootstrap.Modal(document.getElementById('modeSelectModal')).show();
         }
 
-        // ============================================
-        // 輔助函式
-        // ============================================
-        async function fillCompanyData(company) {
-            document.getElementById('input-tax-id').value = company.tax_id;
-            document.getElementById('disp-name').value = company.name;
-            document.getElementById('hidden-company-id').value = company.id;
+        function selectMode(mode) {
+            selectedMode = mode;
+            document.querySelectorAll('.mode-card').forEach(el => el.classList.remove('active'));
+            event.currentTarget.classList.add('active');
+            document.getElementById('year-selector-area').style.display = 'block';
+        }
 
-            const { data: workplaces } = await supabaseClient
-                .from('workplaces')
-                .select('*')
-                .eq('company_id', company.id)
-                .limit(1);
+        // 3. 確認模式並載入資料
+        async function confirmMode() {
+            if(!selectedMode) return;
+            const year = document.getElementById('mode-year-select').value;
+            
+            // UI 設定
+            document.getElementById('hidden-company-id').value = currentCompany.id;
+            document.getElementById('disp-name').value = currentCompany.name;
+            document.getElementById('current-mode').value = selectedMode;
+            document.getElementById('target-year').value = year;
 
-            if (workplaces && workplaces.length > 0) {
-                const wp = workplaces[0];
-                document.getElementById('hidden-workplace-id').value = wp.id;
-                document.getElementById('disp-dept').value = wp.department_name || '全廠';
-                document.getElementById('disp-admin-m').value = wp.admin_male || 0;
-                document.getElementById('disp-admin-f').value = wp.admin_female || 0;
-                document.getElementById('disp-site-m').value = wp.site_male || 0;
-                document.getElementById('disp-site-f').value = wp.site_female || 0;
-                document.getElementById('disp-hazard-type').value = wp.hazard_type || '無顯著危害';
-                document.getElementById('disp-hazard-count').value = wp.hazard_count || 0;
-
-                // 依據選取年度抓取歷史紀錄
-                const selectedYear = document.getElementById('input-year').value;
-                const { data: historyRecords } = await supabaseClient
-                    .from('service_records')
-                    .select('*')
-                    .eq('workplace_id', wp.id)
-                    .eq('service_year', parseInt(selectedYear))
-                    .limit(1);
-
-                if (historyRecords && historyRecords.length > 0) {
-                    const rec = historyRecords[0];
-                    document.getElementById('disp-process').value = rec.process_desc || '';
-                    document.getElementById('disp-pattern').value = rec.work_pattern || '';
-                    document.getElementById('disp-desc').value = rec.hazard_desc || '';
-                } else {
-                    document.getElementById('disp-process').value = '';
-                    document.getElementById('disp-pattern').value = '';
-                    document.getElementById('disp-desc').value = '';
-                }
-
+            const badge = document.getElementById('mode-badge');
+            const text = document.getElementById('mode-text');
+            
+            if(selectedMode === 'new') {
+                badge.className = 'badge bg-success me-2';
+                badge.innerText = '新增歷程';
+                text.innerText = `建立 ${year} 年度服務紀錄 (自動帶入歷史底稿)`;
             } else {
-                document.getElementById('disp-dept').value = '尚未建立場所資料';
-                document.getElementById('hidden-workplace-id').value = '';
-                ['disp-admin-m','disp-admin-f','disp-site-m','disp-site-f','disp-hazard-count'].forEach(id=>document.getElementById(id).value=0);
-                ['disp-process','disp-pattern','disp-desc'].forEach(id=>document.getElementById(id).value='');
+                badge.className = 'badge bg-warning text-dark me-2';
+                badge.innerText = '補件/修正';
+                text.innerText = `修正 ${year} 年度現有紀錄`;
             }
+
+            // 關閉 Modal
+            bootstrap.Modal.getInstance(document.getElementById('modeSelectModal')).hide();
+            
+            // 開始撈取資料
+            await loadWorkplaceAndHistory(currentCompany.id, year, selectedMode);
+        }
+
+        async function loadWorkplaceAndHistory(companyId, year, mode) {
+            // 1. 撈場所
+            const { data: wp } = await supabaseClient.from('workplaces').select('*').eq('company_id', companyId).limit(1);
+            
+            if(!wp || wp.length === 0) {
+                alert('該公司尚未建立作業場所資料，請先至「基本資料建立」新增。');
+                return;
+            }
+            
+            const workplace = wp[0];
+            document.getElementById('hidden-workplace-id').value = workplace.id;
+            document.getElementById('disp-dept').value = workplace.department_name || '全廠';
+            
+            // 填入基本人數危害 (這些是 Master Data，通常不隨年度變)
+            document.getElementById('disp-admin-m').value = workplace.admin_male || 0;
+            document.getElementById('disp-admin-f').value = workplace.admin_female || 0;
+            document.getElementById('disp-site-m').value = workplace.site_male || 0;
+            document.getElementById('disp-site-f').value = workplace.site_female || 0;
+            document.getElementById('disp-hazard-type').value = workplace.hazard_type || '無';
+            document.getElementById('disp-hazard-count').value = workplace.hazard_count || 0;
+
+            // 2. 撈歷史紀錄 (Service Record)
+            let query = supabaseClient.from('service_records').select('*').eq('workplace_id', workplace.id);
+            
+            if (mode === 'amend') {
+                // 補件模式：必須抓到「該年度」的資料
+                query = query.eq('service_year', parseInt(year));
+            } else {
+                // 新增模式：抓「最近一筆」資料當底稿 (不限年度)
+                query = query.order('service_year', {ascending: false}).limit(1);
+            }
+
+            const { data: history } = await query;
+
+            if (mode === 'amend' && (!history || history.length === 0)) {
+                alert(`查無 ${year} 年度的服務紀錄，無法進行補件。\n請改選「更新服務歷程」來建立第一筆資料。`);
+                return;
+            }
+
+            // 填入資料
+            if (history && history.length > 0) {
+                const rec = history[0];
+                document.getElementById('disp-process').value = rec.process_desc || '';
+                document.getElementById('disp-pattern').value = rec.work_pattern || '';
+                document.getElementById('disp-desc').value = rec.hazard_desc || '';
+                if(mode === 'new') alert(`系統已自動帶入最近一次 (${rec.service_year || '未知'}年) 的紀錄作為底稿。`);
+            } else {
+                // 新增模式但完全無歷史資料
+                document.getElementById('disp-process').value = '';
+                document.getElementById('disp-pattern').value = '';
+                document.getElementById('disp-desc').value = '';
+            }
+
+            // 顯示區塊
             document.getElementById('company-data-section').style.display = 'block';
             document.getElementById('company-data-section').scrollIntoView({ behavior: 'smooth' });
         }
 
-        function resetBtn(btn, text) {
-            btn.disabled = false;
-            btn.innerHTML = text;
-        }
-
-        function showSuccessButton(btn, originalText) {
-            btn.innerHTML = '<i class="fas fa-check me-2"></i>已帶入資料';
-            btn.classList.remove('btn-primary');
-            btn.classList.add('btn-success');
-            setTimeout(() => {
-                btn.disabled = false;
-                btn.innerHTML = originalText;
-                btn.classList.remove('btn-success');
-                btn.classList.add('btn-primary');
-            }, 1500);
-        }
-
+        // 4. 送出資料
         async function submitServiceRecord(btn) {
-             const workplaceId = document.getElementById('hidden-workplace-id').value;
-            if (!workplaceId) return alert('錯誤：無法取得場所 ID。');
+            const workplaceId = document.getElementById('hidden-workplace-id').value;
+            const year = document.getElementById('target-year').value;
+            const mode = document.getElementById('current-mode').value;
             const fileInput = document.getElementById('fileUpload');
-            if (fileInput.files.length === 0) return alert('請先上傳簽核文件');
-            
-            const selectedYear = document.getElementById('input-year').value;
+
+            if (!workplaceId) return alert('錯誤：場所 ID 遺失');
+            if (fileInput.files.length === 0) return alert('請上傳簽核文件');
 
             btn.disabled = true;
-            btn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>上傳處理中...';
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 處理中...';
 
             try {
                 const file = fileInput.files[0];
-                const fileExt = file.name.split('.').pop();
-                const filePath = `service_records/${Date.now()}_${file.name}`;
+                const filePath = `service_records/${year}/${Date.now()}_${file.name}`;
                 
+                // 上傳
                 await supabaseClient.storage.from('documents').upload(filePath, file);
 
+                // 寫入 document_staging
                 await supabaseClient.from('document_staging').insert([{
-                    uploader_name: sessionStorage.getItem('currentUserName') || 'Unknown',
+                    uploader_name: sessionStorage.getItem('currentUserName'),
                     file_name: file.name,
                     file_path: filePath,
-                    file_type: fileExt,
+                    file_type: 'pdf',
                     category: '表單',
                     status: 'pending',
-                    service_year: parseInt(selectedYear),
+                    service_year: parseInt(year),
                     extracted_data: { 
                         workplace_id: workplaceId,
-                        note: "Plan/Do 上傳"
+                        mode: mode, // 標記是補件還是新增
+                        note: mode === 'new' ? "年度例行服務" : "文件補件/修正"
                     }
                 }]);
 
-                alert('✅ 上傳成功！');
+                // 若是 'new' 模式，這裡其實還可以同時 insert 一筆新的 service_records 佔位
+                // 但為了簡化，我們假設審核通過後才由 Admin 寫入正式紀錄
+
+                alert('✅ 上傳成功！資料已送出審核。');
                 location.reload();
-            } catch (err) {
-                alert('錯誤：' + err.message);
+            } catch (e) {
+                alert('錯誤: ' + e.message);
                 btn.disabled = false;
-                btn.innerHTML = '<i class="fas fa-paper-plane me-2"></i>確認完工並提交';
+                btn.innerHTML = '確認完工並提交';
             }
         }
 
@@ -558,7 +482,6 @@
                 fields.forEach(f => { f.readOnly = true; f.classList.remove('input-editable'); f.classList.add('input-readonly'); });
                 btn.innerHTML = '<i class="fas fa-pen-to-square me-1"></i> 啟用編輯';
                 btn.classList.remove('btn-primary');
-                alert('系統訊息：資料已暫存。');
             }
         }
     </script>
