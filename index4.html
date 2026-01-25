@@ -14,10 +14,10 @@
         body {
             background-color: var(--primary-bg);
             font-family: 'Segoe UI', 'Microsoft JhengHei', sans-serif;
-            display: none; /* Auth Guard */
+            display: none; /* Auth Guard: 預設隱藏，驗證後顯示 */
         }
 
-        /* PDCA 說明字卡樣式 [引用 source: 15-20] */
+        /* PDCA 說明字卡 */
         .demo-info-card {
             background-color: #fffbeb;
             border-left: 4px solid #f59e0b;
@@ -29,10 +29,10 @@
             line-height: 1.6;
         }
 
-        /* 上傳區塊樣式 [引用 source: 178-179] */
+        /* 上傳區塊 */
         .upload-zone {
-            border: 2px dashed #a5b4fc; /* Indigo-200 equivalent */
-            background-color: #eef2ff; /* Indigo-50 equivalent */
+            border: 2px dashed #a5b4fc;
+            background-color: #eef2ff;
             border-radius: 1rem;
             padding: 3rem;
             text-align: center;
@@ -54,13 +54,6 @@
             border-radius: 5px;
         }
     </style>
-
-    <script>
-        const role = sessionStorage.getItem('currentUserRole');
-        if (!role) {
-            window.location.href = 'login.html';
-        }
-    </script>
 </head>
 <body>
 
@@ -68,7 +61,9 @@
         <div class="container-fluid px-4">
             <a class="navbar-brand" href="dashboard.html"><i class="fas fa-shield-alt me-2"></i>OHSMS</a>
             <div class="d-flex align-items-center">
-                <span class="text-light me-3" id="user-display"></span>
+                <span class="text-light me-3" id="user-display">
+                    <i class="fas fa-spinner fa-spin"></i> 載入中...
+                </span>
                 <a href="dashboard.html" class="btn btn-outline-light btn-sm"><i class="fas fa-arrow-left me-1"></i> 返回儀表板</a>
             </div>
         </div>
@@ -86,7 +81,7 @@
         <div class="demo-info-card">
             <i class="fas fa-microchip me-2"></i>
             <strong>PDCA 設計理念：AI Support (智能輔助) —— 資料攝取中心</strong><br>
-            此為系統的「資料入口」。AI 僅作為「分類助手」而非決策者，負責對掃描文件進行 OCR 辨識與屬性預判。所有資料皆需傳送至「管理者總覽 (Check/Act)」進行人工確認（Human-in-the-Loop），確保資料進入正式資料庫前的準確性。
+            此為系統的「資料入口」。AI 僅作為「分類助手」而非決策者，負責對掃描文件進行 OCR 辨識與屬性預判。所有資料皆需傳送至「管理者總覽 (Check/Act)」進行人工確認（Human-in-the-Loop）。
         </div>
 
         <div class="row justify-content-center">
@@ -149,7 +144,7 @@
                                 <i class="fas fa-check-circle fa-2x me-3 text-success"></i>
                                 <div class="text-start">
                                     <h6 class="fw-bold mb-1">上傳成功！AI 已完成初步分析</h6>
-                                    <small>資料已傳送至「管理者總覽」等待人工確認 (Human-in-the-Loop)。</small>
+                                    <small>資料已傳送至「管理者總覽」等待人工確認。</small>
                                 </div>
                             </div>
 
@@ -194,41 +189,101 @@
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
     <script>
-        // 初始化
-        document.addEventListener('DOMContentLoaded', function() {
-            document.body.style.display = 'block';
-            const userName = sessionStorage.getItem('currentUserName') || 'User';
-            document.getElementById('user-display').innerHTML = `<small>User: ${userName}</small>`;
+        // ==========================================
+        // 設定 Supabase
+        // ==========================================
+        const SUPABASE_URL = 'https://yhehfucgemxnfrdvpdhw.supabase.co';
+        const SUPABASE_KEY = 'sb_publishable_52emtU-9l-SDxcJTWVTPTA_Yu6qEogh';
+        const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+        // ==========================================
+        // 核心邏輯：驗證登入並抓取顧問名稱
+        // ==========================================
+        document.addEventListener('DOMContentLoaded', async function() {
+            const userDisplay = document.getElementById('user-display');
+            
+            try {
+                // 1. 取得登入者資訊
+                const { data: { user } } = await supabaseClient.auth.getUser();
+
+                if (!user) {
+                    // 若未登入，導回登入頁 (開發測試可先註解掉這行)
+                    // window.location.href = 'login.html'; 
+                    document.body.style.display = 'block';
+                    userDisplay.innerHTML = '<small class="text-warning">訪客模式 (未登入)</small>';
+                    return;
+                }
+
+                // 2. 登入成功，顯示頁面
+                document.body.style.display = 'block';
+
+                // 3. 查詢 medical_staff 表格
+                // 優先嘗試用 user_id 查詢 (正規作法)
+                let { data: staffData, error } = await supabaseClient
+                    .from('medical_staff')
+                    .select('name, role')
+                    .eq('user_id', user.id)
+                    .maybeSingle(); // 使用 maybeSingle 避免找不到時報錯
+
+                // 4. (備案) 如果用 ID 找不到，嘗試用 Email 反查
+                // 原因：匯入的 CSV 資料中，user_id 欄位可能是空的
+                if (!staffData && user.email) {
+                    console.log("以 ID 查無資料，嘗試以 Email 查詢...");
+                    const { data: staffByEmail } = await supabaseClient
+                        .from('medical_staff')
+                        .select('name, role')
+                        .eq('email', user.email)
+                        .maybeSingle();
+                    staffData = staffByEmail;
+                }
+
+                // 5. 更新 UI
+                if (staffData) {
+                    // 成功抓到顧問資料
+                    userDisplay.innerHTML = `<small>${staffData.role || '成員'}: ${staffData.name}</small>`;
+                    // 存入 Session 供其他頁面快速使用
+                    sessionStorage.setItem('currentUserName', staffData.name);
+                    sessionStorage.setItem('currentUserRole', staffData.role);
+                } else {
+                    // 抓不到資料 (可能 medical_staff 表格裡沒有這個 Email)
+                    const shortEmail = user.email.split('@')[0];
+                    userDisplay.innerHTML = `<small>User: ${shortEmail}</small>`;
+                }
+
+            } catch (err) {
+                console.error("Auth Error:", err);
+                document.body.style.display = 'block';
+                userDisplay.innerHTML = `<small>系統離線</small>`;
+            }
         });
 
-        // 模擬上傳與 AI 分析流程 [改寫自 source: 209-211]
+        // ==========================================
+        // 模擬上傳與進度條動畫 (保持不變)
+        // ==========================================
         function startSimulation() {
-            // 1. 隱藏上傳區，顯示進度區
             document.getElementById('upload-step-1').style.display = 'none';
             document.getElementById('upload-step-2').style.display = 'block';
 
-            // 模擬進度條動畫
             simulateProgress('prog-bar-1', 'prog-text-1', 1000, () => {
                 simulateProgress('prog-bar-2', 'prog-text-2', 1500, () => {
                     simulateProgress('prog-bar-3', 'prog-text-3', 800, () => {
-                        // 全部完成
                         setTimeout(() => {
                             document.getElementById('upload-step-2').style.display = 'none';
                             document.getElementById('upload-step-3').style.display = 'block';
-                            // 這裡可以觸發 source: 180 的提示邏輯
                         }, 500);
                     });
                 });
             });
         }
 
-        // 通用進度條模擬函數
         function simulateProgress(barId, textId, duration, callback) {
             const bar = document.getElementById(barId);
             const text = document.getElementById(textId);
             let width = 0;
-            const interval = 20; // ms
+            const interval = 20; 
             const step = 100 / (duration / interval);
 
             const timer = setInterval(() => {
@@ -247,17 +302,17 @@
             }, interval);
         }
 
-        // 重置
         function resetSimulation() {
-            // 還原 UI 狀態
             document.getElementById('upload-step-3').style.display = 'none';
             document.getElementById('upload-step-1').style.display = 'block';
-            
-            // 還原進度條
             ['1', '2', '3'].forEach(id => {
-                document.getElementById(`prog-bar-${id}`).style.width = '0%';
-                document.getElementById(`prog-text-${id}`).innerText = id === '1' ? '0%' : '等待中...';
-                document.getElementById(`prog-text-${id}`).classList.remove('text-success', 'fw-bold');
+                const bar = document.getElementById(`prog-bar-${id}`);
+                const text = document.getElementById(`prog-text-${id}`);
+                if(bar) bar.style.width = '0%';
+                if(text) {
+                    text.innerText = id === '1' ? '0%' : '等待中...';
+                    text.classList.remove('text-success', 'fw-bold');
+                }
             });
         }
     </script>
