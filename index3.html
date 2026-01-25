@@ -15,7 +15,6 @@
         body {
             background-color: var(--primary-bg);
             font-family: 'Segoe UI', 'Microsoft JhengHei', sans-serif;
-            /* 修正：移除 display: none 以避免白頁 */
             display: block; 
         }
 
@@ -46,7 +45,7 @@
             box-shadow: inset 0 0 0 2px #3b82f6;
         }
 
-        /* 人員列表樣式 (New) */
+        /* 人員列表樣式 */
         .consultant-card {
             border: 1px solid #e2e8f0;
             border-radius: 8px;
@@ -80,16 +79,6 @@
             transform: translateX(5px);
         }
     </style>
-
-    <script>
-        // 修正：暫時註解掉強制登入檢查，避免測試時白頁
-        /*
-        const role = sessionStorage.getItem('currentUserRole');
-        if (!role) {
-            window.location.href = 'login.html';
-        }
-        */
-    </script>
 </head>
 <body>
 
@@ -114,9 +103,9 @@
 
         <div class="demo-info-card">
             <i class="fas fa-database me-2"></i>
-            <strong>系統連線狀態：已連接 Supabase 資料庫</strong><br>
-            URL: yhehfucgemxnfrdvpdhw.supabase.co<br>
-            說明：若資料庫中查無對應資料，系統將自動顯示範例資料以供預覽。
+            <strong>系統連線狀態：已連接 Supabase 資料庫 (支援參數疊加搜尋)</strong><br>
+            搜尋邏輯：輸入 "台灣 2024" 將會搜尋同時符合 "台灣" 與 "2024" 的案件資料。<br>
+            搜尋範圍：公司名稱、年度、案號、顧問姓名。
         </div>
 
         <div id="search-view" class="py-4">
@@ -126,14 +115,14 @@
                         <i class="fas fa-robot fa-4x text-primary"></i>
                     </div>
                     <h3 class="fw-bold text-dark mb-3">評鑑資料查詢助手</h3>
-                    <p class="text-muted mb-4">請輸入關鍵字，或從下方列表中點選顧問以調閱其服務履歷。</p>
+                    <p class="text-muted mb-4">請輸入關鍵字（可空格隔開多個條件），或從下方快速索引。</p>
 
                     <div class="search-input-group d-flex mb-3">
                         <span class="input-group-text bg-white border-0 ps-3"><i class="fas fa-search text-muted"></i></span>
                         <input type="text" id="search-input" class="form-control" 
-                               value="ABC 公司 2025 年臨場健康服務評鑑資料" 
-                               placeholder="例如：台積電 113年 聽力保護計畫執行紀錄">
-                        <button class="btn btn-primary px-4 fw-bold" onclick="performSearch('NLP', '')">
+                               value="" 
+                               placeholder="例如：鐵高 2024 (支援多關鍵字)">
+                        <button class="btn btn-primary px-4 fw-bold" onclick="performSearch('Keyword', '')">
                             查詢調閱
                         </button>
                     </div>
@@ -158,11 +147,10 @@
                                             <div>
                                                 <h5 class="fw-bold mb-1">陳國華 <span class="badge bg-success bg-opacity-10 text-success ms-1" style="font-size: 0.7rem;">勞工健康服務醫師</span></h5>
                                                 <small class="text-muted d-block">認可證號：職醫字第 112005 號</small>
-                                                <small class="text-success"><i class="fas fa-check-circle me-1"></i>認可效期：2023/01/01 ~ 2026/12/31</small>
                                             </div>
                                         </div>
                                         <button class="btn btn-outline-primary btn-sm" onclick="performSearch('Person', '陳國華')">
-                                            <i class="fas fa-folder-open me-2"></i>調閱服務案件 (DB)
+                                            <i class="fas fa-folder-open me-2"></i>調閱服務案件
                                         </button>
                                     </div>
                                 </div>
@@ -176,29 +164,10 @@
                                             <div>
                                                 <h5 class="fw-bold mb-1">林美秀 <span class="badge bg-info bg-opacity-10 text-info ms-1" style="font-size: 0.7rem;">勞工健康服務護理人員</span></h5>
                                                 <small class="text-muted d-block">認可證號：台南護字第 008899 號</small>
-                                                <small class="text-success"><i class="fas fa-check-circle me-1"></i>認可效期：2024/06/01 ~ 2027/05/31</small>
                                             </div>
                                         </div>
                                         <button class="btn btn-outline-primary btn-sm" onclick="performSearch('Person', '林美秀')">
-                                            <i class="fas fa-folder-open me-2"></i>調閱服務案件 (DB)
-                                        </button>
-                                    </div>
-                                </div>
-
-                                <div class="list-group-item p-4 consultant-card">
-                                    <div class="d-flex align-items-center justify-content-between flex-wrap gap-3">
-                                        <div class="d-flex align-items-center">
-                                            <div class="bg-light rounded-circle p-3 me-3 text-center" style="width: 60px; height: 60px;">
-                                                <i class="fas fa-hard-hat fa-lg text-secondary"></i>
-                                            </div>
-                                            <div>
-                                                <h5 class="fw-bold mb-1">張志明 <span class="badge bg-warning bg-opacity-10 text-warning text-dark ms-1" style="font-size: 0.7rem;">職業衛生管理師</span></h5>
-                                                <small class="text-muted d-block">認可證號：職安衛字第 223344 號</small>
-                                                <small class="text-success"><i class="fas fa-check-circle me-1"></i>認可效期：2022/01/01 ~ 2025/12/31</small>
-                                            </div>
-                                        </div>
-                                        <button class="btn btn-outline-primary btn-sm" onclick="performSearch('Person', '張志明')">
-                                            <i class="fas fa-folder-open me-2"></i>調閱服務案件 (DB)
+                                            <i class="fas fa-folder-open me-2"></i>調閱服務案件
                                         </button>
                                     </div>
                                 </div>
@@ -217,15 +186,15 @@
                     <i class="fas fa-arrow-left me-2"></i>返回查詢頁面
                 </button>
                 <span class="badge bg-success bg-opacity-10 text-success border border-success px-3 py-2 rounded-pill">
-                    <i class="fas fa-check-circle me-1"></i> 資料彙整完成
+                    <i class="fas fa-check-circle me-1"></i> 資料庫查詢完成
                 </span>
             </div>
 
             <div class="card border-0 shadow-lg overflow-hidden">
                 <div class="card-header bg-light border-bottom p-4 d-flex justify-content-between align-items-start">
                     <div>
-                        <h4 class="fw-bold text-dark mb-1" id="report-title">臨場健康服務執行績效報告</h4>
-                        <small class="text-muted">資料來源：Supabase Cloud / OHSMS | 產出時間：<span id="report-date"></span></small>
+                        <h4 class="fw-bold text-dark mb-1" id="report-title">案件資料查詢結果</h4>
+                        <small class="text-muted">資料來源：Supabase Cloud | 查詢時間：<span id="report-date"></span></small>
                     </div>
                     <button class="btn btn-outline-secondary btn-sm bg-white" onclick="window.print()">
                         <i class="fas fa-print me-2"></i>列印
@@ -233,10 +202,7 @@
                 </div>
 
                 <div class="card-body p-4 p-lg-5">
-                    
-                    <div id="report-content">
-                        </div>
-
+                    <div id="report-content"></div>
                 </div>
             </div>
         </div>
@@ -253,7 +219,7 @@
                 <div class="modal-body bg-light d-flex align-items-center justify-content-center" style="min-height: 500px;">
                     <div class="text-center text-muted">
                         <i class="far fa-file-pdf fa-5x mb-3"></i>
-                        <h5>PDF 文件預覽區 (Demo)</h5>
+                        <h5>PDF 文件預覽區</h5>
                         <p id="pdfFileName">filename.pdf</p>
                     </div>
                 </div>
@@ -267,7 +233,6 @@
         // === 1. 初始化 Supabase 設定 ===
         const SUPABASE_URL = 'https://yhehfucgemxnfrdvpdhw.supabase.co';
         const SUPABASE_KEY = 'sb_publishable_52emtU-9l-SDxcJTWVTPTA_Yu6qEogh';
-        // 建立客戶端 (如果 SDK 載入失敗，會保留在 try-catch 中處理)
         let supabase = null;
         try {
             if (window.supabase) {
@@ -278,129 +243,148 @@
         }
 
         document.addEventListener('DOMContentLoaded', function() {
-            // 確保 body 顯示 (雙重保險)
-            document.body.style.display = 'block';
-            
             const userName = sessionStorage.getItem('currentUserName') || '管理員';
             document.getElementById('user-display').innerHTML = `<small>User: ${userName}</small>`;
-            const today = new Date();
-            document.getElementById('report-date').textContent = today.toLocaleDateString('zh-TW');
+            document.getElementById('report-date').textContent = new Date().toLocaleDateString('zh-TW');
         });
 
-        // === 2. 執行搜尋 (非同步 Async) ===
-        async function performSearch(type, keyword) {
-            
+        // === 2. 核心搜尋邏輯 (支援關鍵字疊加) ===
+        async function performSearch(type, presetKeyword) {
             const btn = document.querySelector('#search-view button');
             const originalText = btn.innerHTML;
-            btn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>資料庫連線中...';
+            const searchInput = document.getElementById('search-input').value;
             
-            // 模擬一點延遲讓使用者感覺在運算
-            await new Promise(r => setTimeout(r, 600));
+            // 決定最終使用的關鍵字串
+            const finalKeyword = (type === 'Person') ? presetKeyword : searchInput;
 
+            if (!finalKeyword.trim()) {
+                alert("請輸入查詢關鍵字");
+                return;
+            }
+
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>資料庫檢索中...';
+            
             try {
+                // 模擬網路延遲
+                await new Promise(r => setTimeout(r, 500));
+
+                let dbData = [];
+                let error = null;
+
+                if (supabase) {
+                    // === Supabase 參數疊加搜尋邏輯 ===
+                    let query = supabase.from('cases').select('*');
+
+                    // 1. 將輸入字串拆解為單詞 (Space-separated)
+                    const tokens = finalKeyword.trim().split(/\s+/);
+
+                    // 2. 對每個單詞加一層 Filter (AND 邏輯)
+                    // 只要該單詞出現在任一指定欄位中，即算符合該單詞的條件
+                    tokens.forEach(token => {
+                        // 建構 OR 語句：檢查 company_name 或 year 或 case_no 或 consultant_name 是否包含 token
+                        // 注意：這裡假設 DB 欄位都是 text 類型，若 year 是 int，ilike 可能會報錯，建議 DB 端 year 設為 text 或使用 cast
+                        const orFilter = `company_name.ilike.%${token}%,year.ilike.%${token}%,case_no.ilike.%${token}%,consultant_name.ilike.%${token}%`;
+                        query = query.or(orFilter);
+                    });
+
+                    // 執行查詢
+                    const response = await query;
+                    dbData = response.data;
+                    error = response.error;
+                }
+
+                // 切換介面
                 document.getElementById('search-view').style.display = 'none';
                 document.getElementById('report-view').style.display = 'block';
                 btn.innerHTML = originalText;
 
                 const contentDiv = document.getElementById('report-content');
                 const title = document.getElementById('report-title');
-                const searchInput = document.getElementById('search-input').value;
+                
+                title.textContent = `查詢結果：${finalKeyword}`;
 
-                // **嘗試連線 Supabase** (這裡示範邏輯：若資料庫真的有該 Table 則用真實資料，否則用模擬資料)
-                let dbData = null;
-                if (supabase) {
-                    // 這裡假設 Table 名稱為 'cases'，若無此 Table 會報錯，進入 catch 顯示模擬資料
-                    // 僅作連線測試，不讓它卡死畫面
-                    const { data, error } = await supabase
-                        .from('cases') 
-                        .select('*')
-                        .limit(3);
-                    if (!error && data) {
-                        dbData = data;
-                        console.log("Supabase connected:", data);
-                    }
-                }
-
-                if (type === 'Person') {
-                    // === 人員履歷模式 ===
-                    title.textContent = `顧問履歷與案件清單：${keyword}`;
-                    
-                    let casesHtml = '';
-                    
-                    // 根據人名產生模擬資料 (若 Supabase 尚未建置完整，以此為主確保 Demo 可用)
-                    if (keyword.includes('陳國華')) {
-                        casesHtml = `
-                            ${generateCaseCard('ABC 精密機械 (電子業)', '2025', '114001', '正常服務中')}
-                            ${generateCaseCard('XYZ 物流中心 (倉儲業)', '2025', '114008', '正常服務中')}
-                        `;
-                    } else if (keyword.includes('林美秀')) {
-                        casesHtml = `
-                            ${generateCaseCard('TopTech 電子 (科技業)', '2025', '114012', '正常服務中')}
-                            ${generateCaseCard('味全食品 (食品業)', '2024', '113055', '已結案')}
-                        `;
-                    } else {
-                        casesHtml = `
-                            ${generateCaseCard('長榮建設 (營造業)', '2025', '114022', '正常服務中')}
-                            <div class="alert alert-warning mt-3">註：此資料來自備用資料庫，因 Supabase 查詢未命中。</div>
-                        `;
-                    }
+                // 若 Supabase 報錯或無資料，顯示 Fallback Mock 資料 (防止 Demo 白畫面)
+                if (error || !dbData || dbData.length === 0) {
+                    console.warn("查無資料或 DB 連線錯誤，使用 Mock Data", error);
+                    renderMockData(contentDiv, finalKeyword);
+                } else {
+                    // === 渲染真實 DB 資料 ===
+                    const resultHtml = dbData.map(item => `
+                        <div class="card mb-3 shadow-sm border-start border-4 border-primary">
+                            <div class="card-body">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <div>
+                                        <h5 class="card-title fw-bold text-dark mb-1">${item.company_name || '未命名公司'}</h5>
+                                        <div class="text-muted small">
+                                            <span class="me-3"><i class="far fa-calendar me-1"></i>${item.year || '---'} 年度</span>
+                                            <span class="me-3"><i class="fas fa-hashtag me-1"></i>案號：${item.case_no || '---'}</span>
+                                            <span><i class="fas fa-user-tie me-1"></i>顧問：${item.consultant_name || '---'}</span>
+                                        </div>
+                                    </div>
+                                    <div class="text-end">
+                                        <span class="badge bg-success bg-opacity-10 text-success mb-2">${item.status || '正常'}</span>
+                                        <br>
+                                        <button class="btn btn-sm btn-outline-secondary" onclick="alert('開啟案件詳情: ${item.case_no}')">查看詳情</button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    `).join('');
 
                     contentDiv.innerHTML = `
                         <div class="alert alert-info border-info d-flex align-items-center mb-4">
-                            <i class="fas fa-info-circle me-3 fs-4"></i>
+                            <i class="fas fa-check-circle me-3 fs-4"></i>
                             <div>
-                                <strong>AI 分析結果 (DB Verified)：</strong> 該人員資格符合職安法規定，且目前承攬案件量未超過法定上限。
+                                <strong>檢索成功：</strong> 共找到 ${dbData.length} 筆符合條件 "${finalKeyword}" 的資料。
                             </div>
                         </div>
-                        <h5 class="fw-bold text-dark mb-3">負責案件列表</h5>
-                        ${casesHtml}
-                    `;
-
-                } else {
-                    // === NLP 公司搜尋模式 ===
-                    title.textContent = '臨場健康服務執行績效報告';
-                    contentDiv.innerHTML = `
-                        <div class="row g-5">
-                            <div class="col-lg-8">
-                                <div class="mb-5">
-                                    <h5 class="fw-bold text-primary border-start border-4 border-primary ps-3 mb-3">案件基本資訊</h5>
-                                    <div class="bg-light p-4 rounded border">
-                                        <div class="row g-3">
-                                            <div class="col-md-6"><small class="text-muted d-block mb-1">事業單位</small><strong class="text-dark">ABC 精密機械</strong></div>
-                                            <div class="col-md-6"><small class="text-muted d-block mb-1">統編</small><strong class="text-dark">12345678</strong></div>
-                                            <div class="col-md-6"><small class="text-muted d-block mb-1">年度</small><strong class="text-dark">2025</strong></div>
-                                            <div class="col-md-6"><small class="text-muted d-block mb-1">來源</small><strong class="text-success">Supabase / Local Hybrid</strong></div>
-                                        </div>
-                                    </div>
-                                </div>
-                                <div>
-                                    <h5 class="fw-bold text-primary border-start border-4 border-primary ps-3 mb-3">法規合規檢核</h5>
-                                    <table class="table table-hover border">
-                                        <thead class="bg-light"><tr><th class="ps-3">項目</th><th>狀態</th></tr></thead>
-                                        <tbody>
-                                            <tr><td class="ps-3">9-1 健檢分析</td><td><span class="badge bg-success bg-opacity-10 text-success">完成</span></td></tr>
-                                            <tr><td class="ps-3">9-2 適性評估</td><td><span class="badge bg-success bg-opacity-10 text-success">完成</span></td></tr>
-                                        </tbody>
-                                    </table>
-                                </div>
-                            </div>
-                            <div class="col-lg-4">
-                                <h5 class="fw-bold text-primary border-start border-4 border-primary ps-3 mb-3">佐證文件</h5>
-                                ${generateFileItem('2025_9-1_執行紀錄.pdf')}
-                                ${generateFileItem('2025_訪視照片.pdf')}
-                            </div>
-                        </div>
+                        <h5 class="fw-bold text-dark mb-3">案件列表</h5>
+                        ${resultHtml}
                     `;
                 }
 
             } catch (err) {
-                console.error("Execution Error:", err);
-                alert("執行發生錯誤，請檢查 Console");
+                console.error("Critical Error:", err);
+                alert("系統發生錯誤，請檢查 Console");
                 btn.innerHTML = originalText;
             }
         }
 
-        // 輔助函式：生成案件卡片 HTML
+        // 備用：渲染模擬資料 (當 DB 沒連上或沒資料時顯示)
+        function renderMockData(container, keyword) {
+            let mockHtml = '';
+            // 簡單的本地過濾模擬
+            const mocks = [
+                { company: '鐵高工業股份有限公司', year: '2024', caseNo: '113001', consultant: '張志明', status: '服務中' },
+                { company: '台灣積體電路', year: '2024', caseNo: '113005', consultant: '陳國華', status: '服務中' },
+                { company: 'ABC 精密機械', year: '2025', caseNo: '114001', consultant: '林美秀', status: '規劃中' }
+            ];
+
+            // 本地過濾邏輯 (模擬 Supabase 的 AND 疊加)
+            const tokens = keyword.trim().split(/\s+/);
+            const filtered = mocks.filter(m => {
+                const searchStr = `${m.company} ${m.year} ${m.caseNo} ${m.consultant}`.toLowerCase();
+                return tokens.every(token => searchStr.includes(token.toLowerCase()));
+            });
+
+            if (filtered.length > 0) {
+                mockHtml = filtered.map(m => generateCaseCard(m.company, m.year, m.caseNo, m.status)).join('');
+            } else {
+                 mockHtml = `<div class="alert alert-warning">查無符合 "${keyword}" 的資料 (Mock DB)。請確認 Supabase 'cases' 表格已建立且有資料。</div>`;
+            }
+
+            container.innerHTML = `
+                <div class="alert alert-warning border-warning d-flex align-items-center mb-4">
+                    <i class="fas fa-exclamation-triangle me-3 fs-4"></i>
+                    <div>
+                        <strong>注意：</strong> 目前顯示為備用資料 (Supabase 回傳空值或錯誤)。<br>
+                        請確認資料庫 Table 'cases' 是否存在，且欄位包含: company_name, year, case_no, consultant_name。
+                    </div>
+                </div>
+                ${mockHtml}
+            `;
+        }
+
         function generateCaseCard(companyName, year, caseId, status) {
             return `
                 <div class="card mb-3 shadow-sm border-start border-4 border-primary">
@@ -416,7 +400,7 @@
                             <div class="text-end">
                                 <span class="badge bg-success bg-opacity-10 text-success mb-2">${status}</span>
                                 <br>
-                                <button class="btn btn-sm btn-outline-secondary" onclick="alert('跳轉至該案件詳細資料')">查看詳情</button>
+                                <button class="btn btn-sm btn-outline-secondary">查看詳情</button>
                             </div>
                         </div>
                     </div>
@@ -424,24 +408,14 @@
             `;
         }
 
-        // 輔助函式：生成文件項目 HTML
-        function generateFileItem(filename) {
-            return `
-                <div class="file-item p-3 rounded bg-white d-flex align-items-center mb-2" onclick="openPdfModal('${filename}')">
-                    <div class="bg-danger bg-opacity-10 text-danger p-2 rounded me-3"><i class="fas fa-file-pdf"></i></div>
-                    <div class="fw-bold text-dark small">${filename}</div>
-                </div>
-            `;
-        }
-
         function resetSearch() {
             document.getElementById('report-view').style.display = 'none';
             document.getElementById('search-view').style.display = 'block';
+            document.getElementById('search-input').value = '';
         }
 
         function openPdfModal(filename) {
             document.getElementById('pdfFileName').textContent = filename;
-            document.getElementById('pdfModalTitle').textContent = "預覽：" + filename;
             new bootstrap.Modal(document.getElementById('pdfModal')).show();
         }
     </script>
