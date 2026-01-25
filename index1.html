@@ -53,6 +53,9 @@
         /* [新增] 法規檢核表樣式 */
         .check-list-item { padding: 5px 0; }
         .check-list-item label { cursor: pointer; line-height: 1.5; font-size: 0.95rem; }
+        
+        /* [新增] 導覽列樣式調整 */
+        .navbar-brand { font-weight: 600; letter-spacing: 0.5px; }
     </style>
 
     <script>
@@ -64,7 +67,9 @@
 
     <nav class="navbar navbar-expand-lg navbar-dark bg-dark py-3 mb-4">
         <div class="container-fluid px-4">
-            <a class="navbar-brand" href="dashboard.html"><i class="fas fa-shield-alt me-2"></i>OHSMS</a>
+            <a class="navbar-brand" href="dashboard.html">
+                <i class="fas fa-shield-alt me-2"></i>OHSMS 職安管理系統
+            </a>
             <div class="d-flex align-items-center">
                 <span class="text-light me-3" id="user-display"></span>
                 <a href="dashboard.html" class="btn btn-outline-light btn-sm"><i class="fas fa-arrow-left me-1"></i> 返回儀表板</a>
@@ -439,7 +444,7 @@
             document.getElementById('disp-site-m').value = workplace.site_male || 0;
             document.getElementById('disp-site-f').value = workplace.site_female || 0;
             
-            // [修改] 填入危害資料 (處理動態列表的初始化)
+            // [關鍵] 填入危害資料 (處理動態列表的初始化)
             const typeStr = workplace.hazard_type || '';
             const countTotal = workplace.hazard_count || 0;
             
@@ -452,12 +457,11 @@
             container.innerHTML = '';
             
             if (typeStr && typeStr !== '無') {
-                // 因為後端舊資料無法分辨細項人數，故初始化時將總數顯示在第一列
-                // 之後使用者可以在編輯模式下自行修改
+                // 初始化時將總數顯示在第一列
                 addHazardRow(typeStr, countTotal); 
             } else {
-                // 如果完全沒資料，這裡不預設產生，等待使用者點選編輯後新增
-                if (mode === 'new') addHazardRow('', 0); // 若是新增模式，給一個空格方便填寫
+                // 如果完全沒資料，若為新增模式則新增一個空白列方便填寫
+                if (mode === 'new') addHazardRow('', 0); 
             }
             
             // 確保初始狀態是唯讀的 (因為預設還沒按「啟用編輯」)
@@ -546,7 +550,7 @@
             calculateHazardTotals();
         }
 
-        // [新增] 計算並同步回隱藏欄位
+        // [新增] 計算並同步回隱藏欄位 (後端轉接頭)
         function calculateHazardTotals() {
             const names = [];
             let totalCount = 0;
@@ -580,15 +584,11 @@
             btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 處理中...';
 
             try {
-                // 這裡要先把危害資料 (Workplaces) 寫回去，因為使用者可能修改了
-                // 如果是編輯模式下，我們需要更新 workplaces 表
-                // 注意：這會更新 Master Data
+                // 如果是編輯模式下，我們需要更新 workplaces 表 (含危害資料)
                 if (isEditMode) {
                      const hazardType = document.getElementById('disp-hazard-type').value;
                      const hazardCount = parseInt(document.getElementById('disp-hazard-count').value) || 0;
                      
-                     // 這裡還可以加入更新其他欄位 (如人數、製程等)
-                     // 範例簡單處理危害部分
                      await supabaseClient.from('workplaces').update({
                          hazard_type: hazardType,
                          hazard_count: hazardCount,
