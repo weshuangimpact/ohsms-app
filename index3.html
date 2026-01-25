@@ -3,347 +3,407 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>服務執行歷程查詢助手</title>
+    <title>服務執行歷程查詢助手 | OHSMS</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    
     <style>
-        /* 基礎重置，回歸最乾淨的系統介面 */
+        :root { --primary-bg: #f8f9fa; --search-focus: #fff; }
         body {
-            font-family: Arial, "Microsoft JhengHei", sans-serif;
-            margin: 20px;
-            background-color: #fff;
-            color: #333;
-            font-size: 14px;
+            background-color: var(--primary-bg);
+            font-family: 'Segoe UI', 'Microsoft JhengHei', sans-serif;
+            color: #202124;
         }
 
-        /* 標題區：單純文字 */
-        .page-title {
-            font-size: 24px;
-            font-weight: bold;
-            margin-bottom: 20px;
-            border-bottom: 2px solid #0056b3;
-            padding-bottom: 10px;
-            display: flex;
-            align-items: center;
+        /* 導覽列微調 */
+        .navbar { background-color: #202124 !important; }
+        
+        /* 搜尋區域樣式 */
+        .search-container {
+            max-width: 800px;
+            margin: 3rem auto 2rem;
+            text-align: center;
+            transition: all 0.3s ease;
         }
         
-        .version-text {
-            font-size: 12px;
-            color: #666;
-            margin-left: 10px;
-            font-weight: normal;
-            background: #eee;
-            padding: 2px 5px;
-            border-radius: 3px;
-        }
-
-        /* 搜尋區塊：橫向排列，傳統系統風格 */
-        .search-container {
-            background-color: #f5f5f5;
-            padding: 15px;
-            border: 1px solid #ddd;
-            display: flex;
-            align-items: center;
-            gap: 15px;
-            margin-bottom: 20px;
-        }
-
-        .search-item {
-            display: flex;
-            align-items: center;
-            gap: 5px;
-        }
-
-        label {
-            font-weight: bold;
-        }
-
-        input[type="month"], 
-        input[type="text"], 
-        select {
-            padding: 5px;
-            border: 1px solid #ccc;
-            height: 30px;
-            box-sizing: border-box;
-        }
-
-        /* 按鈕樣式 */
-        .btn-search {
-            background-color: #0056b3;
-            color: white;
-            border: none;
-            padding: 5px 20px;
-            height: 30px;
-            cursor: pointer;
-            font-weight: bold;
-        }
-        .btn-search:hover { background-color: #004494; }
-
-        /* 表格樣式：標準線框表格 */
-        table {
-            width: 100%;
-            border-collapse: collapse;
-            border: 1px solid #ccc;
-        }
-
-        th, td {
-            border: 1px solid #ccc;
-            padding: 8px 10px;
-            text-align: left;
-        }
-
-        th {
-            background-color: #e9ecef;
-            font-weight: bold;
-            color: #333;
-        }
-
-        tr:nth-child(even) { background-color: #f9f9f9; }
-        tr:hover { background-color: #f1f1f1; }
-
-        /* 按鈕與狀態 */
-        .status-ok { color: green; font-weight: bold; }
-        .status-wait { color: #d9534f; font-weight: bold; }
-
-        .btn-view {
-            background-color: #6c757d;
-            color: white;
-            border: none;
-            padding: 3px 10px;
-            border-radius: 3px;
-            cursor: pointer;
-            font-size: 12px;
-        }
-        .btn-view:hover { background-color: #5a6268; }
-
-        /* 初始提示 */
-        .init-msg {
-            text-align: center;
-            padding: 40px;
-            color: #777;
-            border: 1px dashed #ccc;
-            background: #fafafa;
-        }
-
-        /* --- 跳窗 (Modal) 樣式 --- */
-        .modal-mask {
-            display: none; 
-            position: fixed; 
-            z-index: 9999; 
-            left: 0; top: 0; 
-            width: 100%; height: 100%; 
-            background-color: rgba(0,0,0,0.6); 
-        }
-
-        .modal-box {
-            background-color: #fff;
-            margin: 5% auto; 
-            padding: 0; 
-            border: 1px solid #888; 
-            width: 70%; 
-            height: 85%;
-            display: flex;
-            flex-direction: column;
-            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
-        }
-
-        .modal-header {
-            padding: 10px 15px;
-            background: #0056b3;
-            color: white;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-
-        .modal-body {
-            flex: 1;
-            padding: 20px;
-            overflow-y: auto;
+        /* 搜尋框仿 Google 設計 */
+        .search-box-wrapper {
             position: relative;
-            background: #eee;
+            background: #fff;
+            border: 1px solid #dfe1e5;
+            border-radius: 24px;
+            padding: 10px 20px;
+            box-shadow: 0 1px 6px rgba(32,33,36,.28);
+            display: flex;
+            align-items: center;
+        }
+        .search-box-wrapper:hover, .search-box-wrapper:focus-within {
+            background-color: #fff;
+            box-shadow: 0 1px 6px rgba(32,33,36,.28), 0 2px 10px rgba(0,0,0,0.1);
+            border-color: rgba(223,225,229,0);
+        }
+        .search-input {
+            border: none;
+            outline: none;
+            width: 100%;
+            font-size: 1.1rem;
+            margin-left: 10px;
+            background: transparent;
+        }
+        
+        /* 搜尋按鈕 */
+        .btn-search-trigger {
+            color: #4285f4;
+            background: transparent;
+            border: none;
+            font-weight: bold;
+            padding: 0 10px;
+            cursor: pointer;
+        }
+        .btn-search-trigger:hover { color: #1a73e8; }
+
+        /* 結果卡片樣式 */
+        .result-card {
+            background: #fff;
+            border: 1px solid #e0e0e0;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 15px;
+            transition: transform 0.2s, box-shadow 0.2s;
+            cursor: pointer;
+            position: relative;
+        }
+        .result-card:hover {
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            border-color: #ced4da;
+            transform: translateY(-2px);
+        }
+        .result-meta { font-size: 0.85rem; color: #5f6368; }
+        .result-title { color: #1a0dab; font-size: 1.25rem; font-weight: 600; text-decoration: none; margin-bottom: 5px; display: block; }
+        .result-snippet { color: #4d5156; font-size: 0.95rem; line-height: 1.5; margin-top: 8px; }
+        
+        /* 標籤樣式 */
+        .tag-year { background-color: #e8f0fe; color: #1967d2; font-weight: bold; font-size: 0.8rem; padding: 2px 8px; border-radius: 4px; }
+        .tag-consultant { background-color: #fce8e6; color: #c5221f; font-size: 0.8rem; padding: 2px 8px; border-radius: 4px; margin-left: 5px; }
+
+        /* 版本號 */
+        .version-badge {
+            font-size: 0.6em;
+            background: #6c757d;
+            color: white;
+            padding: 2px 6px;
+            border-radius: 4px;
+            vertical-align: middle;
+            margin-left: 10px;
+        }
+
+        /* --- V1.01 安全預覽樣式 --- */
+        .doc-preview-body {
+            background: #525659; /* 深灰色模擬閱讀器背景 */
+            padding: 30px;
+            height: 75vh;
+            overflow-y: auto;
+            display: flex;
+            justify-content: center;
             user-select: none; /* 禁止選取 */
         }
-
-        .doc-page {
+        
+        .doc-paper {
             background: white;
-            width: 210mm; /* A4 width */
-            min-height: 297mm;
-            margin: 0 auto;
-            padding: 20px;
-            box-shadow: 0 0 5px rgba(0,0,0,0.3);
+            width: 100%;
+            max-width: 800px;
+            min-height: 1000px;
+            padding: 50px;
+            box-shadow: 0 0 15px rgba(0,0,0,0.5);
             position: relative;
         }
 
-        .close {
-            color: white;
-            font-size: 24px;
-            font-weight: bold;
-            cursor: pointer;
-        }
-        .close:hover { color: #ccc; }
-
-        /* 浮水印 */
         .watermark {
             position: absolute;
-            top: 40%; left: 50%;
+            top: 50%; left: 50%;
             transform: translate(-50%, -50%) rotate(-45deg);
-            font-size: 50px;
-            color: rgba(255,0,0,0.1);
+            font-size: 4rem;
+            color: rgba(255, 0, 0, 0.1);
+            border: 4px solid rgba(255, 0, 0, 0.1);
+            padding: 20px;
             pointer-events: none;
             white-space: nowrap;
-            border: 5px solid rgba(255,0,0,0.1);
-            padding: 20px;
         }
 
+        .search-stats { font-size: 0.85rem; color: #70757a; margin-bottom: 1rem; padding-left: 5px; }
     </style>
 </head>
 <body>
 
-    <div class="page-title">
-        <span>🤖 服務執行歷程查詢助手</span>
-        <span class="version-text">V1.01</span>
-    </div>
-
-    <div class="search-container">
-        <div class="search-item">
-            <label>年份/月份：</label>
-            <input type="month" id="s-date" value="2026-06">
-        </div>
-        <div class="search-item">
-            <label>公司名稱/統編：</label>
-            <input type="text" id="s-keyword" placeholder="輸入關鍵字..." style="width: 200px;">
-        </div>
-        <div class="search-item">
-            <label>紀錄類型：</label>
-            <select id="s-type">
-                <option value="">全部</option>
-                <option value="site">臨場服務</option>
-                <option value="doc">文件審查</option>
-                <option value="meet">會議紀錄</option>
-            </select>
-        </div>
-        <button class="btn-search" onclick="doSearch()">搜尋</button>
-    </div>
-
-    <div id="result-container">
-        <div class="init-msg" id="init-msg">
-            請輸入條件並點擊「搜尋」按鈕以查詢資料。
-        </div>
-
-        <table id="result-table" style="display: none;">
-            <thead>
-                <tr>
-                    <th width="120">訪視日期 ▼</th> <th>企業名稱</th>
-                    <th width="100">紀錄類型</th>
-                    <th width="100">執行人員</th>
-                    <th width="80">狀態</th>
-                    <th width="120">功能</th>
-                </tr>
-            </thead>
-            <tbody id="result-body">
-                </tbody>
-        </table>
-    </div>
-
-    <div id="previewModal" class="modal-mask" onclick="closeModal(event)">
-        <div class="modal-box" onclick="event.stopPropagation()">
-            <div class="modal-header">
-                <span id="modal-title">文件預覽</span>
-                <span class="close" onclick="closeModalDirect()">&times;</span>
+    <nav class="navbar navbar-expand-lg navbar-dark py-2">
+        <div class="container-fluid px-4">
+            <a class="navbar-brand" href="#">
+                <i class="fas fa-robot me-2"></i>服務執行歷程查詢助手 
+                <span class="version-badge">V1.01</span>
+            </a>
+            <div class="d-flex align-items-center">
+                <span class="text-light me-3 small" id="user-display">User</span>
+                <button class="btn btn-outline-light btn-sm rounded-pill px-3">
+                    <i class="fas fa-th me-1"></i> 應用程式
+                </button>
             </div>
-            <div class="modal-body" oncontextmenu="return false;">
-                <div class="doc-page">
-                    <div class="watermark">僅供預覽 禁止下載</div>
-                    <h2 style="text-align:center; text-decoration: underline;">服務執行紀錄表</h2>
-                    <br>
-                    <p><b>訪視日期：</b> <span id="v-date"></span></p>
-                    <p><b>客戶名稱：</b> <span id="v-name"></span></p>
-                    <p><b>執行人員：</b> <span id="v-staff"></span></p>
-                    <hr>
-                    <p><b>【服務內容摘要】</b></p>
-                    <p>1. 職業安全衛生教育訓練 (3小時)。</p>
-                    <p>2. 作業環境監測結果評估與建議。</p>
-                    <p>3. 員工健康檢查分級管理 (Grade 2)。</p>
-                    <br><br>
-                    <div style="border: 1px solid #ccc; height: 300px; display: flex; align-items: center; justify-content: center; color: #999; background: #f9f9f9;">
-                        [ 文件影像掃描檔 預覽區域 ]
+        </div>
+    </nav>
+
+    <div class="container pb-5">
+        
+        <div class="search-container">
+            <h2 class="mb-4 fw-bold text-secondary"><i class="fab fa-google text-primary me-2"></i>歷程搜尋</h2>
+            <div class="search-box-wrapper">
+                <i class="fas fa-search text-muted"></i>
+                <input type="text" id="searchInput" class="search-input" placeholder="搜尋公司名稱、年份、顧問姓名 (例如：2025 鐵高)..." autofocus>
+                <button class="btn-search-trigger" onclick="executeSearch()">搜尋</button>
+            </div>
+        </div>
+
+        <div class="row justify-content-center">
+            <div class="col-lg-8">
+                <div id="searchStats" class="search-stats"></div>
+                
+                <div id="resultsArea">
+                    <div class="text-center text-muted mt-5" id="initialState">
+                        <i class="fas fa-keyboard fa-3x mb-3 text-light-gray" style="opacity: 0.3;"></i>
+                        <p>請輸入關鍵字並點擊「搜尋」按鈕<br>AI 助手將從資料庫調閱相關紀錄</p>
                     </div>
+                </div>
+
+                <div id="loadingSpinner" class="text-center mt-5" style="display: none;">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                    <p class="text-muted mt-2">正在連線資料庫查詢...</p>
                 </div>
             </div>
         </div>
     </div>
 
+    <div class="modal fade" id="previewModal" tabindex="-1" data-bs-backdrop="static">
+        <div class="modal-dialog modal-xl modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header bg-dark text-white border-0">
+                    <h5 class="modal-title"><i class="fas fa-eye me-2"></i>案件預覽模式</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body p-0" oncontextmenu="return false;">
+                    <div class="doc-preview-body">
+                        <div class="doc-paper">
+                            <div class="watermark">僅供預覽 嚴禁下載</div>
+                            
+                            <div id="previewContent">
+                                </div>
+
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer bg-light">
+                    <small class="text-muted me-auto"><i class="fas fa-lock me-1"></i>此文件受系統保護，無法下載或列印。</small>
+                    <button type="button" class="btn btn-secondary px-4" data-bs-dismiss="modal">關閉視窗</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    
     <script>
-        // 模擬資料 (亂序，測試排序用)
-        const dbData = [
-            { date: "2025-08-31", name: "台灣鐵高資訊", type: "臨場服務", staff: "尤志偉", status: 1 },
-            { date: "2026-06-14", name: "台灣鐵高資訊", type: "臨場服務", staff: "黃慧玲", status: 1 },
-            { date: "2024-12-10", name: "愛味之資訊", type: "文件審查", staff: "林世明", status: 1 },
-            { date: "2026-01-25", name: "台灣鐵高資訊", type: "臨場服務", staff: "鄭雅萍", status: 1 },
-            { date: "2026-03-02", name: "見遠雜誌資訊", type: "會議紀錄", staff: "楊恩碩", status: 0 }
-        ];
+        // 設定 Supabase 連線
+        const SUPABASE_URL = 'https://yhehfucgemxnfrdvpdhw.supabase.co';
+        const SUPABASE_KEY = 'sb_publishable_52emtU-9l-SDxcJTWVTPTA_Yu6qEogh';
+        const { createClient } = supabase;
+        const supabaseClient = createClient(SUPABASE_URL, SUPABASE_KEY);
 
-        function doSearch() {
-            // 1. 隱藏提示，顯示表格
-            document.getElementById('init-msg').style.display = 'none';
-            document.getElementById('result-table').style.display = 'table';
-            
-            const keyword = document.getElementById('s-keyword').value;
-            const tbody = document.getElementById('result-body');
-            tbody.innerHTML = "";
+        document.addEventListener('DOMContentLoaded', function() {
+            const userName = sessionStorage.getItem('currentUserName') || 'Admin';
+            document.getElementById('user-display').innerText = userName;
 
-            // 2. 篩選資料
-            let list = dbData;
-            if (keyword) {
-                list = list.filter(d => d.name.includes(keyword));
+            // 綁定 Enter 鍵觸發搜尋
+            document.getElementById('searchInput').addEventListener('keyup', function(e) {
+                if (e.key === 'Enter') executeSearch();
+            });
+        });
+
+        // 核心：執行搜尋 (Fetch Real Data)
+        async function executeSearch() {
+            const query = document.getElementById('searchInput').value.trim();
+            const resultsArea = document.getElementById('resultsArea');
+            const loader = document.getElementById('loadingSpinner');
+            const initialState = document.getElementById('initialState');
+            const stats = document.getElementById('searchStats');
+
+            // 1. UI 狀態切換
+            initialState.style.display = 'none';
+            resultsArea.innerHTML = ''; // 清空舊結果
+            stats.innerHTML = '';
+            loader.style.display = 'block';
+
+            try {
+                // 2. 查詢 Supabase (依賴關聯查詢)
+                // 策略：撈取最近的 100 筆資料，然後在前端做關鍵字過濾 (因為 Supabase 的關聯字串搜尋較複雜)
+                // 這樣能確保 "如果沒資料就是沒資料"
+                
+                const { data: records, error } = await supabaseClient
+                    .from('service_records')
+                    .select(`
+                        id,
+                        service_year,
+                        visit_date,
+                        process_desc,
+                        hazard_desc,
+                        raw_data,
+                        created_at,
+                        workplace_id,
+                        workplaces (
+                            department_name,
+                            companies (
+                                name,
+                                tax_id
+                            )
+                        )
+                    `)
+                    .order('visit_date', { ascending: false }) // ★ V1.01: 日期降冪排序
+                    .limit(100);
+
+                if (error) throw error;
+
+                // 3. 前端過濾 (Client-side Filtering)
+                // 如果有輸入關鍵字，就過濾；沒輸入則顯示全部最近的資料
+                let filteredData = records;
+                
+                if (query) {
+                    const lowerQ = query.toLowerCase();
+                    filteredData = records.filter(rec => {
+                        const coName = rec.workplaces?.companies?.name || '';
+                        const taxId = rec.workplaces?.companies?.tax_id || '';
+                        const year = (rec.service_year || '').toString();
+                        
+                        // 解析 JSON 裡的顧問姓名
+                        let consultant = '';
+                        try {
+                            const raw = (typeof rec.raw_data === 'string') ? JSON.parse(rec.raw_data) : rec.raw_data;
+                            consultant = raw?.consultant_name || '';
+                        } catch(e) {}
+
+                        // 搜尋字串比對
+                        const fullText = `${coName} ${taxId} ${year} ${consultant}`.toLowerCase();
+                        return fullText.includes(lowerQ);
+                    });
+                }
+
+                loader.style.display = 'none';
+                renderResults(filteredData, query);
+
+            } catch (err) {
+                console.error(err);
+                loader.style.display = 'none';
+                resultsArea.innerHTML = `<div class="alert alert-danger">資料庫連線錯誤: ${err.message}</div>`;
             }
+        }
 
-            // 3. 排序：日期降冪 (最新在上面)
-            list.sort((a, b) => new Date(b.date) - new Date(a.date));
+        function renderResults(data, query) {
+            const container = document.getElementById('resultsArea');
+            const stats = document.getElementById('searchStats');
 
-            // 4. 產生列表
-            if (list.length === 0) {
-                tbody.innerHTML = "<tr><td colspan='6' style='text-align:center; padding:20px;'>查無資料</td></tr>";
+            if (!data || data.length === 0) {
+                container.innerHTML = `
+                    <div class="text-center mt-5 text-muted">
+                        <i class="fas fa-folder-open fa-2x mb-3"></i>
+                        <p>資料庫中找不到符合「${query}」的紀錄</p>
+                    </div>`;
                 return;
             }
 
-            list.forEach(item => {
-                const statusHtml = item.status === 1 
-                    ? '<span class="status-ok">完成</span>' 
-                    : '<span class="status-wait">進行中</span>';
+            stats.innerHTML = `找到 ${data.length} 筆資料 (依日期降冪排列)`;
 
-                const tr = document.createElement('tr');
-                tr.innerHTML = `
-                    <td>${item.date}</td>
-                    <td>${item.name}</td>
-                    <td>${item.type}</td>
-                    <td>${item.staff}</td>
-                    <td>${statusHtml}</td>
-                    <td>
-                        <button class="btn-view" onclick="openModal('${item.name}', '${item.date}', '${item.staff}')">
-                            👁️ 點選跳窗預覽
-                        </button>
-                    </td>
-                `;
-                tbody.appendChild(tr);
+            let html = '';
+            data.forEach(rec => {
+                const company = rec.workplaces?.companies?.name || '未知公司';
+                const dept = rec.workplaces?.department_name || '';
+                const date = rec.visit_date || '無日期';
+                
+                // 解析顧問
+                let consultant = '未指定';
+                try {
+                    const raw = (typeof rec.raw_data === 'string') ? JSON.parse(rec.raw_data) : rec.raw_data;
+                    if (raw?.consultant_name) consultant = raw.consultant_name;
+                } catch(e) {}
+
+                // 摘要
+                const snippet = rec.hazard_desc || rec.process_desc || '尚無詳細描述';
+                const yearColor = rec.service_year == 2026 ? 'bg-primary' : 'bg-secondary';
+
+                // 這裡將整個物件轉字串傳給 openPreview (簡單做法)
+                // 為了避免 JSON 內的引號問題，我們只傳需要的欄位
+                const safeParams = `openPreview('${company}', '${date}', '${consultant}', '${snippet.replace(/\n/g, '').replace(/'/g, "")}')`;
+
+                html += `
+                <div class="result-card" onclick="${safeParams}">
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div>
+                            <span class="result-meta mb-1 d-block">
+                                <span class="badge ${yearColor} me-1">${rec.service_year}</span> 
+                                ${date} · ${dept}
+                            </span>
+                            <h3 class="result-title">${company}</h3>
+                        </div>
+                        <div class="text-end">
+                            <span class="tag-consultant"><i class="fas fa-user-md me-1"></i>${consultant}</span>
+                        </div>
+                    </div>
+                    <div class="result-snippet text-muted">${snippet.substring(0, 100)}...</div>
+                    <div class="mt-3 border-top pt-2 d-flex justify-content-between align-items-center">
+                        <small class="text-primary"><i class="fas fa-eye me-1"></i>點選跳窗預覽</small>
+                        <i class="fas fa-chevron-right text-muted small"></i>
+                    </div>
+                </div>`;
             });
+
+            container.innerHTML = html;
         }
 
-        // --- 跳窗控制 ---
-        function openModal(name, date, staff) {
-            document.getElementById('modal-title').innerText = "預覽：" + name;
-            document.getElementById('v-name').innerText = name;
-            document.getElementById('v-date').innerText = date;
-            document.getElementById('v-staff').innerText = staff;
-            document.getElementById('previewModal').style.display = "block";
-        }
+        // --- V1.01 跳窗預覽功能 ---
+        function openPreview(company, date, consultant, snippet) {
+            const content = document.getElementById('previewContent');
+            
+            // 模擬 PDF / 文件內容呈現
+            content.innerHTML = `
+                <h2 class="text-center fw-bold mb-4 border-bottom pb-3">臨場服務執行紀錄表</h2>
+                
+                <div class="row mb-4">
+                    <div class="col-6"><p><strong>事業單位：</strong> ${company}</p></div>
+                    <div class="col-6"><p><strong>訪視日期：</strong> ${date}</p></div>
+                    <div class="col-6"><p><strong>執行人員：</strong> ${consultant}</p></div>
+                    <div class="col-6"><p><strong>文件編號：</strong> REC-${Date.now().toString().slice(-6)}</p></div>
+                </div>
 
-        function closeModal(e) {
-            if (e.target.className === "modal-mask") {
-                document.getElementById('previewModal').style.display = "none";
-            }
-        }
-        function closeModalDirect() {
-            document.getElementById('previewModal').style.display = "none";
+                <div class="bg-light p-3 border rounded mb-4">
+                    <h5 class="fw-bold">一、作業現場描述</h5>
+                    <p>${snippet}</p>
+                </div>
+
+                <div class="mb-4">
+                    <h5 class="fw-bold">二、服務項目檢核</h5>
+                    <ul class="list-unstyled">
+                        <li><i class="far fa-check-square me-2"></i>作業環境監測結果評估</li>
+                        <li><i class="far fa-check-square me-2"></i>健康檢查結果分析與分級</li>
+                        <li><i class="far fa-check-square me-2"></i>呼吸防護具配戴指導</li>
+                        <li><i class="far fa-square me-2"></i>人因性危害預防計畫</li>
+                    </ul>
+                </div>
+
+                <br><br>
+                <div class="text-center text-muted border p-5 bg-white">
+                    <i class="fas fa-file-image fa-2x mb-2"></i><br>
+                    [ 原始簽核文件掃描檔 載入區域 ]
+                </div>
+            `;
+
+            new bootstrap.Modal(document.getElementById('previewModal')).show();
         }
     </script>
 </body>
