@@ -11,15 +11,12 @@
     <style>
         :root { --primary-bg: #f4f6f9; }
         body { background-color: var(--primary-bg); font-family: 'Segoe UI', 'Microsoft JhengHei', sans-serif; display: block; }
-        
-        /* 樣式優化 */
         .demo-info-card { background-color: #fffbeb; border-left: 4px solid #f59e0b; color: #92400e; padding: 1rem; margin-bottom: 1.5rem; border-radius: 0.375rem; font-size: 0.9rem; }
         .search-input-group { box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1); border-radius: 0.5rem; overflow: hidden; }
         .search-input-group input { border: none; padding: 1.25rem; font-size: 1rem; }
-        .consultant-card { border: 1px solid #e2e8f0; border-radius: 8px; transition: all 0.3s; background: white; }
+        .consultant-card { border: 1px solid #e2e8f0; border-radius: 8px; transition: all 0.3s; background: white; cursor: pointer; }
         .consultant-card:hover { border-color: #3b82f6; box-shadow: 0 4px 12px rgba(59, 130, 246, 0.15); transform: translateY(-2px); }
         .fade-in-up { animation: fadeInUp 0.5s ease-out forwards; }
-        @keyframes fadeInUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
     </style>
 </head>
 <body>
@@ -28,8 +25,7 @@
         <div class="container-fluid px-4">
             <a class="navbar-brand" href="#"><i class="fas fa-shield-alt me-2"></i>OHSMS</a>
             <div class="d-flex align-items-center">
-                <span class="text-light me-3" id="user-display"></span>
-                <button class="btn btn-outline-light btn-sm"><i class="fas fa-sign-out-alt me-1"></i> 登出</button>
+                <span class="text-light me-3" id="user-display"><small>User: 管理員</small></span>
             </div>
         </div>
     </nav>
@@ -39,15 +35,15 @@
         <div class="d-flex justify-content-between align-items-center mb-4">
             <div>
                 <h2 class="fw-bold text-dark"><i class="fas fa-magnifying-glass-chart me-2 text-primary"></i>評鑑支援 AI 智慧助理</h2>
-                <p class="text-muted mb-0">Evaluation 階段：連結 Service Records 與 Storage 附件庫</p>
+                <p class="text-muted mb-0">Evaluation 階段：查詢現有資料庫架構 (Service Records)</p>
             </div>
         </div>
 
         <div class="demo-info-card">
-            <i class="fas fa-database me-2"></i>
-            <strong>資料庫連線：Service_Records (Joined) + Storage</strong><br>
-            搜尋範圍：同時檢索「公司名稱(Companies)」、「顧問姓名(Medical_Staff)」、「年度」、「案號」。<br>
-            附件功能：自動生成 Supabase Storage 下載連結 (Bucket: service_documents)。
+            <i class="fas fa-project-diagram me-2"></i>
+            <strong>資料架構解析模式：</strong><span id="db-status" class="fw-bold text-primary">待命</span><br>
+            系統將自動串聯：Service Records (紀錄) ➞ Workplaces (廠區) ➞ Companies (公司)。<br>
+            說明：支援以「公司名稱」、「2024」、「顧問姓名」進行混合搜尋。
         </div>
 
         <div id="search-view" class="py-4">
@@ -61,40 +57,25 @@
                     <div class="search-input-group d-flex mb-3">
                         <span class="input-group-text bg-white border-0 ps-3"><i class="fas fa-search text-muted"></i></span>
                         <input type="text" id="search-input" class="form-control" 
-                               placeholder="請輸入：公司名、年度或顧問 (如：鐵高 2024)">
-                        <button class="btn btn-primary px-4 fw-bold" onclick="performSearch('Keyword', '')">
-                            查詢調閱
+                               placeholder="請輸入關鍵字 (例如: 鐵高, 2024, 陳美珍)">
+                        <button class="btn btn-primary px-4 fw-bold" onclick="performSearch()">
+                            查詢
                         </button>
                     </div>
                 </div>
             </div>
 
             <div class="row justify-content-center">
-                <div class="col-lg-10">
-                    <div class="card border-0 shadow-sm">
-                        <div class="card-header bg-white py-3 border-bottom">
-                            <h6 class="mb-0 fw-bold text-dark"><i class="fas fa-user-tie me-2 text-success"></i>認可顧問快速索引</h6>
+                <div class="col-lg-8">
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <div class="list-group-item p-4 consultant-card text-center" onclick="performSearch('2024')">
+                                <h5 class="fw-bold mb-1"><i class="far fa-calendar-alt me-2 text-primary"></i>查詢 2024 年度案件</h5>
+                            </div>
                         </div>
-                        <div class="card-body p-0">
-                            <div class="list-group list-group-flush">
-                                <div class="list-group-item p-4 consultant-card border-bottom">
-                                    <div class="d-flex align-items-center justify-content-between">
-                                        <div class="d-flex align-items-center">
-                                            <div class="bg-light rounded-circle p-3 me-3"><i class="fas fa-user-md fa-lg text-secondary"></i></div>
-                                            <div><h5 class="fw-bold mb-1">陳國華</h5><small class="text-muted">職醫字第 112005 號</small></div>
-                                        </div>
-                                        <button class="btn btn-outline-primary btn-sm" onclick="performSearch('Person', '陳國華')">調閱案件</button>
-                                    </div>
-                                </div>
-                                <div class="list-group-item p-4 consultant-card">
-                                    <div class="d-flex align-items-center justify-content-between">
-                                        <div class="d-flex align-items-center">
-                                            <div class="bg-light rounded-circle p-3 me-3"><i class="fas fa-user-nurse fa-lg text-secondary"></i></div>
-                                            <div><h5 class="fw-bold mb-1">林美秀</h5><small class="text-muted">台南護字第 008899 號</small></div>
-                                        </div>
-                                        <button class="btn btn-outline-primary btn-sm" onclick="performSearch('Person', '林美秀')">調閱案件</button>
-                                    </div>
-                                </div>
+                        <div class="col-md-6">
+                            <div class="list-group-item p-4 consultant-card text-center" onclick="performSearch('2025')">
+                                <h5 class="fw-bold mb-1"><i class="fas fa-history me-2 text-success"></i>查詢 2025 年度案件</h5>
                             </div>
                         </div>
                     </div>
@@ -107,13 +88,13 @@
                 <button onclick="resetSearch()" class="btn btn-link text-decoration-none text-secondary ps-0">
                     <i class="fas fa-arrow-left me-2"></i>返回查詢
                 </button>
-                <span class="badge bg-primary px-3 py-2 rounded-pill">Supabase DB Connected</span>
+                <span class="badge bg-primary px-3 py-2 rounded-pill">Data Loaded</span>
             </div>
             
             <div class="card border-0 shadow-lg">
                 <div class="card-header bg-light border-bottom p-4">
                     <h4 class="fw-bold text-dark mb-1" id="report-title">查詢結果</h4>
-                    <small class="text-muted">資料表：service_records (Joined companies, medical_staff)</small>
+                    <small class="text-muted">資料來源：Supabase (Hybrid Join)</small>
                 </div>
                 <div class="card-body p-4">
                     <div id="report-content"></div>
@@ -127,116 +108,132 @@
         // 1. 初始化 Supabase
         const SUPABASE_URL = 'https://yhehfucgemxnfrdvpdhw.supabase.co';
         const SUPABASE_KEY = 'sb_publishable_52emtU-9l-SDxcJTWVTPTA_Yu6qEogh';
-        let supabase = null;
-        
-        try {
-            supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-        } catch (e) { console.error("Supabase Init Error", e); }
+        const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-        document.getElementById('user-display').innerHTML = `<small>User: 管理員</small>`;
-
-        // 2. 搜尋核心函式
-        async function performSearch(type, presetKeyword) {
+        // 2. 核心搜尋函式
+        async function performSearch(presetKeyword) {
             const btn = document.querySelector('button.btn-primary');
             const originalText = btn.innerHTML;
             const searchInput = document.getElementById('search-input').value;
-            const finalKeyword = (type === 'Person') ? presetKeyword : searchInput;
-            const keywords = finalKeyword.trim().toLowerCase().split(/\s+/); // 拆分關鍵字
-
+            const finalKeyword = (presetKeyword ? presetKeyword : searchInput).trim();
+            
             if (!finalKeyword) { alert("請輸入關鍵字"); return; }
-            btn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>資料讀取中...';
+            
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>資料串接中...';
+            document.getElementById('db-status').innerText = "下載並組裝資料中...";
 
             try {
-                // A. 從 service_records 抓取資料 (包含關聯資料表)
-                // 假設關聯名稱為 companies 與 medical_staff (依據您的 CSV 結構推測)
-                let { data: records, error } = await supabase
-                    .from('service_records')
-                    .select(`
-                        *,
-                        companies (name, tax_id),
-                        medical_staff (name)
-                    `)
-                    .limit(100); // 限制筆數優化效能
+                // 平行下載三個表格的資料 (這比 SQL Join 更穩健，因為不受限於 FK 設定)
+                const [recordsRes, workplacesRes, companiesRes] = await Promise.all([
+                    supabase.from('service_records').select('*').order('created_at', { ascending: false }).limit(200), // 限制筆數避免過慢
+                    supabase.from('workplaces').select('*'),
+                    supabase.from('companies').select('*')
+                ]);
 
-                if (error) throw error;
+                if (recordsRes.error) throw recordsRes.error;
+                if (workplacesRes.error) throw workplacesRes.error;
+                if (companiesRes.error) throw companiesRes.error;
 
-                // B. 前端過濾 (Client-side Filtering) - 實現精準的參數疊加
-                // 這樣可以確保同時檢查 "公司名(關聯表)" 和 "年份(主表)"
-                const filteredRecords = records.filter(record => {
-                    // 組合所有可搜尋的欄位字串
-                    const companyName = record.companies?.name || '';
-                    const staffName = record.medical_staff?.name || '';
-                    const year = record.year || '';
-                    const caseNo = record.case_no || '';
-                    const searchStr = `${companyName} ${staffName} ${year} ${caseNo}`.toLowerCase();
+                const records = recordsRes.data;
+                const workplaces = workplacesRes.data;
+                const companies = companiesRes.data;
 
-                    // 檢查是否所有關鍵字都存在於該筆資料中
-                    return keywords.every(k => searchStr.includes(k));
+                // 建立快速查找表 (Map)
+                // Workplace ID -> Company ID
+                const workplaceMap = {};
+                workplaces.forEach(wp => { workplaceMap[wp.id] = wp.company_id; });
+
+                // Company ID -> Company Name
+                const companyMap = {};
+                companies.forEach(comp => { companyMap[comp.id] = comp.name; });
+
+                // 關鍵字準備
+                const keywords = finalKeyword.toLowerCase().split(/\s+/);
+
+                // 3. 資料組裝與過濾
+                const filteredResults = records.map(record => {
+                    // 找出關聯的公司名稱
+                    const wpId = record.workplace_id;
+                    const compId = workplaceMap[wpId];
+                    const companyName = companyMap[compId] || '(未知公司)';
+
+                    // 解析顧問姓名 (從 raw_data JSON 中取出)
+                    let consultantName = '未指派';
+                    if (record.raw_data) {
+                        try {
+                            // 如果 raw_data 是字串，解析它；如果是物件，直接使用
+                            const raw = typeof record.raw_data === 'string' ? JSON.parse(record.raw_data) : record.raw_data;
+                            consultantName = raw.consultant_name || '未指派';
+                        } catch (e) { console.warn('JSON Parse Error', e); }
+                    }
+
+                    // 組合所有可搜尋的文字
+                    const fullText = `${companyName} ${consultantName} ${record.service_year} ${record.id}`.toLowerCase();
+
+                    return {
+                        ...record,
+                        company_name_display: companyName,
+                        consultant_name_display: consultantName,
+                        full_text: fullText
+                    };
+                }).filter(item => {
+                    // 檢查是否符合所有關鍵字
+                    return keywords.every(k => item.full_text.includes(k));
                 });
 
-                // C. 渲染結果
-                renderResults(filteredRecords, finalKeyword);
+                renderResults(filteredResults, finalKeyword);
+                document.getElementById('db-status').innerText = "查詢完成";
 
             } catch (err) {
-                console.error(err);
-                // Fallback: 如果資料庫尚未建好，使用 Mock 資料展示 UI
-                renderResults([], finalKeyword, true); 
+                console.error("Search Error:", err);
+                alert("資料讀取錯誤：\n" + err.message);
+                document.getElementById('db-status').innerText = "錯誤";
             } finally {
                 btn.innerHTML = originalText;
-                document.getElementById('search-view').style.display = 'none';
-                document.getElementById('report-view').style.display = 'block';
             }
         }
 
-        // 3. 渲染列表與 Storage 連結
-        function renderResults(data, keyword, isMock = false) {
+        // 3. 渲染結果
+        function renderResults(data, keyword) {
+            document.getElementById('search-view').style.display = 'none';
+            document.getElementById('report-view').style.display = 'block';
+            
             const container = document.getElementById('report-content');
             document.getElementById('report-title').textContent = `查詢結果：${keyword}`;
 
-            if (isMock || data.length === 0) {
-                if(isMock) container.innerHTML = `<div class="alert alert-warning">資料庫連線異常或 Table 不存在，請檢查 Supabase 設定。</div>`;
-                else container.innerHTML = `<div class="alert alert-info">查無符合 "${keyword}" 的案件資料。</div>`;
-                
-                // 僅測試用 Mock (當 DB 空時顯示，讓您看到 UI)
-                if(isMock) {
-                    data = [{
-                        companies: { name: '鐵高工業 (Mock)' },
-                        year: '2024',
-                        case_no: 'MOCK-001',
-                        medical_staff: { name: '測試顧問' },
-                        file_path: 'demo.pdf' // 測試檔案路徑
-                    }];
-                } else {
-                    return;
-                }
+            if (data.length === 0) {
+                container.innerHTML = `<div class="alert alert-info">查無符合 "${keyword}" 的資料。</div>`;
+                return;
             }
 
             const html = data.map(item => {
-                // 處理公司名稱與顧問 (處理關聯表可能的空值)
-                const compName = item.companies?.name || '未知公司';
-                const staffName = item.medical_staff?.name || '未指派';
-                const fileUrl = getStorageUrl(item.file_path); // 獲取附件連結
-
+                const folderId = item.attachment_folder_id;
+                
                 return `
                     <div class="card mb-3 border-start border-4 border-primary shadow-sm">
                         <div class="card-body">
-                            <div class="d-flex justify-content-between align-items-center">
+                            <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
                                 <div>
-                                    <h5 class="fw-bold text-dark mb-1">${compName}</h5>
+                                    <h5 class="fw-bold text-dark mb-1">${item.company_name_display}</h5>
                                     <div class="text-muted small mt-2">
-                                        <span class="me-3"><i class="far fa-calendar me-1"></i>${item.year} 年度</span>
-                                        <span class="me-3"><i class="fas fa-hashtag me-1"></i>${item.case_no}</span>
-                                        <span class="badge bg-secondary bg-opacity-10 text-secondary border">${staffName}</span>
+                                        <span class="me-3 badge bg-light text-dark border">
+                                            <i class="far fa-calendar me-1"></i>${item.service_year}
+                                        </span>
+                                        <span class="badge bg-info bg-opacity-10 text-dark">
+                                            <i class="fas fa-user-md me-1"></i>${item.consultant_name_display}
+                                        </span>
+                                        <div class="mt-1 text-secondary" style="font-size: 0.8rem;">
+                                            ID: ${item.id.substring(0,8)}...
+                                        </div>
                                     </div>
                                 </div>
-                                <div class="text-end">
-                                    ${fileUrl ? 
-                                        `<a href="${fileUrl}" target="_blank" class="btn btn-outline-primary btn-sm">
-                                            <i class="fas fa-paperclip me-1"></i>下載附件
-                                         </a>` : 
+                                <div>
+                                    ${folderId ? 
+                                        `<button class="btn btn-outline-primary btn-sm" onclick="alert('附件資料夾 ID: ${folderId}\\n(需實作 Storage List API 才能瀏覽內容)')">
+                                            <i class="fas fa-folder-open me-1"></i>查看附件
+                                         </button>` : 
                                         `<button class="btn btn-outline-secondary btn-sm" disabled>無附件</button>`
                                     }
-                                    <button class="btn btn-sm btn-link text-decoration-none" onclick="alert('詳細資料 ID: ${item.id}')">詳情</button>
                                 </div>
                             </div>
                         </div>
@@ -247,18 +244,10 @@
             container.innerHTML = `<p class="text-muted mb-3">共找到 ${data.length} 筆資料</p>` + html;
         }
 
-        // 4. Supabase Storage URL 產生器
-        function getStorageUrl(path) {
-            if (!path) return null;
-            // 假設 Bucket 名稱為 'service_documents'，請依實際建立名稱修改
-            // 若檔案是 Public Bucket，使用 getPublicUrl
-            const { data } = supabase.storage.from('service_documents').getPublicUrl(path);
-            return data.publicUrl;
-        }
-
         function resetSearch() {
             document.getElementById('report-view').style.display = 'none';
             document.getElementById('search-view').style.display = 'block';
+            document.getElementById('db-status').innerText = "待命";
             document.getElementById('search-input').value = '';
         }
     </script>
