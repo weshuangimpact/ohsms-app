@@ -13,10 +13,12 @@
             --primary-bg: #f4f6f9;
             --card-hover-transform: translateY(-3px);
         }
+        /* 預設隱藏，等待 JS 載入完成 */
         body {
             background-color: var(--primary-bg);
             font-family: 'Segoe UI', 'Microsoft JhengHei', sans-serif;
-            display: none; /* Auth Guard */
+            opacity: 0; 
+            transition: opacity 0.5s ease;
         }
 
         /* 導航列 */
@@ -35,7 +37,7 @@
             box-shadow: 0 2px 4px rgba(0,0,0,0.05);
         }
 
-        /* 搜尋大框樣式 (保留您喜歡的設計) */
+        /* 搜尋大框樣式 */
         .search-input-group {
             background: white;
             box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
@@ -64,7 +66,7 @@
             box-shadow: 0 2px 4px rgba(0,0,0,0.02);
         }
 
-        /* 案件卡片 (仿照 Consultant Card 風格) */
+        /* 案件卡片 */
         .case-card {
             border: 1px solid #e2e8f0;
             border-left: 5px solid #3b82f6;
@@ -87,12 +89,12 @@
             to { opacity: 1; transform: translateY(0); }
         }
 
-        /* 文件列表樣式 (您喜歡的樣式) */
+        /* 文件列表樣式 */
         .attachment-zone {
             background-color: #f8fafc;
             border-top: 1px dashed #e2e8f0;
             padding: 15px 20px;
-            display: none; /* JS 控制顯示 */
+            display: none; 
         }
         .file-item {
             cursor: pointer;
@@ -122,13 +124,6 @@
         .modal-content { height: 100%; }
         iframe { width: 100%; height: 100%; border: none; }
     </style>
-
-    <script>
-        // Auth Guard
-        const role = sessionStorage.getItem('currentUserRole');
-        // 為了展示方便，這裡暫時註解掉強制登入跳轉
-        // if (!role) window.location.href = 'login.html';
-    </script>
 </head>
 <body>
 
@@ -237,18 +232,41 @@
         </div>
     </div>
 
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
     <script>
         // ================= 設定區 =================
         const SUPABASE_URL = 'https://yhehfucgemxnfrdvpdhw.supabase.co';
         const SUPABASE_KEY = 'sb_publishable_52emtU-9l-SDxcJTWVTPTA_Yu6qEogh';
-        const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
+        
+        // ★★★ 關鍵修正：這裡要用 window.supabase.createClient ★★★
+        // CDN 版本的全域變數是 supabase，而非 createClient
+        let supabase;
 
         document.addEventListener('DOMContentLoaded', async function() {
-            document.body.style.display = 'block';
-            const userName = sessionStorage.getItem('currentUserName') || 'User';
-            document.getElementById('user-display').innerHTML = `<small>Hi, ${userName}</small>`;
-            
-            await loadConsultants();
+            try {
+                // 安全初始化 Supabase
+                if (window.supabase) {
+                    supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+                } else {
+                    throw new Error("Supabase SDK 載入失敗");
+                }
+
+                const userName = sessionStorage.getItem('currentUserName') || 'User';
+                document.getElementById('user-display').innerHTML = `<small>Hi, ${userName}</small>`;
+                
+                // 載入顧問清單
+                await loadConsultants();
+                
+                // 顯示畫面 (淡入)
+                document.body.style.opacity = '1';
+
+            } catch (e) {
+                console.error("Initialization Error:", e);
+                // 就算出錯也要顯示畫面，方便除錯
+                document.body.style.opacity = '1'; 
+                alert("系統初始化失敗，請檢查 Console: " + e.message);
+            }
         });
 
         // 1. 載入真實顧問名單
@@ -268,7 +286,7 @@
                     select.appendChild(opt);
                 });
                 
-                // 補上一些種子資料可能有的名字
+                // 補上種子資料可能有的名字
                 ['尤志偉', '陳美珍', '鄭雅萍', '黃慧玲'].forEach(n => {
                     if(!uniqueNames.includes(n)) {
                         const opt = document.createElement('option');
@@ -408,7 +426,6 @@
                     
                     let name = f.name.replace(prefix + '_', '').replace('.pdf', '');
                     let isMain = f.name.includes('Main');
-                    let iconColor = isMain ? 'text-primary' : 'text-danger';
                     let bgClass = isMain ? 'bg-primary bg-opacity-10 text-primary fw-bold' : 'bg-danger bg-opacity-10 text-danger';
                     if(isMain) name = '★ 勞工健康服務執行紀錄表 (主檔)';
 
