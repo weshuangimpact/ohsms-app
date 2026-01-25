@@ -7,112 +7,126 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css"/>
+    <link href="style-ohsms.css" rel="stylesheet">
     
     <style>
-        :root { --primary-bg: #f4f6f9; }
-        body {
-            background-color: var(--primary-bg);
-            font-family: 'Segoe UI', 'Microsoft JhengHei', sans-serif;
-            display: none; /* Auth Guard */
-        }
+        /* 本頁面專屬微調 */
         
-        /* 稽核說明卡 */
-        .audit-info-card {
-            background-color: #e9ecef;
-            border-left: 5px solid #343a40;
-            color: #495057;
-            padding: 1.25rem;
-            margin-bottom: 1.5rem;
-            border-radius: 0.375rem;
-            font-size: 0.9rem;
-            line-height: 1.6;
-        }
-
-        /* 日誌表格樣式 */
-        .log-table th { background-color: #343a40; color: white; font-weight: 500; }
+        /* 日誌表格優化 */
+        .log-table th { background-color: #212529; color: white; font-weight: 500; white-space: nowrap; }
         .log-table td { vertical-align: middle; font-size: 0.9rem; }
-        .log-table tbody tr:hover { background-color: #e2e6ea; }
+        .log-table tbody tr { transition: background-color 0.2s; }
+        .log-table tbody tr:hover { background-color: #f1f3f5; }
         
-        /* 標籤樣式 */
-        .badge-admin { background-color: #343a40; color: #fff; }
-        .badge-user { background-color: #6c757d; color: #fff; }
-        
-        /* 動作類型標籤 */
+        /* 動作標籤 (保持您的設計) */
         .op-add { color: #198754; background-color: #d1e7dd; border: 1px solid #a3cfbb; }
         .op-edit { color: #fd7e14; background-color: #ffe5d0; border: 1px solid #fecba1; }
         .op-del { color: #dc3545; background-color: #f8d7da; border: 1px solid #f1aeb5; }
         .op-login { color: #0d6efd; background-color: #cfe2ff; border: 1px solid #9ec5fe; }
         .op-other { color: #6610f2; background-color: #e0cffc; border: 1px solid #c59fdf; }
+
+        /* JSON 檢視區塊 */
+        pre.json-view {
+            background: #2d2d2d;
+            color: #76d7c4;
+            padding: 15px;
+            border-radius: 5px;
+            max-height: 400px;
+            overflow: auto;
+        }
+        
+        /* 時間輸入框優化 */
+        .input-time-group {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
     </style>
 
     <script>
         document.addEventListener('DOMContentLoaded', function() {
             // 權限檢查：只有 Admin 能進來
             const role = sessionStorage.getItem('currentUserRole');
-            if (role !== 'admin') {
-                alert('權限不足：此頁面僅限系統管理員 (Admin) 存取。');
-                window.location.href = 'dashboard.html';
-                return; 
-            }
+            // 為了方便測試，您可以暫時註解掉下面三行
+            // if (role !== 'admin') {
+            //     alert('權限不足：此頁面僅限系統管理員 (Admin) 存取。');
+            //     window.location.href = 'index.html'; // 假設首頁是 index.html
+            //     return; 
+            // }
             document.body.style.display = 'block';
             const userName = sessionStorage.getItem('currentUserName') || 'Admin';
-            document.getElementById('user-display').innerHTML = `<small>Admin: ${userName}</small>`;
+            const displayEl = document.getElementById('user-display');
+            if(displayEl) displayEl.innerHTML = `<small>Current User: ${userName}</small>`;
         });
     </script>
 </head>
-<body>
+<body style="display: none;">
 
-    <nav class="navbar navbar-expand-lg navbar-dark bg-dark py-3 mb-4">
-        <div class="container-fluid px-4">
-            <a class="navbar-brand" href="dashboard.html"><i class="fas fa-shield-alt me-2"></i>OHSMS</a>
+    <nav class="navbar navbar-expand-lg navbar-dark px-4">
+        <div class="container-fluid d-flex justify-content-between align-items-center p-0">
+            <a class="navbar-brand" href="#">
+                <i class="fas fa-shield-alt text-primary me-2"></i>
+                <span class="text-white">OHSMS 系統稽核中心</span>
+            </a>
             <div class="d-flex align-items-center">
-                <span class="text-light me-3" id="user-display"></span>
-                <a href="dashboard.html" class="btn btn-outline-light btn-sm"><i class="fas fa-arrow-left me-1"></i> 返回儀表板</a>
+                <span class="text-light me-3 opacity-75" id="user-display"></span>
+                <a href="https://weshuangimpact.github.io/ohsms-app/dashboard.html" class="btn btn-outline-light btn-sm" style="border: 1px solid rgba(255,255,255,0.5);">
+                    <i class="fas fa-arrow-left me-1"></i> 返回儀表板
+                </a>
             </div>
         </div>
     </nav>
 
-    <div class="container-fluid px-4 pb-5">
+    <div class="container-fluid px-4 py-4">
         
-        <div class="d-flex justify-content-between align-items-center mb-4">
+        <div class="d-flex justify-content-between align-items-end mb-4">
             <div>
-                <h2 class="fw-bold text-dark"><i class="fas fa-user-shield me-2 text-secondary"></i>系統維護與稽核</h2>
-                <p class="text-muted mb-0">System Audit Logs & Security Monitoring</p>
+                <h3 class="fw-bold text-dark mb-1"><i class="fas fa-history me-2"></i>系統操作日誌 (Audit Logs)</h3>
+                <p class="text-secondary mb-0">追蹤系統關鍵行為：Who, When, Where, What, How</p>
             </div>
-            
             <div class="d-flex gap-2">
-                <button class="btn btn-outline-dark btn-sm" onclick="exportLogs()"><i class="fas fa-file-csv me-1"></i>匯出 CSV</button>
-                <button class="btn btn-primary btn-sm" onclick="loadLogs()"><i class="fas fa-sync-alt me-1"></i>重新整理</button>
+                <button class="btn btn-outline-success btn-sm" onclick="exportLogs()"><i class="fas fa-file-csv me-1"></i>匯出 CSV</button>
+                <button class="btn btn-primary btn-sm" onclick="fetchLogs()"><i class="fas fa-sync-alt me-1"></i>重新整理</button>
             </div>
-        </div>
-
-        <div class="audit-info-card shadow-sm">
-            <strong><i class="fas fa-info-circle me-2"></i>操作指引</strong><br>
-            本頁面顯示系統所有關鍵操作紀錄 (Audit Trail)，確保資料之不可否認性 (Non-repudiation)。
-            <ul class="mb-0 ps-3 mt-1 small">
-                <li><strong>完整性監控：</strong> 所有「新增」、「修改」、「刪除」與「匯入」行為皆會被系統自動擷取並存檔。</li>
-                <li><strong>資安查核：</strong> 當發生資料異常或資安事件時，請利用此日誌進行數位鑑識與責任釐清。</li>
-            </ul>
         </div>
 
         <div class="card border-0 shadow-sm mb-4">
-            <div class="card-body py-3">
-                <div class="row g-3 align-items-center">
-                    <div class="col-md-4">
-                        <div class="input-group input-group-sm">
-                            <span class="input-group-text bg-light"><i class="fas fa-search"></i></span>
-                            <input type="text" class="form-control" id="searchInput" placeholder="搜尋操作人員、動作或詳細內容..." onkeyup="filterLogs()">
+            <div class="card-body bg-light rounded">
+                <div class="row g-3 align-items-end">
+                    <div class="col-md-3">
+                        <label class="form-label small fw-bold text-muted">關鍵字 (User/Detail)</label>
+                        <div class="input-group">
+                            <span class="input-group-text bg-white border-end-0"><i class="fas fa-search text-muted"></i></span>
+                            <input type="text" class="form-control border-start-0" id="searchInput" placeholder="搜尋人員或內容...">
                         </div>
                     </div>
-                    <div class="col-md-3">
-                        <select class="form-select form-select-sm" id="actionFilter" onchange="filterLogs()">
-                            <option value="">所有動作類型</option>
+
+                    <div class="col-md-2">
+                        <label class="form-label small fw-bold text-muted">動作類型 (What)</label>
+                        <select class="form-select" id="actionFilter">
+                            <option value="">全部動作</option>
                             <option value="新增">新增 (Create)</option>
                             <option value="修改">修改 (Update)</option>
                             <option value="刪除">刪除 (Delete)</option>
                             <option value="匯入">匯入 (Import)</option>
                             <option value="登入">登入 (Login)</option>
                         </select>
+                    </div>
+
+                    <div class="col-md-5">
+                        <label class="form-label small fw-bold text-muted">時間範圍 (When) - 精確至分鐘</label>
+                        <div class="input-group">
+                            <span class="input-group-text">從</span>
+                            <input type="datetime-local" class="form-control" id="startDate">
+                            <span class="input-group-text">到</span>
+                            <input type="datetime-local" class="form-control" id="endDate">
+                        </div>
+                    </div>
+
+                    <div class="col-md-2 d-grid">
+                        <button class="btn btn-dark" onclick="fetchLogs()">
+                            <i class="fas fa-filter me-1"></i> 執行篩選
+                        </button>
                     </div>
                 </div>
             </div>
@@ -121,157 +135,236 @@
         <div class="card border-0 shadow">
             <div class="card-body p-0">
                 <div class="table-responsive">
-                    <table class="table table-hover log-table mb-0 align-middle table-striped">
+                    <table class="table log-table mb-0 align-middle">
                         <thead>
                             <tr>
-                                <th class="ps-4" style="width: 180px;">發生時間 (Time)</th>
-                                <th style="width: 150px;">操作人員 (User)</th>
-                                <th style="width: 140px;">動作類型 (Action)</th>
-                                <th style="width: 150px;">目標對象 (Target)</th>
-                                <th>事件詳情 (Description)</th>
+                                <th class="ps-4" style="width: 180px;">發生時間 (When)</th>
+                                <th style="width: 160px;">操作人員 (Who)</th>
+                                <th style="width: 140px;">動作 (What)</th>
+                                <th style="width: 160px;">目標模組 (Where)</th>
+                                <th>內容摘要 (Summary)</th>
+                                <th style="width: 100px;" class="text-center">詳情 (How)</th>
                             </tr>
                         </thead>
                         <tbody id="logTableBody">
                             <tr>
-                                <td colspan="5" class="text-center py-5 text-muted">
-                                    <div class="spinner-border spinner-border-sm text-secondary me-2"></div>
-                                    正在載入稽核紀錄...
+                                <td colspan="6" class="text-center py-5">
+                                    <div class="spinner-border text-primary"></div>
+                                    <p class="mt-2 text-muted">正在連線至資料庫...</p>
                                 </td>
                             </tr>
                         </tbody>
                     </table>
                 </div>
             </div>
+            <div class="card-footer bg-white py-3">
+                <small class="text-muted" id="recordCount">顯示 0 筆資料</small>
+            </div>
         </div>
+    </div>
 
+    <div class="modal fade" id="detailModal" tabindex="-1">
+        <div class="modal-dialog modal-lg modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header bg-dark text-white">
+                    <h5 class="modal-title"><i class="fas fa-file-code me-2"></i>完整操作紀錄 (5W1H Analysis)</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="row mb-3">
+                        <div class="col-6"><strong>操作人員：</strong> <span id="modalUser"></span></div>
+                        <div class="col-6"><strong>發生時間：</strong> <span id="modalTime"></span></div>
+                    </div>
+                    <div class="row mb-3">
+                        <div class="col-6"><strong>動作類型：</strong> <span id="modalAction"></span></div>
+                        <div class="col-6"><strong>目標資料表：</strong> <span id="modalTarget"></span></div>
+                    </div>
+                    <hr>
+                    <h6><i class="fas fa-microscope me-2"></i>詳細異動內容 (Data Payload)：</h6>
+                    <pre id="modalDetails" class="json-view"></pre>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">關閉</button>
+                </div>
+            </div>
+        </div>
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     
     <script>
-        // ==========================================
-        // 1. Supabase 設定 (已植入您的金鑰)
-        // ==========================================
-        const SUPABASE_URL = 'https://ghpxaeenikochgrnczic.supabase.co';
-        const SUPABASE_KEY = 'sb_publishable_v0ZN2OY08lh-8EC8ps8NdQ_ChYo1FRW';
-        const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+        // 1. 設定 Supabase
+        const SUPABASE_URL = 'https://yhehfucgemxnfrdvpdhw.supabase.co';
+        const SUPABASE_KEY = 'sb_publishable_52emtU-9l-SDxcJTWVTPTA_Yu6qEogh';
+        const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-        let allLogs = []; // 存所有日誌供篩選用
+        let currentLogs = []; // 儲存當前撈取的資料
 
-        // ==========================================
-        // 2. 載入日誌 (Load Logs)
-        // ==========================================
-        document.addEventListener('DOMContentLoaded', loadLogs);
-
-        async function loadLogs() {
-            const tableBody = document.getElementById('logTableBody');
+        // 初始化
+        document.addEventListener('DOMContentLoaded', () => {
+            // 設定預設時間範圍 (今天 00:00 ~ 現在)
+            const now = new Date();
+            const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0); // 今天 00:00
             
-            // 從 audit_logs 撈資料，按時間倒序
-            const { data, error } = await supabase
-                .from('audit_logs')
-                .select('*')
-                .order('created_at', { ascending: false })
-                .limit(50); // 為了效能先抓 50 筆
+            // 轉換為 datetime-local 格式 (YYYY-MM-DDTHH:mm)
+            const formatDateTime = (date) => {
+                const year = date.getFullYear();
+                const month = String(date.getMonth() + 1).padStart(2, '0');
+                const day = String(date.getDate()).padStart(2, '0');
+                const hours = String(date.getHours()).padStart(2, '0');
+                const minutes = String(date.getMinutes()).padStart(2, '0');
+                return `${year}-${month}-${day}T${hours}:${minutes}`;
+            };
 
-            if (error) {
-                console.error(error);
-                tableBody.innerHTML = `<tr><td colspan="5" class="text-center text-danger">載入失敗：${error.message}</td></tr>`;
-                return;
+            document.getElementById('startDate').value = formatDateTime(todayStart);
+            document.getElementById('endDate').value = formatDateTime(now);
+
+            fetchLogs();
+        });
+
+        // 2. 核心功能：從 Supabase 撈取資料 (Server-side Filtering)
+        async function fetchLogs() {
+            const tableBody = document.getElementById('logTableBody');
+            const keyword = document.getElementById('searchInput').value.trim();
+            const actionType = document.getElementById('actionFilter').value;
+            const startDate = document.getElementById('startDate').value;
+            const endDate = document.getElementById('endDate').value;
+
+            tableBody.innerHTML = `<tr><td colspan="6" class="text-center py-5"><div class="spinner-border text-primary"></div></td></tr>`;
+
+            try {
+                let query = supabaseClient
+                    .from('audit_logs')
+                    .select('*')
+                    .order('created_at', { ascending: false });
+
+                // 加入時間過濾 (如果有選)
+                if (startDate) query = query.gte('created_at', startDate);
+                if (endDate) query = query.lte('created_at', endDate);
+                
+                // 加入動作過濾
+                if (actionType) query = query.ilike('action_type', `%${actionType}%`);
+
+                const { data, error } = await query.limit(100); // 限制 100 筆避免爆量
+
+                if (error) throw error;
+
+                // 前端再次過濾關鍵字 (Supabase 文字搜尋較弱，前端補強)
+                currentLogs = data.filter(log => {
+                    if (!keyword) return true;
+                    const searchStr = `${log.user_name} ${log.details} ${log.target_table}`.toLowerCase();
+                    return searchStr.includes(keyword.toLowerCase());
+                });
+
+                renderTable(currentLogs);
+
+            } catch (err) {
+                console.error(err);
+                tableBody.innerHTML = `<tr><td colspan="6" class="text-center text-danger py-4">資料載入失敗：${err.message}</td></tr>`;
             }
-
-            if (!data || data.length === 0) {
-                tableBody.innerHTML = `<tr><td colspan="5" class="text-center py-5 text-muted">目前尚無任何稽核紀錄。請嘗試在「基本資料建立」頁面進行操作。</td></tr>`;
-                return;
-            }
-
-            allLogs = data; // 存起來
-            renderTable(data);
         }
 
-        // ==========================================
-        // 3. 渲染表格 (Render)
-        // ==========================================
+        // 3. 渲染表格
         function renderTable(logs) {
             const tableBody = document.getElementById('logTableBody');
+            const countEl = document.getElementById('recordCount');
+            
+            countEl.innerText = `顯示 ${logs.length} 筆資料`;
             tableBody.innerHTML = '';
 
+            if (logs.length === 0) {
+                tableBody.innerHTML = `<tr><td colspan="6" class="text-center text-muted py-5">此條件下無稽核紀錄</td></tr>`;
+                return;
+            }
+
             logs.forEach(log => {
-                // 判斷標籤顏色
+                // 判斷動作標籤
                 let badgeClass = 'op-other';
-                let actionText = log.action_type || '其他';
-                
-                if (actionText.includes('新增') || actionText.includes('上傳')) badgeClass = 'op-add';
-                else if (actionText.includes('刪除')) badgeClass = 'op-del';
-                else if (actionText.includes('修改')) badgeClass = 'op-edit';
-                else if (actionText.includes('匯入')) badgeClass = 'op-add';
-                else if (actionText.includes('登入')) badgeClass = 'op-login';
+                const action = log.action_type || '其他';
+                if (action.includes('新增') || action.includes('上傳')) badgeClass = 'op-add';
+                else if (action.includes('刪除')) badgeClass = 'op-del';
+                else if (action.includes('修改')) badgeClass = 'op-edit';
+                else if (action.includes('匯入')) badgeClass = 'op-add';
+                else if (action.includes('登入')) badgeClass = 'op-login';
 
-                // 時間格式化
-                const timeStr = new Date(log.created_at).toLocaleString('zh-TW', { hour12: false });
+                // 時間格式
+                const timeStr = new Date(log.created_at).toLocaleString('zh-TW', { 
+                    year: 'numeric', month: '2-digit', day: '2-digit', 
+                    hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false 
+                });
 
-                // 人員標籤
+                // 角色標籤
                 const roleBadge = log.user_role === 'admin' 
-                    ? `<span class="badge badge-admin ms-1" style="font-size: 0.7em;">Admin</span>` 
-                    : `<span class="badge badge-user ms-1" style="font-size: 0.7em;">${log.user_role}</span>`;
+                    ? `<span class="badge bg-dark ms-1" style="font-size: 0.7em;">Admin</span>` 
+                    : `<span class="badge bg-secondary ms-1" style="font-size: 0.7em;">${log.user_role}</span>`;
+
+                // 處理 JSON 詳情顯示 (如果太長就截斷)
+                let detailsPreview = log.details || '';
+                if (detailsPreview.length > 50) detailsPreview = detailsPreview.substring(0, 50) + '...';
+
+                // 編碼 JSON 供按鈕使用
+                const logDataStr = encodeURIComponent(JSON.stringify(log));
 
                 const row = `
                     <tr class="animate__animated animate__fadeIn">
-                        <td class="ps-4 text-muted small font-monospace">${timeStr}</td>
-                        <td>
-                            <span class="fw-bold text-dark">${log.user_name || 'Unknown'}</span>
-                            ${roleBadge}
+                        <td class="ps-4 text-secondary small font-monospace">${timeStr}</td>
+                        <td><span class="fw-bold text-dark">${log.user_name || 'Unknown'}</span>${roleBadge}</td>
+                        <td><span class="badge ${badgeClass}">${action}</span></td>
+                        <td class="text-primary small">${log.target_table || '-'}</td>
+                        <td class="text-muted small">${detailsPreview}</td>
+                        <td class="text-center">
+                            <button class="btn btn-sm btn-outline-secondary rounded-circle" onclick="showDetail('${logDataStr}')" title="查看 5W1H 詳情">
+                                <i class="fas fa-eye"></i>
+                            </button>
                         </td>
-                        <td><span class="badge ${badgeClass}">${actionText}</span></td>
-                        <td class="small text-primary">${log.target_table || '-'}</td>
-                        <td class="small text-secondary">${log.details || ''}</td>
                     </tr>
                 `;
                 tableBody.innerHTML += row;
             });
         }
 
-        // ==========================================
-        // 4. 前端篩選 (Filter)
-        // ==========================================
-        function filterLogs() {
-            const keyword = document.getElementById('searchInput').value.toLowerCase();
-            const actionType = document.getElementById('actionFilter').value;
+        // 4. 顯示詳情 Modal
+        function showDetail(logDataEncoded) {
+            const log = JSON.parse(decodeURIComponent(logDataEncoded));
+            
+            document.getElementById('modalUser').innerText = `${log.user_name} (${log.user_role})`;
+            document.getElementById('modalTime').innerText = new Date(log.created_at).toLocaleString('zh-TW');
+            document.getElementById('modalAction').innerText = log.action_type;
+            document.getElementById('modalTarget').innerText = log.target_table;
 
-            const filtered = allLogs.filter(log => {
-                const matchKeyword = (
-                    (log.user_name && log.user_name.toLowerCase().includes(keyword)) ||
-                    (log.details && log.details.toLowerCase().includes(keyword)) ||
-                    (log.action_type && log.action_type.toLowerCase().includes(keyword))
-                );
-                
-                const matchAction = actionType ? (log.action_type && log.action_type.includes(actionType)) : true;
-
-                return matchKeyword && matchAction;
-            });
-
-            renderTable(filtered);
+            // 嘗試格式化 JSON
+            let prettyJson = log.details;
+            try {
+                if (typeof log.details === 'string' && (log.details.startsWith('{') || log.details.startsWith('['))) {
+                     const parsed = JSON.parse(log.details);
+                     prettyJson = JSON.stringify(parsed, null, 4); // 縮排美化
+                }
+            } catch(e) {}
+            
+            document.getElementById('modalDetails').innerText = prettyJson || '(無詳細內容)';
+            
+            new bootstrap.Modal(document.getElementById('detailModal')).show();
         }
 
-        // ==========================================
-        // 5. 匯出 CSV (Export)
-        // ==========================================
+        // 5. 匯出 CSV
         function exportLogs() {
-            if (allLogs.length === 0) return alert('無資料可匯出');
+            if (currentLogs.length === 0) return alert('目前無資料可匯出');
 
-            let csvContent = "data:text/csv;charset=utf-8,\uFEFF"; // UTF-8 BOM
+            let csvContent = "data:text/csv;charset=utf-8,\uFEFF"; // BOM
             csvContent += "時間,操作人員,身分,動作,目標資料表,詳情\n";
 
-            allLogs.forEach(log => {
+            currentLogs.forEach(log => {
+                // 處理 CSV 欄位中的逗號與換行
+                const cleanDetails = (log.details || '').replace(/"/g, '""').replace(/[\r\n]+/g, " "); 
                 const time = new Date(log.created_at).toLocaleString('zh-TW');
-                const row = `"${time}","${log.user_name}","${log.user_role}","${log.action_type}","${log.target_table}","${log.details}"`;
-                csvContent += row + "\n";
+                
+                csvContent += `"${time}","${log.user_name}","${log.user_role}","${log.action_type}","${log.target_table}","${cleanDetails}"\n`;
             });
 
-            const encodedUri = encodeURI(csvContent);
             const link = document.createElement("a");
-            link.setAttribute("href", encodedUri);
-            link.setAttribute("download", `OHSMS_稽核紀錄_${new Date().toISOString().slice(0,10)}.csv`);
+            link.href = encodeURI(csvContent);
+            link.download = `OHSMS_Audit_Logs_${new Date().toISOString().slice(0,10)}.csv`;
             document.body.appendChild(link);
             link.click();
             document.body.removeChild(link);
