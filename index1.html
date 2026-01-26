@@ -36,7 +36,7 @@
         .mode-icon { font-size: 2.5rem; margin-bottom: 10px; color: #6c757d; }
         .mode-card.active .mode-icon { color: #0d6efd; }
 
-        /* [新增] 動態危害清單樣式 */
+        /* 動態危害清單樣式 */
         .hazard-row {
             transition: all 0.3s ease;
             border-bottom: 1px dashed #e0e0e0;
@@ -50,7 +50,7 @@
         .btn-remove-hazard:hover { background-color: #fee2e2; transform: scale(1.1); }
         .border-dashed { border-style: dashed !important; }
         
-        /* [新增] 法規檢核表樣式 */
+        /* 法規檢核表樣式 */
         .check-list-item { padding: 5px 0; }
         .check-list-item label { cursor: pointer; line-height: 1.5; font-size: 0.95rem; }
     </style>
@@ -77,7 +77,7 @@
         <div class="d-flex justify-content-between align-items-center mb-4">
             <div>
                 <h2 class="fw-bold text-dark"><i class="fas fa-file-arrow-up me-2 text-primary"></i>顧問資料上傳</h2>
-                <p class="text-muted mb-0">Plan & Do 階段：建立基準與執行紀錄 V1.05 (動態危害/完整法規版)</p>
+                <p class="text-muted mb-0">Plan & Do 階段：建立基準與執行紀錄 V1.06 (多檔上傳版)</p>
             </div>
         </div>
 
@@ -227,8 +227,8 @@
                         <h5 class="step-title">Step 3：簽核文件上傳</h5>
                         <div class="border-2 border-dashed border-secondary rounded p-5 text-center bg-light" style="cursor: pointer;" onclick="document.getElementById('fileUpload').click()">
                             <i class="fas fa-cloud-arrow-up fa-3x text-secondary mb-3"></i>
-                            <h6 class="fw-bold text-secondary">點擊選擇已用印之 PDF 文件</h6>
-                            <input type="file" id="fileUpload" style="display: none;" accept=".pdf,.jpg,.png">
+                            <h6 class="fw-bold text-secondary">點擊選擇檔案 (支援多檔、任意格式)</h6>
+                            <input type="file" id="fileUpload" style="display: none;" multiple>
                             <small class="text-muted d-block mt-2" id="fileNameDisplay">尚未選擇檔案</small>
                         </div>
                     </div>
@@ -319,8 +319,17 @@
             const userName = sessionStorage.getItem('currentUserName') || 'User';
             document.getElementById('user-display').innerHTML = `<small>Hi, ${userName}</small>`;
             
+            // ★ 修改：檔案選擇顯示邏輯 (支援多檔)
             document.getElementById('fileUpload').addEventListener('change', function(e){
-                document.getElementById('fileNameDisplay').innerText = e.target.files[0]?.name || '尚未選擇檔案';
+                const count = e.target.files.length;
+                const display = document.getElementById('fileNameDisplay');
+                if (count === 0) {
+                    display.innerText = '尚未選擇檔案';
+                } else if (count === 1) {
+                    display.innerText = e.target.files[0].name;
+                } else {
+                    display.innerText = `已選擇 ${count} 個檔案`;
+                }
             });
         });
 
@@ -439,11 +448,10 @@
             document.getElementById('disp-site-m').value = workplace.site_male || 0;
             document.getElementById('disp-site-f').value = workplace.site_female || 0;
             
-            // [修改] 填入危害資料 (處理動態列表的初始化)
+            // 填入危害資料
             const typeStr = workplace.hazard_type || '';
             const countTotal = workplace.hazard_count || 0;
             
-            // 填入隱藏欄位 (維持資料一致)
             document.getElementById('disp-hazard-type').value = typeStr;
             document.getElementById('disp-hazard-count').value = countTotal;
 
@@ -452,32 +460,25 @@
             container.innerHTML = '';
             
             if (typeStr && typeStr !== '無') {
-                // 因為後端舊資料無法分辨細項人數，故初始化時將總數顯示在第一列
-                // 之後使用者可以在編輯模式下自行修改
                 addHazardRow(typeStr, countTotal); 
             } else {
-                // 如果完全沒資料，這裡不預設產生，等待使用者點選編輯後新增
-                if (mode === 'new') addHazardRow('', 0); // 若是新增模式，給一個空格方便填寫
+                if (mode === 'new') addHazardRow('', 0); 
             }
             
-            // 確保初始狀態是唯讀的 (因為預設還沒按「啟用編輯」)
             const hazardInputs = container.querySelectorAll('input');
             hazardInputs.forEach(input => {
                 input.readOnly = true;
                 input.classList.add('input-readonly');
             });
-            // 隱藏刪除按鈕
             container.querySelectorAll('.btn-remove-hazard').forEach(btn => btn.style.display = 'none');
 
 
-            // 2. 撈歷史紀錄 (Service Record)
+            // 2. 撈歷史紀錄
             let query = supabaseClient.from('service_records').select('*').eq('workplace_id', workplace.id);
             
             if (mode === 'amend') {
-                // 補件模式：必須抓到「該年度」的資料
                 query = query.eq('service_year', parseInt(year));
             } else {
-                // 新增模式：抓「最近一筆」資料當底稿 (不限年度)
                 query = query.order('service_year', {ascending: false}).limit(1);
             }
 
@@ -488,7 +489,6 @@
                 return;
             }
 
-            // 填入資料
             if (history && history.length > 0) {
                 const rec = history[0];
                 document.getElementById('disp-process').value = rec.process_desc || '';
@@ -496,18 +496,16 @@
                 document.getElementById('disp-desc').value = rec.hazard_desc || '';
                 if(mode === 'new') alert(`系統已自動帶入最近一次 (${rec.service_year || '未知'}年) 的紀錄作為底稿。`);
             } else {
-                // 新增模式但完全無歷史資料
                 document.getElementById('disp-process').value = '';
                 document.getElementById('disp-pattern').value = '';
                 document.getElementById('disp-desc').value = '';
             }
 
-            // 顯示區塊
             document.getElementById('company-data-section').style.display = 'block';
             document.getElementById('company-data-section').scrollIntoView({ behavior: 'smooth' });
         }
 
-        // [新增] 動態增加危害列
+        // 動態增加危害列
         function addHazardRow(name = '', count = 0) {
             const container = document.getElementById('hazard-list-container');
             const rowId = 'row-' + Date.now();
@@ -516,7 +514,6 @@
             div.className = 'hazard-row row align-items-center';
             div.id = rowId;
             
-            // 判斷當前是否為編輯模式，決定樣式
             const isEditing = document.getElementById('edit-btn').classList.contains('btn-primary');
             const inputClass = isEditing ? 'form-control input-editable hazard-input' : 'form-control input-readonly hazard-input';
             const readonlyAttr = isEditing ? '' : 'readonly';
@@ -534,53 +531,44 @@
                 </div>
             `;
             container.appendChild(div);
-            
-            // 如果是透過按鈕新增的 (沒有傳參數)，要記得重新計算一次 (雖然是 0)
             if(name === '' && count === 0) calculateHazardTotals();
         }
 
-        // [新增] 移除危害列
         function removeHazardRow(btn) {
             const row = btn.closest('.hazard-row');
             row.remove();
             calculateHazardTotals();
         }
 
-        // [新增] 計算並同步回隱藏欄位
         function calculateHazardTotals() {
             const names = [];
             let totalCount = 0;
-            
             document.querySelectorAll('.hazard-row').forEach(row => {
                 const nameVal = row.querySelector('.hazard-name-input').value.trim();
                 const countVal = parseInt(row.querySelector('.hazard-count-input').value) || 0;
-                
-                if (nameVal) {
-                    names.push(nameVal);
-                }
+                if (nameVal) names.push(nameVal);
                 totalCount += countVal;
             });
-
-            // 同步回隱藏欄位 (舊資料庫格式)
             document.getElementById('disp-hazard-type').value = names.join('、');
             document.getElementById('disp-hazard-count').value = totalCount;
         }
 
-        // 4. 送出資料
+        // 4. 送出資料 (修正版：多檔上傳 + 寫入 Staging)
         async function submitServiceRecord(btn) {
             const workplaceId = document.getElementById('hidden-workplace-id').value;
             const year = document.getElementById('target-year').value;
             const mode = document.getElementById('current-mode').value;
             const fileInput = document.getElementById('fileUpload');
+            const files = fileInput.files; // ★ 取得檔案列表
 
             if (!workplaceId) return alert('錯誤：場所 ID 遺失');
-            if (fileInput.files.length === 0) return alert('請上傳簽核文件');
+            if (files.length === 0) return alert('請至少上傳一個檔案');
 
             btn.disabled = true;
             btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 資料加密上傳中...';
 
             try {
-                // 若為編輯模式，先更新主檔
+                // 更新主檔
                 if (typeof isEditMode !== 'undefined' && isEditMode) {
                      const hazardType = document.getElementById('disp-hazard-type').value;
                      const hazardCount = parseInt(document.getElementById('disp-hazard-count').value) || 0;
@@ -594,13 +582,12 @@
                      }).eq('id', workplaceId);
                 }
 
-                // 收集 Step 2 勾選項目
+                // 收集勾選項目
                 let checkItems = [];
                 document.querySelectorAll('.check-item:checked').forEach(el => {
                     checkItems.push(el.value + ' ' + el.nextElementSibling.innerText);
                 });
 
-                // 打包完整描述 (JSON)
                 const stagingContent = {
                     note: mode === 'new' ? "年度訪視" : "文件補件",
                     process_summary: document.getElementById('disp-process').value,
@@ -608,17 +595,29 @@
                     checklist: checkItems
                 };
 
-                // 檔案上傳至 staging bucket
-                const file = fileInput.files[0];
-                const filePath = `service_records/${year}/${workplaceId}/${Date.now()}_${file.name}`;
-                
-                const { error: uploadError } = await supabaseClient.storage
-                    .from('staging')
-                    .upload(filePath, file);
+                // ★ 迴圈上傳所有檔案
+                const uploadPromises = Array.from(files).map(async (file) => {
+                    const filePath = `service_records/${year}/${workplaceId}/${Date.now()}_${file.name}`;
+                    
+                    const { error } = await supabaseClient.storage
+                        .from('staging') // 上傳至 staging bucket
+                        .upload(filePath, file);
 
-                if (uploadError) throw new Error('檔案上傳失敗: ' + uploadError.message);
+                    if (error) throw error;
 
-                // 寫入 service_record_staging 表
+                    return { 
+                        name: file.name, 
+                        bucket: 'staging', 
+                        path: filePath, 
+                        type: file.type,
+                        size: file.size
+                    };
+                });
+
+                // 等待所有上傳完成
+                const uploadedFiles = await Promise.all(uploadPromises);
+
+                // 寫入 service_record_staging
                 const { error: dbError } = await supabaseClient.from('service_record_staging').insert([{
                     workplace_id: workplaceId,
                     service_year: parseInt(year),
@@ -626,13 +625,7 @@
                     service_type: mode === 'new' ? 'Plan/Do' : '補件',
                     status: 'pending',
                     service_desc: JSON.stringify(stagingContent),
-                    attachment_files: [{ 
-                        name: file.name, 
-                        bucket: 'staging', 
-                        path: filePath, 
-                        type: file.type,
-                        size: file.size
-                    }]
+                    attachment_files: uploadedFiles // ★ 存入檔案陣列
                 }]);
 
                 if (dbError) throw new Error('寫入暫存表失敗: ' + dbError.message);
