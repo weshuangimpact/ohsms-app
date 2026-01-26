@@ -58,7 +58,7 @@
         
         <div class="d-flex justify-content-between align-items-end mb-3">
             <div class="section-title mb-0">
-                <h4 class="fw-bold text-dark mb-0">1. 客戶主檔管理 (Companies) V1.06</h4>
+                <h4 class="fw-bold text-dark mb-0">1. 客戶主檔管理 (Companies) V1.07</h4>
                 <small class="text-muted">管理服務之事業單位清單</small>
             </div>
             <div class="d-flex gap-2">
@@ -126,17 +126,18 @@
         <div class="row mb-3">
             <div class="col-md-5">
                 <div class="info-card info-green shadow-sm h-100 mb-0">
-                    <strong><i class="fas fa-user-clock me-2"></i>年度人員查詢</strong><br>
-                    系統會依據入職與離職年份，自動篩選出該年度在職的人員。
+                    <strong><i class="fas fa-calendar-check me-2"></i>任職期間管理 (日期制)</strong><br>
+                    系統已升級為精確日期。搜尋時選擇「年度」，系統會自動篩選出該年度內「曾在職」的所有人員。
                 </div>
             </div>
             <div class="col-md-7 d-flex align-items-center justify-content-end">
                 <div class="input-group search-group shadow-sm">
                     <select class="form-select bg-light text-success fw-bold" id="filter-staff-year">
-                        <option value="">全部 (含離職)</option>
-                        <option value="2026">2026 年</option>
-                        <option value="2025">2025 年</option>
-                        <option value="2024">2024 年</option>
+                        <option value="active" selected>預設：目前在職中</option>
+                        <option value="all">顯示全部 (含歷史資料)</option>
+                        <option value="2026">2026 年度</option>
+                        <option value="2025">2025 年度</option>
+                        <option value="2024">2024 年度</option>
                     </select>
                     <input type="text" id="search-staff" class="form-control" placeholder="輸入人員姓名...">
                     <button class="btn btn-success text-white" onclick="loadStaff()"><i class="fas fa-search me-1"></i>查詢</button>
@@ -153,7 +154,7 @@
                                 <th class="th-green ps-4">狀態</th>
                                 <th class="th-green">姓名</th>
                                 <th class="th-green">身分角色</th>
-                                <th class="th-green">服務期間</th>
+                                <th class="th-green">任職日期 (起~迄)</th>
                                 <th class="th-green">電話</th>
                                 <th class="th-green text-end pe-4">編輯</th>
                             </tr>
@@ -238,15 +239,15 @@
                             <div class="col-md-12"><label class="form-label">Email</label><input type="email" class="form-control" id="st-email"></div>
                             
                             <div class="col-12"><hr></div>
-                            <div class="col-md-4"><label class="form-label fw-bold text-success">入職年度</label><input type="number" class="form-control" id="st-start-year" value="2024"></div>
+                            <div class="col-md-4"><label class="form-label fw-bold text-success">入職日期</label><input type="date" class="form-control" id="st-start-date"></div>
                             <div class="col-md-4">
                                 <label class="form-label fw-bold text-success">是否在職</label>
                                 <div class="form-check form-switch mt-2">
-                                    <input class="form-check-input" type="checkbox" id="st-is-active" checked onchange="toggleResignYear(this)">
+                                    <input class="form-check-input" type="checkbox" id="st-is-active" checked onchange="toggleResignDate(this)">
                                     <label class="form-check-label" for="st-is-active">在職中</label>
                                 </div>
                             </div>
-                            <div class="col-md-4"><label class="form-label text-muted">離職年度</label><input type="number" class="form-control" id="st-end-year" disabled placeholder="在職中..."></div>
+                            <div class="col-md-4"><label class="form-label text-muted">離職日期</label><input type="date" class="form-control" id="st-end-date" disabled></div>
                         </div>
                     </div>
                 </div>
@@ -282,13 +283,12 @@
         let batchData = [];
 
         document.addEventListener('DOMContentLoaded', () => {
-            // Calendar 選項載入已移除
+            // Init
         });
 
         // 1. 公司查詢
         async function loadCompanies() {
             const keyword = document.getElementById('search-company').value.trim();
-            // [Updated] 獲取年度篩選值
             const year = document.getElementById('filter-company-year').value;
             const btn = document.querySelector('button[onclick="loadCompanies()"]');
             const tbody = document.getElementById('companyTableBody');
@@ -298,7 +298,6 @@
             try {
                 let query = supabaseClient.from('companies').select('*').order('created_at', {ascending:false});
                 
-                // [Updated] 加入年度篩選邏輯 (請確保資料庫有 service_year 欄位)
                 if (year) query = query.eq('service_year', parseInt(year)); 
 
                 if(keyword) {
@@ -336,8 +335,7 @@
         // 2. 人員查詢
         async function loadStaff() {
             const keyword = document.getElementById('search-staff').value.trim();
-            // [Updated] 獲取年度篩選值
-            const year = document.getElementById('filter-staff-year').value;
+            const filterType = document.getElementById('filter-staff-year').value; // active, all, or year
             const btn = document.querySelector('button[onclick="loadStaff()"]');
             const tbody = document.getElementById('staffTableBody');
 
@@ -351,24 +349,28 @@
                 if(error) throw error;
 
                 let filteredData = data;
-                // [Updated] 前端年度過濾邏輯：入職年 <= 目標年 且 (未離職 或 離職年 >= 目標年)
-                if (year) {
-                    const targetYear = parseInt(year);
+                
+                // [Updated] 日期邏輯篩選
+                if (filterType === 'active') {
+                    // 在職且無離職日
+                    filteredData = data.filter(s => s.is_active !== false && !s.resignation_date);
+                } else if (filterType !== 'all' && filterType !== '') {
+                    const targetYear = parseInt(filterType);
                     filteredData = data.filter(s => {
-                        const start = s.onboard_year || 0;
-                        const end = s.resignation_year || 9999; 
-                        // 確保目標年份時該人員尚未離職 (或離職當年仍算在職)
-                        return start <= targetYear && end >= targetYear;
+                        // 取得年份 (相容舊資料與新日期)
+                        const startYear = s.onboard_date ? new Date(s.onboard_date).getFullYear() : (s.onboard_year || 0);
+                        const endYear = s.resignation_date ? new Date(s.resignation_date).getFullYear() : (s.resignation_year || 9999);
+                        return startYear <= targetYear && endYear >= targetYear;
                     });
                 } else {
-                    filteredData = data.slice(0, 50);
+                    filteredData = data.slice(0, 50); // 預設顯示 50 筆
                 }
 
                 tbody.innerHTML = filteredData.map(s => {
                     const json = JSON.stringify(s).replace(/"/g, '&quot;');
-                    const isActive = s.is_active !== false; 
+                    const isActive = (s.is_active !== false && !s.resignation_date); 
                     const statusBadge = isActive ? '<span class="badge bg-success">在職中</span>' : '<span class="badge bg-secondary">已離職</span>';
-                    const period = s.onboard_year ? `${s.onboard_year} ~ ${s.resignation_year || '至今'}` : '-';
+                    const period = s.onboard_date ? `${s.onboard_date} ~ ${s.resignation_date || '至今'}` : '-';
 
                     return `
                     <tr class="animate__animated animate__fadeIn">
@@ -384,7 +386,7 @@
                         </td>
                     </tr>`;
                 }).join('') || '<tr><td colspan="6" class="text-center py-3">查無資料</td></tr>';
-            } catch(e) { alert('查詢失敗'); } 
+            } catch(e) { alert('查詢失敗'); console.error(e); } 
             finally { btn.innerHTML = '<i class="fas fa-search me-1"></i>查詢'; }
         }
 
@@ -393,13 +395,13 @@
             let filename = '';
 
             if (type === 'company') {
-                // [Updated] 補回服務年度欄位
                 data = [['統一編號', '事業單位名稱', '聯絡人', '電話', '服務年度(YYYY)'], 
                         ['12345678', '範例科技有限公司', '王小明', '02-12345678', '2025']];
                 filename = '公司主檔匯入範本.xlsx';
             } else if (type === 'staff') {
-                data = [['姓名', '身分角色(醫師/護理人員/顧問)', '職務型態(全職/兼職)', '電話', 'Email'],
-                        ['陳大文', '護理人員', '兼職', '0912345678', 'nurse@example.com']];
+                // [Updated] 範本增加日期格式提示
+                data = [['姓名', '身分角色(醫師/護理人員/顧問)', '職務型態(全職/兼職)', '電話', 'Email', '入職日期(YYYY-MM-DD)'],
+                        ['陳大文', '護理人員', '兼職', '0912345678', 'nurse@example.com', '2024-05-20']];
                 filename = '醫護人員匯入範本.xlsx';
             }
 
@@ -425,7 +427,6 @@
                 document.getElementById('co-addr').value = data.address || '';
                 document.getElementById('co-contact').value = data.contact_person || '';
                 document.getElementById('co-phone').value = data.phone || '';
-                // [Updated] 綁定服務年度
                 document.getElementById('co-year').value = data.service_year || 2025; 
                 document.getElementById('btn-delete-company').style.display = 'block';
             } else {
@@ -449,38 +450,41 @@
                 document.getElementById('st-type').value = data.employment_type;
                 document.getElementById('st-phone').value = data.phone || '';
                 document.getElementById('st-email').value = data.email || '';
-                document.getElementById('st-start-year').value = data.onboard_year || '';
-                document.getElementById('st-is-active').checked = data.is_active !== false;
-                document.getElementById('st-end-year').value = data.resignation_year || '';
-                toggleResignYear(document.getElementById('st-is-active'));
+                
+                // [Updated] 帶入日期資料
+                document.getElementById('st-start-date').value = data.onboard_date || '';
+                document.getElementById('st-end-date').value = data.resignation_date || '';
+                
+                const isActive = (data.is_active !== false && !data.resignation_date);
+                document.getElementById('st-is-active').checked = isActive;
+                
+                toggleResignDate(document.getElementById('st-is-active'));
                 document.getElementById('btn-delete-staff').style.display = 'block';
             } else {
                 document.getElementById('staffModalTitle').innerText = '新增醫護人員';
                 document.getElementById('st-id').value = '';
                 document.querySelectorAll('#staffForm input').forEach(i => i.value = '');
                 document.getElementById('st-is-active').checked = true;
-                toggleResignYear(document.getElementById('st-is-active'));
+                toggleResignDate(document.getElementById('st-is-active'));
                 document.getElementById('btn-delete-staff').style.display = 'none';
             }
             new bootstrap.Modal(document.getElementById('staffModal')).show();
         }
 
-        function toggleResignYear(checkbox) {
-            const input = document.getElementById('st-end-year');
+        // [Updated] Toggle logic for Date input
+        function toggleResignDate(checkbox) {
+            const input = document.getElementById('st-end-date');
             if (checkbox.checked) {
                 input.disabled = true;
                 input.value = '';
-                input.placeholder = '在職中...';
             } else {
                 input.disabled = false;
-                input.placeholder = '請輸入離職年';
             }
         }
 
         async function saveData() {
             let table = '', data = {}, id = '';
 
-            // 1. 收集資料
             if (currentType === 'company') {
                 table = 'companies';
                 id = document.getElementById('co-id').value;
@@ -491,7 +495,6 @@
                     address: document.getElementById('co-addr').value,
                     contact_person: document.getElementById('co-contact').value,
                     phone: document.getElementById('co-phone').value,
-                    // [Updated] 寫入服務年度
                     service_year: document.getElementById('co-year').value
                 };
             } else if (currentType === 'staff') {
@@ -500,40 +503,36 @@
                 if(batchData.length > 0) data = batchData;
                 else {
                     const isActive = document.getElementById('st-is-active').checked;
+                    // [Updated] 收集日期資料
                     data = {
                         name: document.getElementById('st-name').value,
                         role: document.getElementById('st-role').value,
                         employment_type: document.getElementById('st-type').value,
                         phone: document.getElementById('st-phone').value,
                         email: document.getElementById('st-email').value,
-                        onboard_year: document.getElementById('st-start-year').value || null,
+                        onboard_date: document.getElementById('st-start-date').value || null,
                         is_active: isActive,
-                        resignation_year: isActive ? null : (document.getElementById('st-end-year').value || null)
+                        resignation_date: isActive ? null : (document.getElementById('st-end-date').value || null)
                     };
                 }
             }
 
             if (!table) return;
 
-            // 2. 執行寫入 (Insert 或 Update)
             let error = null;
             if(Array.isArray(data)) {
-                // 批量匯入
                 const conflict = currentType === 'company' ? 'tax_id' : undefined;
                 const res = await supabaseClient.from(table).upsert(data, conflict ? {onConflict: conflict} : undefined);
                 error = res.error;
                 await writeLog('批量匯入', table, `匯入 ${data.length} 筆資料`);
             } else {
-                // 單筆
                 if(!data.name) return alert('請填寫必要欄位');
                 
                 if (id) {
-                    // Update
                     const res = await supabaseClient.from(table).update(data).eq('id', id);
                     error = res.error;
                     await writeLog('更新', table, `更新 ID: ${id}`);
                 } else {
-                    // Insert
                     const conflict = currentType === 'company' ? 'tax_id' : undefined;
                     const res = await supabaseClient.from(table).upsert(data, conflict ? {onConflict: conflict} : undefined);
                     error = res.error;
@@ -625,10 +624,10 @@
                     const r = json[i];
                     if(!r.length) continue;
                     if(currentType === 'company') {
-                        // [Updated] Excel 匯入也支援服務年度
                         batchData.push({ tax_id:''+r[0], name:r[1], contact_person:r[2], phone:r[3], service_year:r[4]||2025 });
                     } else if(currentType === 'staff') {
-                        batchData.push({ name:r[0], role:r[1]||'護理人員', employment_type:r[2]||'兼職', phone:r[3] });
+                        // [Updated] Excel 讀取時也支援日期格式
+                        batchData.push({ name:r[0], role:r[1]||'護理人員', employment_type:r[2]||'兼職', phone:r[3], email:r[4], onboard_date:r[5]||null });
                     }
                 }
                 if(currentType === 'company') {
