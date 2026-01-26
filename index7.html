@@ -56,7 +56,7 @@
         
         <div class="d-flex justify-content-between align-items-end mb-3">
             <div class="section-title mb-0">
-                <h4 class="fw-bold text-dark mb-0">1. 客戶主檔管理 (Companies) V1.08</h4>
+                <h4 class="fw-bold text-dark mb-0">1. 客戶主檔管理 (Companies) V1.09</h4>
                 <small class="text-muted">管理服務之事業單位清單</small>
             </div>
             <div class="d-flex gap-2">
@@ -70,14 +70,15 @@
             <div class="col-md-5">
                 <div class="info-card info-blue shadow-sm h-100 mb-0">
                     <strong><i class="fas fa-file-signature me-2"></i>合約管理</strong><br>
-                    系統預設顯示「合約進行中」的客戶。您可透過篩選器查詢歷史合約或特定年度的服務對象。
+                    系統預設顯示「合約進行中」的客戶。您可透過篩選器查詢「已解約」或特定年度的服務對象。
                 </div>
             </div>
             <div class="col-md-7 d-flex align-items-center justify-content-end">
                 <div class="input-group search-group shadow-sm">
                     <select class="form-select bg-light text-primary fw-bold" id="filter-company-status">
                         <option value="active" selected>預設：合約進行中</option>
-                        <option value="all">顯示全部 (含已解約)</option>
+                        <option value="inactive">顯示：已解約/結束</option>
+                        <option value="all">顯示全部 (含歷史資料)</option>
                         <option value="2026">2026 年度 (含跨年)</option>
                         <option value="2025">2025 年度 (含跨年)</option>
                         <option value="2024">2024 年度 (含跨年)</option>
@@ -126,14 +127,15 @@
             <div class="col-md-5">
                 <div class="info-card info-green shadow-sm h-100 mb-0">
                     <strong><i class="fas fa-user-clock me-2"></i>任職管理</strong><br>
-                    系統預設顯示「在職中」的人員。搜尋時選擇「年度」，系統會自動篩選出該年度內曾在職的所有人員。
+                    系統預設顯示「在職中」的人員。您可切換查詢「已離職」或特定年度的從業人員。
                 </div>
             </div>
             <div class="col-md-7 d-flex align-items-center justify-content-end">
                 <div class="input-group search-group shadow-sm">
                     <select class="form-select bg-light text-success fw-bold" id="filter-staff-status">
                         <option value="active" selected>預設：目前在職中</option>
-                        <option value="all">顯示全部 (含離職)</option>
+                        <option value="inactive">顯示：已離職</option>
+                        <option value="all">顯示全部 (含歷史資料)</option>
                         <option value="2026">2026 年度</option>
                         <option value="2025">2025 年度</option>
                         <option value="2024">2024 年度</option>
@@ -296,11 +298,11 @@
         });
 
         // ===================================
-        // 1. 公司查詢 (Updated Logic)
+        // 1. 公司查詢 (Companies)
         // ===================================
         async function loadCompanies() {
             const keyword = document.getElementById('search-company').value.trim();
-            const filterType = document.getElementById('filter-company-status').value; // active, all, or year
+            const filterType = document.getElementById('filter-company-status').value; 
             const btn = document.querySelector('button[onclick="loadCompanies()"]');
             const tbody = document.getElementById('companyTableBody');
             
@@ -318,25 +320,28 @@
 
                 let filteredData = data;
                 
-                // [Updated] 公司篩選邏輯 (比照人員)
+                // 篩選邏輯
                 if (filterType === 'active') {
-                    // 合約進行中 (is_active 為 true)
+                    // 服務中：啟用且 (無結束日 或 未過期)
                     filteredData = data.filter(c => c.is_active !== false && (!c.contract_end_date || new Date(c.contract_end_date) >= new Date()));
+                } else if (filterType === 'inactive') {
+                    // [New] 已解約：停用 或 已過期
+                    filteredData = data.filter(c => c.is_active === false || (c.contract_end_date && new Date(c.contract_end_date) < new Date()));
                 } else if (filterType !== 'all' && filterType !== '') {
+                    // 年度篩選
                     const targetYear = parseInt(filterType);
                     filteredData = data.filter(c => {
-                        // 取得年份 (相容舊 service_year)
                         const startYear = c.contract_start_date ? new Date(c.contract_start_date).getFullYear() : (c.service_year || 0);
                         const endYear = c.contract_end_date ? new Date(c.contract_end_date).getFullYear() : (c.service_year || 9999);
                         return startYear <= targetYear && endYear >= targetYear;
                     });
                 } else {
-                    // All: limit display
                     if (!keyword) filteredData = data.slice(0, 50);
                 }
 
                 tbody.innerHTML = filteredData.map(c => {
                     const json = JSON.stringify(c).replace(/"/g, '&quot;');
+                    // 狀態判斷 (用於顯示 Badge)
                     const isActive = (c.is_active !== false && (!c.contract_end_date || new Date(c.contract_end_date) >= new Date()));
                     const statusBadge = isActive ? '<span class="badge bg-primary">服務中</span>' : '<span class="badge bg-secondary">已結束</span>';
                     const period = c.contract_start_date ? `${c.contract_start_date} ~ ${c.contract_end_date || '至今'}` : (c.service_year ? `${c.service_year}年` : '-');
@@ -363,11 +368,11 @@
         }
 
         // ===================================
-        // 2. 人員查詢
+        // 2. 人員查詢 (Staff)
         // ===================================
         async function loadStaff() {
             const keyword = document.getElementById('search-staff').value.trim();
-            const filterType = document.getElementById('filter-staff-status').value; // active, all, or year
+            const filterType = document.getElementById('filter-staff-status').value; 
             const btn = document.querySelector('button[onclick="loadStaff()"]');
             const tbody = document.getElementById('staffTableBody');
 
@@ -382,8 +387,13 @@
 
                 let filteredData = data;
                 
+                // 篩選邏輯
                 if (filterType === 'active') {
+                    // 在職：啟用且無離職日
                     filteredData = data.filter(s => s.is_active !== false && !s.resignation_date);
+                } else if (filterType === 'inactive') {
+                    // [New] 已離職：停用 或 有離職日
+                    filteredData = data.filter(s => s.is_active === false || s.resignation_date);
                 } else if (filterType !== 'all' && filterType !== '') {
                     const targetYear = parseInt(filterType);
                     filteredData = data.filter(s => {
@@ -420,14 +430,13 @@
         }
 
         // ===================================
-        // 3. 範本下載 (Updated)
+        // 3. 範本下載
         // ===================================
         function downloadTemplate(type) {
             let data = [];
             let filename = '';
 
             if (type === 'company') {
-                // [Updated] 支援合約日期
                 data = [['統一編號', '事業單位名稱', '聯絡人', '電話', '合約開始日期(YYYY-MM-DD)', '合約結束日期(YYYY-MM-DD)'], 
                         ['12345678', '範例科技有限公司', '王小明', '02-12345678', '2025-01-01', '2025-12-31']];
                 filename = '公司主檔匯入範本.xlsx';
@@ -445,7 +454,7 @@
         }
 
         // ===================================
-        // 4. Modals & Toggles
+        // 4. Modals
         // ===================================
         function openCompanyModal(data = null) {
             currentType = 'company';
@@ -461,8 +470,6 @@
                 document.getElementById('co-addr').value = data.address || '';
                 document.getElementById('co-contact').value = data.contact_person || '';
                 document.getElementById('co-phone').value = data.phone || '';
-                
-                // [Updated] 帶入合約日期
                 document.getElementById('co-start-date').value = data.contract_start_date || (data.service_year ? `${data.service_year}-01-01` : '');
                 document.getElementById('co-end-date').value = data.contract_end_date || (data.service_year ? `${data.service_year}-12-31` : '');
                 
@@ -512,7 +519,6 @@
             new bootstrap.Modal(document.getElementById('staffModal')).show();
         }
 
-        // Toggles
         function toggleResignDate(checkbox) {
             const input = document.getElementById('st-end-date');
             input.disabled = checkbox.checked;
@@ -522,14 +528,11 @@
         function toggleContractEnd(checkbox) {
             const input = document.getElementById('co-end-date');
             input.disabled = checkbox.checked;
-            // 註：公司合約即便服務中，也可能有預定的結束日，這裡依您需求可決定是否清空
-            // 若邏輯是「服務中=合約無限期」則清空；若邏輯是「服務中=合約未到期」則保留。
-            // 這裡採用與 Staff 統一邏輯：若勾選「服務中」，暫時鎖定結束日 (或您可改為不鎖定)
             if(checkbox.checked) input.value = ''; 
         }
 
         // ===================================
-        // 5. Save Logic
+        // 5. Save & Delete Logic
         // ===================================
         async function saveData() {
             let table = '', data = {}, id = '';
@@ -546,7 +549,6 @@
                         address: document.getElementById('co-addr').value,
                         contact_person: document.getElementById('co-contact').value,
                         phone: document.getElementById('co-phone').value,
-                        // [Updated] 儲存合約日期與狀態
                         contract_start_date: document.getElementById('co-start-date').value || null,
                         is_active: isActive,
                         contract_end_date: isActive ? null : (document.getElementById('co-end-date').value || null)
@@ -678,7 +680,6 @@
                     const r = json[i];
                     if(!r.length) continue;
                     if(currentType === 'company') {
-                        // [Updated] 支援合約起訖日
                         batchData.push({ 
                             tax_id:''+r[0], name:r[1], contact_person:r[2], phone:r[3], 
                             contract_start_date: r[4]||null, contract_end_date: r[5]||null 
