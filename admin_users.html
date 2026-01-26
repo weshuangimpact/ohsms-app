@@ -9,33 +9,15 @@
     
     <style>
         :root { --primary-bg: #f4f6f9; }
-        body {
-            background-color: var(--primary-bg);
-            font-family: 'Segoe UI', 'Microsoft JhengHei', sans-serif;
-            color: #333;
-        }
-
-        /* 統一 UI 風格 */
-        .navbar-brand { font-weight: bold; letter-spacing: 1px; }
+        body { background-color: var(--primary-bg); font-family: 'Segoe UI', 'Microsoft JhengHei', sans-serif; color: #333; }
         .card { border: none; border-radius: 0.5rem; box-shadow: 0 0.125rem 0.25rem rgba(0,0,0,0.075); }
-        
-        /* 狀態標籤 */
         .status-badge-active { background-color: #d1e7dd; color: #0f5132; border: 1px solid #badbcc; }
         .status-badge-resigned { background-color: #f8d7da; color: #842029; border: 1px solid #f5c2c7; text-decoration: line-through; opacity: 0.8; }
-        
-        /* 角色標籤 */
         .role-tag { font-size: 0.8rem; padding: 0.2rem 0.6rem; border-radius: 10rem; font-weight: 600; }
         .role-admin { background-color: #212529; color: #fff; }
         .role-consultant { background-color: #0d6efd; color: #fff; }
         .role-user { background-color: #6c757d; color: #fff; }
-
-        /* 頭像 */
-        .avatar-circle {
-            width: 40px; height: 40px; border-radius: 50%;
-            background-color: #e9ecef; color: #495057;
-            display: flex; align-items: center; justify-content: center;
-            font-weight: bold; margin-right: 12px;
-        }
+        .avatar-circle { width: 40px; height: 40px; border-radius: 50%; background-color: #e9ecef; color: #495057; display: flex; align-items: center; justify-content: center; font-weight: bold; margin-right: 12px; }
     </style>
 </head>
 <body>
@@ -51,7 +33,6 @@
     </nav>
 
     <div class="container pb-5">
-        
         <div class="d-flex justify-content-between align-items-center mb-4">
             <div>
                 <h2 class="fw-bold text-dark"><i class="fas fa-users-cog me-2 text-primary"></i>帳號權限管理</h2>
@@ -79,7 +60,7 @@
                         </div>
                     </div>
                     <div class="col-md-3">
-                        <button class="btn btn-dark w-100 fw-bold" onclick="searchUsers()">
+                        <button id="btn-search" class="btn btn-dark w-100 fw-bold" onclick="searchUsers()">
                             <i class="fas fa-magnifying-glass me-2"></i>查詢
                         </button>
                     </div>
@@ -123,16 +104,15 @@
                     <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
                 </div>
                 <div class="modal-body p-4">
-                    <input type="hidden" id="edit-user-id"> <div class="mb-3">
+                    <input type="hidden" id="edit-user-id">
+                    <div class="mb-3">
                         <label class="form-label fw-bold text-muted">Email (登入帳號)</label>
                         <input type="email" id="input-email" class="form-control" placeholder="example@company.com">
                     </div>
-
                     <div class="mb-3">
                         <label class="form-label fw-bold text-muted">姓名</label>
                         <input type="text" id="input-name" class="form-control" placeholder="真實姓名">
                     </div>
-
                     <div class="row g-3 mb-4">
                         <div class="col-md-6">
                             <label class="form-label fw-bold text-muted">系統角色</label>
@@ -163,51 +143,55 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
     <script>
-        // 初始化 Supabase
         const SUPABASE_URL = 'https://yhehfucgemxnfrdvpdhw.supabase.co';
         const SUPABASE_KEY = 'sb_publishable_52emtU-9l-SDxcJTWVTPTA_Yu6qEogh'; 
         const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-        let currentUserList = []; // 暫存查詢結果
+        let currentUserList = [];
         let userModal;
 
         document.addEventListener('DOMContentLoaded', async () => {
-            // 初始化 Modal 物件
             userModal = new bootstrap.Modal(document.getElementById('userModal'));
-            
-            // 這裡不再自動呼叫 fetchUsers()
-            // 頁面載入時保持列表為空，等待使用者查詢
+            console.log('System ready. Supabase initialized.');
         });
 
         // 1. 搜尋邏輯
         async function searchUsers() {
+            console.log('Button clicked: searchUsers() started...'); // [Debug] 確認按鈕有反應
+            
             const keyword = document.getElementById('searchInput').value.trim();
             const includeResigned = document.getElementById('checkIncludeResigned').checked;
-            const btn = document.querySelector('button[onclick="searchUsers()"]');
             
-            // UI Loading 狀態
+            // [修正] 改用 ID 抓取按鈕，避免 selector 失敗
+            const btn = document.getElementById('btn-search');
             const originalBtnHtml = btn.innerHTML;
+            
             btn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>查詢中...';
             btn.disabled = true;
 
             try {
+                // 檢查連線 (Optionally check session, but not strictly required for public read if policy allows)
+                // 若 RLS 開啟且需要登入才能讀取，這邊需要確認 session
+
                 let query = supabase.from('profiles').select('*').order('created_at', { ascending: false });
 
-                // 處理關鍵字 (模糊搜尋)
                 if (keyword) {
-                    // 搜尋 Name, Email 或 自訂欄位 (若有)
-                    // Supabase 語法: .or('column1.ilike.%val%,column2.ilike.%val%')
+                    // [修正] 確保使用 ` (反引號) 進行字串插值
                     query = query.or(`full_name.ilike.%${keyword}%,email.ilike.%${keyword}%`);
                 } else {
-                    // 若未輸入關鍵字，預設只撈 50 筆最近資料，避免一次撈太多
                     query = query.limit(50);
                 }
 
+                console.log('Sending query to Supabase...'); // [Debug]
                 const { data, error } = await query;
-                if (error) throw error;
+                
+                if (error) {
+                    console.error('Supabase Error:', error); // [Debug] 顯示詳細錯誤
+                    throw error;
+                }
 
-                // 前端過濾離職狀態 (若 SQL 比較複雜，也可在後端過濾)
-                // 這裡的邏輯：如果不包含離職，則過濾掉 status === 'resigned'
+                console.log(`Received ${data.length} records.`); // [Debug] 確認回傳筆數
+
                 let filteredData = data;
                 if (!includeResigned) {
                     filteredData = data.filter(u => u.status !== 'resigned');
@@ -216,8 +200,13 @@
                 currentUserList = filteredData;
                 renderTable(currentUserList);
 
+                // 如果沒報錯但資料是 0 筆，且你確定資料庫有資料 -> 絕對是 RLS 權限問題
+                if(data.length === 0) {
+                    console.warn('警告: 回傳 0 筆資料。請檢查 Supabase RLS Policy 是否設定為允許 SELECT。');
+                }
+
             } catch (err) {
-                console.error('Search Error:', err);
+                console.error('Search Execution Error:', err);
                 alert('查詢失敗: ' + err.message);
             } finally {
                 btn.innerHTML = originalBtnHtml;
@@ -232,7 +221,7 @@
             document.getElementById('totalCount').innerText = users.length;
 
             if (users.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="5" class="text-center py-4 text-muted">查無符合條件的資料</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="5" class="text-center py-4 text-muted">查無符合條件的資料 (或權限不足)</td></tr>';
                 return;
             }
 
@@ -246,7 +235,7 @@
                 const roleName = user.role === 'admin' ? 'Admin' : (user.role === 'consultant' ? 'Consultant' : 'User');
                 
                 const tr = document.createElement('tr');
-                if (isResigned) tr.style.backgroundColor = '#f8f9fa'; // 離職淡化背景
+                if (isResigned) tr.style.backgroundColor = '#f8f9fa';
 
                 tr.innerHTML = `
                     <td class="ps-4">
@@ -271,7 +260,6 @@
             });
         }
 
-        // 3. Modal 操作
         function openAddModal() {
             document.getElementById('modalTitle').innerText = '新增帳號';
             document.getElementById('edit-user-id').value = '';
@@ -286,20 +274,19 @@
         function openEditModal(id) {
             const user = currentUserList.find(u => u.id === id);
             if (!user) return;
-
             document.getElementById('modalTitle').innerText = '編輯帳號權限';
             document.getElementById('edit-user-id').value = user.id;
             document.getElementById('input-email').value = user.email;
-            document.getElementById('input-email').disabled = true; // Email 為識別ID不可改
+            document.getElementById('input-email').disabled = true; 
             document.getElementById('input-name').value = user.full_name;
             document.getElementById('input-role').value = user.role;
             document.getElementById('input-status').value = user.status || 'active';
             userModal.show();
         }
 
-        // 4. 儲存邏輯
         async function saveUser() {
-            const id = document.getElementById('edit-user-id').value;
+            // ... (維持原有的 saveUser 邏輯) ...
+             const id = document.getElementById('edit-user-id').value;
             const email = document.getElementById('input-email').value;
             const name = document.getElementById('input-name').value;
             const role = document.getElementById('input-role').value;
@@ -312,26 +299,22 @@
                 full_name: name,
                 role: role,
                 status: status,
-                is_active: status === 'active', // 同步更新以保相容
+                is_active: status === 'active',
                 updated_at: new Date()
             };
 
             try {
                 if (id) {
-                    // 更新
                     const { error } = await supabase.from('profiles').update(userData).eq('id', id);
                     if (error) throw error;
                     alert('帳號設定已更新');
                 } else {
-                    // 新增
                     const { error } = await supabase.from('profiles').insert([userData]);
                     if (error) throw error;
                     alert('已建立新使用者資料');
                 }
-
                 userModal.hide();
-                searchUsers(); // 重新執行查詢以更新列表
-                
+                searchUsers();
             } catch (e) {
                 alert('儲存失敗: ' + e.message);
             }
