@@ -24,12 +24,6 @@
             overflow: hidden;
         }
         
-        .settings-header {
-            background-color: #f8f9fa;
-            border-bottom: 1px solid #e9ecef;
-            padding: 20px 30px;
-        }
-
         /* 頭像樣式 */
         .avatar-large {
             width: 80px; height: 80px;
@@ -70,7 +64,7 @@
                 
                 <div class="text-center mb-4">
                     <h3 class="fw-bold">個人帳號設定</h3>
-                    <p class="text-muted">維護您的登入密碼與基本資訊</p>
+                    <p class="text-muted">直接修改您的登入資訊</p>
                 </div>
 
                 <div class="settings-card">
@@ -81,20 +75,21 @@
                     </div>
 
                     <div class="p-4 p-md-5">
-                        <h6 class="fw-bold text-primary mb-3"><i class="fas fa-key me-2"></i>變更登入密碼</h6>
+                        <h6 class="fw-bold text-primary mb-3"><i class="fas fa-id-card me-2"></i>帳號與安全設定</h6>
                         
-                        <form id="passwordForm" onsubmit="handlePasswordUpdate(event)">
+                        <form id="profileForm" onsubmit="handleUpdate(event)">
                             
                             <div class="mb-3">
                                 <label class="form-label text-muted small fw-bold">登入帳號 (Email)</label>
-                                <input type="email" id="user-email" class="form-control bg-light" readonly disabled>
-                                <div class="form-text">帳號若需變更請聯繫系統管理員。</div>
+                                <input type="email" id="user-email" class="form-control" required>
                             </div>
 
+                            <hr class="my-4 text-muted opacity-25">
+
                             <div class="mb-3">
-                                <label class="form-label text-muted small fw-bold">新密碼</label>
+                                <label class="form-label text-muted small fw-bold">新密碼 (若不修改請留空)</label>
                                 <div class="input-group">
-                                    <input type="password" class="form-control" id="new-password" placeholder="請輸入新密碼 (至少 6 碼)" required minlength="6">
+                                    <input type="password" class="form-control" id="new-password" placeholder="輸入新密碼" minlength="6">
                                     <span class="input-group-text bg-white border-start-0">
                                         <i class="fas fa-eye password-toggle" onclick="togglePassword('new-password', this)"></i>
                                     </span>
@@ -104,7 +99,7 @@
                             <div class="mb-4">
                                 <label class="form-label text-muted small fw-bold">確認新密碼</label>
                                 <div class="input-group">
-                                    <input type="password" class="form-control" id="confirm-password" placeholder="請再次輸入新密碼" required minlength="6">
+                                    <input type="password" class="form-control" id="confirm-password" placeholder="再次輸入新密碼" minlength="6">
                                     <span class="input-group-text bg-white border-start-0">
                                         <i class="fas fa-eye password-toggle" onclick="togglePassword('confirm-password', this)"></i>
                                     </span>
@@ -116,7 +111,7 @@
 
                             <div class="d-grid gap-2">
                                 <button type="submit" id="btn-save" class="btn btn-primary fw-bold py-2">
-                                    確認修改並儲存
+                                    儲存變更 (寫入資料庫)
                                 </button>
                             </div>
                         </form>
@@ -139,18 +134,23 @@
         const SUPABASE_KEY = 'sb_publishable_52emtU-9l-SDxcJTWVTPTA_Yu6qEogh';
         const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
+        let currentEmail = '';
+
         document.addEventListener('DOMContentLoaded', async () => {
-            // 1. 檢查 Session
+            // 1. 真實資料庫檢查：直接抓 Supabase Session
             const { data: { session } } = await supabase.auth.getSession();
             
             if (!session) {
-                alert('請先登入系統');
+                // 若無 Session，直接踢回登入頁 (不模擬)
+                alert('偵測不到登入狀態，請重新登入');
                 window.location.href = 'login.html';
                 return;
             }
 
-            // 2. 填充基本資料 (從 Session 與 LocalStorage)
+            // 2. 填充真實資料
             const user = session.user;
+            currentEmail = user.email; // 記錄原始 Email
+            
             const userName = sessionStorage.getItem('currentUserName') || '使用者';
             const userRole = sessionStorage.getItem('currentUserRole') || 'User';
 
@@ -164,48 +164,68 @@
             }
         });
 
-        // 處理密碼變更
-        async function handlePasswordUpdate(e) {
+        // 處理更新 (Email + 密碼)
+        async function handleUpdate(e) {
             e.preventDefault();
             
+            const newEmail = document.getElementById('user-email').value.trim();
             const newPwd = document.getElementById('new-password').value;
             const confirmPwd = document.getElementById('confirm-password').value;
             const feedback = document.getElementById('password-feedback');
-            const newPwdInput = document.getElementById('new-password');
             const confirmPwdInput = document.getElementById('confirm-password');
 
-            // 前端驗證
-            newPwdInput.classList.remove('is-invalid');
+            // 1. 密碼驗證
             confirmPwdInput.classList.remove('is-invalid');
-
-            if (newPwd !== confirmPwd) {
+            if (newPwd && newPwd !== confirmPwd) {
                 confirmPwdInput.classList.add('is-invalid');
                 feedback.style.display = 'block';
                 return;
             }
 
-            // 開始送出
+            // 2. 準備更新物件
+            const updates = {};
+            if (newEmail !== currentEmail) {
+                updates.email = newEmail;
+            }
+            if (newPwd) {
+                updates.password = newPwd;
+            }
+
+            if (Object.keys(updates).length === 0) {
+                alert('未偵測到任何變更');
+                return;
+            }
+
+            // 3. 送出至真實資料庫
             const btn = document.getElementById('btn-save');
             const originalBtnText = btn.innerHTML;
             btn.disabled = true;
-            btn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>更新中...';
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i> 資料庫寫入中...';
 
             try {
-                // Supabase Update User API
-                const { data, error } = await supabase.auth.updateUser({
-                    password: newPwd
-                });
+                // Supabase Update User API (直接更新 Auth 表)
+                const { data, error } = await supabase.auth.updateUser(updates);
 
                 if (error) throw error;
 
-                alert('✅ 密碼修改成功！下次登入請使用新密碼。');
+                let msg = '✅ 資料更新成功！';
+                if (updates.email) {
+                    msg += '\n注意：您已更改 Email，系統可能會發送確認信至新信箱，請至信箱確認以完成變更。';
+                    // 若專案設定為 Secure Email Change，需確認後才生效
+                }
+                if (updates.password) {
+                    msg += '\n下次登入請使用新密碼。';
+                }
+                alert(msg);
                 
-                // 清空欄位
+                // 清空密碼欄位
                 document.getElementById('new-password').value = '';
                 document.getElementById('confirm-password').value = '';
+                currentEmail = newEmail; // 更新暫存
 
             } catch (err) {
                 alert('更新失敗: ' + err.message);
+                console.error(err);
             } finally {
                 btn.disabled = false;
                 btn.innerHTML = originalBtnText;
