@@ -29,11 +29,6 @@
         .role-consultant { background-color: #0d6efd; color: #fff; }
         .role-user { background-color: #6c757d; color: #fff; }
 
-        /* 搜尋框 */
-        .search-wrapper { position: relative; }
-        .search-wrapper i { position: absolute; left: 15px; top: 50%; transform: translateY(-50%); color: #adb5bd; }
-        .search-wrapper input { padding-left: 40px; border-radius: 50px; }
-
         /* 頭像 */
         .avatar-circle {
             width: 40px; height: 40px; border-radius: 50%;
@@ -50,7 +45,7 @@
             <a class="navbar-brand" href="#"><i class="fas fa-shield-alt me-2"></i>OHSMS 管理後台</a>
             <div class="d-flex align-items-center">
                 <span class="text-light me-3 small">Admin Control Panel</span>
-                <a href="index1.html" class="btn btn-outline-light btn-sm"><i class="fas fa-arrow-right me-1"></i> 前往作業區</a>
+                <a href="dashboard.html" class="btn btn-outline-light btn-sm"><i class="fas fa-arrow-left me-1"></i> 返回儀表板</a>
             </div>
         </div>
     </nav>
@@ -60,40 +55,33 @@
         <div class="d-flex justify-content-between align-items-center mb-4">
             <div>
                 <h2 class="fw-bold text-dark"><i class="fas fa-users-cog me-2 text-primary"></i>帳號權限管理</h2>
-                <p class="text-muted mb-0">管理系統登入權限與帳號存續狀態 (不涉及證照管理)</p>
+                <p class="text-muted mb-0">管理系統登入權限與帳號存續狀態</p>
             </div>
             <button class="btn btn-primary fw-bold shadow-sm px-4" onclick="openAddModal()">
                 <i class="fas fa-user-plus me-2"></i>新增帳號
             </button>
         </div>
 
-        <div class="alert alert-warning border-start border-4 border-warning shadow-sm" role="alert">
-            <i class="fas fa-info-circle me-2"></i><strong>證據鏈保全原則：</strong> 
-            人員離職請勿刪除資料，請將狀態改為 <strong>[已離職]</strong>。系統將保留其歷史簽核紀錄，但禁止該帳號再次登入。
-        </div>
-
-        <div class="card mb-4">
-            <div class="card-body p-3">
-                <div class="row g-2 align-items-center">
-                    <div class="col-md-5">
-                        <div class="search-wrapper">
-                            <i class="fas fa-search"></i>
-                            <input type="text" id="searchInput" class="form-control" placeholder="搜尋姓名、Email 或 員工編號..." onkeyup="filterUsers()">
+        <div class="card mb-4 border-primary border-2 border-top-0 border-end-0 border-bottom-0">
+            <div class="card-body p-4 bg-white">
+                <div class="row g-3 align-items-end">
+                    <div class="col-md-6">
+                        <label class="form-label fw-bold text-muted small">搜尋人員</label>
+                        <div class="input-group">
+                            <span class="input-group-text bg-white"><i class="fas fa-search text-muted"></i></span>
+                            <input type="text" id="searchInput" class="form-control" placeholder="請輸入姓名、Email 或 員工編號...">
                         </div>
                     </div>
                     <div class="col-md-3">
-                        <select class="form-select" id="roleFilter" onchange="filterUsers()">
-                            <option value="all">所有角色</option>
-                            <option value="admin">Admin (管理員)</option>
-                            <option value="consultant">Consultant (顧問)</option>
-                            <option value="user">User (一般用戶)</option>
-                        </select>
-                    </div>
-                    <div class="col-md-4 text-end">
-                        <div class="form-check form-switch d-inline-block">
-                            <input class="form-check-input" type="checkbox" id="showResigned" onchange="filterUsers()">
-                            <label class="form-check-label text-muted small" for="showResigned">顯示已離職人員</label>
+                         <div class="form-check mb-2">
+                            <input class="form-check-input" type="checkbox" id="checkIncludeResigned">
+                            <label class="form-check-label text-dark" for="checkIncludeResigned">包含已離職人員</label>
                         </div>
+                    </div>
+                    <div class="col-md-3">
+                        <button class="btn btn-dark w-100 fw-bold" onclick="searchUsers()">
+                            <i class="fas fa-magnifying-glass me-2"></i>查詢
+                        </button>
                     </div>
                 </div>
             </div>
@@ -112,7 +100,12 @@
                         </tr>
                     </thead>
                     <tbody id="userTableBody">
-                        <tr><td colspan="5" class="text-center py-5 text-muted"><i class="fas fa-spinner fa-spin me-2"></i>載入中...</td></tr>
+                        <tr>
+                            <td colspan="5" class="text-center py-5 text-muted">
+                                <i class="fas fa-search fa-2x mb-3 text-secondary opacity-50"></i><br>
+                                請輸入關鍵字並點擊「查詢」以檢視資料
+                            </td>
+                        </tr>
                     </tbody>
                 </table>
             </div>
@@ -125,15 +118,14 @@
     <div class="modal fade" id="userModal" tabindex="-1" data-bs-backdrop="static">
         <div class="modal-dialog modal-dialog-centered">
             <div class="modal-content">
-                <div class="modal-header bg-primary text-white">
-                    <h5 class="modal-title fw-bold" id="modalTitle">新增帳號</h5>
+                <div class="modal-header bg-dark text-white">
+                    <h5 class="modal-title fw-bold" id="modalTitle">帳號設定</h5>
                     <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
                 </div>
                 <div class="modal-body p-4">
                     <input type="hidden" id="edit-user-id"> <div class="mb-3">
                         <label class="form-label fw-bold text-muted">Email (登入帳號)</label>
                         <input type="email" id="input-email" class="form-control" placeholder="example@company.com">
-                        <small class="text-muted" id="email-hint">新增後系統將發送邀請信件(模擬)</small>
                     </div>
 
                     <div class="mb-3">
@@ -158,14 +150,10 @@
                             </select>
                         </div>
                     </div>
-
-                    <div class="alert alert-light border small text-muted">
-                        <i class="fas fa-exclamation-triangle me-1"></i> 注意：將狀態設為「已離職」後，該使用者將無法再登入系統，但其過去建立的表單紀錄將會完整保留。
-                    </div>
                 </div>
                 <div class="modal-footer bg-light">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
-                    <button type="button" class="btn btn-primary px-4 fw-bold" onclick="saveUser()">儲存設定</button>
+                    <button type="button" class="btn btn-primary px-4 fw-bold" onclick="saveUser()">儲存</button>
                 </div>
             </div>
         </div>
@@ -177,67 +165,67 @@
     <script>
         // 初始化 Supabase
         const SUPABASE_URL = 'https://yhehfucgemxnfrdvpdhw.supabase.co';
-        const SUPABASE_KEY = 'sb_publishable_52emtU-9l-SDxcJTWVTPTA_Yu6qEogh'; // 您的 Publishable Key
+        const SUPABASE_KEY = 'sb_publishable_52emtU-9l-SDxcJTWVTPTA_Yu6qEogh'; 
         const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-        let allUsers = [];
+        let currentUserList = []; // 暫存查詢結果
         let userModal;
 
         document.addEventListener('DOMContentLoaded', async () => {
+            // 初始化 Modal 物件
             userModal = new bootstrap.Modal(document.getElementById('userModal'));
-            await fetchUsers();
+            
+            // 這裡不再自動呼叫 fetchUsers()
+            // 頁面載入時保持列表為空，等待使用者查詢
         });
 
-        // 1. 讀取使用者資料
-        async function fetchUsers() {
-            try {
-                // 從 profiles 表讀取資料
-                const { data, error } = await supabase
-                    .from('profiles')
-                    .select('*')
-                    .order('created_at', { ascending: false });
+        // 1. 搜尋邏輯
+        async function searchUsers() {
+            const keyword = document.getElementById('searchInput').value.trim();
+            const includeResigned = document.getElementById('checkIncludeResigned').checked;
+            const btn = document.querySelector('button[onclick="searchUsers()"]');
+            
+            // UI Loading 狀態
+            const originalBtnHtml = btn.innerHTML;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>查詢中...';
+            btn.disabled = true;
 
+            try {
+                let query = supabase.from('profiles').select('*').order('created_at', { ascending: false });
+
+                // 處理關鍵字 (模糊搜尋)
+                if (keyword) {
+                    // 搜尋 Name, Email 或 自訂欄位 (若有)
+                    // Supabase 語法: .or('column1.ilike.%val%,column2.ilike.%val%')
+                    query = query.or(`full_name.ilike.%${keyword}%,email.ilike.%${keyword}%`);
+                } else {
+                    // 若未輸入關鍵字，預設只撈 50 筆最近資料，避免一次撈太多
+                    query = query.limit(50);
+                }
+
+                const { data, error } = await query;
                 if (error) throw error;
 
-                // 若無資料，使用假資料演示 UI
-                if (!data || data.length === 0) {
-                    allUsers = getMockData();
-                } else {
-                    allUsers = data;
+                // 前端過濾離職狀態 (若 SQL 比較複雜，也可在後端過濾)
+                // 這裡的邏輯：如果不包含離職，則過濾掉 status === 'resigned'
+                let filteredData = data;
+                if (!includeResigned) {
+                    filteredData = data.filter(u => u.status !== 'resigned');
                 }
-                
-                filterUsers();
+
+                currentUserList = filteredData;
+                renderTable(currentUserList);
+
             } catch (err) {
-                console.error('Error:', err);
-                alert('讀取資料失敗，切換至演示模式');
-                allUsers = getMockData();
-                filterUsers();
+                console.error('Search Error:', err);
+                alert('查詢失敗: ' + err.message);
+            } finally {
+                btn.innerHTML = originalBtnHtml;
+                btn.disabled = false;
             }
         }
 
-        // 2. 渲染列表與篩選
-        function filterUsers() {
-            const term = document.getElementById('searchInput').value.toLowerCase();
-            const roleFilter = document.getElementById('roleFilter').value;
-            const showResigned = document.getElementById('showResigned').checked;
-
-            const filtered = allUsers.filter(user => {
-                // 離職過濾：如果不勾選「顯示離職」，則只顯示 active
-                if (!showResigned && user.status === 'resigned') return false;
-
-                // 關鍵字搜尋
-                const matchTerm = (user.full_name || '').toLowerCase().includes(term) || 
-                                  (user.email || '').toLowerCase().includes(term);
-                
-                // 角色過濾
-                const matchRole = roleFilter === 'all' || user.role === roleFilter;
-
-                return matchTerm && matchRole;
-            });
-
-            renderTable(filtered);
-        }
-
+        // 2. 渲染列表
         function renderTable(users) {
             const tbody = document.getElementById('userTableBody');
             tbody.innerHTML = '';
@@ -258,7 +246,7 @@
                 const roleName = user.role === 'admin' ? 'Admin' : (user.role === 'consultant' ? 'Consultant' : 'User');
                 
                 const tr = document.createElement('tr');
-                if (isResigned) tr.style.backgroundColor = '#fdfdfe'; // 離職人員淡化背景
+                if (isResigned) tr.style.backgroundColor = '#f8f9fa'; // 離職淡化背景
 
                 tr.innerHTML = `
                     <td class="ps-4">
@@ -272,7 +260,7 @@
                     </td>
                     <td><span class="role-tag ${roleClass}">${roleName}</span></td>
                     <td>${statusBadge}</td>
-                    <td class="text-muted small">${user.last_sign_in_at ? new Date(user.last_sign_in_at).toLocaleDateString() : '尚未登入'}</td>
+                    <td class="text-muted small">${user.last_sign_in_at ? new Date(user.last_sign_in_at).toLocaleDateString() : '--'}</td>
                     <td class="text-end pe-4">
                         <button class="btn btn-outline-secondary btn-sm" onclick="openEditModal('${user.id}')">
                             <i class="fas fa-pen me-1"></i> 設定
@@ -286,9 +274,9 @@
         // 3. Modal 操作
         function openAddModal() {
             document.getElementById('modalTitle').innerText = '新增帳號';
-            document.getElementById('edit-user-id').value = ''; // 清空 ID 代表新增
+            document.getElementById('edit-user-id').value = '';
             document.getElementById('input-email').value = '';
-            document.getElementById('input-email').disabled = false; // 新增時可輸入 Email
+            document.getElementById('input-email').disabled = false;
             document.getElementById('input-name').value = '';
             document.getElementById('input-role').value = 'user';
             document.getElementById('input-status').value = 'active';
@@ -296,20 +284,20 @@
         }
 
         function openEditModal(id) {
-            const user = allUsers.find(u => u.id === id);
+            const user = currentUserList.find(u => u.id === id);
             if (!user) return;
 
             document.getElementById('modalTitle').innerText = '編輯帳號權限';
             document.getElementById('edit-user-id').value = user.id;
             document.getElementById('input-email').value = user.email;
-            document.getElementById('input-email').disabled = true; // 編輯時不可改 Email (作為唯一識別)
+            document.getElementById('input-email').disabled = true; // Email 為識別ID不可改
             document.getElementById('input-name').value = user.full_name;
             document.getElementById('input-role').value = user.role;
             document.getElementById('input-status').value = user.status || 'active';
             userModal.show();
         }
 
-        // 4. 儲存邏輯 (新增/更新)
+        // 4. 儲存邏輯
         async function saveUser() {
             const id = document.getElementById('edit-user-id').value;
             const email = document.getElementById('input-email').value;
@@ -324,41 +312,29 @@
                 full_name: name,
                 role: role,
                 status: status,
-                is_active: status === 'active', // 同步更新舊欄位以保相容性
+                is_active: status === 'active', // 同步更新以保相容
                 updated_at: new Date()
             };
 
             try {
                 if (id) {
-                    // --- 更新模式 ---
+                    // 更新
                     const { error } = await supabase.from('profiles').update(userData).eq('id', id);
                     if (error) throw error;
                     alert('帳號設定已更新');
                 } else {
-                    // --- 新增模式 ---
-                    // 注意: 在真實 Auth 流程，通常需要後端 API 來建立 User。
-                    // 這裡我們先建立 Profile 資料，並模擬發送邀請。
+                    // 新增
                     const { error } = await supabase.from('profiles').insert([userData]);
                     if (error) throw error;
-                    alert(`已建立使用者資料！\n(系統提示：請務必透過 Auth 面板發送邀請信給 ${email})`);
+                    alert('已建立新使用者資料');
                 }
 
                 userModal.hide();
-                await fetchUsers(); // 重新整理列表
+                searchUsers(); // 重新執行查詢以更新列表
                 
             } catch (e) {
                 alert('儲存失敗: ' + e.message);
             }
-        }
-
-        // 演示用假資料 (當 DB 連接失敗時使用)
-        function getMockData() {
-            return [
-                { id: '1', full_name: '陳執行長', email: 'ceo@ohsms.com', role: 'admin', status: 'active', last_sign_in_at: '2026-01-25' },
-                { id: '2', full_name: '林職醫', email: 'dr.lin@hospital.com', role: 'consultant', status: 'active', last_sign_in_at: '2026-01-20' },
-                { id: '3', full_name: '王小美 (離職)', email: 'wang@old.com', role: 'user', status: 'resigned', last_sign_in_at: '2024-11-15' },
-                { id: '4', full_name: '張職護', email: 'nurse.chang@safe.com', role: 'consultant', status: 'active', last_sign_in_at: '2026-01-26' },
-            ];
         }
     </script>
 </body>
