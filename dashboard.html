@@ -35,9 +35,11 @@
         .card-plan { border-left-color: #0d6efd; }
         .card-check { border-left-color: #198754; }
         .card-eval { border-left-color: #ffc107; }
-        /* Index 4, 5, 8 的顏色定義已移除，保持 CSS 乾淨 */
         .card-data { border-left-color: #4f46e5; }
         .card-admin { border-left-color: #212529; }
+        
+        /* [新增] 帳號管理飾條顏色 (青色) */
+        .card-account { border-left-color: #0dcaf0; }
 
         .icon-wrapper {
             width: 50px;
@@ -60,7 +62,7 @@
         // 權限檢查：無登入者直接踢回登入頁
         const role = sessionStorage.getItem('currentUserRole');
         if (!role) {
-            // window.location.href = 'login.html'; // 開發測試時可先註解此行
+            // window.location.href = 'login.html'; 
             console.warn("未檢測到權限，模擬跳轉至登入頁");
         }
     </script>
@@ -204,6 +206,26 @@
                 </div>
             </div>
 
+            <div class="col-xl-3 col-md-6" id="card-users">
+                <div class="card dashboard-card bg-white card-account" onclick="window.location.href='admin_users.html'">
+                    <div class="card-body p-4">
+                        <div class="d-flex justify-content-between">
+                            <div>
+                                <h6 class="text-uppercase fw-bold small mb-1" style="color: #0dcaf0;">Account Mgmt</h6>
+                                <h5 class="card-title fw-bold mb-2">帳號權限管理</h5>
+                            </div>
+                            <div class="icon-wrapper bg-info bg-opacity-10 text-info">
+                                <i class="fas fa-users-cog"></i>
+                            </div>
+                        </div>
+                        <div class="guide-text">
+                            操作指引：<br>
+                            管理系統使用者帳號、角色權限指派與帳號存續狀態設定。
+                        </div>
+                    </div>
+                </div>
+            </div>
+
         </div>
     </div>
 
@@ -233,17 +255,20 @@
                 manager: document.getElementById('card-index2'), // 管理者總覽
                 eval: document.getElementById('card-index3'),    // 評鑑助理
                 maint: document.getElementById('card-index6'),   // 系統操作日誌稽核
-                master: document.getElementById('card-index7')   // 基本資料
+                master: document.getElementById('card-index7'),  // 基本資料
+                users: document.getElementById('card-users')     // [新增] 帳號管理
             };
 
-            // 初始化：先隱藏敏感項目
+            // 初始化：先隱藏敏感項目 (包含新增的 users)
             if(cards.maint) cards.maint.style.display = 'none';
             if(cards.master) cards.master.style.display = 'none';
+            if(cards.users) cards.users.style.display = 'none';
 
             if (userRole === 'admin') {
                 // Admin: 全開
                 if(cards.maint) cards.maint.style.display = 'block';
                 if(cards.master) cards.master.style.display = 'block';
+                if(cards.users) cards.users.style.display = 'block'; // [新增] 開啟帳號管理
             }
             else if (userRole === 'general') {
                 // 文管: 隱藏管理與評鑑，但可建立基本資料
