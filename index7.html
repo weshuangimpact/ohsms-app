@@ -19,33 +19,23 @@
         /* 區塊標題樣式 */
         .section-title { border-left: 5px solid #4f46e5; padding-left: 15px; margin-bottom: 20px; margin-top: 40px; }
         .section-title.staff { border-left-color: #059669; }
-        .section-title.calendar { border-left-color: #dc3545; }
 
         /* 資訊卡片 */
         .info-card { padding: 1rem; border-radius: 0.375rem; font-size: 0.9rem; margin-bottom: 1rem; }
         .info-blue { background-color: #e0e7ff; border-left: 5px solid #4338ca; color: #312e81; }
         .info-green { background-color: #d1fae5; border-left: 5px solid #059669; color: #064e3b; }
-        .info-red { background-color: #ffe5e5; border-left: 5px solid #dc3545; color: #842029; }
 
         .table th { font-weight: 500; color: white; }
         .th-blue { background-color: #4f46e5; }
         .th-green { background-color: #059669; }
-        .th-red { background-color: #dc3545; }
         
         tbody tr:hover { background-color: #f8fafc; cursor: pointer; }
-        .badge-event { font-size: 0.8em; padding: 5px 8px; width: 80px; text-align: center; display: inline-block;}
         .search-group { max-width: 600px; }
     </style>
 
     <script>
         document.addEventListener('DOMContentLoaded', function() {
             const role = sessionStorage.getItem('currentUserRole');
-            // 暫時放寬檢查以便測試，若需嚴格權限請取消註解
-            // if (!role || role === 'medical') {
-            //     alert('權限不足：此頁面僅限管理人員與文管人員存取。');
-            //     window.location.href = 'dashboard.html';
-            //     return;
-            // }
             document.body.style.display = 'block';
             const userName = sessionStorage.getItem('currentUserName') || 'User';
             document.getElementById('user-display').innerHTML = `<small>${role === 'admin' ? 'Admin' : '文管'}: ${userName}</small>`;
@@ -68,7 +58,7 @@
         
         <div class="d-flex justify-content-between align-items-end mb-3">
             <div class="section-title mb-0">
-                <h4 class="fw-bold text-dark mb-0">1. 客戶主檔管理 (Companies) V1.05</h4>
+                <h4 class="fw-bold text-dark mb-0">1. 客戶主檔管理 (Companies) V1.06</h4>
                 <small class="text-muted">管理服務之事業單位清單</small>
             </div>
             <div class="d-flex gap-2">
@@ -81,14 +71,14 @@
         <div class="row mb-3">
             <div class="col-md-5">
                 <div class="info-card info-blue shadow-sm h-100 mb-0">
-                    <strong><i class="fas fa-building me-2"></i>操作指引</strong><br>
-                    點擊列表右側的「編輯按鈕 (筆)」可修改資料或執行刪除。
+                    <strong><i class="fas fa-filter me-2"></i>篩選說明</strong><br>
+                    可透過右側選單篩選「服務年度」，快速檢視特定年份的簽約客戶。
                 </div>
             </div>
             <div class="col-md-7 d-flex align-items-center justify-content-end">
                 <div class="input-group search-group shadow-sm">
-                    <select class="form-select bg-light text-primary fw-bold" id="filter-company-year" disabled title="目前資料庫尚未支援年度欄位">
-                        <option value="">全部年度 (暫不篩選)</option>
+                    <select class="form-select bg-light text-primary fw-bold" id="filter-company-year">
+                        <option value="">全部年度</option>
                         <option value="2026">2026 年</option>
                         <option value="2025">2025 年</option>
                         <option value="2024">2024 年</option>
@@ -137,7 +127,7 @@
             <div class="col-md-5">
                 <div class="info-card info-green shadow-sm h-100 mb-0">
                     <strong><i class="fas fa-user-clock me-2"></i>年度人員查詢</strong><br>
-                    包含在職與離職紀錄管理。
+                    系統會依據入職與離職年份，自動篩選出該年度在職的人員。
                 </div>
             </div>
             <div class="col-md-7 d-flex align-items-center justify-content-end">
@@ -175,67 +165,7 @@
                 </div>
             </div>
         </div>
-
-        <div class="d-flex justify-content-between align-items-end mb-3">
-            <div class="section-title calendar mb-0">
-                <h4 class="fw-bold text-dark mb-0">3. 法規行事曆與預警 (Calendar)</h4>
-                <small class="text-muted">設定稽核行程、證照效期與會議排程</small>
-            </div>
-            <div class="d-flex gap-2">
-                <button class="btn btn-secondary btn-sm" onclick="downloadTemplate('event')"><i class="fas fa-download me-1"></i>下載範本</button>
-                <button class="btn btn-outline-danger fw-bold btn-sm" onclick="triggerImport('event')"><i class="fas fa-calendar-alt me-2"></i>匯入</button>
-                <button class="btn btn-danger fw-bold btn-sm" onclick="openEventModal()"><i class="fas fa-plus me-2"></i>新增事項</button>
-            </div>
-        </div>
-
-        <div class="row mb-3">
-            <div class="col-md-4">
-                <div class="info-card info-red shadow-sm h-100 mb-0">
-                    <strong><i class="fas fa-bell me-2"></i>預警系統</strong><br>可精準篩選特定年月的法規行程。
-                </div>
-            </div>
-            <div class="col-md-8 d-flex align-items-center justify-content-end">
-                <div class="input-group search-group shadow-sm">
-                    <select class="form-select bg-light text-danger fw-bold" id="filter-event-year">
-                        <option value="">全部年份</option>
-                        <option value="2026" selected>2026 年</option>
-                        <option value="2025">2025 年</option>
-                    </select>
-                    <select class="form-select bg-light text-danger fw-bold" id="filter-event-month">
-                        <option value="">全部月份</option>
-                        <option value="01">1月</option><option value="02">2月</option><option value="03">3月</option>
-                        <option value="04">4月</option><option value="05">5月</option><option value="06">6月</option>
-                        <option value="07">7月</option><option value="08">8月</option><option value="09">9月</option>
-                        <option value="10">10月</option><option value="11">11月</option><option value="12">12月</option>
-                    </select>
-                    <input type="text" id="search-event" class="form-control" placeholder="輸入事項名稱...">
-                    <button class="btn btn-danger" onclick="loadEvents()"><i class="fas fa-search me-1"></i>查詢</button>
-                </div>
-            </div>
-        </div>
-
-        <div class="card border-0 shadow">
-            <div class="card-body p-0">
-                <div class="table-responsive">
-                    <table class="table mb-0 align-middle">
-                        <thead>
-                            <tr>
-                                <th class="th-red ps-4">預定日期 (Deadline)</th>
-                                <th class="th-red">事項類型</th>
-                                <th class="th-red">事項名稱</th>
-                                <th class="th-red">優先級</th>
-                                <th class="th-red">狀態</th>
-                                <th class="th-red text-end pe-4">編輯</th>
-                            </tr>
-                        </thead>
-                        <tbody id="eventTableBody">
-                            <tr><td colspan="6" class="text-center py-4 text-muted">請點擊上方按鈕進行查詢</td></tr>
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-        </div>
-
+        
     </div>
 
     <input type="file" id="importInput" accept=".pdf, .xlsx, .xls" style="display: none;" onchange="handleFileSelect(this)">
@@ -259,7 +189,7 @@
                             <div class="col-md-12"><label class="form-label">地址</label><input type="text" class="form-control" id="co-addr"></div>
                             <div class="col-md-6"><label class="form-label">聯絡人</label><input type="text" class="form-control" id="co-contact"></div>
                             <div class="col-md-6"><label class="form-label">電話</label><input type="text" class="form-control" id="co-phone"></div>
-                            <div class="col-md-6"><label class="form-label text-muted fw-bold">服務年度 (僅供參考)</label><input type="number" class="form-control" id="co-year" value="2025"></div>
+                            <div class="col-md-6"><label class="form-label fw-bold text-primary">服務年度</label><input type="number" class="form-control" id="co-year" value="2025"></div>
                         </div>
                     </div>
                     <div id="previewArea" style="display:none;" class="mt-3">
@@ -335,46 +265,6 @@
         </div>
     </div>
 
-    <div class="modal fade" id="eventModal" tabindex="-1">
-        <div class="modal-dialog modal-lg">
-            <div class="modal-content">
-                <div class="modal-header bg-danger text-white">
-                    <h5 class="modal-title" id="eventModalTitle">新增行事曆事項</h5>
-                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
-                </div>
-                <div class="modal-body p-4">
-                    <input type="hidden" id="ev-id"> <div id="eventForm">
-                        <div class="row g-3">
-                            <div class="col-md-12"><label class="form-label fw-bold">事項名稱 *</label><input type="text" class="form-control" id="ev-title"></div>
-                            <div class="col-md-6"><label class="form-label fw-bold">事項類型 *</label>
-                                <select class="form-select" id="ev-type">
-                                    <option value="training">教育訓練</option>
-                                    <option value="meeting">委員會議</option>
-                                    <option value="service">臨場服務</option>
-                                    <option value="document">文件修訂</option>
-                                </select>
-                            </div>
-                            <div class="col-md-6"><label class="form-label fw-bold">預定日期/期限 *</label><input type="date" class="form-control" id="ev-date"></div>
-                            <div class="col-md-6"><label class="form-label">優先級</label><select class="form-select" id="ev-priority"><option value="medium">一般</option><option value="high">緊急</option></select></div>
-                            <div class="col-md-6"><label class="form-label">指派公司</label><select class="form-select" id="ev-company"><option value="">(通用事項)</option></select></div>
-                        </div>
-                    </div>
-                </div>
-                <div class="modal-footer d-flex justify-content-between">
-                    <div>
-                        <button type="button" class="btn btn-outline-danger" id="btn-delete-event" onclick="deleteData('compliance_events')" style="display:none;">
-                            <i class="fas fa-trash-alt me-1"></i>刪除資料
-                        </button>
-                    </div>
-                    <div>
-                        <button type="button" class="btn btn-secondary me-1" data-bs-dismiss="modal">取消</button>
-                        <button type="button" class="btn btn-danger" onclick="saveData()">儲存變更</button>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js"></script>
@@ -385,19 +275,20 @@
 
         // 初始化 Supabase
         const SUPABASE_URL = 'https://yhehfucgemxnfrdvpdhw.supabase.co';
-        const SUPABASE_KEY = 'sb_publishable_52emtU-9l-SDxcJTWVTPTA_Yu6qEogh'; // 請確認此 Key 是否正確
+        const SUPABASE_KEY = 'sb_publishable_52emtU-9l-SDxcJTWVTPTA_Yu6qEogh';
         const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
         let currentType = ''; 
         let batchData = [];
 
         document.addEventListener('DOMContentLoaded', () => {
-            loadCompanyOptions();
+            // Calendar 選項載入已移除
         });
 
         // 1. 公司查詢
         async function loadCompanies() {
             const keyword = document.getElementById('search-company').value.trim();
+            // [Updated] 獲取年度篩選值
             const year = document.getElementById('filter-company-year').value;
             const btn = document.querySelector('button[onclick="loadCompanies()"]');
             const tbody = document.getElementById('companyTableBody');
@@ -407,14 +298,13 @@
             try {
                 let query = supabaseClient.from('companies').select('*').order('created_at', {ascending:false});
                 
-                // [Fix]: 資料庫 'companies' 表沒有 'service_year' 欄位，故暫時移除此篩選條件避免報錯
-                // if (year) query = query.eq('service_year', parseInt(year)); 
+                // [Updated] 加入年度篩選邏輯 (請確保資料庫有 service_year 欄位)
+                if (year) query = query.eq('service_year', parseInt(year)); 
 
                 if(keyword) {
-                    // [Fix]: 修正 .or() 的查詢語法，確保字串組合正確
                     query = query.or(`name.ilike.%${keyword}%,tax_id.eq.${keyword}`);
                 } else {
-                    query = query.limit(50); 
+                    if(!year) query = query.limit(50); 
                 }
 
                 const { data, error } = await query;
@@ -422,7 +312,6 @@
 
                 tbody.innerHTML = (data||[]).map(c => {
                     const json = JSON.stringify(c).replace(/"/g, '&quot;');
-                    // [Fix]: 顯示時 service_year 若無資料則顯示 '-'
                     return `
                     <tr class="animate__animated animate__fadeIn">
                         <td><span class="badge bg-secondary">${c.service_year || '-'}</span></td>
@@ -447,6 +336,7 @@
         // 2. 人員查詢
         async function loadStaff() {
             const keyword = document.getElementById('search-staff').value.trim();
+            // [Updated] 獲取年度篩選值
             const year = document.getElementById('filter-staff-year').value;
             const btn = document.querySelector('button[onclick="loadStaff()"]');
             const tbody = document.getElementById('staffTableBody');
@@ -454,7 +344,6 @@
             btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
 
             try {
-                // [Fix]: 查詢包含新增的 onboard_year 等欄位 [cite: 7]
                 let query = supabaseClient.from('medical_staff').select('*').order('created_at', {ascending:false});
                 if(keyword) query = query.ilike('name', `%${keyword}%`);
                 
@@ -462,13 +351,14 @@
                 if(error) throw error;
 
                 let filteredData = data;
-                // 後端過濾邏輯保留，因資料量不大，前端過濾尚可接受
+                // [Updated] 前端年度過濾邏輯：入職年 <= 目標年 且 (未離職 或 離職年 >= 目標年)
                 if (year) {
                     const targetYear = parseInt(year);
                     filteredData = data.filter(s => {
                         const start = s.onboard_year || 0;
-                        const end = s.resignation_year || 9999;
-                        return targetYear >= start && targetYear <= end;
+                        const end = s.resignation_year || 9999; 
+                        // 確保目標年份時該人員尚未離職 (或離職當年仍算在職)
+                        return start <= targetYear && end >= targetYear;
                     });
                 } else {
                     filteredData = data.slice(0, 50);
@@ -498,89 +388,22 @@
             finally { btn.innerHTML = '<i class="fas fa-search me-1"></i>查詢'; }
         }
 
-        // 3. 行事曆查詢
-        async function loadEvents() {
-            const keyword = document.getElementById('search-event').value.trim();
-            const year = document.getElementById('filter-event-year').value;
-            const month = document.getElementById('filter-event-month').value;
-            const btn = document.querySelector('button[onclick="loadEvents()"]');
-            const tbody = document.getElementById('eventTableBody');
-
-            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
-
-            try {
-                let query = supabaseClient.from('compliance_events').select('*').order('event_date', {ascending:true});
-                if (year) {
-                    let startDate, endDate;
-                    if (month) {
-                        startDate = `${year}-${month}-01`;
-                        // 計算該月最後一天
-                        const lastDay = new Date(year, month, 0).getDate();
-                        endDate = `${year}-${month}-${lastDay}`;
-                    } else {
-                        startDate = `${year}-01-01`;
-                        endDate = `${year}-12-31`;
-                    }
-                    query = query.gte('event_date', startDate).lte('event_date', endDate);
-                }
-                if(keyword) query = query.ilike('title', `%${keyword}%`);
-                else if (!year) query = query.limit(50);
-
-                const { data, error } = await query;
-                if(error) throw error;
-                
-                const typeMap = {'training': '教育訓練', 'meeting': '會議', 'service': '臨場服務', 'document': '文件修訂'};
-                tbody.innerHTML = (data||[]).map(e => {
-                    const json = JSON.stringify(e).replace(/"/g, '&quot;');
-                    return `
-                    <tr class="animate__animated animate__fadeIn">
-                        <td class="ps-4">${e.event_date}</td>
-                        <td><span class="badge bg-light text-dark border">${typeMap[e.event_type]||e.event_type}</span></td>
-                        <td class="fw-bold">${e.title}</td>
-                        <td>${e.priority==='high' ? '<span class="text-danger">緊急</span>' : '一般'}</td>
-                        <td>${e.status==='pending' ? '待辦' : '已完成'}</td>
-                        <td class="text-end pe-4">
-                            <button class="btn btn-sm btn-outline-danger" onclick="openEventModal(${json})">
-                                <i class="fas fa-pen"></i>
-                            </button>
-                        </td>
-                    </tr>`;
-                }).join('') || '<tr><td colspan="6" class="text-center py-3">查無資料</td></tr>';
-            } catch(e) { alert('查詢失敗'); } 
-            finally { btn.innerHTML = '<i class="fas fa-search me-1"></i>查詢'; }
-        }
-
-        async function loadCompanyOptions() {
-            const { data } = await supabaseClient.from('companies').select('id, name').limit(100); 
-            const select = document.getElementById('ev-company');
-            if(data) {
-                select.innerHTML = '<option value="">(通用事項)</option>'; 
-                data.forEach(c => {
-                    const opt = document.createElement('option');
-                    opt.value = c.id;
-                    opt.text = c.name;
-                    select.appendChild(opt);
-                });
-            }
-        }
-
         function downloadTemplate(type) {
             let data = [];
             let filename = '';
 
             if (type === 'company') {
-                data = [['統一編號', '事業單位名稱', '聯絡人', '電話'], // [Fix] 移除服務年度
-                        ['12345678', '範例科技有限公司', '王小明', '02-12345678']];
+                // [Updated] 補回服務年度欄位
+                data = [['統一編號', '事業單位名稱', '聯絡人', '電話', '服務年度(YYYY)'], 
+                        ['12345678', '範例科技有限公司', '王小明', '02-12345678', '2025']];
                 filename = '公司主檔匯入範本.xlsx';
             } else if (type === 'staff') {
                 data = [['姓名', '身分角色(醫師/護理人員/顧問)', '職務型態(全職/兼職)', '電話', 'Email'],
                         ['陳大文', '護理人員', '兼職', '0912345678', 'nurse@example.com']];
                 filename = '醫護人員匯入範本.xlsx';
-            } else if (type === 'event') {
-                data = [['預定日期(YYYY-MM-DD)', '事項名稱', '類型(training/meeting/service)', '優先級(medium/high)'],
-                        ['2025-06-30', '急救人員複訓', 'training', 'high']];
-                filename = '行事曆匯入範本.xlsx';
             }
+
+            if (!filename) return;
 
             const wb = XLSX.utils.book_new();
             const ws = XLSX.utils.aoa_to_sheet(data);
@@ -602,7 +425,7 @@
                 document.getElementById('co-addr').value = data.address || '';
                 document.getElementById('co-contact').value = data.contact_person || '';
                 document.getElementById('co-phone').value = data.phone || '';
-                // [Fix] 雖然 UI 有此欄位，但讀取不到資料庫資料，預設保留原值或顯示預設
+                // [Updated] 綁定服務年度
                 document.getElementById('co-year').value = data.service_year || 2025; 
                 document.getElementById('btn-delete-company').style.display = 'block';
             } else {
@@ -642,28 +465,6 @@
             new bootstrap.Modal(document.getElementById('staffModal')).show();
         }
 
-        function openEventModal(data = null) {
-            currentType = 'event';
-            batchData = [];
-            
-            if (data) {
-                document.getElementById('eventModalTitle').innerText = '編輯行事曆事項';
-                document.getElementById('ev-id').value = data.id;
-                document.getElementById('ev-title').value = data.title;
-                document.getElementById('ev-type').value = data.event_type;
-                document.getElementById('ev-date').value = data.event_date;
-                document.getElementById('ev-priority').value = data.priority;
-                document.getElementById('ev-company').value = data.company_id || '';
-                document.getElementById('btn-delete-event').style.display = 'block';
-            } else {
-                document.getElementById('eventModalTitle').innerText = '新增行事曆事項';
-                document.getElementById('ev-id').value = '';
-                document.querySelectorAll('#eventForm input').forEach(i => i.value = '');
-                document.getElementById('btn-delete-event').style.display = 'none';
-            }
-            new bootstrap.Modal(document.getElementById('eventModal')).show();
-        }
-
         function toggleResignYear(checkbox) {
             const input = document.getElementById('st-end-year');
             if (checkbox.checked) {
@@ -689,8 +490,9 @@
                     name: document.getElementById('co-name').value,
                     address: document.getElementById('co-addr').value,
                     contact_person: document.getElementById('co-contact').value,
-                    phone: document.getElementById('co-phone').value
-                    // [Fix] 移除 service_year，因為資料庫無此欄位
+                    phone: document.getElementById('co-phone').value,
+                    // [Updated] 寫入服務年度
+                    service_year: document.getElementById('co-year').value
                 };
             } else if (currentType === 'staff') {
                 table = 'medical_staff';
@@ -709,31 +511,21 @@
                         resignation_year: isActive ? null : (document.getElementById('st-end-year').value || null)
                     };
                 }
-            } else if (currentType === 'event') {
-                table = 'compliance_events';
-                id = document.getElementById('ev-id').value;
-                if(batchData.length > 0) data = batchData;
-                else data = {
-                    title: document.getElementById('ev-title').value,
-                    event_type: document.getElementById('ev-type').value,
-                    event_date: document.getElementById('ev-date').value,
-                    priority: document.getElementById('ev-priority').value,
-                    company_id: document.getElementById('ev-company').value || null,
-                    status: 'pending'
-                };
             }
+
+            if (!table) return;
 
             // 2. 執行寫入 (Insert 或 Update)
             let error = null;
             if(Array.isArray(data)) {
-                // 批量匯入 (Insert)
+                // 批量匯入
                 const conflict = currentType === 'company' ? 'tax_id' : undefined;
                 const res = await supabaseClient.from(table).upsert(data, conflict ? {onConflict: conflict} : undefined);
                 error = res.error;
                 await writeLog('批量匯入', table, `匯入 ${data.length} 筆資料`);
             } else {
                 // 單筆
-                if(!data.name && !data.title) return alert('請填寫必要欄位');
+                if(!data.name) return alert('請填寫必要欄位');
                 
                 if (id) {
                     // Update
@@ -756,7 +548,6 @@
             
             if(currentType === 'company') loadCompanies();
             if(currentType === 'staff') loadStaff();
-            if(currentType === 'event') loadEvents();
         }
 
         async function deleteData(table) {
@@ -768,9 +559,6 @@
             } else if(table === 'medical_staff') {
                 id = document.getElementById('st-id').value;
                 name = document.getElementById('st-name').value;
-            } else if(table === 'compliance_events') {
-                id = document.getElementById('ev-id').value;
-                name = document.getElementById('ev-title').value;
             }
 
             if(!id) return;
@@ -788,7 +576,6 @@
                 document.querySelectorAll('.modal').forEach(el => bootstrap.Modal.getInstance(el)?.hide());
                 if(table==='companies') loadCompanies();
                 if(table==='medical_staff') loadStaff();
-                if(table==='compliance_events') loadEvents();
             }
         }
 
@@ -838,12 +625,10 @@
                     const r = json[i];
                     if(!r.length) continue;
                     if(currentType === 'company') {
-                        // [Fix] 移除 service_year
-                        batchData.push({ tax_id:''+r[0], name:r[1], contact_person:r[2], phone:r[3] });
+                        // [Updated] Excel 匯入也支援服務年度
+                        batchData.push({ tax_id:''+r[0], name:r[1], contact_person:r[2], phone:r[3], service_year:r[4]||2025 });
                     } else if(currentType === 'staff') {
                         batchData.push({ name:r[0], role:r[1]||'護理人員', employment_type:r[2]||'兼職', phone:r[3] });
-                    } else if(currentType === 'event') {
-                        batchData.push({ event_date:r[0], title:r[1], event_type:r[2]||'document', priority:r[3]||'medium' });
                     }
                 }
                 if(currentType === 'company') {
@@ -851,8 +636,8 @@
                     document.getElementById('companyForm').style.display = 'none';
                     document.getElementById('previewArea').style.display = 'block';
                     document.getElementById('previewCount').innerText = batchData.length;
-                    document.getElementById('previewTable').innerHTML = batchData.map(d => `<tr><td>${d.name}</td></tr>`).join('');
-                } else if(currentType === 'staff' || currentType === 'event') {
+                    document.getElementById('previewTable').innerHTML = batchData.map(d => `<tr><td>${d.name} (${d.service_year})</td></tr>`).join('');
+                } else if(currentType === 'staff') {
                     if(confirm(`解析出 ${batchData.length} 筆資料，是否直接匯入？`)) saveData();
                 }
                 document.getElementById('loadingOverlay').style.display = 'none';
