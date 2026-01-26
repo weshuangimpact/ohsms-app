@@ -211,6 +211,7 @@
                         </div>
                     </div>
 <div class="mt-5">
+    
                         <h5 class="step-title">Step 1.5：設定執行時間</h5>
                         <div class="card border bg-light">
                             <div class="card-body">
@@ -245,11 +246,20 @@
 <div id="checklist-container" class="ps-2">
                             </div>
 
-                    <div class="mt-5">
-                        <h5 class="step-title">Step 3：簽核文件上傳</h5>
-                        <div class="border-2 border-dashed border-secondary rounded p-5 text-center bg-light" style="cursor: pointer;" onclick="document.getElementById('fileUpload').click()">
-                            <i class="fas fa-cloud-arrow-up fa-3x text-secondary mb-3"></i>
-                            <h6 class="fw-bold text-secondary">點擊選擇檔案 (支援多檔、任意格式)</h6>
+<div class="mt-5">
+                        <h5 class="step-title">Step 3：特殊狀況說明與其他附件 (選填)</h5>
+                        
+                        <div class="mb-3">
+                            <label for="user-remark" class="form-label fw-bold text-dark">
+                                <i class="fas fa-comment-dots me-1 text-primary"></i> 補充說明 / 未完成理由
+                            </label>
+                            <textarea id="user-remark" class="form-control" rows="3" placeholder="例如：核心紀錄表尚未用印，僅先上傳草稿；或是現場環境無法拍照等理由..."></textarea>
+                        </div>
+
+                        <label class="form-label fw-bold text-dark">其他附件補充 (非必要)</label>
+                        <div class="border-2 border-dashed border-secondary rounded p-4 text-center bg-light" style="cursor: pointer;" onclick="document.getElementById('fileUpload').click()">
+                            <i class="fas fa-cloud-arrow-up fa-2x text-secondary mb-2"></i>
+                            <h6 class="fw-bold text-secondary mb-0">點擊選擇檔案 (影音、補充資料，不限格式)</h6>
                             <input type="file" id="fileUpload" style="display: none;" multiple>
                             <small class="text-muted d-block mt-2" id="fileNameDisplay">尚未選擇檔案</small>
                         </div>
@@ -641,16 +651,27 @@
                 // 等待所有上傳完成
                 const uploadedFiles = await Promise.all(uploadPromises);
 
-                // 寫入 service_record_staging
-                const { error: dbError } = await supabaseClient.from('service_record_staging').insert([{
+// 5. 寫入資料庫
+                const payload = {
                     workplace_id: workplaceId,
                     service_year: parseInt(year),
-                    service_date: new Date().toISOString(),
+                    service_date: visitDate || new Date().toISOString(),
                     service_type: mode === 'new' ? 'Plan/Do' : '補件',
                     status: 'pending',
-                    service_desc: JSON.stringify(stagingContent),
-                    attachment_files: uploadedFiles // ★ 存入檔案陣列
-                }]);
+                    
+                    // ★ 修改重點：將說明框內容存入 JSON
+                    service_desc: JSON.stringify({
+                        note: mode === 'new' ? "年度訪視" : "文件補件",
+                        process_summary: document.getElementById('disp-process').value,
+                        hazard_summary: document.getElementById('disp-desc').value,
+                        checklist: checkItems, // 注意變數名稱是否為 checkItems 或 checkLabels，請以您函式內定義的為準
+                        
+                        // ★ 新增這行：讀取使用者填寫的說明
+                        user_remark: document.getElementById('user-remark').value 
+                    }),
+                    
+                    attachment_files: uploadedData 
+                };
 
                 if (dbError) throw new Error('寫入暫存表失敗: ' + dbError.message);
 
@@ -699,8 +720,9 @@
         // ★ 新增：動態法規清單與上傳互動邏輯
         // ==========================================
         
-        // 1. 定義法規項目
+// 1. 定義法規項目 (修改：為核心項目增加 PDF 限制)
         const CHECKLIST_ITEMS = [
+            { code: 'core', text: '勞工健康服務執行紀錄表 (核心必要)', accept: '.pdf' }, 
             { code: '9-1', text: '勞工體格(健康)檢查結果之分析與評估、健康管理及資料保存。' },
             { code: '9-2', text: '協助雇主選配勞工從事適當之工作。' },
             { code: '9-3', text: '辦理健康檢查結果異常者之追蹤管理及健康指導。' },
@@ -719,25 +741,28 @@
             { code: 'other', text: '其他附件' }
         ];
 
-        // 2. 渲染清單函式
+// 2. 渲染清單函式 (修改：支援 accept 屬性)
         function renderDynamicChecklist() {
             const container = document.getElementById('checklist-container');
             if (!container) return;
             
             let html = '';
             CHECKLIST_ITEMS.forEach(item => {
+                const acceptAttr = item.accept ? `accept="${item.accept}"` : 'accept="image/*,.pdf"';
+                const typeHint = item.accept === '.pdf' ? '<span class="badge bg-danger ms-1" style="font-size:0.7em">限PDF</span>' : '';
+
                 html += `
                 <div class="check-row py-2 border-bottom border-light">
                     <div class="d-flex align-items-center flex-wrap">
                         <div class="form-check me-2">
                             <input class="form-check-input check-item" type="checkbox" id="c${item.code}" value="${item.code}" onchange="toggleUploadBtn(this)">
                             <label class="form-check-label" for="c${item.code}">
-                                <span class="fw-bold text-dark me-1">${item.code}</span> ${item.text}
+                                <span class="fw-bold text-dark me-1">${item.code}</span> ${item.text} ${typeHint}
                             </label>
                         </div>
                         
                         <div class="upload-wrapper ms-auto" id="wrapper-${item.code}">
-                            <input type="file" id="file-${item.code}" class="d-none item-file" data-code="${item.code}" onchange="updateFileState(this)">
+                            <input type="file" id="file-${item.code}" class="d-none item-file" data-code="${item.code}" ${acceptAttr} onchange="updateFileState(this)">
                             <label for="file-${item.code}" class="btn-upload-action" id="btn-${item.code}">
                                 <i class="fas fa-paperclip me-1"></i> <span class="btn-text">上傳佐證</span>
                             </label>
