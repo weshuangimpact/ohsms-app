@@ -16,7 +16,6 @@
             display: none; /* Auth Guard */
         }
         
-        /* 稽核說明卡 */
         .audit-info-card {
             background-color: #e9ecef;
             border-left: 5px solid #343a40;
@@ -28,16 +27,13 @@
             line-height: 1.6;
         }
 
-        /* 表格樣式 */
         .table th { font-weight: 600; font-size: 0.9rem; }
         .table td { font-size: 0.9rem; vertical-align: middle; }
         
-        /* 狀態標籤 */
         .badge-role-admin { background-color: #dc3545; color: white; }
         .badge-role-manager { background-color: #0d6efd; color: white; }
         .badge-role-user { background-color: #6c757d; color: white; }
 
-        /* 搜尋區塊優化 */
         .search-box {
             background: white;
             padding: 20px;
@@ -48,7 +44,6 @@
     </style>
 
     <script>
-        // 權限檢查 (僅限 Admin 與 文管)
         document.addEventListener('DOMContentLoaded', function() {
             const role = sessionStorage.getItem('currentUserRole');
             if (!role || role === 'medical') {
@@ -58,21 +53,21 @@
             }
             document.body.style.display = 'block';
             
-            // 預設填入今天的時間範圍 (方便使用者)
+            // 設定預設時間 (今天 00:00 ~ 23:59)
             const now = new Date();
-            // 設定為今天 00:00
             const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0);
-            // 設定為今天 23:59
             const todayEnd = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59);
             
-            // 格式化為 datetime-local 所需的 YYYY-MM-DDTHH:mm
             const formatDT = (d) => {
                 const pad = (n) => n.toString().padStart(2, '0');
                 return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
             };
 
-            document.getElementById('search-start').value = formatDT(todayStart);
-            document.getElementById('search-end').value = formatDT(todayEnd);
+            const startEl = document.getElementById('search-start');
+            const endEl = document.getElementById('search-end');
+            
+            if(startEl) startEl.value = formatDT(todayStart);
+            if(endEl) endEl.value = formatDT(todayEnd);
         });
     </script>
 </head>
@@ -91,7 +86,7 @@
     <div class="container-fluid px-4 pb-5">
         
         <div class="d-flex justify-content-between align-items-center mb-4">
-            <h4 class="fw-bold text-dark mb-0"><i class="fas fa-history me-2"></i>系統稽核紀錄 v1.01 (Audit Logs)</h4>
+            <h4 class="fw-bold text-dark mb-0"><i class="fas fa-history me-2"></i>系統稽核紀錄 (Audit Logs)</h4>
             <button class="btn btn-success btn-sm fw-bold" onclick="exportLogs()">
                 <i class="fas fa-file-csv me-2"></i>匯出 CSV
             </button>
@@ -99,8 +94,8 @@
 
         <div class="audit-info-card shadow-sm">
             <strong><i class="fas fa-info-circle me-2"></i>操作說明：</strong>
-            本頁面紀錄系統內所有關鍵操作（新增、修改、刪除、匯入）。<br>
-            <span class="text-danger fw-bold">注意：</span> 為避免資料量過大，系統預設不自動載入資料，請選擇「時間範圍」後點擊查詢。
+            本頁面紀錄系統內所有關鍵操作。<br>
+            <span class="text-danger fw-bold">注意：</span> 請選擇時間範圍後點擊查詢。
         </div>
 
         <div class="search-box">
@@ -114,7 +109,7 @@
                     <input type="datetime-local" id="search-end" class="form-control">
                 </div>
                 <div class="col-md-2">
-                    <label class="form-label fw-bold small text-muted">動作類型 (選填)</label>
+                    <label class="form-label fw-bold small text-muted">動作類型</label>
                     <select class="form-select" id="filter-action">
                         <option value="">全部動作</option>
                         <option value="新增">新增 (Insert)</option>
@@ -124,11 +119,11 @@
                     </select>
                 </div>
                 <div class="col-md-2">
-                    <label class="form-label fw-bold small text-muted">關鍵字 (選填)</label>
+                    <label class="form-label fw-bold small text-muted">關鍵字</label>
                     <input type="text" id="search-keyword" class="form-control" placeholder="姓名/內容...">
                 </div>
                 <div class="col-md-2">
-                    <button class="btn btn-primary w-100 fw-bold" onclick="loadLogs()">
+                    <button id="btn-search" class="btn btn-primary w-100 fw-bold" onclick="loadLogs()">
                         <i class="fas fa-search me-2"></i>查詢紀錄
                     </button>
                 </div>
@@ -163,7 +158,7 @@
             <div class="card-footer bg-white py-3">
                 <div class="d-flex justify-content-between align-items-center">
                     <small class="text-muted" id="record-count">顯示 0 筆資料</small>
-                    <small class="text-muted">單次查詢上限 1000 筆，若資料過多請縮小時間範圍。</small>
+                    <small class="text-muted">單次查詢上限 1000 筆</small>
                 </div>
             </div>
         </div>
@@ -174,67 +169,88 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
     <script>
+        // [Fix] 1. 確保變數名稱不與全域 supabase 衝突
         const SUPABASE_URL = 'https://yhehfucgemxnfrdvpdhw.supabase.co';
         const SUPABASE_KEY = 'sb_publishable_52emtU-9l-SDxcJTWVTPTA_Yu6qEogh';
-        const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+        
+        let supabaseClient;
+        let currentLogs = [];
 
-        let currentLogs = []; // 用於匯出 CSV
+        // 初始化 Supabase
+        try {
+            if (typeof window.supabase === 'undefined') {
+                console.error('Supabase library not loaded.');
+                alert('系統錯誤：無法載入資料庫連線元件，請檢查網路。');
+            } else {
+                // 使用 createClient 建立實例，並命名為 supabaseClient
+                const { createClient } = window.supabase;
+                supabaseClient = createClient(SUPABASE_URL, SUPABASE_KEY);
+                console.log('Supabase client initialized.');
+            }
+        } catch (e) {
+            console.error('Init Error:', e);
+        }
 
         // ==========================================
         // 1. 讀取 Logs (主要功能)
         // ==========================================
         async function loadLogs() {
+            console.log('Button clicked!'); // [Test] 確認按鈕有反應
+
+            if (!supabaseClient) {
+                alert('資料庫連線尚未初始化，請重新整理頁面。');
+                return;
+            }
+
             const startStr = document.getElementById('search-start').value;
             const endStr = document.getElementById('search-end').value;
             const actionType = document.getElementById('filter-action').value;
             const keyword = document.getElementById('search-keyword').value.trim();
-            const btn = document.querySelector('button[onclick="loadLogs()"]');
+            const btn = document.getElementById('btn-search'); // 使用 ID 抓取更穩
             const tbody = document.getElementById('logTableBody');
 
             if (!startStr || !endStr) {
-                alert('請務必選擇「開始時間」與「結束時間」。');
+                alert('⚠️ 請務必選擇「開始時間」與「結束時間」。');
                 return;
             }
 
-            // UI Loading 狀態
+            // UI Loading
             btn.disabled = true;
             btn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>查詢中...';
             tbody.innerHTML = '<tr><td colspan="6" class="text-center py-5">資料讀取中...</td></tr>';
 
             try {
-                // 建構查詢：時間區間 + 倒序排列 + 限制筆數
-                let query = supabase
+                // 查詢
+                let query = supabaseClient
                     .from('audit_logs')
                     .select('*')
-                    .gte('created_at', new Date(startStr).toISOString()) // 大於等於開始時間
-                    .lte('created_at', new Date(endStr).toISOString())   // 小於等於結束時間
+                    .gte('created_at', new Date(startStr).toISOString())
+                    .lte('created_at', new Date(endStr).toISOString())
                     .order('created_at', { ascending: false })
-                    .limit(1000); // 限制 1000 筆避免爆量
+                    .limit(1000);
 
-                // 後端過濾動作類型 (如果有的話)
                 if (actionType) {
                     query = query.eq('action_type', actionType);
                 }
 
-                // 執行查詢
                 const { data, error } = await query;
                 
                 if (error) throw error;
 
-                // 前端過濾關鍵字 (Supabase 的 ILIKE 較適合單欄位，多欄位關鍵字用前端濾比較彈性)
-                let filteredData = data;
+                // 前端關鍵字篩選
+                let filteredData = data || [];
                 if (keyword) {
                     const lowerKey = keyword.toLowerCase();
-                    filteredData = data.filter(log => 
+                    filteredData = filteredData.filter(log => 
                         (log.user_name && log.user_name.toLowerCase().includes(lowerKey)) ||
                         (log.details && log.details.toLowerCase().includes(lowerKey)) ||
                         (log.target_table && log.target_table.toLowerCase().includes(lowerKey))
                     );
                 }
 
-                currentLogs = filteredData; // 存起來給匯出用
+                currentLogs = filteredData;
                 
-                // ★ 關鍵修正：若無資料，直接彈窗告知
+                // [Fix] 若無資料，彈窗通知
                 if (filteredData.length === 0) {
                     alert('🔍 查無符合條件的紀錄 (資料庫回傳 0 筆)');
                 }
@@ -243,8 +259,8 @@
 
             } catch (err) {
                 console.error(err);
-                alert('讀取失敗: ' + err.message);
-                tbody.innerHTML = '<tr><td colspan="6" class="text-center py-5 text-danger">讀取失敗</td></tr>';
+                alert('❌ 讀取失敗: ' + err.message);
+                tbody.innerHTML = '<tr><td colspan="6" class="text-center py-5 text-danger">讀取發生錯誤</td></tr>';
             } finally {
                 btn.disabled = false;
                 btn.innerHTML = '<i class="fas fa-search me-2"></i>查詢紀錄';
@@ -259,7 +275,6 @@
             const countLabel = document.getElementById('record-count');
 
             if (logs.length === 0) {
-                // 即使彈窗了，表格也要顯示對應的空狀態
                 tbody.innerHTML = '<tr><td colspan="6" class="text-center py-5 text-muted">查無符合條件的紀錄</td></tr>';
                 countLabel.innerText = '顯示 0 筆資料';
                 return;
@@ -268,15 +283,12 @@
             countLabel.innerText = `顯示 ${logs.length} 筆資料`;
 
             tbody.innerHTML = logs.map(log => {
-                // 格式化時間
                 const timeStr = new Date(log.created_at).toLocaleString('zh-TW', { hour12: false });
                 
-                // 角色樣式
                 let roleBadge = '<span class="badge badge-role-user">一般</span>';
                 if (log.user_role === 'admin') roleBadge = '<span class="badge badge-role-admin">管理員</span>';
                 else if (log.user_role === 'general') roleBadge = '<span class="badge badge-role-manager">文管</span>';
 
-                // 動作樣式
                 let actionColor = 'text-dark';
                 if (log.action_type === '刪除') actionColor = 'text-danger fw-bold';
                 if (log.action_type === '新增') actionColor = 'text-success fw-bold';
@@ -296,17 +308,16 @@
         }
 
         // ==========================================
-        // 3. 匯出 CSV (Export)
+        // 3. 匯出 CSV
         // ==========================================
         function exportLogs() {
             if (currentLogs.length === 0) return alert('目前無資料可匯出，請先執行查詢。');
 
-            let csvContent = "data:text/csv;charset=utf-8,\uFEFF"; // UTF-8 BOM 防止亂碼
+            let csvContent = "data:text/csv;charset=utf-8,\uFEFF"; 
             csvContent += "時間,操作人員,身分,動作,目標資料表,詳情\n";
 
             currentLogs.forEach(log => {
                 const time = new Date(log.created_at).toLocaleString('zh-TW', { hour12: false });
-                // 處理 CSV 欄位中的逗號與引號
                 const escape = (text) => text ? `"${text.replace(/"/g, '""')}"` : '""';
                 
                 const row = [
