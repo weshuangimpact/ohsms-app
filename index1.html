@@ -577,18 +577,14 @@
             if (fileInput.files.length === 0) return alert('請上傳簽核文件');
 
             btn.disabled = true;
-            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 處理中...';
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 資料加密上傳中...';
 
             try {
-                // 這裡要先把危害資料 (Workplaces) 寫回去，因為使用者可能修改了
-                // 如果是編輯模式下，我們需要更新 workplaces 表
-                // 注意：這會更新 Master Data
-                if (isEditMode) {
+                // 若為編輯模式，先更新主檔
+                if (typeof isEditMode !== 'undefined' && isEditMode) {
                      const hazardType = document.getElementById('disp-hazard-type').value;
                      const hazardCount = parseInt(document.getElementById('disp-hazard-count').value) || 0;
                      
-                     // 這裡還可以加入更新其他欄位 (如人數、製程等)
-                     // 範例簡單處理危害部分
                      await supabaseClient.from('workplaces').update({
                          hazard_type: hazardType,
                          hazard_count: hazardCount,
@@ -598,34 +594,57 @@
                      }).eq('id', workplaceId);
                 }
 
-                const file = fileInput.files[0];
-                const filePath = `service_records/${year}/${Date.now()}_${file.name}`;
-                
-                // 上傳
-                await supabaseClient.storage.from('documents').upload(filePath, file);
+                // 收集 Step 2 勾選項目
+                let checkItems = [];
+                document.querySelectorAll('.check-item:checked').forEach(el => {
+                    checkItems.push(el.value + ' ' + el.nextElementSibling.innerText);
+                });
 
-                // 寫入 document_staging
-                await supabaseClient.from('document_staging').insert([{
-                    uploader_name: sessionStorage.getItem('currentUserName'),
-                    file_name: file.name,
-                    file_path: filePath,
-                    file_type: 'pdf',
-                    category: '表單',
-                    status: 'pending',
+                // 打包完整描述 (JSON)
+                const stagingContent = {
+                    note: mode === 'new' ? "年度訪視" : "文件補件",
+                    process_summary: document.getElementById('disp-process').value,
+                    hazard_summary: document.getElementById('disp-desc').value,
+                    checklist: checkItems
+                };
+
+                // 檔案上傳至 staging bucket
+                const file = fileInput.files[0];
+                const filePath = `service_records/${year}/${workplaceId}/${Date.now()}_${file.name}`;
+                
+                const { error: uploadError } = await supabaseClient.storage
+                    .from('staging')
+                    .upload(filePath, file);
+
+                if (uploadError) throw new Error('檔案上傳失敗: ' + uploadError.message);
+
+                // 寫入 service_record_staging 表
+                const { error: dbError } = await supabaseClient.from('service_record_staging').insert([{
+                    workplace_id: workplaceId,
                     service_year: parseInt(year),
-                    extracted_data: { 
-                        workplace_id: workplaceId,
-                        mode: mode, 
-                        note: mode === 'new' ? "年度例行服務" : "文件補件/修正"
-                    }
+                    service_date: new Date().toISOString(),
+                    service_type: mode === 'new' ? 'Plan/Do' : '補件',
+                    status: 'pending',
+                    service_desc: JSON.stringify(stagingContent),
+                    attachment_files: [{ 
+                        name: file.name, 
+                        bucket: 'staging', 
+                        path: filePath, 
+                        type: file.type,
+                        size: file.size
+                    }]
                 }]);
 
-                alert('✅ 上傳成功！資料已送出審核。');
+                if (dbError) throw new Error('寫入暫存表失敗: ' + dbError.message);
+
+                alert('✅ 提交成功！資料已送出審核。');
                 location.reload();
+
             } catch (e) {
+                console.error(e);
                 alert('錯誤: ' + e.message);
                 btn.disabled = false;
-                btn.innerHTML = '確認完工並提交';
+                btn.innerHTML = '<i class="fas fa-paper-plane me-2"></i>確認完工並提交';
             }
         }
 
@@ -633,7 +652,6 @@
         function toggleEditMode() {
             const btn = document.getElementById('edit-btn');
             const fields = document.querySelectorAll('.data-field');
-            // 抓取動態產生的 inputs
             const hazardInputs = document.querySelectorAll('.hazard-input');
             const addBtn = document.getElementById('btn-add-hazard');
             const removeBtns = document.querySelectorAll('.btn-remove-hazard');
@@ -641,7 +659,6 @@
             isEditMode = !isEditMode;
             
             if (isEditMode) {
-                // 進入編輯模式
                 fields.forEach(f => { f.readOnly = false; f.classList.remove('input-readonly'); f.classList.add('input-editable'); });
                 hazardInputs.forEach(f => { f.readOnly = false; f.classList.remove('input-readonly'); f.classList.add('input-editable'); });
                 
@@ -651,7 +668,6 @@
                 btn.innerHTML = '<i class="fas fa-save me-1"></i> 儲存變更';
                 btn.classList.add('btn-primary');
             } else {
-                // 離開編輯模式 (變回唯讀)
                 fields.forEach(f => { f.readOnly = true; f.classList.remove('input-editable'); f.classList.add('input-readonly'); });
                 hazardInputs.forEach(f => { f.readOnly = true; f.classList.remove('input-editable'); f.classList.add('input-readonly'); });
                 
