@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>系統維護與稽核 | OHSMS</title>
+    <title>系統日誌與稽核證據 | OHSMS</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css"/>
@@ -28,35 +28,49 @@
             line-height: 1.6;
         }
 
-        /* 日誌表格樣式 */
-        .log-table th { background-color: #343a40; color: white; font-weight: 500; }
-        .log-table td { vertical-align: middle; font-size: 0.9rem; }
-        .log-table tbody tr:hover { background-color: #e2e6ea; }
+        /* 表格樣式 */
+        .table th { font-weight: 600; font-size: 0.9rem; }
+        .table td { font-size: 0.9rem; vertical-align: middle; }
         
-        /* 標籤樣式 */
-        .badge-admin { background-color: #343a40; color: #fff; }
-        .badge-user { background-color: #6c757d; color: #fff; }
-        
-        /* 動作類型標籤 */
-        .op-add { color: #198754; background-color: #d1e7dd; border: 1px solid #a3cfbb; }
-        .op-edit { color: #fd7e14; background-color: #ffe5d0; border: 1px solid #fecba1; }
-        .op-del { color: #dc3545; background-color: #f8d7da; border: 1px solid #f1aeb5; }
-        .op-login { color: #0d6efd; background-color: #cfe2ff; border: 1px solid #9ec5fe; }
-        .op-other { color: #6610f2; background-color: #e0cffc; border: 1px solid #c59fdf; }
+        /* 狀態標籤 */
+        .badge-role-admin { background-color: #dc3545; color: white; }
+        .badge-role-manager { background-color: #0d6efd; color: white; }
+        .badge-role-user { background-color: #6c757d; color: white; }
+
+        /* 搜尋區塊優化 */
+        .search-box {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+            margin-bottom: 20px;
+        }
     </style>
 
     <script>
+        // 權限檢查 (僅限 Admin 與 文管)
         document.addEventListener('DOMContentLoaded', function() {
-            // 權限檢查：只有 Admin 能進來
             const role = sessionStorage.getItem('currentUserRole');
-            if (role !== 'admin') {
-                alert('權限不足：此頁面僅限系統管理員 (Admin) 存取。');
+            if (!role || role === 'medical') {
+                alert('權限不足：此頁面僅限管理人員存取。');
                 window.location.href = 'dashboard.html';
-                return; 
+                return;
             }
             document.body.style.display = 'block';
-            const userName = sessionStorage.getItem('currentUserName') || 'Admin';
-            document.getElementById('user-display').innerHTML = `<small>Admin: ${userName}</small>`;
+            
+            // 預設填入今天的時間範圍 (方便使用者)
+            const now = new Date();
+            const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0); // 00:00
+            const todayEnd = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59); // 23:59
+            
+            // 格式化為 datetime-local 所需的 YYYY-MM-DDTHH:mm
+            const formatDT = (d) => {
+                const pad = (n) => n.toString().padStart(2, '0');
+                return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+            };
+
+            document.getElementById('search-start').value = formatDT(todayStart);
+            document.getElementById('search-end').value = formatDT(todayEnd);
         });
     </script>
 </head>
@@ -64,9 +78,9 @@
 
     <nav class="navbar navbar-expand-lg navbar-dark bg-dark py-3 mb-4">
         <div class="container-fluid px-4">
-            <a class="navbar-brand" href="dashboard.html"><i class="fas fa-shield-alt me-2"></i>OHSMS</a>
+            <a class="navbar-brand fw-bold" href="dashboard.html"><i class="fas fa-shield-alt me-2"></i>OHSMS</a>
             <div class="d-flex align-items-center">
-                <span class="text-light me-3" id="user-display"></span>
+                <span class="text-light small me-3">系統管理後台</span>
                 <a href="dashboard.html" class="btn btn-outline-light btn-sm"><i class="fas fa-arrow-left me-1"></i> 返回儀表板</a>
             </div>
         </div>
@@ -75,45 +89,46 @@
     <div class="container-fluid px-4 pb-5">
         
         <div class="d-flex justify-content-between align-items-center mb-4">
-            <div>
-                <h2 class="fw-bold text-dark"><i class="fas fa-user-shield me-2 text-secondary"></i>系統維護與稽核</h2>
-                <p class="text-muted mb-0">System Audit Logs & Security Monitoring</p>
-            </div>
-            
-            <div class="d-flex gap-2">
-                <button class="btn btn-outline-dark btn-sm" onclick="exportLogs()"><i class="fas fa-file-csv me-1"></i>匯出 CSV</button>
-                <button class="btn btn-primary btn-sm" onclick="loadLogs()"><i class="fas fa-sync-alt me-1"></i>重新整理</button>
-            </div>
+            <h4 class="fw-bold text-dark mb-0"><i class="fas fa-history me-2"></i>系統稽核紀錄 (Audit Logs)</h4>
+            <button class="btn btn-success btn-sm fw-bold" onclick="exportLogs()">
+                <i class="fas fa-file-csv me-2"></i>匯出 CSV
+            </button>
         </div>
 
         <div class="audit-info-card shadow-sm">
-            <strong><i class="fas fa-info-circle me-2"></i>操作指引</strong><br>
-            本頁面顯示系統所有關鍵操作紀錄 (Audit Trail)，確保資料之不可否認性 (Non-repudiation)。
-            <ul class="mb-0 ps-3 mt-1 small">
-                <li><strong>完整性監控：</strong> 所有「新增」、「修改」、「刪除」與「匯入」行為皆會被系統自動擷取並存檔。</li>
-                <li><strong>資安查核：</strong> 當發生資料異常或資安事件時，請利用此日誌進行數位鑑識與責任釐清。</li>
-            </ul>
+            <strong><i class="fas fa-info-circle me-2"></i>操作說明：</strong>
+            本頁面紀錄系統內所有關鍵操作（新增、修改、刪除、匯入）。<br>
+            <span class="text-danger fw-bold">注意：</span> 為避免資料量過大，系統預設不自動載入資料，請選擇「時間範圍」後點擊查詢。
         </div>
 
-        <div class="card border-0 shadow-sm mb-4">
-            <div class="card-body py-3">
-                <div class="row g-3 align-items-center">
-                    <div class="col-md-4">
-                        <div class="input-group input-group-sm">
-                            <span class="input-group-text bg-light"><i class="fas fa-search"></i></span>
-                            <input type="text" class="form-control" id="searchInput" placeholder="搜尋操作人員、動作或詳細內容..." onkeyup="filterLogs()">
-                        </div>
-                    </div>
-                    <div class="col-md-3">
-                        <select class="form-select form-select-sm" id="actionFilter" onchange="filterLogs()">
-                            <option value="">所有動作類型</option>
-                            <option value="新增">新增 (Create)</option>
-                            <option value="修改">修改 (Update)</option>
-                            <option value="刪除">刪除 (Delete)</option>
-                            <option value="匯入">匯入 (Import)</option>
-                            <option value="登入">登入 (Login)</option>
-                        </select>
-                    </div>
+        <div class="search-box">
+            <div class="row g-3 align-items-end">
+                <div class="col-md-3">
+                    <label class="form-label fw-bold small text-muted">開始時間</label>
+                    <input type="datetime-local" id="search-start" class="form-control">
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label fw-bold small text-muted">結束時間</label>
+                    <input type="datetime-local" id="search-end" class="form-control">
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label fw-bold small text-muted">動作類型 (選填)</label>
+                    <select class="form-select" id="filter-action">
+                        <option value="">全部動作</option>
+                        <option value="新增">新增 (Insert)</option>
+                        <option value="更新">更新 (Update)</option>
+                        <option value="刪除">刪除 (Delete)</option>
+                        <option value="批量匯入">批量匯入 (Import)</option>
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label fw-bold small text-muted">關鍵字 (選填)</label>
+                    <input type="text" id="search-keyword" class="form-control" placeholder="姓名/內容...">
+                </div>
+                <div class="col-md-2">
+                    <button class="btn btn-primary w-100 fw-bold" onclick="loadLogs()">
+                        <i class="fas fa-search me-2"></i>查詢紀錄
+                    </button>
                 </div>
             </div>
         </div>
@@ -121,25 +136,32 @@
         <div class="card border-0 shadow">
             <div class="card-body p-0">
                 <div class="table-responsive">
-                    <table class="table table-hover log-table mb-0 align-middle table-striped">
-                        <thead>
+                    <table class="table table-hover mb-0 align-middle">
+                        <thead class="table-light">
                             <tr>
-                                <th class="ps-4" style="width: 180px;">發生時間 (Time)</th>
-                                <th style="width: 150px;">操作人員 (User)</th>
-                                <th style="width: 140px;">動作類型 (Action)</th>
-                                <th style="width: 150px;">目標對象 (Target)</th>
-                                <th>事件詳情 (Description)</th>
+                                <th class="ps-4">時間 (Time)</th>
+                                <th>操作人員</th>
+                                <th>身分</th>
+                                <th>動作類型</th>
+                                <th>目標資料表</th>
+                                <th>操作詳情 (Details)</th>
                             </tr>
                         </thead>
                         <tbody id="logTableBody">
                             <tr>
-                                <td colspan="5" class="text-center py-5 text-muted">
-                                    <div class="spinner-border spinner-border-sm text-secondary me-2"></div>
-                                    正在載入稽核紀錄...
+                                <td colspan="6" class="text-center py-5 text-muted">
+                                    <i class="fas fa-search fa-3x mb-3 text-secondary"></i><br>
+                                    請選擇時間範圍並點擊「查詢紀錄」
                                 </td>
                             </tr>
                         </tbody>
                     </table>
+                </div>
+            </div>
+            <div class="card-footer bg-white py-3">
+                <div class="d-flex justify-content-between align-items-center">
+                    <small class="text-muted" id="record-count">顯示 0 筆資料</small>
+                    <small class="text-muted">單次查詢上限 1000 筆，若資料過多請縮小時間範圍。</small>
                 </div>
             </div>
         </div>
@@ -148,123 +170,145 @@
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    
+
     <script>
-        // ==========================================
-        // 1. Supabase 設定 (已植入您的金鑰)
-        // ==========================================
-        const SUPABASE_URL = 'https://ghpxaeenikochgrnczic.supabase.co';
-        const SUPABASE_KEY = 'sb_publishable_v0ZN2OY08lh-8EC8ps8NdQ_ChYo1FRW';
-        const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+        const SUPABASE_URL = 'https://yhehfucgemxnfrdvpdhw.supabase.co';
+        const SUPABASE_KEY = 'sb_publishable_52emtU-9l-SDxcJTWVTPTA_Yu6qEogh';
+        const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-        let allLogs = []; // 存所有日誌供篩選用
+        let currentLogs = []; // 用於匯出 CSV
 
         // ==========================================
-        // 2. 載入日誌 (Load Logs)
+        // 1. 讀取 Logs (主要功能)
         // ==========================================
-        document.addEventListener('DOMContentLoaded', loadLogs);
-
         async function loadLogs() {
-            const tableBody = document.getElementById('logTableBody');
-            
-            // 從 audit_logs 撈資料，按時間倒序
-            const { data, error } = await supabase
-                .from('audit_logs')
-                .select('*')
-                .order('created_at', { ascending: false })
-                .limit(50); // 為了效能先抓 50 筆
+            const startStr = document.getElementById('search-start').value;
+            const endStr = document.getElementById('search-end').value;
+            const actionType = document.getElementById('filter-action').value;
+            const keyword = document.getElementById('search-keyword').value.trim();
+            const btn = document.querySelector('button[onclick="loadLogs()"]');
+            const tbody = document.getElementById('logTableBody');
 
-            if (error) {
-                console.error(error);
-                tableBody.innerHTML = `<tr><td colspan="5" class="text-center text-danger">載入失敗：${error.message}</td></tr>`;
+            if (!startStr || !endStr) {
+                alert('請務必選擇「開始時間」與「結束時間」。');
                 return;
             }
 
-            if (!data || data.length === 0) {
-                tableBody.innerHTML = `<tr><td colspan="5" class="text-center py-5 text-muted">目前尚無任何稽核紀錄。請嘗試在「基本資料建立」頁面進行操作。</td></tr>`;
-                return;
-            }
+            // UI Loading 狀態
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>查詢中...';
+            tbody.innerHTML = '<tr><td colspan="6" class="text-center py-5">資料讀取中...</td></tr>';
 
-            allLogs = data; // 存起來
-            renderTable(data);
+            try {
+                // 建構查詢：時間區間 + 倒序排列 + 限制筆數
+                let query = supabase
+                    .from('audit_logs')
+                    .select('*')
+                    .gte('created_at', new Date(startStr).toISOString()) // 大於等於開始時間
+                    .lte('created_at', new Date(endStr).toISOString())   // 小於等於結束時間
+                    .order('created_at', { ascending: false })
+                    .limit(1000); // 限制 1000 筆避免爆量
+
+                // 後端過濾動作類型 (如果有的話)
+                if (actionType) {
+                    query = query.eq('action_type', actionType);
+                }
+
+                // 執行查詢
+                const { data, error } = await query;
+                
+                if (error) throw error;
+
+                // 前端過濾關鍵字 (Supabase 的 ILIKE 較適合單欄位，多欄位關鍵字用前端濾比較彈性)
+                let filteredData = data;
+                if (keyword) {
+                    const lowerKey = keyword.toLowerCase();
+                    filteredData = data.filter(log => 
+                        (log.user_name && log.user_name.toLowerCase().includes(lowerKey)) ||
+                        (log.details && log.details.toLowerCase().includes(lowerKey)) ||
+                        (log.target_table && log.target_table.toLowerCase().includes(lowerKey))
+                    );
+                }
+
+                currentLogs = filteredData; // 存起來給匯出用
+                renderTable(filteredData);
+
+            } catch (err) {
+                console.error(err);
+                alert('讀取失敗: ' + err.message);
+                tbody.innerHTML = '<tr><td colspan="6" class="text-center py-5 text-danger">讀取失敗</td></tr>';
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = '<i class="fas fa-search me-2"></i>查詢紀錄';
+            }
         }
 
         // ==========================================
-        // 3. 渲染表格 (Render)
+        // 2. 渲染表格
         // ==========================================
         function renderTable(logs) {
-            const tableBody = document.getElementById('logTableBody');
-            tableBody.innerHTML = '';
+            const tbody = document.getElementById('logTableBody');
+            const countLabel = document.getElementById('record-count');
 
-            logs.forEach(log => {
-                // 判斷標籤顏色
-                let badgeClass = 'op-other';
-                let actionText = log.action_type || '其他';
-                
-                if (actionText.includes('新增') || actionText.includes('上傳')) badgeClass = 'op-add';
-                else if (actionText.includes('刪除')) badgeClass = 'op-del';
-                else if (actionText.includes('修改')) badgeClass = 'op-edit';
-                else if (actionText.includes('匯入')) badgeClass = 'op-add';
-                else if (actionText.includes('登入')) badgeClass = 'op-login';
+            if (logs.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="6" class="text-center py-5 text-muted">查無符合條件的紀錄</td></tr>';
+                countLabel.innerText = '顯示 0 筆資料';
+                return;
+            }
 
-                // 時間格式化
+            countLabel.innerText = `顯示 ${logs.length} 筆資料`;
+
+            tbody.innerHTML = logs.map(log => {
+                // 格式化時間
                 const timeStr = new Date(log.created_at).toLocaleString('zh-TW', { hour12: false });
-
-                // 人員標籤
-                const roleBadge = log.user_role === 'admin' 
-                    ? `<span class="badge badge-admin ms-1" style="font-size: 0.7em;">Admin</span>` 
-                    : `<span class="badge badge-user ms-1" style="font-size: 0.7em;">${log.user_role}</span>`;
-
-                const row = `
-                    <tr class="animate__animated animate__fadeIn">
-                        <td class="ps-4 text-muted small font-monospace">${timeStr}</td>
-                        <td>
-                            <span class="fw-bold text-dark">${log.user_name || 'Unknown'}</span>
-                            ${roleBadge}
-                        </td>
-                        <td><span class="badge ${badgeClass}">${actionText}</span></td>
-                        <td class="small text-primary">${log.target_table || '-'}</td>
-                        <td class="small text-secondary">${log.details || ''}</td>
-                    </tr>
-                `;
-                tableBody.innerHTML += row;
-            });
-        }
-
-        // ==========================================
-        // 4. 前端篩選 (Filter)
-        // ==========================================
-        function filterLogs() {
-            const keyword = document.getElementById('searchInput').value.toLowerCase();
-            const actionType = document.getElementById('actionFilter').value;
-
-            const filtered = allLogs.filter(log => {
-                const matchKeyword = (
-                    (log.user_name && log.user_name.toLowerCase().includes(keyword)) ||
-                    (log.details && log.details.toLowerCase().includes(keyword)) ||
-                    (log.action_type && log.action_type.toLowerCase().includes(keyword))
-                );
                 
-                const matchAction = actionType ? (log.action_type && log.action_type.includes(actionType)) : true;
+                // 角色樣式
+                let roleBadge = '<span class="badge badge-role-user">一般</span>';
+                if (log.user_role === 'admin') roleBadge = '<span class="badge badge-role-admin">管理員</span>';
+                else if (log.user_role === 'general') roleBadge = '<span class="badge badge-role-manager">文管</span>';
 
-                return matchKeyword && matchAction;
-            });
+                // 動作樣式
+                let actionColor = 'text-dark';
+                if (log.action_type === '刪除') actionColor = 'text-danger fw-bold';
+                if (log.action_type === '新增') actionColor = 'text-success fw-bold';
+                if (log.action_type === '更新') actionColor = 'text-primary fw-bold';
 
-            renderTable(filtered);
+                return `
+                <tr class="animate__animated animate__fadeIn">
+                    <td class="ps-4 text-muted small font-monospace">${timeStr}</td>
+                    <td class="fw-bold">${log.user_name || 'Unknown'}</td>
+                    <td>${roleBadge}</td>
+                    <td class="${actionColor}">${log.action_type}</td>
+                    <td><span class="badge bg-light text-dark border">${log.target_table}</span></td>
+                    <td class="text-muted small text-break" style="max-width: 300px;">${log.details || '-'}</td>
+                </tr>
+                `;
+            }).join('');
         }
 
         // ==========================================
-        // 5. 匯出 CSV (Export)
+        // 3. 匯出 CSV (Export)
         // ==========================================
         function exportLogs() {
-            if (allLogs.length === 0) return alert('無資料可匯出');
+            if (currentLogs.length === 0) return alert('目前無資料可匯出，請先執行查詢。');
 
-            let csvContent = "data:text/csv;charset=utf-8,\uFEFF"; // UTF-8 BOM
+            let csvContent = "data:text/csv;charset=utf-8,\uFEFF"; // UTF-8 BOM 防止亂碼
             csvContent += "時間,操作人員,身分,動作,目標資料表,詳情\n";
 
-            allLogs.forEach(log => {
-                const time = new Date(log.created_at).toLocaleString('zh-TW');
-                const row = `"${time}","${log.user_name}","${log.user_role}","${log.action_type}","${log.target_table}","${log.details}"`;
+            currentLogs.forEach(log => {
+                const time = new Date(log.created_at).toLocaleString('zh-TW', { hour12: false });
+                // 處理 CSV 欄位中的逗號與引號
+                const escape = (text) => text ? `"${text.replace(/"/g, '""')}"` : '""';
+                
+                const row = [
+                    escape(time),
+                    escape(log.user_name),
+                    escape(log.user_role),
+                    escape(log.action_type),
+                    escape(log.target_table),
+                    escape(log.details)
+                ].join(",");
+                
                 csvContent += row + "\n";
             });
 
