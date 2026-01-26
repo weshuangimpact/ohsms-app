@@ -60,8 +60,10 @@
             
             // 預設填入今天的時間範圍 (方便使用者)
             const now = new Date();
-            const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0); // 00:00
-            const todayEnd = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59); // 23:59
+            // 設定為今天 00:00
+            const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0);
+            // 設定為今天 23:59
+            const todayEnd = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59);
             
             // 格式化為 datetime-local 所需的 YYYY-MM-DDTHH:mm
             const formatDT = (d) => {
@@ -231,6 +233,12 @@
                 }
 
                 currentLogs = filteredData; // 存起來給匯出用
+                
+                // ★ 關鍵修正：若無資料，直接彈窗告知
+                if (filteredData.length === 0) {
+                    alert('🔍 查無符合條件的紀錄 (資料庫回傳 0 筆)');
+                }
+
                 renderTable(filteredData);
 
             } catch (err) {
@@ -251,6 +259,7 @@
             const countLabel = document.getElementById('record-count');
 
             if (logs.length === 0) {
+                // 即使彈窗了，表格也要顯示對應的空狀態
                 tbody.innerHTML = '<tr><td colspan="6" class="text-center py-5 text-muted">查無符合條件的紀錄</td></tr>';
                 countLabel.innerText = '顯示 0 筆資料';
                 return;
