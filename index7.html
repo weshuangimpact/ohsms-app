@@ -56,7 +56,7 @@
         
         <div class="d-flex justify-content-between align-items-end mb-3">
             <div class="section-title mb-0">
-                <h4 class="fw-bold text-dark mb-0">1. 客戶主檔管理 (Companies) V1.09</h4>
+                <h4 class="fw-bold text-dark mb-0">1. 客戶主檔管理 (Companies) V1.10</h4>
                 <small class="text-muted">管理服務之事業單位清單</small>
             </div>
             <div class="d-flex gap-2">
@@ -298,7 +298,7 @@
         });
 
         // ===================================
-        // 1. 公司查詢 (Companies)
+        // 1. 公司查詢 (Companies) - [Updated Fix]
         // ===================================
         async function loadCompanies() {
             const keyword = document.getElementById('search-company').value.trim();
@@ -320,13 +320,32 @@
 
                 let filteredData = data;
                 
+                // [Fix] 解決時區與時間導致的誤判問題
+                // 取得「今天」的標準 00:00 時間
+                const now = new Date();
+                const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+
+                // 判斷邏輯 Helper
+                const checkIsActive = (c) => {
+                    if (c.is_active === false) return false; // 明確被停用
+                    
+                    if (!c.contract_end_date) return true; // 無結束日 = 永久
+                    
+                    // 解析結束日，同樣正規化為 00:00
+                    const d = new Date(c.contract_end_date);
+                    const endDate = new Date(d.getFullYear(), d.getMonth(), d.getDate());
+                    
+                    // 只要結束日 >= 今天，都算是「服務中」 (包含結束日當天)
+                    return endDate >= today;
+                };
+
                 // 篩選邏輯
                 if (filterType === 'active') {
-                    // 服務中：啟用且 (無結束日 或 未過期)
-                    filteredData = data.filter(c => c.is_active !== false && (!c.contract_end_date || new Date(c.contract_end_date) >= new Date()));
+                    // 服務中
+                    filteredData = data.filter(c => checkIsActive(c));
                 } else if (filterType === 'inactive') {
-                    // [New] 已解約：停用 或 已過期
-                    filteredData = data.filter(c => c.is_active === false || (c.contract_end_date && new Date(c.contract_end_date) < new Date()));
+                    // 已解約/結束
+                    filteredData = data.filter(c => !checkIsActive(c));
                 } else if (filterType !== 'all' && filterType !== '') {
                     // 年度篩選
                     const targetYear = parseInt(filterType);
@@ -341,8 +360,9 @@
 
                 tbody.innerHTML = filteredData.map(c => {
                     const json = JSON.stringify(c).replace(/"/g, '&quot;');
-                    // 狀態判斷 (用於顯示 Badge)
-                    const isActive = (c.is_active !== false && (!c.contract_end_date || new Date(c.contract_end_date) >= new Date()));
+                    
+                    // [Fix] 使用相同的邏輯來決定 Badge 狀態
+                    const isActive = checkIsActive(c);
                     const statusBadge = isActive ? '<span class="badge bg-primary">服務中</span>' : '<span class="badge bg-secondary">已結束</span>';
                     const period = c.contract_start_date ? `${c.contract_start_date} ~ ${c.contract_end_date || '至今'}` : (c.service_year ? `${c.service_year}年` : '-');
 
@@ -368,7 +388,7 @@
         }
 
         // ===================================
-        // 2. 人員查詢 (Staff)
+        // 2. 人員查詢 (Staff) - [Updated Fix]
         // ===================================
         async function loadStaff() {
             const keyword = document.getElementById('search-staff').value.trim();
@@ -387,13 +407,23 @@
 
                 let filteredData = data;
                 
-                // 篩選邏輯
+                // [Fix] 人員的判斷邏輯也一併統一
+                const now = new Date();
+                const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+
+                const checkIsStaffActive = (s) => {
+                    if (s.is_active === false) return false;
+                    if (!s.resignation_date) return true;
+                    const d = new Date(s.resignation_date);
+                    const endDate = new Date(d.getFullYear(), d.getMonth(), d.getDate());
+                    // 離職日當天仍算在職
+                    return endDate >= today;
+                };
+
                 if (filterType === 'active') {
-                    // 在職：啟用且無離職日
-                    filteredData = data.filter(s => s.is_active !== false && !s.resignation_date);
+                    filteredData = data.filter(s => checkIsStaffActive(s));
                 } else if (filterType === 'inactive') {
-                    // [New] 已離職：停用 或 有離職日
-                    filteredData = data.filter(s => s.is_active === false || s.resignation_date);
+                    filteredData = data.filter(s => !checkIsStaffActive(s));
                 } else if (filterType !== 'all' && filterType !== '') {
                     const targetYear = parseInt(filterType);
                     filteredData = data.filter(s => {
@@ -407,7 +437,7 @@
 
                 tbody.innerHTML = filteredData.map(s => {
                     const json = JSON.stringify(s).replace(/"/g, '&quot;');
-                    const isActive = (s.is_active !== false && !s.resignation_date); 
+                    const isActive = checkIsStaffActive(s);
                     const statusBadge = isActive ? '<span class="badge bg-success">在職中</span>' : '<span class="badge bg-secondary">已離職</span>';
                     const period = s.onboard_date ? `${s.onboard_date} ~ ${s.resignation_date || '至今'}` : '-';
 
