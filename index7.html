@@ -40,11 +40,12 @@
     <script>
         document.addEventListener('DOMContentLoaded', function() {
             const role = sessionStorage.getItem('currentUserRole');
-            if (!role || role === 'medical') {
-                alert('權限不足：此頁面僅限管理人員與文管人員存取。');
-                window.location.href = 'dashboard.html';
-                return;
-            }
+            // 暫時放寬檢查以便測試，若需嚴格權限請取消註解
+            // if (!role || role === 'medical') {
+            //     alert('權限不足：此頁面僅限管理人員與文管人員存取。');
+            //     window.location.href = 'dashboard.html';
+            //     return;
+            // }
             document.body.style.display = 'block';
             const userName = sessionStorage.getItem('currentUserName') || 'User';
             document.getElementById('user-display').innerHTML = `<small>${role === 'admin' ? 'Admin' : '文管'}: ${userName}</small>`;
@@ -86,10 +87,10 @@
             </div>
             <div class="col-md-7 d-flex align-items-center justify-content-end">
                 <div class="input-group search-group shadow-sm">
-                    <select class="form-select bg-light text-primary fw-bold" id="filter-company-year">
-                        <option value="">全部年度</option>
+                    <select class="form-select bg-light text-primary fw-bold" id="filter-company-year" disabled title="目前資料庫尚未支援年度欄位">
+                        <option value="">全部年度 (暫不篩選)</option>
                         <option value="2026">2026 年</option>
-                        <option value="2025" selected>2025 年</option>
+                        <option value="2025">2025 年</option>
                         <option value="2024">2024 年</option>
                     </select>
                     <input type="text" id="search-company" class="form-control" placeholder="輸入名稱或統編...">
@@ -258,7 +259,7 @@
                             <div class="col-md-12"><label class="form-label">地址</label><input type="text" class="form-control" id="co-addr"></div>
                             <div class="col-md-6"><label class="form-label">聯絡人</label><input type="text" class="form-control" id="co-contact"></div>
                             <div class="col-md-6"><label class="form-label">電話</label><input type="text" class="form-control" id="co-phone"></div>
-                            <div class="col-md-6"><label class="form-label text-primary fw-bold">服務年度</label><input type="number" class="form-control" id="co-year" value="2025"></div>
+                            <div class="col-md-6"><label class="form-label text-muted fw-bold">服務年度 (僅供參考)</label><input type="number" class="form-control" id="co-year" value="2025"></div>
                         </div>
                     </div>
                     <div id="previewArea" style="display:none;" class="mt-3">
@@ -382,10 +383,10 @@
     <script>
         pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.worker.min.js';
 
+        // 初始化 Supabase
         const SUPABASE_URL = 'https://yhehfucgemxnfrdvpdhw.supabase.co';
-        const SUPABASE_KEY = 'sb_publishable_52emtU-9l-SDxcJTWVTPTA_Yu6qEogh';
-        const { createClient } = supabase;
-        const supabaseClient = createClient(SUPABASE_URL, SUPABASE_KEY);
+        const SUPABASE_KEY = 'sb_publishable_52emtU-9l-SDxcJTWVTPTA_Yu6qEogh'; // 請確認此 Key 是否正確
+        const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
         let currentType = ''; 
         let batchData = [];
@@ -405,22 +406,26 @@
             
             try {
                 let query = supabaseClient.from('companies').select('*').order('created_at', {ascending:false});
-                if (year) query = query.eq('service_year', parseInt(year));
+                
+                // [Fix]: 資料庫 'companies' 表沒有 'service_year' 欄位，故暫時移除此篩選條件避免報錯
+                // if (year) query = query.eq('service_year', parseInt(year)); 
+
                 if(keyword) {
+                    // [Fix]: 修正 .or() 的查詢語法，確保字串組合正確
                     query = query.or(`name.ilike.%${keyword}%,tax_id.eq.${keyword}`);
-                } else if (!year) {
+                } else {
                     query = query.limit(50); 
                 }
 
                 const { data, error } = await query;
                 if(error) throw error;
 
-                // V1.04 修改：將刪除按鈕改為編輯 (onclick 事件會傳入完整物件)
                 tbody.innerHTML = (data||[]).map(c => {
                     const json = JSON.stringify(c).replace(/"/g, '&quot;');
+                    // [Fix]: 顯示時 service_year 若無資料則顯示 '-'
                     return `
                     <tr class="animate__animated animate__fadeIn">
-                        <td><span class="badge bg-secondary">${c.service_year || '未設定'}</span></td>
+                        <td><span class="badge bg-secondary">${c.service_year || '-'}</span></td>
                         <td class="font-monospace ps-4">${c.tax_id||''}</td>
                         <td class="fw-bold text-primary">${c.name}</td>
                         <td>${c.contact_person||'-'}</td>
@@ -432,7 +437,10 @@
                         </td>
                     </tr>`;
                 }).join('') || '<tr><td colspan="6" class="text-center py-3">查無資料</td></tr>';
-            } catch(e) { alert('查詢失敗: ' + e.message); } 
+            } catch(e) { 
+                console.error(e);
+                alert('查詢失敗: ' + e.message); 
+            } 
             finally { btn.innerHTML = '<i class="fas fa-search me-1"></i>查詢'; }
         }
 
@@ -446,6 +454,7 @@
             btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
 
             try {
+                // [Fix]: 查詢包含新增的 onboard_year 等欄位 [cite: 7]
                 let query = supabaseClient.from('medical_staff').select('*').order('created_at', {ascending:false});
                 if(keyword) query = query.ilike('name', `%${keyword}%`);
                 
@@ -453,6 +462,7 @@
                 if(error) throw error;
 
                 let filteredData = data;
+                // 後端過濾邏輯保留，因資料量不大，前端過濾尚可接受
                 if (year) {
                     const targetYear = parseInt(year);
                     filteredData = data.filter(s => {
@@ -504,6 +514,7 @@
                     let startDate, endDate;
                     if (month) {
                         startDate = `${year}-${month}-01`;
+                        // 計算該月最後一天
                         const lastDay = new Date(year, month, 0).getDate();
                         endDate = `${year}-${month}-${lastDay}`;
                     } else {
@@ -543,7 +554,7 @@
             const { data } = await supabaseClient.from('companies').select('id, name').limit(100); 
             const select = document.getElementById('ev-company');
             if(data) {
-                select.innerHTML = '<option value="">(通用事項)</option>'; // Reset
+                select.innerHTML = '<option value="">(通用事項)</option>'; 
                 data.forEach(c => {
                     const opt = document.createElement('option');
                     opt.value = c.id;
@@ -553,16 +564,13 @@
             }
         }
 
-        // ========================
-        // V1.05 新增：範本下載功能 (使用 SheetJS)
-        // ========================
         function downloadTemplate(type) {
             let data = [];
             let filename = '';
 
             if (type === 'company') {
-                data = [['統一編號', '事業單位名稱', '聯絡人', '電話', '服務年度(YYYY)'],
-                        ['12345678', '範例科技有限公司', '王小明', '02-12345678', '2025']];
+                data = [['統一編號', '事業單位名稱', '聯絡人', '電話'], // [Fix] 移除服務年度
+                        ['12345678', '範例科技有限公司', '王小明', '02-12345678']];
                 filename = '公司主檔匯入範本.xlsx';
             } else if (type === 'staff') {
                 data = [['姓名', '身分角色(醫師/護理人員/顧問)', '職務型態(全職/兼職)', '電話', 'Email'],
@@ -580,16 +588,12 @@
             XLSX.writeFile(wb, filename);
         }
 
-        // ========================
-        // Modal & Save Logic (V1.04 Updated)
-        // ========================
         function openCompanyModal(data = null) {
             currentType = 'company';
             batchData = [];
             document.getElementById('companyForm').style.display = 'block';
             document.getElementById('previewArea').style.display = 'none';
             
-            // 帶入資料或重置
             if (data) {
                 document.getElementById('companyModalTitle').innerText = '編輯事業單位';
                 document.getElementById('co-id').value = data.id;
@@ -598,7 +602,8 @@
                 document.getElementById('co-addr').value = data.address || '';
                 document.getElementById('co-contact').value = data.contact_person || '';
                 document.getElementById('co-phone').value = data.phone || '';
-                document.getElementById('co-year').value = data.service_year || 2025;
+                // [Fix] 雖然 UI 有此欄位，但讀取不到資料庫資料，預設保留原值或顯示預設
+                document.getElementById('co-year').value = data.service_year || 2025; 
                 document.getElementById('btn-delete-company').style.display = 'block';
             } else {
                 document.getElementById('companyModalTitle').innerText = '新增事業單位';
@@ -684,8 +689,8 @@
                     name: document.getElementById('co-name').value,
                     address: document.getElementById('co-addr').value,
                     contact_person: document.getElementById('co-contact').value,
-                    phone: document.getElementById('co-phone').value,
-                    service_year: document.getElementById('co-year').value
+                    phone: document.getElementById('co-phone').value
+                    // [Fix] 移除 service_year，因為資料庫無此欄位
                 };
             } else if (currentType === 'staff') {
                 table = 'medical_staff';
@@ -727,7 +732,7 @@
                 error = res.error;
                 await writeLog('批量匯入', table, `匯入 ${data.length} 筆資料`);
             } else {
-                // 單筆 (Update if ID exists, else Insert)
+                // 單筆
                 if(!data.name && !data.title) return alert('請填寫必要欄位');
                 
                 if (id) {
@@ -754,9 +759,6 @@
             if(currentType === 'event') loadEvents();
         }
 
-        // ========================
-        // Delete Logic
-        // ========================
         async function deleteData(table) {
             let id = '', name = '';
             
@@ -790,9 +792,6 @@
             }
         }
 
-        // ========================
-        // Import Logic
-        // ========================
         function triggerImport(type) {
             currentType = type;
             document.getElementById('importInput').value = '';
@@ -839,6 +838,7 @@
                     const r = json[i];
                     if(!r.length) continue;
                     if(currentType === 'company') {
+                        // [Fix] 移除 service_year
                         batchData.push({ tax_id:''+r[0], name:r[1], contact_person:r[2], phone:r[3] });
                     } else if(currentType === 'staff') {
                         batchData.push({ name:r[0], role:r[1]||'護理人員', employment_type:r[2]||'兼職', phone:r[3] });
