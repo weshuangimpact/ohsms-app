@@ -4,26 +4,134 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>帳號權限管理 | OHSMS Admin</title>
+
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
-    <!-- 原樣式完整保留 -->
+
+    <style>
+        body { background:#f4f6f9; }
+        .avatar-circle {
+            width:40px;height:40px;border-radius:50%;
+            background:#dee2e6;display:flex;
+            align-items:center;justify-content:center;
+            font-weight:bold;
+        }
+        .role-tag { padding:4px 8px;border-radius:6px;font-size:.8rem; }
+        .role-admin { background:#ffe5e5;color:#842029; }
+        .role-general { background:#e0e7ff;color:#312e81; }
+        .role-medical { background:#d1fae5;color:#065f46; }
+        .status-badge-active { background:#198754; }
+        .status-badge-resigned { background:#6c757d; }
+    </style>
 </head>
+
 <body>
 
-<!-- ====== UI 完全不變（略，與你原本相同） ====== -->
+<div class="container py-4">
+
+    <h3 class="fw-bold mb-3">帳號權限管理</h3>
+
+    <!-- 篩選區 -->
+    <div class="row g-2 mb-3">
+        <div class="col-md-4">
+            <input id="searchInput" class="form-control" placeholder="搜尋姓名或 Email" oninput="filterUsers()">
+        </div>
+        <div class="col-md-3">
+            <select id="roleFilter" class="form-select" onchange="filterUsers()">
+                <option value="all">全部角色</option>
+                <option value="admin">Admin</option>
+                <option value="general">文管</option>
+                <option value="medical">醫護</option>
+            </select>
+        </div>
+        <div class="col-md-3 d-flex align-items-center">
+            <input type="checkbox" id="showResigned" class="form-check-input me-2" onchange="filterUsers()">
+            <label for="showResigned">顯示離職</label>
+        </div>
+        <div class="col-md-2 text-end">
+            <span class="text-muted">共 <span id="totalCount">0</span> 人</span>
+        </div>
+    </div>
+
+    <!-- 表格 -->
+    <div class="card shadow-sm">
+        <div class="table-responsive">
+            <table class="table align-middle mb-0">
+                <thead class="table-dark">
+                    <tr>
+                        <th class="ps-4">使用者</th>
+                        <th>角色</th>
+                        <th>狀態</th>
+                        <th>最近登入</th>
+                        <th class="text-end pe-4">操作</th>
+                    </tr>
+                </thead>
+                <tbody id="userTableBody">
+                    <tr>
+                        <td colspan="5" class="text-center py-4 text-muted">載入中...</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+</div>
+
+<!-- Modal -->
+<div class="modal fade" id="userModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title">帳號設定</h5>
+                <button class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+
+                <input type="hidden" id="edit-user-id">
+
+                <div class="mb-3">
+                    <label class="form-label">姓名</label>
+                    <input id="input-name" class="form-control">
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label">Email</label>
+                    <input id="input-email" class="form-control">
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label">系統角色</label>
+                    <select id="input-role" class="form-select">
+                        <option value="admin">Admin</option>
+                        <option value="general">文管</option>
+                        <option value="medical">醫護</option>
+                    </select>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label">狀態</label>
+                    <select id="input-status" class="form-select">
+                        <option value="active">在職</option>
+                        <option value="resigned">離職</option>
+                    </select>
+                </div>
+
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                <button class="btn btn-primary" onclick="saveUser()">儲存</button>
+            </div>
+        </div>
+    </div>
+</div>
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
 <script>
-/* ===============================
-   Supabase 初始化（正確）
-================================ */
 const SUPABASE_URL = 'https://yhehfucgemxnfrdvpdhw.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_52emtU-9l-SDxcJTWVTPTA_Yu6qEogh';
-
-const { createClient } = supabase;
-const db = createClient(SUPABASE_URL, SUPABASE_KEY);
+const db = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
 let allUsers = [];
 let userModal;
@@ -33,134 +141,100 @@ document.addEventListener('DOMContentLoaded', async () => {
     await fetchUsers();
 });
 
-/* ===============================
-   1. 正確撈取 medical_staff
-================================ */
 async function fetchUsers() {
-    const { data, error } = await db
-        .from('medical_staff')
-        .select(`
-            id,
-            name,
-            email,
-            system_role,
-            is_active,
-            onboard_year,
-            resignation_year,
-            created_at
-        `)
-        .order('created_at', { ascending: false });
+    const { data, error } = await db.from('medical_staff')
+        .select('id,name,email,system_role,is_active,created_at')
+        .order('created_at', { ascending:false });
 
     if (error) {
-        console.error(error);
-        alert('讀取帳號資料失敗');
+        alert(error.message);
         return;
     }
 
-    // 統一轉成 UI 需要的格式
     allUsers = data.map(u => ({
         id: u.id,
         full_name: u.name,
-        email: u.email || '—',
-        role: u.system_role || 'medical',
-        status: u.is_active ? 'active' : 'resigned',
-        last_sign_in_at: null
+        email: u.email || '',
+        role: u.system_role,
+        status: u.is_active ? 'active' : 'resigned'
     }));
 
     filterUsers();
 }
 
-/* ===============================
-   2. 篩選與渲染（UI 不變）
-================================ */
 function filterUsers() {
-    const term = document.getElementById('searchInput').value.toLowerCase();
-    const roleFilter = document.getElementById('roleFilter').value;
-    const showResigned = document.getElementById('showResigned').checked;
+    const term = searchInput.value.toLowerCase();
+    const role = roleFilter.value;
+    const show = showResigned.checked;
 
-    const filtered = allUsers.filter(user => {
-        if (!showResigned && user.status === 'resigned') return false;
-        if (roleFilter !== 'all' && user.role !== roleFilter) return false;
-        return (
-            (user.full_name || '').toLowerCase().includes(term) ||
-            (user.email || '').toLowerCase().includes(term)
-        );
+    const list = allUsers.filter(u => {
+        if (!show && u.status === 'resigned') return false;
+        if (role !== 'all' && u.role !== role) return false;
+        return u.full_name.toLowerCase().includes(term) || u.email.toLowerCase().includes(term);
     });
 
-    renderTable(filtered);
+    renderTable(list);
 }
 
 function renderTable(users) {
-    const tbody = document.getElementById('userTableBody');
-    tbody.innerHTML = '';
-    document.getElementById('totalCount').innerText = users.length;
+    userTableBody.innerHTML = '';
+    totalCount.innerText = users.length;
 
-    if (users.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="5" class="text-center py-4 text-muted">查無資料</td></tr>`;
+    if (!users.length) {
+        userTableBody.innerHTML = `<tr><td colspan="5" class="text-center text-muted py-4">查無資料</td></tr>`;
         return;
     }
 
-    users.forEach(user => {
-        const isResigned = user.status === 'resigned';
-        const statusBadge = isResigned
-            ? `<span class="badge status-badge-resigned">已離職</span>`
-            : `<span class="badge status-badge-active">在職中</span>`;
-
-        const roleName =
-            user.role === 'admin' ? 'Admin' :
-            user.role === 'general' ? 'User' : 'Consultant';
-
+    users.forEach(u => {
         const tr = document.createElement('tr');
         tr.innerHTML = `
             <td class="ps-4">
-                <div class="d-flex align-items-center">
-                    <div class="avatar-circle">${user.full_name.charAt(0)}</div>
+                <div class="d-flex align-items-center gap-2">
+                    <div class="avatar-circle">${u.full_name.charAt(0)}</div>
                     <div>
-                        <div class="fw-bold">${user.full_name}</div>
-                        <div class="small text-muted">${user.email}</div>
+                        <div class="fw-bold">${u.full_name}</div>
+                        <div class="small text-muted">${u.email}</div>
                     </div>
                 </div>
             </td>
-            <td><span class="role-tag role-${user.role}">${roleName}</span></td>
-            <td>${statusBadge}</td>
-            <td class="text-muted small">尚未提供</td>
+            <td><span class="role-tag role-${u.role}">${u.role}</span></td>
+            <td><span class="badge ${u.status==='active'?'status-badge-active':'status-badge-resigned'}">${u.status}</span></td>
+            <td class="text-muted">—</td>
             <td class="text-end pe-4">
-                <button class="btn btn-outline-secondary btn-sm" onclick="openEditModal('${user.id}')">
-                    <i class="fas fa-pen me-1"></i> 設定
+                <button class="btn btn-sm btn-outline-secondary" onclick="openEditModal('${u.id}')">
+                    <i class="fas fa-pen"></i>
                 </button>
             </td>
         `;
-        tbody.appendChild(tr);
+        userTableBody.appendChild(tr);
     });
 }
 
-/* ===============================
-   3. 新增 / 編輯（寫入 medical_staff）
-================================ */
-async function saveUser() {
-    const id = document.getElementById('edit-user-id').value;
-    const name = document.getElementById('input-name').value;
-    const email = document.getElementById('input-email').value;
-    const role = document.getElementById('input-role').value;
-    const status = document.getElementById('input-status').value;
+function openEditModal(id) {
+    const u = allUsers.find(x => x.id === id);
+    if (!u) return;
 
-    if (!name) return alert('姓名必填');
+    edit-user-id.value = u.id;
+    input-name.value = u.full_name;
+    input-email.value = u.email;
+    input-role.value = u.role;
+    input-status.value = u.status;
+
+    userModal.show();
+}
+
+async function saveUser() {
+    const id = edit-user-id.value;
 
     const payload = {
-        name,
-        email,
-        system_role: role,
-        is_active: status === 'active'
+        name: input-name.value,
+        email: input-email.value,
+        system_role: input-role.value,
+        is_active: input-status.value === 'active'
     };
 
-    const res = id
-        ? await db.from('medical_staff').update(payload).eq('id', id)
-        : await db.from('medical_staff').insert([payload]);
-
-    if (res.error) {
-        alert('儲存失敗：' + res.error.message);
-        return;
-    }
+    const { error } = await db.from('medical_staff').update(payload).eq('id', id);
+    if (error) return alert(error.message);
 
     userModal.hide();
     fetchUsers();
