@@ -37,9 +37,10 @@
         .card-eval { border-left-color: #ffc107; }
         .card-data { border-left-color: #4f46e5; }
         .card-admin { border-left-color: #212529; }
-        
-        /* [新增] 帳號管理飾條顏色 (青色) */
         .card-account { border-left-color: #0dcaf0; }
+        
+        /* [新增] 個人設定飾條顏色 (灰色) */
+        .card-profile { border-left-color: #6c757d; }
 
         .icon-wrapper {
             width: 50px;
@@ -226,6 +227,26 @@
                 </div>
             </div>
 
+            <div class="col-xl-3 col-md-6" id="card-profile">
+                <div class="card dashboard-card bg-white card-profile" onclick="window.location.href='profile_settings.html'">
+                    <div class="card-body p-4">
+                        <div class="d-flex justify-content-between">
+                            <div>
+                                <h6 class="text-uppercase fw-bold small mb-1" style="color: #6c757d;">Profile Settings</h6>
+                                <h5 class="card-title fw-bold mb-2">個人帳號密碼管理</h5>
+                            </div>
+                            <div class="icon-wrapper bg-secondary bg-opacity-10 text-secondary">
+                                <i class="fas fa-user-lock"></i>
+                            </div>
+                        </div>
+                        <div class="guide-text">
+                            操作指引：<br>
+                            修改個人登入帳號及密碼。
+                        </div>
+                    </div>
+                </div>
+            </div>
+
         </div>
     </div>
 
@@ -256,10 +277,11 @@
                 eval: document.getElementById('card-index3'),    // 評鑑助理
                 maint: document.getElementById('card-index6'),   // 系統操作日誌稽核
                 master: document.getElementById('card-index7'),  // 基本資料
-                users: document.getElementById('card-users')     // [新增] 帳號管理
+                users: document.getElementById('card-users'),    // Admin帳號管理
+                profile: document.getElementById('card-profile') // [新增] 個人設定 (全開)
             };
 
-            // 初始化：先隱藏敏感項目 (包含新增的 users)
+            // 初始化：先隱藏敏感項目 (manager 與 eval 預設顯示，profile 預設顯示)
             if(cards.maint) cards.maint.style.display = 'none';
             if(cards.master) cards.master.style.display = 'none';
             if(cards.users) cards.users.style.display = 'none';
@@ -268,7 +290,7 @@
                 // Admin: 全開
                 if(cards.maint) cards.maint.style.display = 'block';
                 if(cards.master) cards.master.style.display = 'block';
-                if(cards.users) cards.users.style.display = 'block'; // [新增] 開啟帳號管理
+                if(cards.users) cards.users.style.display = 'block';
             }
             else if (userRole === 'general') {
                 // 文管: 隱藏管理與評鑑，但可建立基本資料
@@ -277,7 +299,8 @@
                 if(cards.master) cards.master.style.display = 'block'; 
             }
             else if (userRole === 'medical') {
-                // 醫護: 專注執行面 (維持預設隱藏)
+                // 醫護: 專注執行面 (維持預設隱藏: maint, master, users)
+                // Manager/Eval 保持顯示
             }
         });
 
