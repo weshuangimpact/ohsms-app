@@ -15,9 +15,8 @@
             display: none; /* Auth Guard */
         }
 
-        /* 樣式保持不變 */
+        /* 保持您原本的 UI 風格設定 */
         .demo-info-card { background-color: #fffbeb; border-left: 4px solid #f59e0b; color: #92400e; padding: 1rem; margin-bottom: 1.5rem; border-radius: 0.375rem; font-size: 0.9rem; line-height: 1.6; }
-        .tracking-info-card { background-color: #eff6ff; border-left: 4px solid #3b82f6; color: #1e40af; padding: 1rem; margin-bottom: 1rem; border-radius: 0.375rem; font-size: 0.9rem; line-height: 1.6; }
         .section-title { font-weight: bold; color: #495057; border-bottom: 2px solid #e9ecef; padding-bottom: 0.5rem; margin-bottom: 1rem; margin-top: 2rem; }
         .input-readonly { background-color: #e9ecef; cursor: not-allowed; border: 1px solid #ced4da; color: #6c757d; }
         .input-editable { background-color: #fff; border: 1px solid #86b7fe; color: #212529; transition: all 0.3s; }
@@ -57,8 +56,8 @@
         </div>
 
         <div class="demo-info-card shadow-sm">
-            <strong><i class="fas fa-exclamation-triangle me-2"></i>作業模式說明：</strong>
-            您目前處於「顧問編輯模式」。修改後的資料不會直接覆蓋資料庫，而是會送至 <strong>「待審核區 (Staging)」</strong>，待主管確認後才會正式生效。
+            <strong><i class="fas fa-info-circle me-2"></i>作業說明：</strong>
+            此頁面用於維護場所基本資料。您所做的變更將會送至 <strong>「待審核區」</strong>，經主管核准後才會更新至正式資料庫。
         </div>
 
         <div class="card shadow-sm mb-4">
@@ -115,12 +114,13 @@
                         <option value="高溫">高溫</option>
                         <option value="游離輻射">游離輻射</option>
                         <option value="人因工程">人因工程</option>
+                        <option value="異常氣壓">異常氣壓</option>
                     </select>
                     <button class="btn btn-outline-primary" type="button" onclick="addHazard()">新增危害</button>
                 </div>
             </div>
 
-            </div>
+        </div>
     </div>
 
     <button id="btn-edit-toggle" class="btn btn-secondary btn-edit-mode" onclick="toggleEditMode()" disabled>
@@ -142,9 +142,9 @@
 
         let currentWorkplaceId = null;
         let isEditMode = false;
-        let currentHazards = []; // 暫存目前的危害列表 (字串陣列)
+        let currentHazards = []; 
 
-        // 1. 初始化：載入公司
+        // 1. 初始化
         document.addEventListener('DOMContentLoaded', async () => {
             const { data, error } = await supabaseClient.from('companies').select('id, name');
             const select = document.getElementById('company-select');
@@ -184,12 +184,9 @@
             document.getElementById('loadingOverlay').style.display = 'block';
 
             try {
-                // 3a. 讀取基本資料
-                const { data: wpData } = await supabaseClient
-                    .from('workplaces')
-                    .select('*')
-                    .eq('id', workplaceId)
-                    .single();
+                // 讀取 DB 現況
+                const { data: wpData } = await supabaseClient.from('workplaces').select('*').eq('id', workplaceId).single();
+                const { data: hazardData } = await supabaseClient.from('workplace_hazards').select('hazard_type').eq('workplace_id', workplaceId);
 
                 if (wpData) {
                     document.getElementById('admin-male').value = wpData.admin_male || 0;
@@ -198,18 +195,12 @@
                     document.getElementById('site-female').value = wpData.site_female || 0;
                 }
 
-                // 3b. 讀取危害資料 (正規化 Table)
-                const { data: hazardData } = await supabaseClient
-                    .from('workplace_hazards')
-                    .select('hazard_type')
-                    .eq('workplace_id', workplaceId);
-
                 currentHazards = hazardData ? hazardData.map(h => h.hazard_type) : [];
                 renderHazards();
 
-                // 解鎖介面
+                // 解鎖介面 (唯讀狀態)
                 document.getElementById('data-area').style.opacity = '1';
-                document.getElementById('data-area').style.pointerEvents = 'auto'; // 若為唯讀模式，這裡auto是讓它可以被選取，但欄位本身還是 readonly
+                document.getElementById('data-area').style.pointerEvents = 'auto'; 
                 document.getElementById('btn-edit-toggle').disabled = false;
 
             } catch (e) {
@@ -219,35 +210,33 @@
             }
         }
 
-        // 4. 切換編輯模式
+        // 4. 切換編輯模式 / 儲存 (關鍵邏輯修改)
         function toggleEditMode() {
             const btn = document.getElementById('btn-edit-toggle');
             const inputs = document.querySelectorAll('.edit-field');
             const addGroup = document.getElementById('add-hazard-group');
-            const removeBtns = document.querySelectorAll('.remove-hazard-btn'); // 雖然動態生成，但用CSS class控制
 
             if (!isEditMode) {
-                // 進入編輯模式
+                // [進入編輯]：UI 變更為可輸入
                 isEditMode = true;
                 inputs.forEach(el => {
                     el.readOnly = false;
                     el.classList.replace('input-readonly', 'input-editable');
                 });
                 addGroup.style.display = 'flex';
-                // 重繪危害列表以顯示刪除按鈕
-                renderHazards();
+                renderHazards(); // 重繪以顯示刪除按鈕
                 
                 btn.innerHTML = '<i class="fas fa-paper-plane me-1"></i> 提交審核';
                 btn.classList.replace('btn-secondary', 'btn-primary');
             } else {
-                // ★ 執行儲存 (提交到 Staging)
+                // [執行儲存]：呼叫暫存區寫入函式
                 saveToStaging();
             }
         }
 
-        // 5. ★ 核心修改：提交到暫存區 (Staging)
+        // 5. ★ 寫入暫存表 (Staging) 邏輯
         async function saveToStaging() {
-            if (!confirm('確定要提交變更嗎？\n資料將送至待審核區，不會立即覆蓋現有資料。')) return;
+            if (!confirm('確定要提交變更嗎？\n資料將送至待審核區 (Staging)，待主管核准後生效。')) return;
 
             document.getElementById('loadingOverlay').style.display = 'block';
             const btn = document.getElementById('btn-edit-toggle');
@@ -255,46 +244,37 @@
             try {
                 // 5a. 收集表單資料
                 const payload = {
-                    admin_male: document.getElementById('admin-male').value,
-                    admin_female: document.getElementById('admin-female').value,
-                    site_male: document.getElementById('site-male').value,
-                    site_female: document.getElementById('site-female').value,
+                    admin_male: parseInt(document.getElementById('admin-male').value),
+                    admin_female: parseInt(document.getElementById('admin-female').value),
+                    site_male: parseInt(document.getElementById('site-male').value),
+                    site_female: parseInt(document.getElementById('site-female').value),
                     hazards: currentHazards
                 };
 
-                // 5b. 產生人類可讀的描述 (給主管看的摘要)
-                const summary = `
-[基本資料變更申請]
-- 人數變更: 行政(男${payload.admin_male}/女${payload.admin_female}), 現場(男${payload.site_male}/女${payload.site_female})
-- 危害項目: ${currentHazards.join(', ') || '無'}
-                `.trim();
+                // 5b. 製作人類可讀的摘要
+                const summary = `基本資料變更申請：
+- 人數：行政(男${payload.admin_male}/女${payload.admin_female})、現場(男${payload.site_male}/女${payload.site_female})
+- 危害：${currentHazards.join(', ') || '無'}`;
 
-                // 5c. 取得使用者 ID (假設有登入)
+                // 5c. 取得 User ID
                 const { data: { user } } = await supabaseClient.auth.getUser();
 
-                // 5d. 寫入 Staging Table
-                // 這裡我們把 JSON 資料藏在 service_desc 裡，或者如果您有開 payload 欄位更好。
-                // 這裡示範存入 service_desc (純文字摘要) + attachment_files (借用這個欄位存 JSON payload，這是個變通方法，或者直接文字描述)
-                // 更好的做法：直接存文字描述，反正主管看文字核准後，手動或自動更新 DB。
-                
+                // 5d. 寫入 service_record_staging
+                // 注意：這裡將詳細資料打包成 JSON 放在 service_desc 中，方便後續審核介面解析
                 const { error } = await supabaseClient.from('service_record_staging').insert({
                     workplace_id: currentWorkplaceId,
                     submitter_id: user ? user.id : null,
-                    service_date: new Date(), // 申請日期
+                    service_date: new Date(),
                     service_type: '基本資料維護',
-                    service_desc: summary, // 主管看到的內容
-                    status: 'pending',
-                    // 如果您希望系統能自動「套用」這些變更，建議把 payload 存起來。
-                    // 這裡我們把 payload 轉字串存入一個額外欄位，或者暫時先這樣。
-                    // 為了不更動您的 Staging Table (它只有 attachment_files jsonb)，我們把 payload 包成一個偽造的 attachment 結構存進去，方便日後擴充。
-                    attachment_files: [{ type: 'data_update', content: payload }] 
+                    service_desc: JSON.stringify(payload), // 將 JSON 存入文字欄位 (或您有開 payload 欄位則存入 payload)
+                    status: 'pending' // 待審核
                 });
 
                 if (error) throw error;
 
-                alert('✅ 申請已送出！\n請等待主管審核。您的畫面將恢復為資料庫目前的數值。');
+                alert('✅ 申請已送出！\n主管審核通過後，資料庫將自動更新。');
                 
-                // 5e. 還原介面狀態 (重新載入一次 DB 的舊資料，證明沒有直接改掉)
+                // 5e. 還原 UI (重新載入舊資料，證明尚未直接修改 DB)
                 isEditMode = false;
                 const inputs = document.querySelectorAll('.edit-field');
                 inputs.forEach(el => {
@@ -306,7 +286,7 @@
                 btn.innerHTML = '<i class="fas fa-pen-to-square me-1"></i> 啟用編輯';
                 btn.classList.replace('btn-primary', 'btn-secondary');
                 
-                loadWorkplaceData(currentWorkplaceId); // 重新載入舊資料
+                loadWorkplaceData(currentWorkplaceId); // 重新載入，畫面會跳回原本的數值
 
             } catch (e) {
                 console.error(e);
@@ -316,7 +296,7 @@
             }
         }
 
-        // 6. 危害操作 (UI 輔助)
+        // 6. 危害操作 (UI 邏輯)
         function renderHazards() {
             const container = document.getElementById('hazard-list');
             if (currentHazards.length === 0) {
