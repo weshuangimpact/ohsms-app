@@ -185,7 +185,37 @@
                             <div class="mb-0"><label class="form-label small text-muted fw-bold">3. 人員及危害特性概述</label><textarea id="disp-desc" class="form-control input-readonly data-field" rows="2" readonly></textarea></div>
                         </div>
                     </div>
+<div class="mt-5">
+                        <h5 class="step-title">Step 1.5：設定執行時間</h5>
+                        <div class="card border bg-light">
+                            <div class="card-body">
+                                <div class="row g-3 align-items-center">
+                                    <div class="col-md-4">
+                                        <label class="form-label fw-bold text-dark">執行日期</label>
+                                        <input type="date" id="visit-date" class="form-control border-primary shadow-sm">
+                                    </div>
+                                    <div class="col-md-8">
+                                        <label class="form-label fw-bold text-dark">執行時間</label>
+                                        <div class="d-flex align-items-center gap-2">
+                                            <input type="time" id="start-time" class="form-control border-primary shadow-sm" value="09:00">
+                                            <span class="fw-bold text-muted">至</span>
+                                            <input type="time" id="end-time" class="form-control border-primary shadow-sm" value="12:00">
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    ```
 
+### 修改後的結構示意圖
+
+```html
+</div>
+</div>
+
+<div class="mt-5">
+    <h5 class="step-title">Step 2：臨場服務項目 (法規檢核)</h5>
                     <div class="mt-5">
                         <h5 class="step-title">Step 2：臨場服務項目 (法規檢核)</h5>
                         <div class="tracking-info-card"><i class="fas fa-link me-2"></i><strong>系統自動化連動通知：</strong><br>勾選項目將同步至管理者介面。</div>
