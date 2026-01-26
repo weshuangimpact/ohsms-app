@@ -252,31 +252,8 @@
                             </div>
                         </div>
 
-                        <div class="row g-2 ps-2">
-                            <div class="col-12 check-list-item"><div class="form-check"><input class="form-check-input check-item" type="checkbox" id="c9-1" value="9-1"><label class="form-check-label" for="c9-1">9-1 勞工體格(健康)檢查結果之分析與評估、健康管理及資料保存。</label></div></div>
-                            <div class="col-12 check-list-item"><div class="form-check"><input class="form-check-input check-item" type="checkbox" id="c9-2" value="9-2"><label class="form-check-label" for="c9-2">9-2 協助雇主選配勞工從事適當之工作。</label></div></div>
-                            <div class="col-12 check-list-item"><div class="form-check"><input class="form-check-input check-item" type="checkbox" id="c9-3" value="9-3"><label class="form-check-label" for="c9-3">9-3 辦理健康檢查結果異常者之追蹤管理及健康指導。</label></div></div>
-                            <div class="col-12 check-list-item"><div class="form-check"><input class="form-check-input check-item" type="checkbox" id="c9-4" value="9-4"><label class="form-check-label" for="c9-4">9-4 辦理未滿十八歲勞工、有母性健康危害之虞之勞工、職業傷病勞工與職業健康相關高風險勞工之評估及個案管理。</label></div></div>
-                            <div class="col-12 check-list-item"><div class="form-check"><input class="form-check-input check-item" type="checkbox" id="c9-5" value="9-5"><label class="form-check-label" for="c9-5">9-5 職業衛生或職業健康之相關研究報告及傷害、疾病紀錄之保存。</label></div></div>
-                            <div class="col-12 check-list-item"><div class="form-check"><input class="form-check-input check-item" type="checkbox" id="c9-6" value="9-6"><label class="form-check-label" for="c9-6">9-6 勞工之健康教育、衛生指導、身心健康保護、健康促進等措施之策劃及實施。</label></div></div>
-                            <div class="col-12 check-list-item"><div class="form-check"><input class="form-check-input check-item" type="checkbox" id="c9-7" value="9-7"><label class="form-check-label" for="c9-7">9-7 工作相關傷病之預防、健康諮詢與急救及緊急處置。</label></div></div>
-                            <div class="col-12 check-list-item"><div class="form-check"><input class="form-check-input check-item" type="checkbox" id="c9-8" value="9-8"><label class="form-check-label" for="c9-8">9-8 定期向雇主報告及勞工健康服務之建議。</label></div></div>
-                            
-                            <hr class="my-2 text-muted">
-                            
-                            <div class="col-12 check-list-item"><div class="form-check"><input class="form-check-input check-item" type="checkbox" id="c11-1" value="11-1"><label class="form-check-label" for="c11-1">11-1 辨識與評估工作場所環境、作業及組織內部影響勞工身心健康之危害因子，並提出改善措施之建議。</label></div></div>
-                            <div class="col-12 check-list-item"><div class="form-check"><input class="form-check-input check-item" type="checkbox" id="c11-2" value="11-2"><label class="form-check-label" for="c11-2">11-2 提出作業環境安全衛生設施改善規劃之建議。</label></div></div>
-                            <div class="col-12 check-list-item"><div class="form-check"><input class="form-check-input check-item" type="checkbox" id="c11-3" value="11-3"><label class="form-check-label" for="c11-3">11-3 調查勞工健康情形與作業之關連性，並採取必要之預防及健康促進措施。</label></div></div>
-                            <div class="col-12 check-list-item"><div class="form-check"><input class="form-check-input check-item" type="checkbox" id="c11-4" value="11-4"><label class="form-check-label" for="c11-4">11-4 提供復工勞工之職能評估、職務再設計或調整之諮詢及建議。</label></div></div>
-                            <div class="col-12 check-list-item"><div class="form-check"><input class="form-check-input check-item" type="checkbox" id="c11-5" value="11-5"><label class="form-check-label" for="c11-5">11-5 其他經中央主管機關指定公告者。</label></div></div>
-                            
-                            <hr class="my-2 text-muted">
-
-                            <div class="col-12 check-list-item"><div class="form-check"><input class="form-check-input check-item" type="checkbox" id="c12" value="12"><label class="form-check-label" for="c12">12 訂定勞工健康服務計畫，據以執行，每年評估成效及檢討。</label></div></div>
-                            <div class="col-12 check-list-item"><div class="form-check"><input class="form-check-input check-item" type="checkbox" id="c13" value="13"><label class="form-check-label" for="c13">13 訂定勞工健康管理方案，據以辦理，每年評估成效及檢討。</label></div></div>
-                            <div class="col-12 check-list-item"><div class="form-check"><input class="form-check-input" type="checkbox" id="other-attach"><label class="form-check-label fw-bold text-dark" for="other-attach">其他附件</label></div></div>
-                        </div>
-                    </div>
+<div id="checklist-container" class="ps-2">
+                            </div>
 
                     <div class="mt-5">
                         <h5 class="step-title">Step 3：簽核文件上傳</h5>
@@ -373,6 +350,8 @@
             document.body.style.display = 'block';
             const userName = sessionStorage.getItem('currentUserName') || 'User';
             document.getElementById('user-display').innerHTML = `<small>Hi, ${userName}</small>`;
+            
+            renderDynamicChecklist();
             
             // ★ 修改：檔案選擇顯示邏輯 (支援多檔)
             document.getElementById('fileUpload').addEventListener('change', function(e){
@@ -726,6 +705,88 @@
                 btn.classList.remove('btn-primary');
             }
         }
+        // ==========================================
+        // ★ 新增：動態法規清單與上傳互動邏輯
+        // ==========================================
+        
+        // 1. 定義法規項目
+        const CHECKLIST_ITEMS = [
+            { code: '9-1', text: '勞工體格(健康)檢查結果之分析與評估、健康管理及資料保存。' },
+            { code: '9-2', text: '協助雇主選配勞工從事適當之工作。' },
+            { code: '9-3', text: '辦理健康檢查結果異常者之追蹤管理及健康指導。' },
+            { code: '9-4', text: '辦理未滿十八歲勞工、有母性健康危害之虞之勞工...評估及個案管理。' },
+            { code: '9-5', text: '職業衛生或職業健康之相關研究報告及傷害、疾病紀錄之保存。' },
+            { code: '9-6', text: '勞工之健康教育、衛生指導、身心健康保護、健康促進...之策劃及實施。' },
+            { code: '9-7', text: '工作相關傷病之預防、健康諮詢與急救及緊急處置。' },
+            { code: '9-8', text: '定期向雇主報告及勞工健康服務之建議。' },
+            { code: '11-1', text: '辨識與評估工作場所環境、作業及組織內部影響勞工身心健康之危害因子。' },
+            { code: '11-2', text: '提出作業環境安全衛生設施改善規劃之建議。' },
+            { code: '11-3', text: '調查勞工健康情形與作業之關連性。' },
+            { code: '11-4', text: '提供復工勞工之職能評估、職務再設計或調整之諮詢及建議。' },
+            { code: '11-5', text: '其他經中央主管機關指定公告者。' },
+            { code: '12', text: '訂定勞工健康服務計畫，據以執行，每年評估成效及檢討。' },
+            { code: '13', text: '訂定勞工健康管理方案，據以辦理，每年評估成效及檢討。' },
+            { code: 'other', text: '其他附件' }
+        ];
+
+        // 2. 渲染清單函式
+        function renderDynamicChecklist() {
+            const container = document.getElementById('checklist-container');
+            if (!container) return;
+            
+            let html = '';
+            CHECKLIST_ITEMS.forEach(item => {
+                html += `
+                <div class="check-row py-2 border-bottom border-light">
+                    <div class="d-flex align-items-center flex-wrap">
+                        <div class="form-check me-2">
+                            <input class="form-check-input check-item" type="checkbox" id="c${item.code}" value="${item.code}" onchange="toggleUploadBtn(this)">
+                            <label class="form-check-label" for="c${item.code}">
+                                <span class="fw-bold text-dark me-1">${item.code}</span> ${item.text}
+                            </label>
+                        </div>
+                        
+                        <div class="upload-wrapper ms-auto" id="wrapper-${item.code}">
+                            <input type="file" id="file-${item.code}" class="d-none item-file" data-code="${item.code}" onchange="updateFileState(this)">
+                            <label for="file-${item.code}" class="btn-upload-action" id="btn-${item.code}">
+                                <i class="fas fa-paperclip me-1"></i> <span class="btn-text">上傳佐證</span>
+                            </label>
+                            <small class="text-muted ms-2 file-name-display" id="name-${item.code}"></small>
+                        </div>
+                    </div>
+                </div>`;
+            });
+            container.innerHTML = html;
+        }
+
+        // 3. 勾選 checkbox 後顯示/隱藏上傳按鈕
+        function toggleUploadBtn(checkbox) {
+            const code = checkbox.value;
+            const btn = document.getElementById(`btn-${code}`);
+            if (checkbox.checked) {
+                btn.classList.add('visible');
+            } else {
+                btn.classList.remove('visible');
+            }
+        }
+
+        // 4. 檔案選取後更新按鈕樣式
+        function updateFileState(input) {
+            const code = input.dataset.code;
+            const btn = document.getElementById(`btn-${code}`);
+            const nameDisplay = document.getElementById(`name-${code}`);
+            
+            if (input.files && input.files[0]) {
+                btn.classList.add('has-file');
+                btn.innerHTML = '<i class="fas fa-check me-1"></i> 已選取';
+                nameDisplay.innerText = input.files[0].name;
+            } else {
+                btn.classList.remove('has-file');
+                btn.innerHTML = '<i class="fas fa-paperclip me-1"></i> 上傳佐證';
+                nameDisplay.innerText = '';
+            }
+        }
     </script>
+    
 </body>
 </html>
