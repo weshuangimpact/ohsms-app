@@ -14,6 +14,8 @@
             font-family: 'Segoe UI', 'Microsoft JhengHei', sans-serif;
             color: #333;
         }
+
+        /* 卡片與容器樣式 */
         .settings-card {
             border: none;
             border-radius: 12px;
@@ -21,6 +23,14 @@
             background-color: white;
             overflow: hidden;
         }
+        
+        .settings-header {
+            background-color: #f8f9fa;
+            border-bottom: 1px solid #e9ecef;
+            padding: 20px 30px;
+        }
+
+        /* 頭像樣式 */
         .avatar-large {
             width: 80px; height: 80px;
             background-color: #e9ecef; color: #6c757d;
@@ -29,6 +39,8 @@
             font-size: 2.5rem; font-weight: bold;
             margin: 0 auto 15px auto;
         }
+
+        /* 表單樣式 */
         .form-control:focus {
             box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.15);
         }
@@ -41,184 +53,188 @@
 </head>
 <body>
 
-<nav class="navbar navbar-expand-lg navbar-dark bg-dark py-3 mb-4">
-    <div class="container-fluid px-4">
-        <a class="navbar-brand fw-bold" href="dashboard.html">
-            <i class="fas fa-shield-alt me-2"></i>OHSMS
-        </a>
-        <div class="ms-auto">
-            <a href="dashboard.html" class="btn btn-outline-light btn-sm">
-                <i class="fas fa-arrow-left me-1"></i> 返回儀表板
-            </a>
-        </div>
-    </div>
-</nav>
-
-<div class="container pb-5">
-    <div class="row justify-content-center">
-        <div class="col-lg-6 col-md-8">
-
-            <div class="text-center mb-4">
-                <h3 class="fw-bold">個人帳號設定</h3>
-                <p class="text-muted">維護您的登入密碼與基本資訊</p>
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark py-3 mb-4">
+        <div class="container-fluid px-4">
+            <a class="navbar-brand fw-bold" href="dashboard.html"><i class="fas fa-shield-alt me-2"></i>OHSMS</a>
+            <div class="ms-auto">
+                <a href="dashboard.html" class="btn btn-outline-light btn-sm">
+                    <i class="fas fa-arrow-left me-1"></i> 返回儀表板
+                </a>
             </div>
+        </div>
+    </nav>
 
-            <div class="settings-card">
-                <div class="p-4 text-center border-bottom">
-                    <div class="avatar-large" id="user-avatar">U</div>
-                    <h5 class="fw-bold mb-1" id="display-name">Loading...</h5>
-                    <p class="text-muted small mb-0" id="display-role">使用者</p>
+    <div class="container pb-5">
+        <div class="row justify-content-center">
+            <div class="col-lg-6 col-md-8">
+                
+                <div class="text-center mb-4">
+                    <h3 class="fw-bold">個人帳號設定</h3>
+                    <p class="text-muted">維護您的登入密碼與基本資訊</p>
                 </div>
 
-                <div class="p-4 p-md-5">
-                    <h6 class="fw-bold text-primary mb-3">
-                        <i class="fas fa-key me-2"></i>變更登入密碼
-                    </h6>
+                <div class="settings-card">
+                    <div class="p-4 text-center border-bottom">
+                        <div class="avatar-large" id="user-avatar">U</div>
+                        <h5 class="fw-bold mb-1" id="display-name">Loading...</h5>
+                        <p class="text-muted small mb-0" id="display-role">使用者</p>
+                    </div>
 
-                    <form id="passwordForm" onsubmit="handlePasswordUpdate(event)">
-                        <div class="mb-3">
-                            <label class="form-label text-muted small fw-bold">登入帳號 (Email)</label>
-                            <input type="email" id="user-email" class="form-control bg-light" readonly disabled>
-                            <div class="form-text">帳號若需變更請聯繫系統管理員。</div>
-                        </div>
-
-                        <div class="mb-3">
-                            <label class="form-label text-muted small fw-bold">新密碼</label>
-                            <div class="input-group">
-                                <input type="password" class="form-control" id="new-password" required minlength="6">
-                                <span class="input-group-text bg-white border-start-0">
-                                    <i class="fas fa-eye password-toggle"
-                                       onclick="togglePassword('new-password', this)"></i>
-                                </span>
+                    <div class="p-4 p-md-5">
+                        <h6 class="fw-bold text-primary mb-3"><i class="fas fa-key me-2"></i>變更登入密碼</h6>
+                        
+                        <form id="passwordForm" onsubmit="handlePasswordUpdate(event)">
+                            
+                            <div class="mb-3">
+                                <label class="form-label text-muted small fw-bold">登入帳號 (Email)</label>
+                                <input type="email" id="user-email" class="form-control bg-light" readonly disabled>
+                                <div class="form-text">帳號若需變更請聯繫系統管理員。</div>
                             </div>
-                        </div>
 
-                        <div class="mb-4">
-                            <label class="form-label text-muted small fw-bold">確認新密碼</label>
-                            <div class="input-group">
-                                <input type="password" class="form-control" id="confirm-password" required minlength="6">
-                                <span class="input-group-text bg-white border-start-0">
-                                    <i class="fas fa-eye password-toggle"
-                                       onclick="togglePassword('confirm-password', this)"></i>
-                                </span>
+                            <div class="mb-3">
+                                <label class="form-label text-muted small fw-bold">新密碼</label>
+                                <div class="input-group">
+                                    <input type="password" class="form-control" id="new-password" placeholder="請輸入新密碼 (至少 6 碼)" required minlength="6">
+                                    <span class="input-group-text bg-white border-start-0">
+                                        <i class="fas fa-eye password-toggle" onclick="togglePassword('new-password', this)"></i>
+                                    </span>
+                                </div>
                             </div>
-                            <div id="password-feedback" class="invalid-feedback">
-                                兩次輸入的密碼不相符。
-                            </div>
-                        </div>
 
-                        <div class="d-grid gap-2">
-                            <button type="submit" id="btn-save" class="btn btn-primary fw-bold py-2">
-                                確認修改並儲存
-                            </button>
-                        </div>
-                    </form>
+                            <div class="mb-4">
+                                <label class="form-label text-muted small fw-bold">確認新密碼</label>
+                                <div class="input-group">
+                                    <input type="password" class="form-control" id="confirm-password" placeholder="請再次輸入新密碼" required minlength="6">
+                                    <span class="input-group-text bg-white border-start-0">
+                                        <i class="fas fa-eye password-toggle" onclick="togglePassword('confirm-password', this)"></i>
+                                    </span>
+                                </div>
+                                <div id="password-feedback" class="invalid-feedback">
+                                    兩次輸入的密碼不相符。
+                                </div>
+                            </div>
+
+                            <div class="d-grid gap-2">
+                                <button type="submit" id="btn-save" class="btn btn-primary fw-bold py-2">
+                                    確認修改並儲存
+                                </button>
+                            </div>
+                        </form>
+                    </div>
                 </div>
-            </div>
 
-            <div class="text-center mt-3">
-                <small class="text-muted">
-                    最後登入時間: <span id="last-login-time">--</span>
-                </small>
-            </div>
+                <div class="text-center mt-3">
+                    <small class="text-muted">最後登入時間: <span id="last-login-time">--</span></small>
+                </div>
 
+            </div>
         </div>
     </div>
-</div>
 
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
-<script>
-const SUPABASE_URL = 'https://yhehfucgemxnfrdvpdhw.supabase.co';
-const SUPABASE_KEY = 'sb_publishable_52emtU-9l-SDxcJTWVTPTA_Yu6qEogh';
-const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+    <script>
+        const SUPABASE_URL = 'https://yhehfucgemxnfrdvpdhw.supabase.co';
+        const SUPABASE_KEY = 'sb_publishable_52emtU-9l-SDxcJTWVTPTA_Yu6qEogh';
+        const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-document.addEventListener('DOMContentLoaded', async () => {
-    try {
-        const { data: { session } } = await supabase.auth.getSession();
-        if (!session) {
-            alert('請先登入系統');
-            location.href = 'login.html';
-            return;
+        document.addEventListener('DOMContentLoaded', async () => {
+            // 1. 檢查 Session
+            const { data: { session } } = await supabase.auth.getSession();
+            
+            if (!session) {
+                alert('請先登入系統');
+                window.location.href = 'login.html';
+                return;
+            }
+
+            // 2. 填充基本資料 (從 Session 與 LocalStorage)
+            const user = session.user;
+            const userName = sessionStorage.getItem('currentUserName') || '使用者';
+            const userRole = sessionStorage.getItem('currentUserRole') || 'User';
+
+            document.getElementById('user-email').value = user.email;
+            document.getElementById('display-name').textContent = userName;
+            document.getElementById('display-role').textContent = getRoleName(userRole);
+            document.getElementById('user-avatar').textContent = (userName.charAt(0) || 'U').toUpperCase();
+            
+            if(user.last_sign_in_at) {
+                document.getElementById('last-login-time').textContent = new Date(user.last_sign_in_at).toLocaleString();
+            }
+        });
+
+        // 處理密碼變更
+        async function handlePasswordUpdate(e) {
+            e.preventDefault();
+            
+            const newPwd = document.getElementById('new-password').value;
+            const confirmPwd = document.getElementById('confirm-password').value;
+            const feedback = document.getElementById('password-feedback');
+            const newPwdInput = document.getElementById('new-password');
+            const confirmPwdInput = document.getElementById('confirm-password');
+
+            // 前端驗證
+            newPwdInput.classList.remove('is-invalid');
+            confirmPwdInput.classList.remove('is-invalid');
+
+            if (newPwd !== confirmPwd) {
+                confirmPwdInput.classList.add('is-invalid');
+                feedback.style.display = 'block';
+                return;
+            }
+
+            // 開始送出
+            const btn = document.getElementById('btn-save');
+            const originalBtnText = btn.innerHTML;
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>更新中...';
+
+            try {
+                // Supabase Update User API
+                const { data, error } = await supabase.auth.updateUser({
+                    password: newPwd
+                });
+
+                if (error) throw error;
+
+                alert('✅ 密碼修改成功！下次登入請使用新密碼。');
+                
+                // 清空欄位
+                document.getElementById('new-password').value = '';
+                document.getElementById('confirm-password').value = '';
+
+            } catch (err) {
+                alert('更新失敗: ' + err.message);
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = originalBtnText;
+            }
         }
 
-        const user = session.user;
-
-        const { data: staff, error } = await supabase
-            .from('medical_staff')
-            .select('name, system_role')
-            .eq('user_id', user.id)
-            .single();
-
-        if (error || !staff) {
-            alert('找不到使用者資料，請聯絡管理員');
-            return;
+        // 切換密碼顯示/隱藏
+        function togglePassword(inputId, icon) {
+            const input = document.getElementById(inputId);
+            if (input.type === 'password') {
+                input.type = 'text';
+                icon.classList.remove('fa-eye');
+                icon.classList.add('fa-eye-slash');
+            } else {
+                input.type = 'password';
+                icon.classList.remove('fa-eye-slash');
+                icon.classList.add('fa-eye');
+            }
         }
 
-        document.getElementById('user-email').value = user.email || '';
-        document.getElementById('display-name').textContent = staff.name;
-        document.getElementById('display-role').textContent = getRoleName(staff.system_role);
-        document.getElementById('user-avatar').textContent = staff.name.charAt(0).toUpperCase();
-
-        if (user.last_sign_in_at) {
-            document.getElementById('last-login-time').textContent =
-                new Date(user.last_sign_in_at).toLocaleString();
+        function getRoleName(role) {
+            const map = {
+                'admin': '系統管理員',
+                'consultant': '外部顧問',
+                'medical': '醫護人員',
+                'general': '一般用戶'
+            };
+            return map[role] || role;
         }
-    } catch (e) {
-        console.error(e);
-        alert('頁面初始化失敗');
-    }
-});
-
-async function handlePasswordUpdate(e) {
-    e.preventDefault();
-
-    const newPwd = document.getElementById('new-password').value;
-    const confirmPwd = document.getElementById('confirm-password').value;
-
-    document.getElementById('confirm-password').classList.remove('is-invalid');
-
-    if (newPwd !== confirmPwd) {
-        document.getElementById('confirm-password').classList.add('is-invalid');
-        return;
-    }
-
-    const btn = document.getElementById('btn-save');
-    btn.disabled = true;
-    btn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>更新中...';
-
-    try {
-        const { error } = await supabase.auth.updateUser({ password: newPwd });
-        if (error) throw error;
-
-        alert('✅ 密碼修改成功，下次登入請使用新密碼');
-        document.getElementById('new-password').value = '';
-        document.getElementById('confirm-password').value = '';
-    } catch (err) {
-        alert('更新失敗：' + err.message);
-    } finally {
-        btn.disabled = false;
-        btn.innerHTML = '確認修改並儲存';
-    }
-}
-
-function togglePassword(inputId, icon) {
-    const input = document.getElementById(inputId);
-    input.type = input.type === 'password' ? 'text' : 'password';
-    icon.classList.toggle('fa-eye');
-    icon.classList.toggle('fa-eye-slash');
-}
-
-function getRoleName(role) {
-    return {
-        admin: '系統管理員',
-        general: '一般用戶',
-        medical: '醫護人員',
-        consultant: '外部顧問'
-    }[role] || role;
-}
-</script>
-
+    </script>
 </body>
 </html>
