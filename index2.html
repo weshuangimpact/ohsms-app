@@ -39,12 +39,12 @@
         
         <div class="formula-card animate__animated animate__fadeInDown shadow-sm">
             <div class="d-flex align-items-center">
-                <i class="fas fa-server fa-lg me-3 text-success"></i>
+                <i class="fas fa-calculator fa-lg me-3 text-secondary"></i>
                 <div>
-                    <h6 class="mb-1 fw-bold">年度達成率計算公式 (雲端驗證版)：</h6>
+                    <h6 class="mb-1 fw-bold">年度結案達成率公式：</h6>
                     <p class="mb-0 small text-muted">
-                        <strong>( 經系統驗證合格筆數 ÷ 年度服務紀錄總筆數 ) × 100%</strong><br>
-                        基準說明：系統後端 (Edge Function) 自動檢查 Storage 實體檔案存在且包含「紀錄表」關鍵字，標記為 <code>storage_verified: true</code> 即計為完成。
+                        <strong>已核定入庫筆數 ÷ ( 已核定入庫筆數 + 暫存待審核筆數 ) × 100%</strong><br>
+                        說明：若當年度無待審核案件，達成率即為 100%。
                     </p>
                 </div>
             </div>
@@ -59,7 +59,7 @@
                 </div>
                 <div class="col-md-3 ps-md-4 text-center text-md-start">
                     <h4 class="fw-bold mb-1" id="percentage-text">0%</h4>
-                    <p class="text-muted small mb-3">年度總達成率</p>
+                    <p class="text-muted small mb-3">年度審核進度</p>
                     <div class="input-group input-group-sm">
                         <span class="input-group-text">選取年度</span>
                         <select id="year-filter" class="form-select" onchange="calculateAnnualCompletion()">
@@ -70,17 +70,17 @@
                     </div>
                 </div>
                 <div class="col-md-6">
-                    <div class="row g-2">
+                    <div class="row g-2 text-center">
                         <div class="col-6">
-                            <div class="p-3 border rounded bg-light text-center">
-                                <div class="small text-muted">總服務案量</div>
-                                <div class="h5 mb-0 fw-bold" id="total-records-count">0</div>
+                            <div class="p-3 border rounded bg-light">
+                                <div class="small text-muted">已入正式庫</div>
+                                <div class="h5 mb-0 fw-bold text-success" id="approved-records-count">0</div>
                             </div>
                         </div>
                         <div class="col-6">
-                            <div class="p-3 border rounded bg-light text-center">
-                                <div class="small text-muted">已驗證歸檔</div>
-                                <div class="h5 mb-0 fw-bold text-success" id="uploaded-count">0</div>
+                            <div class="p-3 border rounded bg-light">
+                                <div class="small text-muted">暫存待審中</div>
+                                <div class="h5 mb-0 fw-bold text-danger" id="pending-staging-count">0</div>
                             </div>
                         </div>
                     </div>
@@ -91,37 +91,37 @@
         <div class="row g-4 mb-4">
             <div class="col-md-3">
                 <div class="stat-card bg-gradient-primary">
-                    <div class="small opacity-75">顧問總人數</div>
+                    <div class="small opacity-75">總顧問人數</div>
                     <div class="h2 mb-0 fw-bold" id="total-staff">0</div>
                     <i class="fas fa-user-md position-absolute end-0 bottom-0 m-2 opacity-25 fa-2x"></i>
                 </div>
             </div>
             <div class="col-md-3">
                 <div class="stat-card bg-gradient-warning">
-                    <div class="small opacity-75">待審核文件</div>
+                    <div class="small opacity-75">待審核總數</div>
                     <div class="h2 mb-0 fw-bold" id="pending-reviews">0</div>
                     <i class="fas fa-file-signature position-absolute end-0 bottom-0 m-2 opacity-25 fa-2x"></i>
                 </div>
             </div>
             <div class="col-md-3">
                 <div class="stat-card bg-gradient-danger">
-                    <div class="small opacity-75">今日待處理</div>
-                    <div class="h2 mb-0 fw-bold" id="today-staging">0</div>
-                    <i class="fas fa-clock position-absolute end-0 bottom-0 m-2 opacity-25 fa-2x"></i>
-                </div>
-            </div>
-            <div class="col-md-3">
-                <div class="stat-card bg-gradient-success">
                     <div class="small opacity-75">正式庫紀錄總數</div>
                     <div class="h2 mb-0 fw-bold" id="total-services">0</div>
                     <i class="fas fa-database position-absolute end-0 bottom-0 m-2 opacity-25 fa-2x"></i>
                 </div>
             </div>
+            <div class="col-md-3">
+                <div class="stat-card bg-gradient-success">
+                    <div class="small opacity-75">今日新增暫存</div>
+                    <div class="h2 mb-0 fw-bold" id="today-staging">0</div>
+                    <i class="fas fa-clock position-absolute end-0 bottom-0 m-2 opacity-25 fa-2x"></i>
+                </div>
+            </div>
         </div>
 
         <div class="card shadow-sm border-0">
-            <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
-                <h5 class="mb-0 fw-bold text-dark"><i class="fas fa-tasks me-2 text-primary"></i>待審核服務紀錄 (Staging Area)</h5>
+            <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center border-bottom">
+                <h5 class="mb-0 fw-bold text-dark"><i class="fas fa-list me-2"></i>待審核服務紀錄 (Staging Area)</h5>
                 <button onclick="refreshAllData()" class="btn btn-sm btn-outline-secondary"><i class="fas fa-sync-alt"></i> 同步資料</button>
             </div>
             <div class="card-body p-0">
@@ -145,7 +145,7 @@
     <script>
         const SUPABASE_URL = "https://yhehfucgemxnfrdvpdhw.supabase.co";
         const SUPABASE_KEY = "sb_publishable_52emtU-9l-SDxcJTWVTPTA_Yu6qEogh"; 
-        const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+        const supabase = Object.assign(supabase.createClient(SUPABASE_URL, SUPABASE_KEY));
 
         let completionChart = null;
 
@@ -153,10 +153,8 @@
             const { data: { session } } = await supabase.auth.getSession();
             if (!session) { location.href = 'login.html'; return; }
             document.getElementById('admin-name').innerText = `管理員: ${session.user.user_metadata.full_name || 'Admin'}`;
-            
             initChart();
             refreshAllData();
-            setupRealtimeSubscription(); // 啟動即時監聽
         });
 
         function initChart() {
@@ -164,35 +162,15 @@
             completionChart = new Chart(ctx, {
                 type: 'doughnut',
                 data: {
-                    labels: ['已完成 (經驗證)', '未完成'],
+                    labels: ['已完成', '待處理'],
                     datasets: [{
                         data: [0, 100],
-                        backgroundColor: ['#198754', '#e9ecef'],
+                        backgroundColor: ['#198754', '#dc3545'],
                         borderWidth: 0
                     }]
                 },
                 options: { cutout: '75%', plugins: { legend: { display: false } } }
             });
-        }
-
-        // ==========================================
-        // Real-time: 當後端驗證完畢，自動更新圖表
-        // ==========================================
-        function setupRealtimeSubscription() {
-            supabase
-                .channel('public:service_records')
-                .on('postgres_changes', 
-                    { event: 'UPDATE', schema: 'public', table: 'service_records' }, 
-                    (payload) => {
-                        // 只有當驗證狀態(storage_verified)改變時，才重新計算
-                        if (payload.new.storage_verified !== payload.old.storage_verified) {
-                            // console.log('收到後端驗證更新，刷新圖表...');
-                            calculateAnnualCompletion();
-                            // 可以選擇性加上 Toast 通知使用者
-                        }
-                    }
-                )
-                .subscribe();
         }
 
         async function refreshAllData() {
@@ -201,40 +179,40 @@
             loadReviewList();
         }
 
-        // ==========================================
-        // 極速版：直接讀取 Edge Function 驗證結果
-        // ==========================================
         async function calculateAnnualCompletion() {
             const yearStr = document.getElementById('year-filter').value;
             const yearInt = parseInt(yearStr, 10);
-            
-            const startDate = `${yearInt}-01-01`;
-            const endDate = `${yearInt}-12-31`;
 
-            // 直接讀取 storage_verified 欄位，無需下載 attachment_files JSON
-            const { data, error } = await supabase
+            // 1. 抓取正式庫該年度筆數 (分子)
+            const { count: approvedCount, error: err1 } = await supabase
                 .from('service_records')
-                .select('storage_verified') 
-                .gte('visit_date', startDate)
-                .lte('visit_date', endDate);
+                .select('*', { count: 'exact', head: true })
+                .eq('service_year', yearInt);
 
-            if (error) { 
-                console.error("Completion calculation error:", error); 
-                return; 
-            }
+            // 2. 抓取暫存庫該年度 pending 筆數 (分母部分)
+            // 注意：staging 表中的年度欄位名稱也是 service_year [cite: 169]
+            const { count: pendingCount, error: err2 } = await supabase
+                .from('service_record_staging')
+                .select('*', { count: 'exact', head: true })
+                .eq('service_year', yearInt)
+                .eq('status', 'pending');
 
-            const total = data.length;
-            
-            // 邏輯變更：直接計算 storage_verified 為 true 的數量
-            const completed = data.filter(r => r.storage_verified === true).length;
+            if (err1 || err2) { console.error("Data fetch error"); return; }
 
-            const percentage = total > 0 ? Math.round((completed / total) * 100) : 0;
-            
+            const done = approvedCount || 0;
+            const wait = pendingCount || 0;
+            const total = done + wait;
+
+            const percentage = total > 0 ? Math.round((done / total) * 100) : 100; // 無資料視為 100% 或 0% 依需求，這裡採無待辦即 100%
+
+            // 更新 UI
             document.getElementById('percentage-text').innerText = `${percentage}%`;
-            document.getElementById('total-records-count').innerText = total;
-            document.getElementById('uploaded-count').innerText = completed;
+            document.getElementById('approved-records-count').innerText = done;
+            document.getElementById('pending-staging-count').innerText = wait;
 
-            completionChart.data.datasets[0].data = [completed, total - completed];
+            // 更新圖表 (綠色已完成 vs 紅色待處理)
+            completionChart.data.datasets[0].data = [done, wait];
+            if (total === 0) completionChart.data.datasets[0].data = [100, 0]; // 全空時顯示全綠
             completionChart.update();
         }
 
@@ -250,20 +228,13 @@
         }
 
         async function loadReviewList() {
-            const { data, error } = await supabase
+            const { data } = await supabase
                 .from('service_record_staging')
                 .select('*, workplaces(companies(name)), medical_staff(name)')
                 .eq('status', 'pending')
                 .order('created_at', { ascending: false });
 
             const tbody = document.getElementById('review-list');
-            
-            if (error) {
-                console.error("List load error:", error);
-                tbody.innerHTML = '<tr><td colspan="6" class="text-center py-5 text-danger">資料載入失敗，請檢查資料庫關聯設定</td></tr>';
-                return;
-            }
-
             if (!data || data.length === 0) {
                 tbody.innerHTML = '<tr><td colspan="6" class="text-center py-5 text-muted">目前無待審核紀錄</td></tr>';
                 return;
