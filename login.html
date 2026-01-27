@@ -170,16 +170,26 @@
                 btnLogin.innerHTML = '<i class="fas fa-check me-2"></i>登入成功';
                 setTimeout(() => window.location.href = 'dashboard.html', 500);
 
-            } catch (err) {
-                console.error(err);
-                errorText.innerText = err.message;
+} catch (err) {
+                console.error('登入失敗詳細資訊:', err);
+                
+                // 翻譯常見錯誤
+                let displayMsg = err.message;
+                if (err.message.includes("Invalid login credentials")) {
+                    displayMsg = "帳號或密碼錯誤";
+                } else if (err.message.includes("Email not confirmed")) {
+                    displayMsg = "此帳號尚未啟用 (請去信箱點擊邀請連結)";
+                }
+
+                errorText.innerText = displayMsg; 
                 errorMsg.style.display = 'block';
+                
                 btnLogin.disabled = false;
                 btnLogin.innerText = '登入系統';
+                
                 document.querySelector('.login-card').classList.add('shake');
                 setTimeout(() => document.querySelector('.login-card').classList.remove('shake'), 500);
             }
-        });
 
         // 2. ★ 忘記密碼邏輯
         async function sendResetEmail() {
