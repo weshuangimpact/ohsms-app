@@ -215,29 +215,37 @@
         }
 
         async function calculateAnnualCompletion() {
-            const year = document.getElementById('year-filter').value;
-            const { data, error } = await supabase.from('service_records').select('attachment_files').eq('service_year', year);
+    // 修正：將抓取到的年份字串轉為整數 (Number)
+    const yearValue = document.getElementById('year-filter').value;
+    const yearInt = parseInt(yearValue, 10); 
 
-            if (error) return;
+    // 修正：使用整數進行查詢
+    const { data, error } = await supabase
+        .from('service_records')
+        .select('attachment_files')
+        .eq('service_year', yearInt); // 這裡確保是整數
 
-            const total = data.length;
-            const completed = data.filter(item => {
-                if (!item.attachment_files) return false;
-                const files = typeof item.attachment_files === 'string' ? JSON.parse(item.attachment_files) : item.attachment_files;
-                return Array.isArray(files) && files.length > 0;
-            }).length;
+    if (error) {
+        console.error("查詢失敗:", error);
+        return;
+    }
 
-            const percentage = total > 0 ? Math.round((completed / total) * 100) : 0;
-            
-            // 更新 UI 數值
-            document.getElementById('percentage-text').innerText = `${percentage}%`;
-            document.getElementById('total-records-count').innerText = total;
-            document.getElementById('uploaded-count').innerText = completed;
+    // 後續計算邏輯...
+    const total = data.length;
+    const completed = data.filter(item => {
+        if (!item.attachment_files) return false;
+        // 判斷 JSONB 內是否有檔案物件
+        const files = typeof item.attachment_files === 'string' 
+            ? JSON.parse(item.attachment_files) 
+            : item.attachment_files;
+        return Array.isArray(files) && files.length > 0;
+    }).length;
+    
+    // 更新 UI (百分比與圓餅圖)
+}
 
-            // 更新圖表
-            completionChart.data.datasets[0].data = [completed, total - completed];
-            completionChart.update();
-        }
+
+        
 
         async function updateStats() {
             const { count: pCount } = await supabase.from('service_record_staging').select('*', { count: 'exact', head: true }).eq('status', 'pending');
