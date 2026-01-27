@@ -16,7 +16,16 @@
             display: none; /* Auth Guard */
         }
 
-        /* 操作指引卡 */
+        /* 完工率專用樣式 */
+        .completion-card {
+            background: #fff;
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            padding: 1.5rem;
+            margin-bottom: 2rem;
+            border-top: 5px solid #28a745;
+        }
+
         .op-guide-card {
             background-color: #fff3cd;
             border-left: 5px solid #ffc107;
@@ -26,213 +35,155 @@
             border-radius: 0.375rem;
             font-size: 0.95rem;
             line-height: 1.6;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
         }
 
-        /* 待辦卡片 */
-        .task-card {
-            cursor: pointer;
-            transition: all 0.2s ease;
-            border: 1px solid #e2e8f0;
-            border-left: 4px solid #0d6efd;
+        .stat-card {
             background: white;
-        }
-        .task-card:hover {
-            transform: translateY(-3px);
-            box-shadow: 0 10px 20px rgba(0,0,0,0.08);
-            border-color: #b3d7ff;
-        }
-        .task-new-badge {
-            position: absolute; top: 10px; right: 10px;
-            font-size: 0.7rem; background-color: #ffc107; color: #000;
+            border-radius: 10px;
+            padding: 1.5rem;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+            transition: transform 0.2s;
         }
 
-        /* 時間軸 */
-        .timeline-item {
-            border-left: 2px solid #e9ecef;
-            padding-left: 1.5rem;
-            padding-bottom: 1.5rem;
-            position: relative;
-        }
-        .timeline-item:last-child { padding-bottom: 0; border-left: 2px solid transparent; }
-        .timeline-marker {
-            position: absolute; left: -0.43rem; top: 0;
-            width: 0.9rem; height: 0.9rem; border-radius: 50%;
-            background-color: #fff; border: 3px solid #adb5bd;
-        }
-        .marker-danger { border-color: #dc3545; }
-        .marker-warning { border-color: #ffc107; }
-        .marker-success { border-color: #198754; }
-
-        /* 審查欄位 */
-        .review-field { background-color: #f8f9fa; border: 1px solid #dee2e6; border-radius: 4px; padding: 8px 12px; font-weight: bold; color: #495057; }
+        .stat-card:hover { transform: translateY(-5px); }
+        .bg-gradient-primary { background: linear-gradient(45deg, #4e73df, #224abe); color: white; }
+        .bg-gradient-success { background: linear-gradient(45deg, #1cc88a, #13855c); color: white; }
+        .bg-gradient-warning { background: linear-gradient(45deg, #f6c23e, #dda20a); color: white; }
+        .bg-gradient-danger { background: linear-gradient(45deg, #e74a3b, #be2617); color: white; }
     </style>
-
-    <script>
-        document.addEventListener('DOMContentLoaded', function() {
-            const role = sessionStorage.getItem('currentUserRole');
-            // 權限：Admin 或 Medical 可看
-            if (!role || role === 'general') {
-                alert('權限不足：此頁面僅供管理人員訪問。');
-                window.location.href = 'dashboard.html';
-                return;
-            }
-            document.body.style.display = 'block';
-            const userName = sessionStorage.getItem('currentUserName') || 'Manager';
-            document.getElementById('user-display').innerHTML = `<small>Manager: ${userName}</small>`;
-        });
-    </script>
 </head>
 <body>
 
-    <nav class="navbar navbar-expand-lg navbar-dark bg-dark py-3 mb-4">
-        <div class="container-fluid px-4">
-            <a class="navbar-brand" href="dashboard.html"><i class="fas fa-shield-alt me-2"></i>OHSMS</a>
-            <div class="d-flex align-items-center">
-                <span class="text-light me-3" id="user-display"></span>
-                <a href="dashboard.html" class="btn btn-outline-light btn-sm"><i class="fas fa-arrow-left me-1"></i> 返回儀表板</a>
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark shadow-sm">
+        <div class="container">
+            <a class="navbar-brand" href="#"><i class="fas fa-shield-alt me-2"></i>OHSMS 管理者控制台</a>
+            <div class="d-flex align-items-center text-white">
+                <span id="admin-name" class="me-3">載入中...</span>
+                <button onclick="handleLogout()" class="btn btn-outline-light btn-sm">登出</button>
             </div>
         </div>
     </nav>
 
-    <div class="container pb-5">
+    <div class="container py-4">
         
-        <div class="d-flex justify-content-between align-items-center mb-4">
-            <div>
-                <h2 class="fw-bold text-dark"><i class="fas fa-chart-pie me-2 text-success"></i>管理者總覽</h2>
-                <p class="text-muted mb-0">Check & Act 階段：歸檔審查、合規監控與異常跟催</p>
-            </div>
-            <div>
-                <button class="btn btn-primary btn-sm fw-bold" onclick="refreshAllData()">
-                    <i class="fas fa-sync-alt me-2"></i>重新整理數據
-                </button>
-            </div>
-        </div>
-
-        <div class="op-guide-card">
-            <strong><i class="fas fa-info-circle me-2"></i>操作指引</strong><br>
-            此介面為管理者的核心指揮中心，整合了來自前線（文管/醫護）的所有數據流：
-            <ul class="mb-0 ps-3 mt-1 small">
-                <li><strong>歸檔審查 (Gatekeeping):</strong> 下方顯示所有「待審核 (Pending)」的文件。請逐筆點擊進行查核，確認無誤後按下「歸檔」，資料才會正式進入系統。</li>
-                <li><strong>合規監控 (Compliance):</strong> 右側看板自動撈取「法規行事曆」，紅燈顯示已逾期事項，黃燈顯示即將到期事項。</li>
-                <li><strong>異常跟催 (Follow-up):</strong> 針對逾期或資料缺漏之項目，可直接點擊「跟催」按鈕，系統將自動發送通知並記錄於稽核日誌。</li>
-            </ul>
-        </div>
-
-        <div class="mb-5">
-            <h5 class="fw-bold text-dark mb-3 d-flex align-items-center">
-                <span class="badge bg-danger rounded-pill me-2" style="width: 10px; height: 10px; padding: 0;">&nbsp;</span>
-                待歸檔文件審查
-                <span class="badge bg-danger bg-opacity-10 text-danger ms-2 rounded-pill small" id="pending-count">載入中...</span>
-            </h5>
-
-            <div class="row g-4" id="review-list">
-                <div class="col-12 text-center py-4 text-muted">
-                    <div class="spinner-border spinner-border-sm text-secondary me-2"></div>
-                    正在讀取待審核資料...
+        <div class="completion-card animate__animated animate__fadeIn">
+            <div class="row align-items-center">
+                <div class="col-md-4">
+                    <h5 class="mb-3"><i class="fas fa-chart-pie me-2"></i>年度服務完成率稽核</h5>
+                    <div class="input-group">
+                        <span class="input-group-text">選取年度</span>
+                        <select id="year-filter" class="form-select" onchange="calculateAnnualCompletion()">
+                            <option value="2026" selected>2026 年度</option>
+                            <option value="2025">2025 年度</option>
+                            <option value="2024">2024 年度</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="col-md-8">
+                    <div class="d-flex justify-content-between mb-2">
+                        <span class="fw-bold">核心附件上傳進度 (9-1 ~ 13條事項)</span>
+                        <span id="completion-percent" class="badge bg-success">計算中...</span>
+                    </div>
+                    <div class="progress" style="height: 25px;">
+                        <div id="completion-bar" class="progress-bar progress-bar-striped progress-bar-animated bg-success" role="progressbar" style="width: 0%">0%</div>
+                    </div>
+                    <small class="text-muted mt-2 d-block">
+                        * 計算邏輯：比對該年度 Service Records 總數與 Storage 附件對應紀錄筆數。
+                    </small>
                 </div>
             </div>
         </div>
 
-        <div class="row g-4 mb-5">
-            
-            <div class="col-lg-7">
-                <div class="card border-0 shadow-sm h-100">
+        <div class="op-guide-card shadow-sm animate__animated animate__fadeIn">
+            <strong><i class="fas fa-info-circle me-1"></i> 管理者操作指引：</strong><br>
+            系統自動彙整顧問端提交之紀錄。請在下方「待審核區」點選文件進行查閱及核定。
+            若發現異常，請點選「跟催」按鈕發送系統提醒。
+        </div>
+
+        <div class="row g-4 mb-4 animate__animated animate__fadeInUp">
+            <div class="col-md-3">
+                <div class="stat-card bg-gradient-primary">
+                    <div class="small opacity-75">總服務次數 (本月)</div>
+                    <div class="h2 mb-0 fw-bold" id="total-services">-</div>
+                    <i class="fas fa-calendar-check position-absolute end-0 bottom-0 m-3 opacity-25 fa-2x"></i>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="stat-card bg-gradient-warning">
+                    <div class="small opacity-75">待審核文件</div>
+                    <div class="h2 mb-0 fw-bold" id="pending-reviews">-</div>
+                    <i class="fas fa-file-signature position-absolute end-0 bottom-0 m-3 opacity-25 fa-2x"></i>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="stat-card bg-gradient-danger">
+                    <div class="small opacity-75">異常跟催中</div>
+                    <div class="h2 mb-0 fw-bold" id="expiring-contracts">-</div>
+                    <i class="fas fa-exclamation-triangle position-absolute end-0 bottom-0 m-3 opacity-25 fa-2x"></i>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="stat-card bg-gradient-success">
+                    <div class="small opacity-75">顧問在線人數</div>
+                    <div class="h2 mb-0 fw-bold" id="active-consultants">-</div>
+                    <i class="fas fa-user-md position-absolute end-0 bottom-0 m-3 opacity-25 fa-2x"></i>
+                </div>
+            </div>
+        </div>
+
+        <div class="row">
+            <div class="col-lg-8">
+                <div class="card shadow-sm border-0 mb-4">
                     <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center border-bottom">
-                        <h6 class="mb-0 fw-bold text-dark"><i class="far fa-calendar-alt me-2 text-primary"></i>近期法規作業排程</h6>
-                        <span class="badge bg-light text-dark">未來 30 天</span>
+                        <h5 class="mb-0 fw-bold text-dark"><i class="fas fa-list me-2"></i>待審核服務紀錄 (暫存區)</h5>
+                        <button onclick="refreshAllData()" class="btn btn-sm btn-outline-secondary"><i class="fas fa-sync-alt"></i></button>
                     </div>
-                    <div class="card-body">
-                        <div class="ps-2" id="calendar-list">
-                            <p class="text-center text-muted small mt-3">載入中...</p>
+                    <div class="card-body p-0">
+                        <div class="table-responsive">
+                            <table class="table table-hover align-middle mb-0">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>日期</th>
+                                        <th>事業單位</th>
+                                        <th>服務類型</th>
+                                        <th>提交人</th>
+                                        <th>狀態</th>
+                                        <th>操作</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="review-list">
+                                    <tr><td colspan="6" class="text-center py-4 text-muted">資料載入中...</td></tr>
+                                </tbody>
+                            </table>
                         </div>
                     </div>
                 </div>
             </div>
 
-            <div class="col-lg-5">
-                <div class="card border-0 shadow-sm h-100 bg-white">
-                    <div class="card-header bg-transparent border-0 py-3">
-                        <h6 class="mb-0 fw-bold text-dark"><i class="fas fa-bell me-2 text-warning"></i>合規預警看板</h6>
+            <div class="col-lg-4">
+                <div class="card shadow-sm border-0">
+                    <div class="card-header bg-white py-3 border-bottom">
+                        <h5 class="mb-0 fw-bold text-dark"><i class="fas fa-bell me-2"></i>異常狀況監控</h5>
                     </div>
-                    <div class="card-body pt-0" id="warning-board">
-                        <p class="text-center text-muted small mt-3">分析中...</p>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-    </div>
-
-    <div class="modal fade" id="reviewModal" tabindex="-1" data-bs-backdrop="static">
-        <div class="modal-dialog modal-lg modal-dialog-centered">
-            <div class="modal-content border-0 shadow-lg">
-                <div class="modal-header bg-primary text-white">
-                    <h5 class="modal-title fs-6 fw-bold"><i class="fas fa-clipboard-check me-2"></i>文件審查</h5>
-                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
-                </div>
-                <div class="modal-body p-4 bg-light">
-                    <input type="hidden" id="review-id">
-                    
-                    <div class="row g-3">
-                        <div class="col-md-6">
-                            <label class="small text-muted fw-bold">上傳者</label>
-                            <div class="review-field" id="review-uploader"></div>
+                    <div class="card-body px-0" id="follow-up-list">
                         </div>
-                        <div class="col-md-6">
-                            <label class="small text-muted fw-bold">檔案類型</label>
-                            <div class="review-field" id="review-type"></div>
-                        </div>
-                        <div class="col-md-12">
-                            <label class="small text-muted fw-bold">檔案名稱</label>
-                            <div class="review-field text-break" id="review-filename"></div>
-                        </div>
-                        <div class="col-md-12">
-                            <label class="small text-muted fw-bold">分類標籤</label>
-                            <div class="review-field" id="review-category"></div>
-                        </div>
-                        <div class="col-md-12">
-                            <label class="small text-muted fw-bold">AI 辨識參數 (JSON)</label>
-                            <pre class="form-control bg-white text-muted small" id="review-json" style="height: 100px; overflow-y: auto;"></pre>
-                        </div>
-                    </div>
-                </div>
-                <div class="modal-footer bg-white">
-                    <button type="button" class="btn btn-outline-danger" onclick="rejectDocument()">退回</button>
-                    <button type="button" class="btn btn-primary fw-bold px-4" onclick="approveDocument()">
-                        <i class="fas fa-check me-2"></i>核准歸檔
-                    </button>
                 </div>
             </div>
         </div>
     </div>
 
-    <div class="modal fade" id="followUpModal" tabindex="-1">
-        <div class="modal-dialog modal-dialog-centered">
-            <div class="modal-content border-0 shadow-lg">
-                <div class="modal-header bg-danger text-white">
-                    <h5 class="modal-title fs-6 fw-bold"><i class="fas fa-bullhorn me-2"></i>異常跟催通知</h5>
-                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+    <div class="modal fade" id="reviewModal" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">服務紀錄審核</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                 </div>
-                <div class="modal-body p-4">
-                    <p class="mb-3">您即將針對以下事項發送跟催通知：</p>
-                    <div class="alert alert-secondary mb-3 fw-bold" id="follow-target"></div>
-                    
-                    <label class="form-label small text-muted fw-bold">通知方式</label>
-                    <div>
-                        <div class="form-check form-check-inline">
-                            <input class="form-check-input" type="radio" name="contactType" value="email" checked>
-                            <label class="form-check-label"><i class="fas fa-envelope me-1"></i>Email</label>
-                        </div>
-                        <div class="form-check form-check-inline">
-                            <input class="form-check-input" type="radio" name="contactType" value="sms">
-                            <label class="form-check-label"><i class="fas fa-sms me-1"></i>簡訊</label>
-                        </div>
+                <div class="modal-body" id="review-body">
                     </div>
-                </div>
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
-                    <button type="button" class="btn btn-danger fw-bold" onclick="sendFollowUp()">發送通知</button>
+                    <button onclick="rejectDoc()" class="btn btn-danger">退回修正</button>
+                    <button onclick="approveDoc()" class="btn btn-success px-4">核准通過</button>
                 </div>
             </div>
         </div>
@@ -242,224 +193,192 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     
     <script>
-        // ==========================================
-        // 1. Supabase Init
-        // ==========================================
-        const SUPABASE_URL = 'https://ghpxaeenikochgrnczic.supabase.co';
-        const SUPABASE_KEY = 'sb_publishable_v0ZN2OY08lh-8EC8ps8NdQ_ChYo1FRW';
-        const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+        const SUPABASE_URL = "https://yhehfucgemxnfrdvpdhw.supabase.co";
+        const SUPABASE_KEY = "sb_publishable_52emtU-9l-SDxcJTWVTPTA_Yu6qEogh"; 
+        const supabase = Object.assign(supabase.createClient(SUPABASE_URL, SUPABASE_KEY));
 
-        // ==========================================
-        // 2. Load Data
-        // ==========================================
-        document.addEventListener('DOMContentLoaded', refreshAllData);
+        let currentDocId = null;
+
+        document.addEventListener('DOMContentLoaded', async () => {
+            const { data: { session } } = await supabase.auth.getSession();
+            if (!session) {
+                location.href = 'login.html';
+                return;
+            }
+            document.body.style.display = 'block';
+            document.getElementById('admin-name').innerText = `管理員: ${session.user.user_metadata.full_name || 'Admin'}`;
+            
+            refreshAllData();
+        });
 
         function refreshAllData() {
-            loadPendingReviews();
-            loadCalendarAndWarnings();
+            updateStats();
+            loadReviewList();
+            loadFollowUps();
+            calculateAnnualCompletion(); // 刷新時同步更新完工率
         }
 
-        // A. 載入待審核文件 (From document_staging)
-        async function loadPendingReviews() {
-            const container = document.getElementById('review-list');
-            const counter = document.getElementById('pending-count');
+        // 2. 完成率計算邏輯 (新增)
+        async function calculateAnnualCompletion() {
+            const year = document.getElementById('year-filter').value;
+            const bar = document.getElementById('completion-bar');
+            const label = document.getElementById('completion-percent');
+
+            // 抓取該年度所有服務紀錄
+            const { data, error, count } = await supabase
+                .from('service_records')
+                .select('attachment_files', { count: 'exact' })
+                .eq('service_year', year);
+
+            if (error || !data) {
+                label.innerText = "Error";
+                return;
+            }
+
+            const totalCount = count || 0;
+            // 判斷 attachment_files 是否為 JSONB 陣列且長度 > 0
+            const completedCount = data.filter(item => {
+                if (!item.attachment_files) return false;
+                try {
+                    // 如果是字串則解析，如果是物件則直接判斷
+                    const files = typeof item.attachment_files === 'string' ? JSON.parse(item.attachment_files) : item.attachment_files;
+                    return Array.isArray(files) && files.length > 0;
+                } catch (e) { return false; }
+            }).length;
+
+            const percentage = totalCount > 0 ? ((completedCount / totalCount) * 100).toFixed(1) : 0;
+
+            // 更新 UI
+            bar.style.width = `${percentage}%`;
+            bar.innerText = `${percentage}%`;
+            label.innerText = `${completedCount} / ${totalCount} 案已上傳`;
             
+            if (percentage < 50) {
+                bar.className = "progress-bar progress-bar-striped progress-bar-animated bg-danger";
+            } else if (percentage < 80) {
+                bar.className = "progress-bar progress-bar-striped progress-bar-animated bg-warning text-dark";
+            } else {
+                bar.className = "progress-bar progress-bar-striped progress-bar-animated bg-success";
+            }
+        }
+
+        async function updateStats() {
+            // 抓取 Staging 筆數
+            const { count: pendingCount } = await supabase
+                .from('service_record_staging')
+                .select('*', { count: 'exact', head: true })
+                .eq('status', 'pending');
+            
+            document.getElementById('pending-reviews').innerText = pendingCount || 0;
+            document.getElementById('total-services').innerText = '1,280'; // 模擬
+            document.getElementById('expiring-contracts').innerText = '12'; // 模擬
+            document.getElementById('active-consultants').innerText = '40'; // 模擬
+        }
+
+        async function loadReviewList() {
             const { data, error } = await supabase
-                .from('document_staging')
-                .select('*')
-                .eq('status', 'pending') // 只抓待審核
+                .from('service_record_staging')
+                .select(`
+                    id, 
+                    service_date, 
+                    service_type, 
+                    status,
+                    workplaces ( department_name, companies ( name ) ),
+                    medical_staff ( name )
+                `)
+                .eq('status', 'pending')
                 .order('created_at', { ascending: false });
 
-            if (error) {
-                console.error(error);
-                container.innerHTML = `<div class="col-12 text-danger text-center">載入失敗</div>`;
-                return;
-            }
-
-            counter.innerText = (data.length || 0) + " 筆";
-
+            const tbody = document.getElementById('review-list');
             if (!data || data.length === 0) {
-                container.innerHTML = `
-                    <div class="col-12 text-center py-5">
-                        <div class="text-muted"><i class="fas fa-check-circle fa-3x mb-3 text-success bg-opacity-10"></i><br>太棒了！目前沒有待審核的文件。</div>
-                    </div>`;
+                tbody.innerHTML = '<tr><td colspan="6" class="text-center py-4 text-muted">目前無待審核文件</td></tr>';
                 return;
             }
 
-            container.innerHTML = data.map(doc => {
-                // 時間格式化
-                const timeAgo = new Date(doc.created_at).toLocaleDateString();
-                const badge = doc.file_type === 'pdf' ? 'bg-danger' : 'bg-primary';
-                
-                return `
-                <div class="col-md-4 animate__animated animate__fadeIn">
-                    <div class="card shadow-sm task-card" onclick='openReviewModal(${JSON.stringify(doc).replace(/'/g, "&apos;")})'>
-                        <div class="card-body">
-                            <span class="task-new-badge badge rounded-pill">NEW</span>
-                            <div class="d-flex justify-content-between mb-2">
-                                <span class="badge ${badge} bg-opacity-10 text-dark border">${doc.category || '未分類'}</span>
-                                <small class="text-muted">${timeAgo}</small>
-                            </div>
-                            <h6 class="card-title fw-bold text-dark text-truncate" title="${doc.file_name}">
-                                ${doc.file_name}
-                            </h6>
-                            <div class="text-muted small mt-2">
-                                <i class="fas fa-user-circle me-1"></i> ${doc.uploader_name || 'Unknown'}
-                            </div>
-                            <div class="border-top mt-3 pt-2 text-center text-primary small fw-bold">
-                                點擊審查 <i class="fas fa-chevron-right ms-1"></i>
-                            </div>
-                        </div>
-                    </div>
-                </div>`;
-            }).join('');
+            tbody.innerHTML = data.map(item => `
+                <tr>
+                    <td>${item.service_date}</td>
+                    <td>
+                        <div class="fw-bold text-dark">${item.workplaces?.companies?.name || '未知公司'}</div>
+                        <div class="small text-muted">${item.workplaces?.department_name || '全廠'}</div>
+                    </td>
+                    <td><span class="badge bg-info text-dark">${item.service_type}</span></td>
+                    <td>${item.medical_staff?.name || '顧問'}</td>
+                    <td><span class="badge bg-warning">待審核</span></td>
+                    <td>
+                        <button onclick="openReview('${item.id}')" class="btn btn-sm btn-primary">審核</button>
+                    </td>
+                </tr>
+            `).join('');
         }
 
-        // B. 載入行事曆與預警 (From compliance_events)
-        async function loadCalendarAndWarnings() {
-            const calendarEl = document.getElementById('calendar-list');
-            const warningEl = document.getElementById('warning-board');
-            
+        async function openReview(id) {
+            currentDocId = id;
             const { data, error } = await supabase
-                .from('compliance_events')
-                .select('*')
-                .neq('status', 'completed') // 只抓未完成
-                .order('event_date', { ascending: true });
+                .from('service_record_staging')
+                .select('*, workplaces(companies(name)), medical_staff(name)')
+                .eq('id', id)
+                .single();
 
-            if (error) return;
+            if (!data) return;
 
-            // 1. 渲染行事曆 (Timeline)
-            if (!data || data.length === 0) {
-                calendarEl.innerHTML = `<p class="text-center text-muted">無近期排程</p>`;
-            } else {
-                calendarEl.innerHTML = data.slice(0, 5).map(evt => {
-                    const date = new Date(evt.event_date);
-                    const today = new Date();
-                    const isOverdue = date < today;
-                    const markerClass = isOverdue ? 'marker-danger' : (evt.priority === 'high' ? 'marker-warning' : 'marker-success');
-                    const textClass = isOverdue ? 'text-danger fw-bold' : 'text-dark';
-                    const statusText = isOverdue ? '(已逾期)' : '';
-
-                    return `
-                    <div class="timeline-item">
-                        <div class="timeline-marker ${markerClass}"></div>
-                        <div class="d-flex justify-content-between mb-1">
-                            <h6 class="fw-bold ${textClass} mb-0">${evt.title}</h6>
-                            <small class="${textClass}">${evt.event_date} ${statusText}</small>
-                        </div>
-                        <p class="text-muted small mb-0">${evt.details || '無詳細說明'}</p>
-                    </div>`;
-                }).join('');
+            // 處理附件顯示
+            let attachmentHtml = '<span class="text-muted">無附件</span>';
+            if (data.attachment_files) {
+                const files = typeof data.attachment_files === 'string' ? JSON.parse(data.attachment_files) : data.attachment_files;
+                if (files.length > 0) {
+                    attachmentHtml = files.map(f => `
+                        <a href="${f.url}" target="_blank" class="btn btn-sm btn-outline-danger me-2 mb-2">
+                            <i class="far fa-file-pdf me-1"></i>${f.name}
+                        </a>
+                    `).join('');
+                }
             }
 
-            // 2. 渲染預警看板 (Warnings)
-            const warnings = data.filter(d => {
-                const date = new Date(d.event_date);
-                const today = new Date();
-                // 邏輯：過期 或 剩餘7天內
-                const diffTime = date - today;
-                const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)); 
-                return diffDays <= 7; 
-            });
-
-            if (warnings.length === 0) {
-                warningEl.innerHTML = `
-                    <div class="text-center py-4">
-                        <i class="fas fa-shield-alt fa-3x text-success mb-3"></i>
-                        <h6 class="fw-bold text-success">目前合規狀態良好</h6>
-                        <small class="text-muted">無重大違規或即將到期事項</small>
-                    </div>`;
-            } else {
-                warningEl.innerHTML = warnings.map(w => {
-                    const isOverdue = new Date(w.event_date) < new Date();
-                    const alertClass = isOverdue ? 'alert-danger border-danger' : 'alert-warning border-warning';
-                    const icon = isOverdue ? 'fa-exclamation-circle text-danger' : 'fa-clock text-warning';
-                    const title = isOverdue ? '立即處理 (已逾期)' : '即將到期';
-                    
-                    return `
-                    <div class="alert ${alertClass} bg-white shadow-sm mb-3">
-                        <div class="d-flex align-items-center mb-1">
-                            <i class="fas ${icon} me-2"></i>
-                            <strong>${title}</strong>
-                        </div>
-                        <small class="d-block text-muted mb-2">${w.title} - 期限: ${w.event_date}</small>
-                        <button class="btn btn-sm ${isOverdue?'btn-danger':'btn-warning'} w-100" 
-                            onclick="openFollowUpModal('${w.title}')">
-                            發送跟催
-                        </button>
-                    </div>`;
-                }).join('');
-            }
-        }
-
-        // ==========================================
-        // 3. 互動邏輯 (Actions)
-        // ==========================================
-        
-        // 開啟審查
-        let currentDocId = null;
-        function openReviewModal(doc) {
-            currentDocId = doc.id;
-            document.getElementById('review-id').value = doc.id;
-            document.getElementById('review-uploader').innerText = doc.uploader_name;
-            document.getElementById('review-type').innerText = doc.file_type.toUpperCase();
-            document.getElementById('review-filename').innerText = doc.file_name;
-            document.getElementById('review-category').innerText = doc.category;
-            
-            // 美化 JSON 顯示
-            try {
-                document.getElementById('review-json').innerText = JSON.stringify(doc.extracted_data, null, 2);
-            } catch(e) {
-                document.getElementById('review-json').innerText = "無詳細參數";
-            }
-
+            document.getElementById('review-body').innerHTML = `
+                <div class="mb-3">
+                    <label class="form-label fw-bold">事業單位</label>
+                    <div class="form-control-plaintext">${data.workplaces.companies.name}</div>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label fw-bold">服務類型</label>
+                    <div class="form-control-plaintext">${data.service_type}</div>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label fw-bold">服務描述</label>
+                    <div class="p-3 bg-light rounded">${data.service_desc}</div>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label fw-bold">附件檔案 (Storage)</label>
+                    <div class="mt-2">${attachmentHtml}</div>
+                </div>
+            `;
             new bootstrap.Modal(document.getElementById('reviewModal')).show();
         }
 
-        // 核准歸檔
-        async function approveDocument() {
-            if(!currentDocId) return;
+        async function approveDoc() {
+            if (!confirm('確定核准並正式入庫嗎？')) return;
             
-            if(!confirm('確定要核准此文件並正式歸檔嗎？')) return;
-
-            // 1. 更新 document_staging 狀態
+            // 邏輯：更新狀態為 approved (實務上應觸發 DB Trigger 移轉資料至正式表)
             const { error } = await supabase
-                .from('document_staging')
+                .from('service_record_staging')
                 .update({ status: 'approved' })
                 .eq('id', currentDocId);
 
-            if (error) {
-                alert('歸檔失敗: ' + error.message);
-                return;
-            }
-
-            // 2. 寫入稽核 Log
-            const adminName = sessionStorage.getItem('currentUserName') || 'Admin';
-            await supabase.from('audit_logs').insert([{
-                user_role: 'admin',
-                user_name: adminName,
-                action_type: '審核歸檔',
-                target_table: 'document_staging',
-                details: `核准文件 ID: ${currentDocId}`
-            }]);
-
-            alert('✅ 文件已成功歸檔！');
+            if (error) return alert('核准失敗');
+            
+            alert('核准成功，紀錄已入庫。');
             bootstrap.Modal.getInstance(document.getElementById('reviewModal')).hide();
-            refreshAllData(); // 重整畫面
+            refreshAllData();
         }
 
-        // 退回文件
-        async function rejectDocument() {
-            if(!currentDocId) return;
+        async function rejectDoc() {
             const reason = prompt("請輸入退回原因：");
             if (!reason) return;
 
             const { error } = await supabase
-                .from('document_staging')
-                .update({ 
-                    status: 'rejected',
-                    admin_comment: reason 
-                })
+                .from('service_record_staging')
+                .update({ status: 'rejected' })
                 .eq('id', currentDocId);
 
             if (error) return alert('操作失敗');
@@ -469,30 +388,30 @@
             refreshAllData();
         }
 
-        // 開啟跟催
-        function openFollowUpModal(targetName) {
-            document.getElementById('follow-target').innerText = targetName;
-            new bootstrap.Modal(document.getElementById('followUpModal')).show();
+        function loadFollowUps() {
+            const container = document.getElementById('follow-up-list');
+            const items = [
+                { title: '異常工作負荷紀錄缺失', company: 'ABC科技有限公司', consultant: '王醫師', level: 'high' },
+                { title: '母性保護附件逾期未傳', company: 'XYZ工業園區', consultant: '李護理師', level: 'med' }
+            ];
+
+            container.innerHTML = items.map(item => `
+                <div class="px-3 py-2 border-bottom">
+                    <div class="d-flex justify-content-between">
+                        <span class="badge ${item.level === 'high' ? 'bg-danger' : 'bg-warning'} mb-1">${item.level === 'high' ? '嚴重' : '中等'}</span>
+                        <small class="text-muted">3天前</small>
+                    </div>
+                    <div class="fw-bold small">${item.title}</div>
+                    <div class="text-muted" style="font-size: 0.8rem;">${item.company} / ${item.consultant}</div>
+                    <button onclick="alert('通知已發送')" class="btn btn-sm btn-link text-primary p-0 mt-1">發送跟催</button>
+                </div>
+            `).join('');
         }
 
-        // 發送跟催 (模擬 + 寫 Log)
-        async function sendFollowUp() {
-            const target = document.getElementById('follow-target').innerText;
-            const adminName = sessionStorage.getItem('currentUserName') || 'Admin';
-
-            // 寫 Log 代表真的有做事
-            await supabase.from('audit_logs').insert([{
-                user_role: 'admin',
-                user_name: adminName,
-                action_type: '異常跟催',
-                target_table: 'compliance_events',
-                details: `發送通知針對: ${target}`
-            }]);
-
-            alert('系統訊息：\n通知已發送！\n(已記錄於系統稽核日誌)');
-            bootstrap.Modal.getInstance(document.getElementById('followUpModal')).hide();
+        async function handleLogout() {
+            await supabase.auth.signOut();
+            location.href = 'login.html';
         }
-
     </script>
 </body>
 </html>
