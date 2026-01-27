@@ -152,10 +152,11 @@
             // 2. 填充基本資料 (從 Session 與 LocalStorage)
             const user = session.user;
             const userName = sessionStorage.getItem('currentUserName') || '使用者';
-            const userRole = sessionStorage.getItem('currentUserRole') || 'User';
+            const userRole = sessionStorage.getItem('currentUserRole') || 'user';
 
             document.getElementById('user-email').value = user.email;
             document.getElementById('display-name').textContent = userName;
+            // ★ 修正：使用正確的角色名稱對應
             document.getElementById('display-role').textContent = getRoleName(userRole);
             document.getElementById('user-avatar').textContent = (userName.charAt(0) || 'U').toUpperCase();
             
@@ -164,7 +165,7 @@
             }
         });
 
-        // 處理密碼變更
+        // 處理密碼變更 (這是正確的 Supabase 原生改密碼方式)
         async function handlePasswordUpdate(e) {
             e.preventDefault();
             
@@ -191,7 +192,7 @@
             btn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>更新中...';
 
             try {
-                // Supabase Update User API
+                // Supabase Update User API (這會立即修改 Auth Table 的密碼)
                 const { data, error } = await supabase.auth.updateUser({
                     password: newPwd
                 });
@@ -226,12 +227,13 @@
             }
         }
 
+        // ★ 修正後的角色名稱對應表
         function getRoleName(role) {
             const map = {
                 'admin': '系統管理員',
-                'consultant': '外部顧問',
-                'medical': '醫護人員',
-                'general': '一般用戶'
+                'consultant': '醫護顧問',    // 修正: 对应 consultant
+                'doc_control': '文管人員',   // 修正: 对应 doc_control
+                'user': '一般用戶'
             };
             return map[role] || role;
         }
