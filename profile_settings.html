@@ -24,12 +24,6 @@
             overflow: hidden;
         }
         
-        .settings-header {
-            background-color: #f8f9fa;
-            border-bottom: 1px solid #e9ecef;
-            padding: 20px 30px;
-        }
-
         /* 頭像樣式 */
         .avatar-large {
             width: 80px; height: 80px;
@@ -75,9 +69,9 @@
 
                 <div class="settings-card">
                     <div class="p-4 text-center border-bottom">
-                        <div class="avatar-large" id="user-avatar">U</div>
-                        <h5 class="fw-bold mb-1" id="display-name">Loading...</h5>
-                        <p class="text-muted small mb-0" id="display-role">使用者</p>
+                        <div class="avatar-large" id="user-avatar"><i class="fas fa-user"></i></div>
+                        <h5 class="fw-bold mb-1" id="display-name">載入中...</h5>
+                        <p class="text-muted small mb-0" id="display-role">--</p>
                     </div>
 
                     <div class="p-4 p-md-5">
@@ -87,7 +81,7 @@
                             
                             <div class="mb-3">
                                 <label class="form-label text-muted small fw-bold">登入帳號 (Email)</label>
-                                <input type="email" id="user-email" class="form-control bg-light" readonly disabled>
+                                <input type="email" id="user-email" class="form-control bg-light" readonly disabled placeholder="讀取中...">
                                 <div class="form-text">帳號若需變更請聯繫系統管理員。</div>
                             </div>
 
@@ -122,12 +116,7 @@
                         </form>
                     </div>
                 </div>
-
-                <div class="text-center mt-3">
-                    <small class="text-muted">最後登入時間: <span id="last-login-time">--</span></small>
                 </div>
-
-            </div>
         </div>
     </div>
 
@@ -139,33 +128,47 @@
         const SUPABASE_KEY = 'sb_publishable_52emtU-9l-SDxcJTWVTPTA_Yu6qEogh';
         const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
+        // 1. 頁面載入時執行
         document.addEventListener('DOMContentLoaded', async () => {
-            // 1. 檢查 Session
-            const { data: { session } } = await supabase.auth.getSession();
-            
-            if (!session) {
-                alert('請先登入系統');
-                window.location.href = 'login.html';
-                return;
-            }
+            try {
+                // A. 取得登入 Session
+                const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+                
+                if (sessionError || !session) {
+                    // 若沒登入，踢回首頁
+                    alert('連線逾時或未登入，請重新登入');
+                    window.location.href = 'login.html';
+                    return;
+                }
 
-            // 2. 填充基本資料 (從 Session 與 LocalStorage)
-            const user = session.user;
-            const userName = sessionStorage.getItem('currentUserName') || '使用者';
-            const userRole = sessionStorage.getItem('currentUserRole') || 'user';
+                const user = session.user;
+                
+                // B. 填入 Email (這是最準確的資料來源)
+                const emailField = document.getElementById('user-email');
+                if (emailField) emailField.value = user.email || '';
 
-            document.getElementById('user-email').value = user.email;
-            document.getElementById('display-name').textContent = userName;
-            // ★ 修正：使用正確的角色名稱對應
-            document.getElementById('display-role').textContent = getRoleName(userRole);
-            document.getElementById('user-avatar').textContent = (userName.charAt(0) || 'U').toUpperCase();
-            
-            if(user.last_sign_in_at) {
-                document.getElementById('last-login-time').textContent = new Date(user.last_sign_in_at).toLocaleString();
+                // C. 直接從資料庫抓最新的姓名與角色 (不依賴 sessionStorage，避免資料漏失)
+                const { data: profile, error: profileError } = await supabase
+                    .from('profiles')
+                    .select('full_name, role')
+                    .eq('id', user.id)
+                    .single();
+
+                // D. 更新畫面
+                const displayName = profile?.full_name || '使用者';
+                const displayRole = profile?.role || 'user';
+
+                document.getElementById('display-name').textContent = displayName;
+                document.getElementById('display-role').textContent = getRoleName(displayRole);
+                document.getElementById('user-avatar').textContent = (displayName.charAt(0) || 'U').toUpperCase();
+
+            } catch (err) {
+                console.error("載入資料失敗:", err);
+                document.getElementById('display-name').textContent = "讀取失敗";
             }
         });
 
-        // 處理密碼變更 (這是正確的 Supabase 原生改密碼方式)
+        // 2. 處理密碼變更
         async function handlePasswordUpdate(e) {
             e.preventDefault();
             
@@ -192,7 +195,7 @@
             btn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>更新中...';
 
             try {
-                // Supabase Update User API (這會立即修改 Auth Table 的密碼)
+                // Supabase API 變更密碼 (立即生效)
                 const { data, error } = await supabase.auth.updateUser({
                     password: newPwd
                 });
@@ -213,7 +216,7 @@
             }
         }
 
-        // 切換密碼顯示/隱藏
+        // 3. 切換密碼顯示/隱藏
         function togglePassword(inputId, icon) {
             const input = document.getElementById(inputId);
             if (input.type === 'password') {
@@ -227,12 +230,12 @@
             }
         }
 
-        // ★ 修正後的角色名稱對應表
+        // 4. 角色名稱對應表
         function getRoleName(role) {
             const map = {
                 'admin': '系統管理員',
-                'consultant': '醫護顧問',    // 修正: 对应 consultant
-                'doc_control': '文管人員',   // 修正: 对应 doc_control
+                'consultant': '醫護顧問',
+                'doc_control': '文管人員',
                 'user': '一般用戶'
             };
             return map[role] || role;
