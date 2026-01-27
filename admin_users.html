@@ -124,53 +124,97 @@
         </div>
     </div>
 
-    <div class="modal fade" id="userModal" tabindex="-1" data-bs-backdrop="static">
+    <div class="modal fade" id="addUserModal" tabindex="-1" data-bs-backdrop="static">
         <div class="modal-dialog modal-dialog-centered">
             <div class="modal-content">
                 <div class="modal-header bg-primary text-white">
-                    <h5 class="modal-title fw-bold" id="modalTitle">新增帳號</h5>
+                    <h5 class="modal-title fw-bold"><i class="fas fa-paper-plane me-2"></i>邀請新成員 (Create)</h5>
                     <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
                 </div>
                 <div class="modal-body p-4">
-                    <input type="hidden" id="edit-user-id"> 
+                    <div class="mb-3">
+                        <label class="form-label fw-bold text-dark">Email (登入帳號)</label>
+                        <input type="email" id="new-email" class="form-control" placeholder="name@company.com">
+                        <small class="text-muted">系統將以此 Email 建立使用者檔案。</small>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-bold text-dark">姓名 (顯示名稱)</label>
+                        <input type="text" id="new-name" class="form-control" placeholder="例如：王小明">
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-bold text-dark">指派角色</label>
+                        <select class="form-select" id="new-role">
+                            <option value="user">User (一般用戶)</option>
+                            <option value="doc_control">Doc Control (文管人員)</option>
+                            <option value="consultant">Consultant (顧問/醫護)</option>
+                            <option value="admin">Admin (系統管理員)</option>
+                        </select>
+                    </div>
                     
-                    <div class="mb-3">
-                        <label class="form-label fw-bold text-muted">Email (登入帳號)</label>
-                        <input type="email" id="input-email" class="form-control" placeholder="example@company.com">
-                        <small class="text-muted" id="email-hint">提示：新增後請務必至 Auth 後台設定此 Email 的密碼</small>
-                    </div>
-
-                    <div class="mb-3">
-                        <label class="form-label fw-bold text-muted">姓名</label>
-                        <input type="text" id="input-name" class="form-control" placeholder="真實姓名">
-                    </div>
-
-                    <div class="row g-3 mb-4">
-                        <div class="col-md-6">
-                            <label class="form-label fw-bold text-muted">系統角色</label>
-                            <select class="form-select" id="input-role">
-                                <option value="user">User (一般用戶)</option>
-                                <option value="doc_control">Doc Control (文管)</option>
-                                <option value="consultant">Consultant (顧問)</option>
-                                <option value="admin">Admin (管理員)</option>
-                            </select>
-                        </div>
-                        <div class="col-md-6">
-                            <label class="form-label fw-bold text-muted">帳號狀態</label>
-                            <select class="form-select" id="input-status">
-                                <option value="active" selected>🟢 在職 (Active)</option>
-                                <option value="resigned">🔴 已離職 (Resigned)</option>
-                            </select>
-                        </div>
-                    </div>
-
-                    <div class="alert alert-light border small text-muted">
-                        <i class="fas fa-exclamation-triangle me-1"></i> 注意：將狀態設為「已離職」後，該使用者將無法再登入系統，但其過去建立的表單紀錄將會完整保留。
+                    <div class="alert alert-info small border-0 bg-light text-muted">
+                        <i class="fas fa-info-circle me-1"></i> 
+                        <strong>注意：</strong> 建立資料後，請務必至 Supabase Auth 後台為此 Email 設定密碼或發送邀請信。
                     </div>
                 </div>
                 <div class="modal-footer bg-light">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
-                    <button type="button" class="btn btn-primary px-4 fw-bold" onclick="saveUser()">儲存設定</button>
+                    <button type="button" class="btn btn-primary px-4 fw-bold" onclick="createUser()">
+                        <i class="fas fa-check me-1"></i> 建立使用者資料
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="editUserModal" tabindex="-1" data-bs-backdrop="static">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header bg-secondary text-white">
+                    <h5 class="modal-title fw-bold"><i class="fas fa-cog me-2"></i>管理帳號權限 (Edit)</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body p-4">
+                    <input type="hidden" id="edit-user-id"> <div class="mb-3">
+                        <label class="form-label fw-bold text-muted">Email (唯讀)</label>
+                        <input type="email" id="edit-email" class="form-control bg-light" disabled>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-bold text-dark">姓名</label>
+                        <input type="text" id="edit-name" class="form-control">
+                    </div>
+
+                    <div class="row g-3 mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold text-dark">系統角色</label>
+                            <select class="form-select" id="edit-role">
+                                <option value="user">User</option>
+                                <option value="doc_control">Doc Control</option>
+                                <option value="consultant">Consultant</option>
+                                <option value="admin">Admin</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold text-dark">帳號狀態</label>
+                            <select class="form-select" id="edit-status">
+                                <option value="active">🟢 在職 (Active)</option>
+                                <option value="resigned">🔴 已離職 (Resigned)</option>
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <div class="alert alert-warning small border-0 bg-light text-muted">
+                        <i class="fas fa-exclamation-triangle me-1"></i> 
+                        若設為「已離職」，該用戶將無法登入，但歷史紀錄會被保留。
+                    </div>
+                </div>
+                <div class="modal-footer bg-light">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                    <button type="button" class="btn btn-success px-4 fw-bold" onclick="updateUser()">
+                        <i class="fas fa-save me-1"></i> 儲存設定
+                    </button>
                 </div>
             </div>
         </div>
@@ -180,74 +224,58 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
     <script>
-        // --- 1. 系統初始化 ---
-        // 檢查函式庫是否載入成功
-        if (typeof bootstrap === 'undefined' || typeof supabase === 'undefined') {
-            alert('系統錯誤：必要的函式庫 (Bootstrap 或 Supabase) 載入失敗，請檢查網路連線。');
-        }
-
+        // 1. 初始化
         const SUPABASE_URL = 'https://yhehfucgemxnfrdvpdhw.supabase.co';
         const SUPABASE_KEY = 'sb_publishable_52emtU-9l-SDxcJTWVTPTA_Yu6qEogh'; 
-        const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+        
+        let supabaseClient;
+        try {
+            supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+        } catch (e) {
+            console.error('Supabase Init Failed:', e);
+            alert('系統連線失敗，請檢查網路。');
+        }
         
         let allUsers = [];
-        let userModal;
+        let addModal, editModal;
 
-        // DOM 載入後執行
         document.addEventListener('DOMContentLoaded', async () => {
-            try {
-                // 初始化 Modal
-                const modalEl = document.getElementById('userModal');
-                if (modalEl) {
-                    userModal = new bootstrap.Modal(modalEl);
-                } else {
-                    console.error('Modal element not found!');
-                }
-                
-                // 執行資料讀取
-                await fetchUsers();
-            } catch (err) {
-                console.error('Initialization Error:', err);
-            }
+            // 初始化兩個 Modal
+            addModal = new bootstrap.Modal(document.getElementById('addUserModal'));
+            editModal = new bootstrap.Modal(document.getElementById('editUserModal'));
+            
+            await fetchUsers();
         });
 
-        // --- 2. 讀取使用者資料 ---
+        // 2. 讀取資料
         async function fetchUsers() {
             try {
-                // 從 profiles 表讀取真實資料
                 const { data, error } = await supabaseClient
                     .from('profiles')
                     .select('*')
                     .order('created_at', { ascending: false });
 
                 if (error) throw error;
-                
                 allUsers = data || [];
-                filterUsers(); // 渲染畫面
+                filterUsers();
             } catch (err) {
                 console.error('Fetch Error:', err);
                 document.getElementById('userTableBody').innerHTML = 
-                    `<tr><td colspan="5" class="text-center py-4 text-danger">讀取資料失敗：${err.message}</td></tr>`;
+                    `<tr><td colspan="5" class="text-center py-4 text-danger">讀取失敗：${err.message}</td></tr>`;
             }
         }
 
-        // --- 3. 渲染列表與篩選 ---
+        // 3. 渲染與過濾
         function filterUsers() {
             const term = document.getElementById('searchInput').value.toLowerCase();
             const roleFilter = document.getElementById('roleFilter').value;
             const showResigned = document.getElementById('showResigned').checked;
 
             const filtered = allUsers.filter(user => {
-                // 離職過濾：如果不勾選「顯示離職」，且 user.status 是 resigned，則隱藏
                 if (!showResigned && user.status === 'resigned') return false;
-
-                // 關鍵字搜尋
                 const matchTerm = (user.full_name || '').toLowerCase().includes(term) || 
                                   (user.email || '').toLowerCase().includes(term);
-                
-                // 角色過濾
                 const matchRole = roleFilter === 'all' || user.role === roleFilter;
-
                 return matchTerm && matchRole;
             });
             renderTable(filtered);
@@ -259,7 +287,7 @@
             document.getElementById('totalCount').innerText = users.length;
 
             if (users.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="5" class="text-center py-4 text-muted">查無符合條件的資料</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="5" class="text-center py-4 text-muted">查無資料</td></tr>';
                 return;
             }
 
@@ -269,7 +297,6 @@
                     ? `<span class="badge status-badge-resigned rounded-pill px-3">已離職</span>` 
                     : `<span class="badge status-badge-active rounded-pill px-3">在職中</span>`;
                 
-                // 設定角色標籤顏色
                 let roleClass = 'role-user';
                 let roleName = 'User';
                 if(user.role === 'admin') { roleClass = 'role-admin'; roleName = 'Admin'; }
@@ -277,7 +304,7 @@
                 else if(user.role === 'doc_control') { roleClass = 'role-doc_control'; roleName = 'Doc Control'; }
 
                 const tr = document.createElement('tr');
-                if (isResigned) tr.style.backgroundColor = '#fdfdfe'; // 離職人員淡化背景
+                if (isResigned) tr.style.backgroundColor = '#fcfcfc';
 
                 tr.innerHTML = `
                     <td class="ps-4">
@@ -294,7 +321,7 @@
                     <td class="text-muted small">${user.last_sign_in_at ? new Date(user.last_sign_in_at).toLocaleDateString() : '尚未登入'}</td>
                     <td class="text-end pe-4">
                         <button class="btn btn-outline-secondary btn-sm" onclick="openEditModal('${user.id}')">
-                            <i class="fas fa-pen me-1"></i> 設定
+                            <i class="fas fa-cog me-1"></i> 管理
                         </button>
                     </td>
                 `;
@@ -302,87 +329,88 @@
             });
         }
 
-        // --- 4. Modal 操作 (新增/編輯) ---
+        // 4. Modal 控制功能
+        
+        // --- A. 開啟「新增」視窗 ---
         function openAddModal() {
-            if (!userModal) return alert('Modal 初始化失敗，請重新整理頁面。');
-            
-            document.getElementById('modalTitle').innerText = '新增帳號';
-            document.getElementById('edit-user-id').value = ''; // 清空 ID 代表新增
-            document.getElementById('input-email').value = '';
-            document.getElementById('input-email').disabled = false; // 新增時可輸入 Email
-            document.getElementById('input-name').value = '';
-            document.getElementById('input-role').value = 'user';
-            document.getElementById('input-status').value = 'active';
-            
-            // 顯示提示
-            document.getElementById('email-hint').style.display = 'block';
-            
-            userModal.show();
+            // 清空欄位
+            document.getElementById('new-email').value = '';
+            document.getElementById('new-name').value = '';
+            document.getElementById('new-role').value = 'user';
+            addModal.show();
         }
 
+        // --- B. 開啟「編輯」視窗 ---
         function openEditModal(id) {
-            if (!userModal) return alert('Modal 初始化失敗，請重新整理頁面。');
-
             const user = allUsers.find(u => u.id === id);
             if (!user) return;
 
-            document.getElementById('modalTitle').innerText = '編輯帳號權限';
+            // 填入現有資料
             document.getElementById('edit-user-id').value = user.id;
-            document.getElementById('input-email').value = user.email;
-            document.getElementById('input-email').disabled = true; // 編輯時不可改 Email
-            document.getElementById('input-name').value = user.full_name;
-            document.getElementById('input-role').value = user.role;
-            document.getElementById('input-status').value = user.status || 'active';
+            document.getElementById('edit-email').value = user.email; // 唯讀
+            document.getElementById('edit-name').value = user.full_name;
+            document.getElementById('edit-role').value = user.role;
+            document.getElementById('edit-status').value = user.status || 'active';
             
-            // 編輯時隱藏提示
-            document.getElementById('email-hint').style.display = 'none';
-
-            userModal.show();
+            editModal.show();
         }
 
-        // --- 5. 儲存邏輯 ---
-        async function saveUser() {
-            const id = document.getElementById('edit-user-id').value;
-            const email = document.getElementById('input-email').value;
-            const name = document.getElementById('input-name').value;
-            const role = document.getElementById('input-role').value;
-            const status = document.getElementById('input-status').value;
+        // 5. 資料寫入功能 (CRUD)
 
-            if (!email || !name) return alert('請填寫完整資訊');
+        // --- C. 執行新增 (Create) ---
+        async function createUser() {
+            const email = document.getElementById('new-email').value;
+            const name = document.getElementById('new-name').value;
+            const role = document.getElementById('new-role').value;
+
+            if (!email || !name) return alert('請填寫 Email 與姓名');
 
             const userData = {
                 email: email,
                 full_name: name,
                 role: role,
-                status: status,
-                is_active: status === 'active', // 相容性
+                status: 'active',
+                is_active: true,
+                created_at: new Date(),
                 updated_at: new Date()
             };
 
             try {
-                if (id) {
-                    // --- A. 更新模式 (Update) ---
-                    const { error } = await supabaseClient
-                        .from('profiles')
-                        .update(userData)
-                        .eq('id', id);
-                    if (error) throw error;
-                    alert('帳號權限已更新！');
-                } else {
-                    // --- B. 新增模式 (Insert) ---
-                    const { error } = await supabaseClient
-                        .from('profiles')
-                        .insert([userData]);
-                    if (error) throw error;
-                    alert(`已建立使用者資料！\n\n⚠️ 重要提醒：\n請務必前往 Supabase Auth 後台，為 ${email} 建立登入帳號與密碼，並將 User UID 貼回來。`);
-                }
+                const { error } = await supabaseClient.from('profiles').insert([userData]);
+                if (error) throw error;
 
-                userModal.hide();
-                await fetchUsers(); // 重新整理列表
-                
+                alert(`已建立使用者資料：${name} (${email})\n\n下一步：請前往 Supabase Auth 後台手動發送邀請信或設定密碼，並將 User UID 貼回資料庫。`);
+                addModal.hide();
+                await fetchUsers(); // 重整列表
             } catch (e) {
-                alert('儲存失敗: ' + e.message);
-                console.error(e);
+                alert('新增失敗: ' + e.message);
+            }
+        }
+
+        // --- D. 執行更新 (Update) ---
+        async function updateUser() {
+            const id = document.getElementById('edit-user-id').value;
+            const name = document.getElementById('edit-name').value;
+            const role = document.getElementById('edit-role').value;
+            const status = document.getElementById('edit-status').value;
+
+            const userData = {
+                full_name: name,
+                role: role,
+                status: status,
+                is_active: status === 'active',
+                updated_at: new Date()
+            };
+
+            try {
+                const { error } = await supabaseClient.from('profiles').update(userData).eq('id', id);
+                if (error) throw error;
+
+                alert('設定已儲存！');
+                editModal.hide();
+                await fetchUsers(); // 重整列表
+            } catch (e) {
+                alert('更新失敗: ' + e.message);
             }
         }
     </script>
