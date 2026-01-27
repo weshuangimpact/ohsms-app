@@ -15,43 +15,40 @@
             justify-content: center;
             font-family: 'Segoe UI', 'Microsoft JhengHei', sans-serif;
         }
-
         .login-card {
-            width: 100%;
-            max-width: 400px;
-            border: none;
-            border-radius: 15px;
+            width: 100%; max-width: 400px;
+            border: none; border-radius: 15px;
             box-shadow: 0 10px 25px rgba(0,0,0,0.1);
             overflow: hidden;
         }
-
         .card-header {
-            background-color: #2c3e50;
-            color: white;
-            padding: 2rem;
-            text-align: center;
-            border-bottom: none;
+            background-color: #2c3e50; color: white;
+            padding: 2rem; text-align: center; border-bottom: none;
         }
-
         .login-btn {
-            background-color: #2c3e50;
-            border: none;
-            padding: 10px;
-            font-weight: 600;
-            letter-spacing: 1px;
+            background-color: #2c3e50; border: none; padding: 10px;
+            font-weight: 600; letter-spacing: 1px;
         }
-
-        .login-btn:hover {
-            background-color: #34495e;
-        }
-
+        .login-btn:hover { background-color: #34495e; }
         .form-control:focus {
-            border-color: #2c3e50;
-            box-shadow: 0 0 0 0.2rem rgba(44, 62, 80, 0.25);
+            border-color: #2c3e50; box-shadow: 0 0 0 0.2rem rgba(44, 62, 80, 0.25);
         }
+        #error-msg { display: none; }
         
-        #error-msg {
-            display: none;
+        /* 搖晃動畫 */
+        .shake { animation: shake 0.5s; }
+        @keyframes shake {
+            0% { transform: translate(1px, 1px) rotate(0deg); }
+            10% { transform: translate(-1px, -2px) rotate(-1deg); }
+            20% { transform: translate(-3px, 0px) rotate(1deg); }
+            30% { transform: translate(3px, 2px) rotate(0deg); }
+            40% { transform: translate(1px, -1px) rotate(1deg); }
+            50% { transform: translate(-1px, 2px) rotate(-1deg); }
+            60% { transform: translate(-3px, 1px) rotate(0deg); }
+            70% { transform: translate(3px, 1px) rotate(-1deg); }
+            80% { transform: translate(-1px, -1px) rotate(1deg); }
+            90% { transform: translate(1px, 2px) rotate(0deg); }
+            100% { transform: translate(1px, -2px) rotate(-1deg); }
         }
     </style>
 </head>
@@ -65,15 +62,15 @@
         <div class="card-body p-4">
             
             <div id="error-msg" class="alert alert-danger py-2 small" role="alert">
-                <i class="fas fa-exclamation-circle me-1"></i> 帳號或密碼錯誤
+                <i class="fas fa-exclamation-circle me-1"></i> <span id="error-text">帳號或密碼錯誤</span>
             </div>
 
             <form id="loginForm">
                 <div class="mb-3">
-                    <label for="username" class="form-label text-muted small fw-bold">帳號 (Username)</label>
+                    <label for="email" class="form-label text-muted small fw-bold">Email (帳號)</label>
                     <div class="input-group">
-                        <span class="input-group-text bg-light border-end-0"><i class="fas fa-user text-muted"></i></span>
-                        <input type="text" class="form-control border-start-0 ps-0" id="username" placeholder="請輸入帳號" required>
+                        <span class="input-group-text bg-light border-end-0"><i class="fas fa-envelope text-muted"></i></span>
+                        <input type="email" class="form-control border-start-0 ps-0" id="email" placeholder="name@company.com" required>
                     </div>
                 </div>
                 
@@ -90,10 +87,9 @@
                         <input class="form-check-input" type="checkbox" id="rememberMe">
                         <label class="form-check-label small text-muted" for="rememberMe">記住我</label>
                     </div>
-                    <a href="#" class="text-decoration-none small text-muted">忘記密碼?</a>
-                </div>
+                    </div>
 
-                <button type="submit" class="btn btn-primary w-100 login-btn">登入系統</button>
+                <button type="submit" id="btn-login" class="btn btn-primary w-100 login-btn">登入系統</button>
             </form>
         </div>
         <div class="card-footer bg-light text-center py-3 border-top-0">
@@ -101,45 +97,73 @@
         </div>
     </div>
 
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
     <script>
-        document.getElementById('loginForm').addEventListener('submit', function(e) {
+        // 1. 初始化 Supabase (與您其他檔案的設定一致)
+        const SUPABASE_URL = 'https://yhehfucgemxnfrdvpdhw.supabase.co';
+        const SUPABASE_KEY = 'sb_publishable_52emtU-9l-SDxcJTWVTPTA_Yu6qEogh'; // 請確認這是否為您的最新 Key
+        const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+        const form = document.getElementById('loginForm');
+        const btnLogin = document.getElementById('btn-login');
+        const errorMsg = document.getElementById('error-msg');
+        const errorText = document.getElementById('error-text');
+
+        form.addEventListener('submit', async function(e) {
             e.preventDefault();
             
-            const userInput = document.getElementById('username').value.trim();
-            const passInput = document.getElementById('password').value.trim();
-            const errorMsg = document.getElementById('error-msg');
-            
-            // 模擬後端驗證邏輯 (Mock Logic)
-            let role = '';
-            let isValid = false;
+            // UI 重置
+            errorMsg.style.display = 'none';
+            btnLogin.disabled = true;
+            btnLogin.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>驗證中...';
 
-            // 1. 管理員 (Admin)
-            if (userInput === 'admin' && passInput === 'admin') {
-                role = 'admin';
-                isValid = true;
-            } 
-            // 2. 醫護人員 (Nurse/Doctor)
-            else if (userInput === 'nurse' && passInput === '1234') {
-                role = 'medical';
-                isValid = true;
-            } 
-            // 3. 一般使用者/業主 (User)
-            else if (userInput === 'user' && passInput === '1234') {
-                role = 'general';
-                isValid = true;
-            }
+            const email = document.getElementById('email').value.trim();
+            const password = document.getElementById('password').value.trim();
 
-            if (isValid) {
-                // 將角色權限寫入 Session，供後續頁面判讀
-                sessionStorage.setItem('currentUserRole', role);
-                sessionStorage.setItem('currentUserName', userInput);
+            try {
+                // 2. 呼叫 Supabase 進行登入驗證
+                const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
+                    email: email,
+                    password: password
+                });
+
+                if (authError) throw new Error('帳號或密碼錯誤');
+
+                // 3. 登入成功後，去 profiles 表格抓取該使用者的「身份資料 (Role)」
+                //    因為 Auth 只管登入，不知道他是 Admin 還是 User
+                const userId = authData.user.id;
                 
-                // [修正處] 導向至 dashboard.html (儀表板)，而非 index1.html
-                window.location.href = 'dashboard.html';
-            } else {
-                // 顯示錯誤
+                const { data: profileData, error: profileError } = await supabase
+                    .from('profiles')
+                    .select('*')
+                    .eq('id', userId)
+                    .single();
+
+                if (profileError || !profileData) {
+                    throw new Error('登入成功，但查無使用者權限資料 (Profile not found)。');
+                }
+
+                // 4. 將權限寫入 Session Storage (供 Dashboard 判斷)
+                sessionStorage.setItem('currentUserId', userId);
+                sessionStorage.setItem('currentUserRole', profileData.role || 'user'); // admin, consultant, doc_control
+                sessionStorage.setItem('currentUserName', profileData.full_name || email);
+
+                // 5. 導向儀表板
+                btnLogin.innerHTML = '<i class="fas fa-check me-2"></i>登入成功';
+                setTimeout(() => {
+                    window.location.href = 'dashboard.html';
+                }, 500);
+
+            } catch (err) {
+                // 錯誤處理
+                console.error(err);
+                errorText.innerText = err.message;
                 errorMsg.style.display = 'block';
-                // 搖晃動畫效果
+                btnLogin.disabled = false;
+                btnLogin.innerText = '登入系統';
+                
+                // 動畫效果
                 document.querySelector('.login-card').classList.add('shake');
                 setTimeout(() => {
                     document.querySelector('.login-card').classList.remove('shake');
