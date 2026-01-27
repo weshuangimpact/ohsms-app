@@ -145,7 +145,7 @@
     <script>
         const SUPABASE_URL = "https://yhehfucgemxnfrdvpdhw.supabase.co";
         const SUPABASE_KEY = "sb_publishable_52emtU-9l-SDxcJTWVTPTA_Yu6qEogh"; 
-        const supabase = Object.assign(supabase.createClient(SUPABASE_URL, SUPABASE_KEY));
+        const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
         let completionChart = null;
 
@@ -180,16 +180,25 @@
         }
 
         async function calculateAnnualCompletion() {
-            // 修正點：抓取 value 並轉整數
             const yearStr = document.getElementById('year-filter').value;
             const yearInt = parseInt(yearStr, 10);
+
+            // ============================================================
+            // 修改重點：改用 visit_date (日期區間) 來篩選，不依賴 service_year
+            // ============================================================
+            const startDate = `${yearInt}-01-01`;
+            const endDate = `${yearInt}-12-31`;
 
             const { data, error } = await supabase
                 .from('service_records')
                 .select('attachment_files')
-                .eq('service_year', yearInt); // 資料庫是 int4 
+                .gte('visit_date', startDate)  // 大於等於 1月1日
+                .lte('visit_date', endDate);   // 小於等於 12月31日
 
-            if (error) { console.error("Completion calculation error:", error); return; }
+            if (error) { 
+                console.error("Completion calculation error:", error); 
+                return; 
+            }
 
             const total = data.length;
             const completed = data.filter(item => {
@@ -222,13 +231,21 @@
         }
 
         async function loadReviewList() {
-            const { data } = await supabase
+            // 注意：如果這段查詢失敗，代表您的資料庫關聯表 (FK) 可能尚未建立完全
+            const { data, error } = await supabase
                 .from('service_record_staging')
                 .select('*, workplaces(companies(name)), medical_staff(name)')
                 .eq('status', 'pending')
                 .order('created_at', { ascending: false });
 
             const tbody = document.getElementById('review-list');
+            
+            if (error) {
+                console.error("List load error:", error);
+                tbody.innerHTML = '<tr><td colspan="6" class="text-center py-5 text-danger">資料載入失敗，請檢查資料庫關聯設定</td></tr>';
+                return;
+            }
+
             if (!data || data.length === 0) {
                 tbody.innerHTML = '<tr><td colspan="6" class="text-center py-5 text-muted">目前無待審核紀錄</td></tr>';
                 return;
