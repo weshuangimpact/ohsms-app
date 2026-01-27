@@ -13,10 +13,9 @@
         body {
             background-color: var(--primary-bg);
             font-family: 'Segoe UI', 'Microsoft JhengHei', sans-serif;
-            display: none; /* Auth Guard */
+            /* 修正：移除 display: none 避免初始化失敗導致永久白屏 */
         }
 
-        /* 完工率專用樣式 */
         .completion-card {
             background: #fff;
             border-radius: 10px;
@@ -38,11 +37,13 @@
         }
 
         .stat-card {
+            position: relative;
             background: white;
             border-radius: 10px;
             padding: 1.5rem;
             box-shadow: 0 4px 6px rgba(0,0,0,0.05);
             transition: transform 0.2s;
+            overflow: hidden;
         }
 
         .stat-card:hover { transform: translateY(-5px); }
@@ -82,61 +83,56 @@
                 <div class="col-md-8">
                     <div class="d-flex justify-content-between mb-2">
                         <span class="fw-bold">核心附件上傳進度 (9-1 ~ 13條事項)</span>
-                        <span id="completion-percent" class="badge bg-success">計算中...</span>
+                        <span id="completion-percent" class="badge bg-success">0 / 0 案</span>
                     </div>
                     <div class="progress" style="height: 25px;">
                         <div id="completion-bar" class="progress-bar progress-bar-striped progress-bar-animated bg-success" role="progressbar" style="width: 0%">0%</div>
                     </div>
-                    <small class="text-muted mt-2 d-block">
-                        * 計算邏輯：比對該年度 Service Records 總數與 Storage 附件對應紀錄筆數。
-                    </small>
                 </div>
             </div>
         </div>
 
         <div class="op-guide-card shadow-sm animate__animated animate__fadeIn">
-            <strong><i class="fas fa-info-circle me-1"></i> 管理者操作指引：</strong><br>
-            系統自動彙整顧問端提交之紀錄。請在下方「待審核區」點選文件進行查閱及核定。
-            若發現異常，請點選「跟催」按鈕發送系統提醒。
+            <strong><i class="fas fa-info-circle me-1"></i> 管理者指引：</strong> 系統已自動對齊 `service_records` 與 `Storage` 附件。百分比計算基準為「該年度紀錄總數」對比「附件欄位非空且包含檔案路徑之數量」。
         </div>
 
         <div class="row g-4 mb-4 animate__animated animate__fadeInUp">
             <div class="col-md-3">
                 <div class="stat-card bg-gradient-primary">
-                    <div class="small opacity-75">總服務次數 (本月)</div>
-                    <div class="h2 mb-0 fw-bold" id="total-services">-</div>
-                    <i class="fas fa-calendar-check position-absolute end-0 bottom-0 m-3 opacity-25 fa-2x"></i>
+                    <div class="small opacity-75">總服務次數 (本年度)</div>
+                    <div class="h2 mb-0 fw-bold" id="total-services">0</div>
+                    <i class="fas fa-calendar-check position-absolute end-0 bottom-0 m-2 opacity-25 fa-2x"></i>
                 </div>
             </div>
             <div class="col-md-3">
                 <div class="stat-card bg-gradient-warning">
                     <div class="small opacity-75">待審核文件</div>
-                    <div class="h2 mb-0 fw-bold" id="pending-reviews">-</div>
-                    <i class="fas fa-file-signature position-absolute end-0 bottom-0 m-3 opacity-25 fa-2x"></i>
+                    <div class="h2 mb-0 fw-bold" id="pending-reviews">0</div>
+                    <i class="fas fa-file-signature position-absolute end-0 bottom-0 m-2 opacity-25 fa-2x"></i>
                 </div>
             </div>
             <div class="col-md-3">
                 <div class="stat-card bg-gradient-danger">
-                    <div class="small opacity-75">異常跟催中</div>
-                    <div class="h2 mb-0 fw-bold" id="expiring-contracts">-</div>
-                    <i class="fas fa-exclamation-triangle position-absolute end-0 bottom-0 m-3 opacity-25 fa-2x"></i>
+                    <div class="small opacity-75">顧問總人數</div>
+                    <div class="h2 mb-0 fw-bold" id="total-staff">0</div>
+                    <i class="fas fa-user-md position-absolute end-0 bottom-0 m-2 opacity-25 fa-2x"></i>
                 </div>
             </div>
             <div class="col-md-3">
                 <div class="stat-card bg-gradient-success">
-                    <div class="small opacity-75">顧問在線人數</div>
-                    <div class="h2 mb-0 fw-bold" id="active-consultants">-</div>
-                    <i class="fas fa-user-md position-absolute end-0 bottom-0 m-3 opacity-25 fa-2x"></i>
+                    <div class="small opacity-75">已核定入庫</div>
+                    <div class="h2 mb-0 fw-bold" id="approved-count">0</div>
+                    <i class="fas fa-check-circle position-absolute end-0 bottom-0 m-2 opacity-25 fa-2x"></i>
                 </div>
             </div>
         </div>
 
         <div class="row">
-            <div class="col-lg-8">
+            <div class="col-lg-12">
                 <div class="card shadow-sm border-0 mb-4">
                     <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center border-bottom">
-                        <h5 class="mb-0 fw-bold text-dark"><i class="fas fa-list me-2"></i>待審核服務紀錄 (暫存區)</h5>
-                        <button onclick="refreshAllData()" class="btn btn-sm btn-outline-secondary"><i class="fas fa-sync-alt"></i></button>
+                        <h5 class="mb-0 fw-bold text-dark"><i class="fas fa-list me-2"></i>待審核服務紀錄 (Staging Area)</h5>
+                        <button onclick="refreshAllData()" class="btn btn-sm btn-outline-secondary"><i class="fas fa-sync-alt"></i> 重新載入</button>
                     </div>
                     <div class="card-body p-0">
                         <div class="table-responsive">
@@ -146,27 +142,17 @@
                                         <th>日期</th>
                                         <th>事業單位</th>
                                         <th>服務類型</th>
-                                        <th>提交人</th>
-                                        <th>狀態</th>
+                                        <th>顧問</th>
+                                        <th>附件</th>
                                         <th>操作</th>
                                     </tr>
                                 </thead>
                                 <tbody id="review-list">
-                                    <tr><td colspan="6" class="text-center py-4 text-muted">資料載入中...</td></tr>
+                                    <tr><td colspan="6" class="text-center py-4 text-muted">資料同步中...</td></tr>
                                 </tbody>
                             </table>
                         </div>
                     </div>
-                </div>
-            </div>
-
-            <div class="col-lg-4">
-                <div class="card shadow-sm border-0">
-                    <div class="card-header bg-white py-3 border-bottom">
-                        <h5 class="mb-0 fw-bold text-dark"><i class="fas fa-bell me-2"></i>異常狀況監控</h5>
-                    </div>
-                    <div class="card-body px-0" id="follow-up-list">
-                        </div>
                 </div>
             </div>
         </div>
@@ -176,14 +162,13 @@
         <div class="modal-dialog modal-lg">
             <div class="modal-content">
                 <div class="modal-header">
-                    <h5 class="modal-title">服務紀錄審核</h5>
+                    <h5 class="modal-title"><i class="fas fa-eye me-2"></i>紀錄詳細審核</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                 </div>
-                <div class="modal-body" id="review-body">
-                    </div>
+                <div class="modal-body" id="review-body"></div>
                 <div class="modal-footer">
                     <button onclick="rejectDoc()" class="btn btn-danger">退回修正</button>
-                    <button onclick="approveDoc()" class="btn btn-success px-4">核准通過</button>
+                    <button onclick="approveDoc()" class="btn btn-success px-4">確認核准</button>
                 </div>
             </div>
         </div>
@@ -205,207 +190,116 @@
                 location.href = 'login.html';
                 return;
             }
-            document.body.style.display = 'block';
             document.getElementById('admin-name').innerText = `管理員: ${session.user.user_metadata.full_name || 'Admin'}`;
-            
             refreshAllData();
         });
 
-        function refreshAllData() {
-            updateStats();
-            loadReviewList();
-            loadFollowUps();
-            calculateAnnualCompletion(); // 刷新時同步更新完工率
+        async function refreshAllData() {
+            await Promise.all([
+                calculateAnnualCompletion(),
+                updateStats(),
+                loadReviewList()
+            ]);
         }
 
-        // 2. 完成率計算邏輯 (新增)
         async function calculateAnnualCompletion() {
             const year = document.getElementById('year-filter').value;
             const bar = document.getElementById('completion-bar');
             const label = document.getElementById('completion-percent');
 
-            // 抓取該年度所有服務紀錄
             const { data, error, count } = await supabase
                 .from('service_records')
                 .select('attachment_files', { count: 'exact' })
                 .eq('service_year', year);
 
-            if (error || !data) {
-                label.innerText = "Error";
-                return;
-            }
+            if (error) return;
 
             const totalCount = count || 0;
-            // 判斷 attachment_files 是否為 JSONB 陣列且長度 > 0
             const completedCount = data.filter(item => {
                 if (!item.attachment_files) return false;
-                try {
-                    // 如果是字串則解析，如果是物件則直接判斷
-                    const files = typeof item.attachment_files === 'string' ? JSON.parse(item.attachment_files) : item.attachment_files;
-                    return Array.isArray(files) && files.length > 0;
-                } catch (e) { return false; }
+                const files = typeof item.attachment_files === 'string' ? JSON.parse(item.attachment_files) : item.attachment_files;
+                return Array.isArray(files) && files.length > 0;
             }).length;
 
             const percentage = totalCount > 0 ? ((completedCount / totalCount) * 100).toFixed(1) : 0;
 
-            // 更新 UI
             bar.style.width = `${percentage}%`;
             bar.innerText = `${percentage}%`;
-            label.innerText = `${completedCount} / ${totalCount} 案已上傳`;
+            label.innerText = `${completedCount} / ${totalCount} 案已上傳附件`;
             
-            if (percentage < 50) {
-                bar.className = "progress-bar progress-bar-striped progress-bar-animated bg-danger";
-            } else if (percentage < 80) {
-                bar.className = "progress-bar progress-bar-striped progress-bar-animated bg-warning text-dark";
-            } else {
-                bar.className = "progress-bar progress-bar-striped progress-bar-animated bg-success";
-            }
+            bar.className = `progress-bar progress-bar-striped progress-bar-animated ${percentage < 80 ? (percentage < 50 ? 'bg-danger' : 'bg-warning') : 'bg-success'}`;
         }
 
         async function updateStats() {
-            // 抓取 Staging 筆數
-            const { count: pendingCount } = await supabase
-                .from('service_record_staging')
-                .select('*', { count: 'exact', head: true })
-                .eq('status', 'pending');
+            const { count: pCount } = await supabase.from('service_record_staging').select('*', { count: 'exact', head: true }).eq('status', 'pending');
+            const { count: sCount } = await supabase.from('medical_staff').select('*', { count: 'exact', head: true });
+            const { count: rCount } = await supabase.from('service_records').select('*', { count: 'exact', head: true });
             
-            document.getElementById('pending-reviews').innerText = pendingCount || 0;
-            document.getElementById('total-services').innerText = '1,280'; // 模擬
-            document.getElementById('expiring-contracts').innerText = '12'; // 模擬
-            document.getElementById('active-consultants').innerText = '40'; // 模擬
+            document.getElementById('pending-reviews').innerText = pCount || 0;
+            document.getElementById('total-staff').innerText = sCount || 0;
+            document.getElementById('total-services').innerText = rCount || 0;
+            document.getElementById('approved-count').innerText = rCount || 0;
         }
 
         async function loadReviewList() {
             const { data, error } = await supabase
                 .from('service_record_staging')
-                .select(`
-                    id, 
-                    service_date, 
-                    service_type, 
-                    status,
-                    workplaces ( department_name, companies ( name ) ),
-                    medical_staff ( name )
-                `)
+                .select('*, workplaces(companies(name)), medical_staff(name)')
                 .eq('status', 'pending')
                 .order('created_at', { ascending: false });
 
             const tbody = document.getElementById('review-list');
             if (!data || data.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="6" class="text-center py-4 text-muted">目前無待審核文件</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="6" class="text-center py-5 text-muted">目前暫無待審核紀錄</td></tr>';
                 return;
             }
 
-            tbody.innerHTML = data.map(item => `
+            tbody.innerHTML = data.map(item => {
+                const files = typeof item.attachment_files === 'string' ? JSON.parse(item.attachment_files) : item.attachment_files;
+                const hasFile = files && files.length > 0;
+                return `
                 <tr>
                     <td>${item.service_date}</td>
-                    <td>
-                        <div class="fw-bold text-dark">${item.workplaces?.companies?.name || '未知公司'}</div>
-                        <div class="small text-muted">${item.workplaces?.department_name || '全廠'}</div>
-                    </td>
+                    <td><div class="fw-bold">${item.workplaces?.companies?.name || '未定義'}</div></td>
                     <td><span class="badge bg-info text-dark">${item.service_type}</span></td>
                     <td>${item.medical_staff?.name || '顧問'}</td>
-                    <td><span class="badge bg-warning">待審核</span></td>
-                    <td>
-                        <button onclick="openReview('${item.id}')" class="btn btn-sm btn-primary">審核</button>
-                    </td>
-                </tr>
-            `).join('');
+                    <td>${hasFile ? '<i class="fas fa-paperclip text-success"></i>' : '<i class="fas fa-times text-danger"></i>'}</td>
+                    <td><button onclick="openReview('${item.id}')" class="btn btn-sm btn-primary">審核詳情</button></td>
+                </tr>`;
+            }).join('');
         }
 
         async function openReview(id) {
             currentDocId = id;
-            const { data, error } = await supabase
-                .from('service_record_staging')
-                .select('*, workplaces(companies(name)), medical_staff(name)')
-                .eq('id', id)
-                .single();
-
+            const { data } = await supabase.from('service_record_staging').select('*, workplaces(companies(name)), medical_staff(name)').eq('id', id).single();
             if (!data) return;
 
-            // 處理附件顯示
-            let attachmentHtml = '<span class="text-muted">無附件</span>';
-            if (data.attachment_files) {
-                const files = typeof data.attachment_files === 'string' ? JSON.parse(data.attachment_files) : data.attachment_files;
-                if (files.length > 0) {
-                    attachmentHtml = files.map(f => `
-                        <a href="${f.url}" target="_blank" class="btn btn-sm btn-outline-danger me-2 mb-2">
-                            <i class="far fa-file-pdf me-1"></i>${f.name}
-                        </a>
-                    `).join('');
-                }
-            }
+            const files = typeof data.attachment_files === 'string' ? JSON.parse(data.attachment_files) : data.attachment_files;
+            const fileHtml = (files && files.length > 0) 
+                ? files.map(f => `<a href="${f.url}" target="_blank" class="btn btn-outline-danger btn-sm me-2"><i class="far fa-file-pdf me-1"></i>${f.name}</a>`).join('')
+                : '<span class="text-danger">未上傳附件</span>';
 
             document.getElementById('review-body').innerHTML = `
-                <div class="mb-3">
-                    <label class="form-label fw-bold">事業單位</label>
-                    <div class="form-control-plaintext">${data.workplaces.companies.name}</div>
-                </div>
-                <div class="mb-3">
-                    <label class="form-label fw-bold">服務類型</label>
-                    <div class="form-control-plaintext">${data.service_type}</div>
-                </div>
-                <div class="mb-3">
-                    <label class="form-label fw-bold">服務描述</label>
-                    <div class="p-3 bg-light rounded">${data.service_desc}</div>
-                </div>
-                <div class="mb-3">
-                    <label class="form-label fw-bold">附件檔案 (Storage)</label>
-                    <div class="mt-2">${attachmentHtml}</div>
-                </div>
-            `;
+                <div class="row g-3">
+                    <div class="col-6"><strong>公司名稱：</strong><br>${data.workplaces.companies.name}</div>
+                    <div class="col-6"><strong>顧問：</strong><br>${data.medical_staff.name}</div>
+                    <div class="col-12"><strong>服務描述：</strong><div class="p-2 bg-light mt-1">${data.service_desc}</div></div>
+                    <div class="col-12"><strong>附件預覽：</strong><div class="mt-2">${fileHtml}</div></div>
+                </div>`;
             new bootstrap.Modal(document.getElementById('reviewModal')).show();
         }
 
         async function approveDoc() {
-            if (!confirm('確定核准並正式入庫嗎？')) return;
-            
-            // 邏輯：更新狀態為 approved (實務上應觸發 DB Trigger 移轉資料至正式表)
-            const { error } = await supabase
-                .from('service_record_staging')
-                .update({ status: 'approved' })
-                .eq('id', currentDocId);
-
-            if (error) return alert('核准失敗');
-            
-            alert('核准成功，紀錄已入庫。');
-            bootstrap.Modal.getInstance(document.getElementById('reviewModal')).hide();
-            refreshAllData();
+            if (!confirm('確定核准入庫？')) return;
+            const { error } = await supabase.from('service_record_staging').update({ status: 'approved' }).eq('id', currentDocId);
+            if (error) alert('失敗'); else { alert('已核准'); refreshAllData(); bootstrap.Modal.getInstance(document.getElementById('reviewModal')).hide(); }
         }
 
         async function rejectDoc() {
-            const reason = prompt("請輸入退回原因：");
+            const reason = prompt("退回原因：");
             if (!reason) return;
-
-            const { error } = await supabase
-                .from('service_record_staging')
-                .update({ status: 'rejected' })
-                .eq('id', currentDocId);
-
-            if (error) return alert('操作失敗');
-
-            alert('已退回文件。');
-            bootstrap.Modal.getInstance(document.getElementById('reviewModal')).hide();
-            refreshAllData();
-        }
-
-        function loadFollowUps() {
-            const container = document.getElementById('follow-up-list');
-            const items = [
-                { title: '異常工作負荷紀錄缺失', company: 'ABC科技有限公司', consultant: '王醫師', level: 'high' },
-                { title: '母性保護附件逾期未傳', company: 'XYZ工業園區', consultant: '李護理師', level: 'med' }
-            ];
-
-            container.innerHTML = items.map(item => `
-                <div class="px-3 py-2 border-bottom">
-                    <div class="d-flex justify-content-between">
-                        <span class="badge ${item.level === 'high' ? 'bg-danger' : 'bg-warning'} mb-1">${item.level === 'high' ? '嚴重' : '中等'}</span>
-                        <small class="text-muted">3天前</small>
-                    </div>
-                    <div class="fw-bold small">${item.title}</div>
-                    <div class="text-muted" style="font-size: 0.8rem;">${item.company} / ${item.consultant}</div>
-                    <button onclick="alert('通知已發送')" class="btn btn-sm btn-link text-primary p-0 mt-1">發送跟催</button>
-                </div>
-            `).join('');
+            await supabase.from('service_record_staging').update({ status: 'rejected' }).eq('id', currentDocId);
+            alert('已退回'); refreshAllData(); bootstrap.Modal.getInstance(document.getElementById('reviewModal')).hide();
         }
 
         async function handleLogout() {
