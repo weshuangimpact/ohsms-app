@@ -180,24 +180,42 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
     <script>
-        // 1. 初始化 Supabase
+        // --- 1. 系統初始化 ---
+        // 檢查函式庫是否載入成功
+        if (typeof bootstrap === 'undefined' || typeof supabase === 'undefined') {
+            alert('系統錯誤：必要的函式庫 (Bootstrap 或 Supabase) 載入失敗，請檢查網路連線。');
+        }
+
         const SUPABASE_URL = 'https://yhehfucgemxnfrdvpdhw.supabase.co';
         const SUPABASE_KEY = 'sb_publishable_52emtU-9l-SDxcJTWVTPTA_Yu6qEogh'; 
-        const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+        const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
         
         let allUsers = [];
         let userModal;
 
+        // DOM 載入後執行
         document.addEventListener('DOMContentLoaded', async () => {
-            userModal = new bootstrap.Modal(document.getElementById('userModal'));
-            await fetchUsers();
+            try {
+                // 初始化 Modal
+                const modalEl = document.getElementById('userModal');
+                if (modalEl) {
+                    userModal = new bootstrap.Modal(modalEl);
+                } else {
+                    console.error('Modal element not found!');
+                }
+                
+                // 執行資料讀取
+                await fetchUsers();
+            } catch (err) {
+                console.error('Initialization Error:', err);
+            }
         });
 
-        // 2. 讀取使用者資料
+        // --- 2. 讀取使用者資料 ---
         async function fetchUsers() {
             try {
                 // 從 profiles 表讀取真實資料
-                const { data, error } = await supabase
+                const { data, error } = await supabaseClient
                     .from('profiles')
                     .select('*')
                     .order('created_at', { ascending: false });
@@ -207,12 +225,13 @@
                 allUsers = data || [];
                 filterUsers(); // 渲染畫面
             } catch (err) {
-                console.error('Error:', err);
-                alert('讀取資料失敗，請檢查網路連線或權限設定。');
+                console.error('Fetch Error:', err);
+                document.getElementById('userTableBody').innerHTML = 
+                    `<tr><td colspan="5" class="text-center py-4 text-danger">讀取資料失敗：${err.message}</td></tr>`;
             }
         }
 
-        // 3. 渲染列表與篩選
+        // --- 3. 渲染列表與篩選 ---
         function filterUsers() {
             const term = document.getElementById('searchInput').value.toLowerCase();
             const roleFilter = document.getElementById('roleFilter').value;
@@ -283,8 +302,10 @@
             });
         }
 
-        // 4. Modal 操作 (新增/編輯)
+        // --- 4. Modal 操作 (新增/編輯) ---
         function openAddModal() {
+            if (!userModal) return alert('Modal 初始化失敗，請重新整理頁面。');
+            
             document.getElementById('modalTitle').innerText = '新增帳號';
             document.getElementById('edit-user-id').value = ''; // 清空 ID 代表新增
             document.getElementById('input-email').value = '';
@@ -300,24 +321,26 @@
         }
 
         function openEditModal(id) {
+            if (!userModal) return alert('Modal 初始化失敗，請重新整理頁面。');
+
             const user = allUsers.find(u => u.id === id);
             if (!user) return;
 
             document.getElementById('modalTitle').innerText = '編輯帳號權限';
             document.getElementById('edit-user-id').value = user.id;
             document.getElementById('input-email').value = user.email;
-            document.getElementById('input-email').disabled = true; // 編輯時不可改 Email (作為唯一識別)
+            document.getElementById('input-email').disabled = true; // 編輯時不可改 Email
             document.getElementById('input-name').value = user.full_name;
             document.getElementById('input-role').value = user.role;
             document.getElementById('input-status').value = user.status || 'active';
             
-            // 編輯時隱藏提示 (因為已經有帳號了)
+            // 編輯時隱藏提示
             document.getElementById('email-hint').style.display = 'none';
 
             userModal.show();
         }
 
-        // 5. 儲存邏輯
+        // --- 5. 儲存邏輯 ---
         async function saveUser() {
             const id = document.getElementById('edit-user-id').value;
             const email = document.getElementById('input-email').value;
@@ -339,7 +362,7 @@
             try {
                 if (id) {
                     // --- A. 更新模式 (Update) ---
-                    const { error } = await supabase
+                    const { error } = await supabaseClient
                         .from('profiles')
                         .update(userData)
                         .eq('id', id);
@@ -347,8 +370,7 @@
                     alert('帳號權限已更新！');
                 } else {
                     // --- B. 新增模式 (Insert) ---
-                    // 注意：這只是建立了「資料」，您還需要去 Auth 建立「登入帳號」
-                    const { error } = await supabase
+                    const { error } = await supabaseClient
                         .from('profiles')
                         .insert([userData]);
                     if (error) throw error;
