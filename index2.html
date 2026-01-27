@@ -45,10 +45,10 @@
                         <h5 class="fw-bold mb-0">年度結案達成率公式</h5>
                     </div>
                     <div class="p-3 bg-light rounded border-start border-4 border-primary mb-3">
-                        <code class="text-dark fw-bold">已核定入庫 / ( 已核定入庫 + 暫存待審核 ) × 100%</code>
+                        [cite_start]<code class="text-dark fw-bold">已核定入庫 / ( 已核定入庫 + 暫存待審核 ) × 100% [cite: 582, 667]</code>
                     </div>
                     <p class="text-muted small mb-0">
-                        依據 <code>service_records.service_year</code> [cite: 703] 與 <code>staging</code> 中的 <code>visit_date</code> [cite: 346] 或 <code>service_date</code> [cite: 306] 判定。
+                        [cite_start]依據 <code>service_records.service_year</code> [cite: 703] [cite_start]與 <code>staging</code> 中的 <code>visit_date</code> [cite: 679] [cite_start]或 <code>service_date</code> [cite: 671] 判定。
                     </p>
                 </div>
             </div>
@@ -140,27 +140,24 @@
             const tbody = document.getElementById('pendingTableBody');
             
             try {
-                // 1. 抓取已核定總數 [cite: 697, 703]
                 const { count: approvedCount } = await supabaseClient
                     .from('service_records')
                     .select('*', { count: 'exact', head: true })
-                    .eq('service_year', year);
+                    [cite_start].eq('service_year', year); [cite: 703]
 
-                // 2. 抓取暫存待審核 (串聯顧問姓名) [cite: 667, 682, 622]
                 const { data: stagingData, error: stError } = await supabaseClient
                     .from('service_record_staging')
                     .select('*, medical_staff(name, email, phone)')
-                    .eq('status', 'pending');
+                    [cite_start].eq('status', 'pending'); [cite: 675, 686]
 
                 if (stError) throw stError;
 
                 const filteredPending = stagingData.filter(d => {
-                    const d1 = d.visit_date ? new Date(d.visit_date).getFullYear() : null;
-                    const d2 = d.service_date ? new Date(d.service_date).getFullYear() : null;
+                    [cite_start]const d1 = d.visit_date ? new Date(d.visit_date).getFullYear() : null; [cite: 679]
+                    [cite_start]const d2 = d.service_date ? new Date(d.service_date).getFullYear() : null; [cite: 671]
                     return d1 === year || d2 === year;
                 });
 
-                // 3. 更新 UI 與圖表
                 const total = approvedCount + filteredPending.length;
                 const rate = total === 0 ? 100 : Math.round((approvedCount / total) * 100);
                 document.getElementById('val-approved').innerText = approvedCount;
@@ -170,15 +167,17 @@
                 rateChart.data.datasets[0].data = [approvedCount, filteredPending.length];
                 rateChart.update();
 
-                // 4. 渲染表格
                 tbody.innerHTML = filteredPending.map(p => {
-                    const staff = p.medical_staff || { name: '未知顧問', email: '', phone: '' };
+                    [cite_start]const staff = p.medical_staff || { name: '未知顧問', email: '', phone: '' }; [cite: 686]
+                    // 關鍵修正：確保 attachment_files 以字串或陣列安全處理
+                    [cite_start]const attachmentData = Array.isArray(p.attachment_files) ? p.attachment_files : []; [cite: 674]
+                    
                     const itemData = JSON.stringify({
                         id: p.id,
                         date: p.visit_date || p.service_date,
                         type: p.service_type,
                         desc: p.service_desc,
-                        files: p.attachment_files || [],
+                        files: attachmentData,
                         staff: staff
                     }).replace(/"/g, '&quot;');
 
@@ -206,20 +205,37 @@
         }
 
         function previewFiles(item) {
-            const files = item.files || [];
+            // 安全檢查：確保 item.files 是陣列
+            const files = Array.isArray(item.files) ? item.files : [];
+            
             document.getElementById('modalTitle').innerHTML = '<i class="fas fa-paperclip me-2 text-primary"></i>附件預覽';
-            document.getElementById('modalBody').innerHTML = files.length === 0 ? '<p class="text-muted">此案件無附件</p>' : 
-                `<ul class="list-group list-group-flush">${files.map(f => `
-                    <li class="list-group-item d-flex justify-content-between align-items-center">
-                        <span class="small">${f.name}</span>
-                        <a href="${SUPABASE_URL}/storage/v1/object/public/documents/${f.path}" target="_blank" class="btn btn-sm btn-outline-primary">開啟</a>
-                    </li>`).join('')}</ul>`;
+            
+            if (files.length === 0) {
+                document.getElementById('modalBody').innerHTML = '<p class="text-muted text-center py-3">此案件無附件資料</p>';
+            } else {
+                document.getElementById('modalBody').innerHTML = `
+                    <div class="list-group list-group-flush">
+                        ${files.map(f => {
+                            // 修正路徑對接 Supabase Storage 公開連結
+                            [cite_start]const fileUrl = `${SUPABASE_URL}/storage/v1/object/public/documents/${f.path}`; [cite: 190]
+                            return `
+                            <div class="list-group-item d-flex justify-content-between align-items-center">
+                                <div class="text-truncate me-2" style="max-width: 70%;">
+                                    <i class="fas fa-file-alt me-2 text-secondary"></i>${f.name}
+                                </div>
+                                <a href="${fileUrl}" target="_blank" class="btn btn-sm btn-outline-primary">
+                                    <i class="fas fa-external-link-alt me-1"></i>開啟
+                                </a>
+                            </div>`;
+                        }).join('')}
+                    </div>`;
+            }
             actionModal.show();
         }
 
         async function approveData(id) {
             if(!confirm("確定核定入庫？")) return;
-            const { error } = await supabaseClient.from('service_record_staging').update({ status: 'approved' }).eq('id', id);
+            [cite_start]const { error } = await supabaseClient.from('service_record_staging').update({ status: 'approved' }).eq('id', id); [cite: 675]
             if(error) alert("更新失敗"); else { alert("核定成功！"); refreshDashboard(); }
         }
 
@@ -239,7 +255,7 @@
                 <div class="mb-3"><label class="form-label small fw-bold">發送內容</label>
                     <textarea class="form-control small" rows="5">${message}</textarea>
                 </div>
-                <div class="d-grid"><button class="btn btn-primary btn-sm" onclick="alert('通知已發送'); actionModal.hide();">確認發送</button></div>`;
+                <div class="d-grid"><button class="btn btn-primary btn-sm" onclick="alert('通知已模擬發送'); actionModal.hide();">確認發送</button></div>`;
             actionModal.show();
         }
     </script>
