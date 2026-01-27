@@ -16,7 +16,7 @@
         .stat-value { font-size: 2.2rem; font-weight: 700; color: var(--admin-p); }
         .chart-container { position: relative; height: 250px; }
         .table-pending thead { background-color: #f8fafc; position: sticky; top: 0; }
-        .btn-group-xs > .btn { padding: 0.25rem 0.5rem; font-size: 0.75rem; }
+        .btn-group-sm > .btn { padding: 0.25rem 0.5rem; }
     </style>
 </head>
 <body>
@@ -32,7 +32,6 @@
     </nav>
 
     <div class="container-fluid px-4 pb-5">
-        
         <div class="section-title">
             <h4 class="fw-bold text-dark mb-0">年度結案達成率監控</h4>
             <small class="text-muted">管理 Staging 暫存資料並執行審查入庫動作</small>
@@ -49,7 +48,7 @@
                         <code class="text-dark fw-bold">已核定入庫 / ( 已核定入庫 + 暫存待審核 ) × 100%</code>
                     </div>
                     <p class="text-muted small mb-0">
-                        當前年度定義：依據 <code>service_records.service_year</code> [cite: 703] 與 <code>staging</code> 表中的 <code>visit_date</code> [cite: 346] 或 <code>service_date</code> [cite: 306] 判定。
+                        依據 <code>service_records.service_year</code> [cite: 703] 與 <code>staging</code> 中的 <code>visit_date</code> [cite: 346] 或 <code>service_date</code> [cite: 306] 判定。
                     </p>
                 </div>
             </div>
@@ -94,7 +93,9 @@
                                 <th class="text-end pe-4">管理動作</th>
                             </tr>
                         </thead>
-                        <tbody id="pendingTableBody"></tbody>
+                        <tbody id="pendingTableBody">
+                            <tr><td colspan="5" class="text-center py-5"><i class="fas fa-spinner fa-spin me-2"></i>載入中...</td></tr>
+                        </tbody>
                     </table>
                 </div>
             </div>
@@ -121,7 +122,8 @@
         document.addEventListener('DOMContentLoaded', () => {
             initChart();
             refreshDashboard();
-            document.getElementById('user-display').innerHTML = `<small>Admin: ${sessionStorage.getItem('currentUserName') || '管理員'}</small>`;
+            const user = sessionStorage.getItem('currentUserName') || '管理員';
+            document.getElementById('user-display').innerHTML = `<small>Admin: ${user}</small>`;
         });
 
         function initChart() {
@@ -135,20 +137,30 @@
 
         async function refreshDashboard() {
             const year = parseInt(document.getElementById('target-year').value);
+            const tbody = document.getElementById('pendingTableBody');
+            
             try {
-                // 1. 抓取已核定總數 [cite: 696, 703]
-                const { count: approvedCount } = await supabaseClient.from('service_records').select('*', { count: 'exact', head: true }).eq('service_year', year);
+                // 1. 抓取已核定總數 [cite: 697, 703]
+                const { count: approvedCount } = await supabaseClient
+                    .from('service_records')
+                    .select('*', { count: 'exact', head: true })
+                    .eq('service_year', year);
 
-                // 2. 抓取暫存待審核 (串聯顧問姓名) [cite: 666, 686]
-                const { data: stagingData } = await supabaseClient.from('service_record_staging').select('*, medical_staff(name, email, phone)').eq('status', 'pending');
+                // 2. 抓取暫存待審核 (串聯顧問姓名) [cite: 667, 682, 622]
+                const { data: stagingData, error: stError } = await supabaseClient
+                    .from('service_record_staging')
+                    .select('*, medical_staff(name, email, phone)')
+                    .eq('status', 'pending');
+
+                if (stError) throw stError;
 
                 const filteredPending = stagingData.filter(d => {
-                    const d1 = d.visit_date ? new Date(d.visit_date).getFullYear() : null; [cite: 679]
-                    const d2 = d.service_date ? new Date(d.service_date).getFullYear() : null; [cite: 671]
+                    const d1 = d.visit_date ? new Date(d.visit_date).getFullYear() : null;
+                    const d2 = d.service_date ? new Date(d.service_date).getFullYear() : null;
                     return d1 === year || d2 === year;
                 });
 
-                // 3. 更新 UI
+                // 3. 更新 UI 與圖表
                 const total = approvedCount + filteredPending.length;
                 const rate = total === 0 ? 100 : Math.round((approvedCount / total) * 100);
                 document.getElementById('val-approved').innerText = approvedCount;
@@ -159,69 +171,75 @@
                 rateChart.update();
 
                 // 4. 渲染表格
-                const tbody = document.getElementById('pendingTableBody');
                 tbody.innerHTML = filteredPending.map(p => {
-                    const staff = p.medical_staff || { name: '未知', email: '-', phone: '-' };
-                    const json = JSON.stringify({ ...p, staff }).replace(/"/g, '&quot;');
+                    const staff = p.medical_staff || { name: '未知顧問', email: '', phone: '' };
+                    const itemData = JSON.stringify({
+                        id: p.id,
+                        date: p.visit_date || p.service_date,
+                        type: p.service_type,
+                        desc: p.service_desc,
+                        files: p.attachment_files || [],
+                        staff: staff
+                    }).replace(/"/g, '&quot;');
+
                     return `
                     <tr class="animate__animated animate__fadeIn">
                         <td class="ps-4"><strong>${p.visit_date || p.service_date}</strong></td>
                         <td>${staff.name}</td>
                         <td><span class="badge bg-light text-dark border">${p.service_type || '一般'}</span></td>
-                        <td class="text-truncate" style="max-width: 200px;">${p.service_desc || '-'}</td>
+                        <td class="text-truncate" style="max-width: 250px;">${p.service_desc || '-'}</td>
                         <td class="text-end pe-4">
                             <div class="btn-group btn-group-sm shadow-sm">
-                                <button class="btn btn-white border" onclick='previewFiles(${json})' title="預覽"><i class="fas fa-eye text-secondary"></i></button>
+                                <button class="btn btn-white border" onclick='previewFiles(${itemData})' title="預覽"><i class="fas fa-eye text-secondary"></i></button>
                                 <button class="btn btn-white border" onclick='approveData("${p.id}")' title="審查入庫"><i class="fas fa-check text-success"></i></button>
-                                <button class="btn btn-white border" onclick='sendNotice(${json}, "fix")' title="修正通知"><i class="fas fa-envelope-open-text text-primary"></i></button>
-                                <button class="btn btn-white border" onclick='sendNotice(${json}, "trace")' title="跟催"><i class="fas fa-bell text-info"></i></button>
+                                <button class="btn btn-white border" onclick='sendNotice(${itemData}, "fix")' title="修正通知"><i class="fas fa-envelope-open-text text-primary"></i></button>
+                                <button class="btn btn-white border" onclick='sendNotice(${itemData}, "trace")' title="跟催"><i class="fas fa-bell text-info"></i></button>
                             </div>
                         </td>
                     </tr>`;
                 }).join('') || '<tr><td colspan="5" class="text-center py-4 text-muted">目前無待核定資料</td></tr>';
 
-            } catch (e) { console.error(e); }
+            } catch (e) {
+                console.error('Refresh Error:', e);
+                tbody.innerHTML = '<tr><td colspan="5" class="text-center text-danger">載入失敗</td></tr>';
+            }
         }
 
-        // 功能 1：預覽附件 [cite: 674]
         function previewFiles(item) {
-            const files = item.attachment_files || []; [cite: 674]
+            const files = item.files || [];
             document.getElementById('modalTitle').innerHTML = '<i class="fas fa-paperclip me-2 text-primary"></i>附件預覽';
             document.getElementById('modalBody').innerHTML = files.length === 0 ? '<p class="text-muted">此案件無附件</p>' : 
                 `<ul class="list-group list-group-flush">${files.map(f => `
                     <li class="list-group-item d-flex justify-content-between align-items-center">
                         <span class="small">${f.name}</span>
-                        <a href="${SUPABASE_URL}/storage/v1/object/public/documents/${f.path}" target="_blank" class="btn btn-xs btn-outline-primary">開啟</a>
+                        <a href="${SUPABASE_URL}/storage/v1/object/public/documents/${f.path}" target="_blank" class="btn btn-sm btn-outline-primary">開啟</a>
                     </li>`).join('')}</ul>`;
             actionModal.show();
         }
 
-        // 功能 2：審查入庫 [cite: 708, 712]
         async function approveData(id) {
-            if(!confirm("確定核定入庫？此動作會將資料轉入正式資料庫。")) return;
-            // 實作建議：呼叫 RPC 或在前端完成 Staging 更新與正式表插入 [cite: 318, 437]
-            const { error } = await supabaseClient.from('service_record_staging').update({ status: 'approved' }).eq('id', id); [cite: 318]
+            if(!confirm("確定核定入庫？")) return;
+            const { error } = await supabaseClient.from('service_record_staging').update({ status: 'approved' }).eq('id', id);
             if(error) alert("更新失敗"); else { alert("核定成功！"); refreshDashboard(); }
         }
 
-        // 功能 3 & 4：通知發送 (修正/跟催) [cite: 137, 144]
         function sendNotice(item, type) {
             const staff = item.staff;
             const isFix = type === 'fix';
             document.getElementById('modalTitle').innerHTML = isFix ? '<i class="fas fa-edit me-2 text-primary"></i>發送修正通知' : '<i class="fas fa-bell me-2 text-info"></i>發送補件跟催';
             
             const message = isFix ? 
-                `親愛的 ${staff.name} 顧問您好：\n您於 ${item.visit_date} 提交之服務資料有誤，請儘速登入系統進行修正。` :
-                `親愛的 ${staff.name} 顧問您好：\n您於 ${item.visit_date} 之服務資料尚未齊全，請確認並補正件，以利核定。`;
+                `親愛的 ${staff.name} 顧問您好：\n您於 ${item.date} 提交之服務紀錄資料有誤，請儘速修正。` :
+                `親愛的 ${staff.name} 顧問您好：\n您於 ${item.date} 之服務紀錄資料尚未齊全，請補件。`;
 
             document.getElementById('modalBody').innerHTML = `
                 <div class="mb-3"><label class="form-label small fw-bold">收件對象</label>
-                    <div class="p-2 bg-light rounded">${staff.name} (${staff.email || '無Email'}) / ${staff.phone || '無電話'}</div>
+                    <div class="p-2 bg-light rounded">${staff.name} / ${staff.email || '無Email'}</div>
                 </div>
                 <div class="mb-3"><label class="form-label small fw-bold">發送內容</label>
                     <textarea class="form-control small" rows="5">${message}</textarea>
                 </div>
-                <div class="d-grid"><button class="btn btn-primary btn-sm" onclick="alert('通知已發送至顧問信箱/手機'); actionModal.hide();">確認發送</button></div>`;
+                <div class="d-grid"><button class="btn btn-primary btn-sm" onclick="alert('通知已發送'); actionModal.hide();">確認發送</button></div>`;
             actionModal.show();
         }
     </script>
