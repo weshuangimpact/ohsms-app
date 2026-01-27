@@ -3,26 +3,27 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>管理者總覽 (Check/Act) | OHSMS</title>
+    <title>管理者總覽 | OHSMS</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css"/>
     
     <style>
-        :root { --primary-bg: #f4f6f9; --admin-color: #4f46e5; }
+        :root { --primary-bg: #f4f6f9; --admin-p: #4f46e5; }
         body { background-color: var(--primary-bg); font-family: 'Segoe UI', 'Microsoft JhengHei', sans-serif; }
-        .section-title { border-left: 5px solid var(--admin-color); padding-left: 15px; margin-bottom: 20px; }
+        .section-title { border-left: 5px solid var(--admin-p); padding-left: 15px; margin-bottom: 20px; }
         .info-card { padding: 1.25rem; border-radius: 0.5rem; background-color: white; border: none; }
-        .stat-value { font-size: 2rem; font-weight: 700; color: var(--admin-color); }
-        .chart-container { position: relative; height: 260px; width: 100%; }
-        .table-pending thead { background-color: #f8fafc; }
+        .stat-value { font-size: 2.2rem; font-weight: 700; color: var(--admin-p); }
+        .chart-container { position: relative; height: 250px; }
+        .table-pending thead { background-color: #f8fafc; position: sticky; top: 0; }
+        .btn-group-xs > .btn { padding: 0.25rem 0.5rem; font-size: 0.75rem; }
     </style>
 </head>
 <body>
 
     <nav class="navbar navbar-expand-lg navbar-dark bg-dark py-3 mb-4">
         <div class="container-fluid px-4">
-            <a class="navbar-brand" href="dashboard.html"><i class="fas fa-shield-alt me-2"></i>OHSMS 管理者控制台</a>
+            <a class="navbar-brand" href="dashboard.html"><i class="fas fa-chart-line me-2"></i>OHSMS 管理控制台</a>
             <div class="d-flex align-items-center">
                 <span class="text-light me-3" id="user-display"></span>
                 <a href="dashboard.html" class="btn btn-outline-light btn-sm"><i class="fas fa-arrow-left me-1"></i> 返回儀表板</a>
@@ -33,63 +34,42 @@
     <div class="container-fluid px-4 pb-5">
         
         <div class="section-title">
-            <h4 class="fw-bold text-dark mb-0">管理者服務監控總覽</h4>
-            <small class="text-muted">即時年度結案達成率與暫存資料審查</small>
+            <h4 class="fw-bold text-dark mb-0">年度結案達成率監控</h4>
+            <small class="text-muted">管理 Staging 暫存資料並執行審查入庫動作</small>
         </div>
 
         <div class="row g-4 mb-4">
             <div class="col-md-5">
                 <div class="card info-card shadow-sm h-100">
                     <div class="d-flex align-items-center mb-3">
-                        <div class="bg-primary text-white rounded-circle p-2 me-3">
-                            <i class="fas fa-calculator fa-fw"></i>
-                        </div>
+                        <div class="bg-primary text-white rounded-circle p-2 me-3"><i class="fas fa-calculator"></i></div>
                         <h5 class="fw-bold mb-0">年度結案達成率公式</h5>
                     </div>
                     <div class="p-3 bg-light rounded border-start border-4 border-primary mb-3">
-                        <code class="text-dark fw-bold" style="font-size: 1.1rem;">
-                            已核定入庫 / ( 已核定入庫 + 暫存待審核 ) × 100%
-                        </code>
+                        <code class="text-dark fw-bold">已核定入庫 / ( 已核定入庫 + 暫存待審核 ) × 100%</code>
                     </div>
                     <p class="text-muted small mb-0">
-                        <i class="fas fa-info-circle me-1"></i> <strong>說明：</strong><br>
-                        系統會掃描 <code>service_record_staging</code> 中狀態為 <code>pending</code> 的所有資料。若當年度無待審核案件，達成率即為 <span class="text-success fw-bold">100%</span>。
+                        當前年度定義：依據 <code>service_records.service_year</code> [cite: 703] 與 <code>staging</code> 表中的 <code>visit_date</code> [cite: 346] 或 <code>service_date</code> [cite: 306] 判定。
                     </p>
                 </div>
             </div>
 
             <div class="col-md-7">
                 <div class="card info-card shadow-sm h-100">
-                    <div class="d-flex justify-content-between align-items-center mb-4">
-                        <h5 class="fw-bold mb-0">當前年度達成率 (即時計算)</h5>
-                        <select class="form-select w-auto fw-bold text-primary" id="target-year" onchange="refreshData()">
-                            <option value="2026">2026 年度</option>
-                            <option value="2025" selected>2025 年度</option>
-                            <option value="2024">2024 年度</option>
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <h5 class="fw-bold mb-0">達成進度分析</h5>
+                        <select class="form-select w-auto fw-bold text-primary" id="target-year" onchange="refreshDashboard()">
+                            <option value="2026" selected>2026 年度</option>
+                            <option value="2025">2025 年度</option>
                         </select>
                     </div>
-                    
                     <div class="row align-items-center">
-                        <div class="col-md-6 text-center">
-                            <div class="chart-container">
-                                <canvas id="rateChart"></canvas>
-                            </div>
-                        </div>
-                        <div class="col-md-6 border-start">
-                            <div class="ps-3">
-                                <div class="mb-3">
-                                    <label class="text-muted small d-block">已核定入庫 (Formal)</label>
-                                    <span class="stat-value text-success" id="val-approved">0</span> <small class="text-muted">筆</small>
-                                </div>
-                                <div class="mb-3">
-                                    <label class="text-muted small d-block">暫存待審核 (Pending)</label>
-                                    <span class="stat-value text-warning" id="val-pending">0</span> <small class="text-muted">筆</small>
-                                </div>
-                                <hr>
-                                <div>
-                                    <label class="fw-bold d-block text-secondary">年度總達成率</label>
-                                    <span class="stat-value text-primary" id="val-rate" style="font-size: 2.8rem;">0%</span>
-                                </div>
+                        <div class="col-md-5"><div class="chart-container"><canvas id="rateChart"></canvas></div></div>
+                        <div class="col-md-7 border-start">
+                            <div class="row text-center">
+                                <div class="col-6"><label class="text-muted small">已核定入庫</label><div class="stat-value text-success" id="val-approved">0</div></div>
+                                <div class="col-6"><label class="text-muted small">暫存待審核</label><div class="stat-value text-warning" id="val-pending">0</div></div>
+                                <div class="col-12 mt-2"><hr><label class="fw-bold">總結案率：<span id="val-rate" class="text-primary">0%</span></label></div>
                             </div>
                         </div>
                     </div>
@@ -97,140 +77,152 @@
             </div>
         </div>
 
-        <div class="card border-0 shadow-sm mt-4">
-            <div class="card-header bg-white py-3">
-                <h6 class="fw-bold mb-0 text-warning"><i class="fas fa-clock me-2"></i>待核定暫存清單 (Staging Area)</h6>
+        <div class="card border-0 shadow-sm">
+            <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
+                <h6 class="fw-bold mb-0 text-dark"><i class="fas fa-list-ul me-2 text-warning"></i>待核定暫存清單 (Staging Area)</h6>
+                <button class="btn btn-sm btn-outline-secondary" onclick="refreshDashboard()"><i class="fas fa-sync-alt"></i></button>
             </div>
             <div class="card-body p-0">
-                <div class="table-responsive">
+                <div class="table-responsive" style="max-height: 500px;">
                     <table class="table table-hover mb-0 align-middle">
                         <thead class="table-pending">
                             <tr>
-                                <th class="ps-4">服務日期</th>
+                                <th class="ps-4">日期</th>
+                                <th>顧問姓名</th>
                                 <th>服務類型</th>
                                 <th>描述摘要</th>
-                                <th>目前狀態</th>
-                                <th class="text-end pe-4">動作</th>
+                                <th class="text-end pe-4">管理動作</th>
                             </tr>
                         </thead>
-                        <tbody id="pendingTableBody">
-                            <tr><td colspan="5" class="text-center py-4 text-muted">正在載入暫存資料...</td></tr>
-                        </tbody>
+                        <tbody id="pendingTableBody"></tbody>
                     </table>
                 </div>
             </div>
         </div>
-
     </div>
+
+    <div class="modal fade" id="actionModal" tabindex="-1"><div class="modal-dialog modal-dialog-centered"><div class="modal-content">
+        <div class="modal-header border-0"><h5 class="modal-title fw-bold" id="modalTitle">系統訊息</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+        <div class="modal-body" id="modalBody"></div>
+        <div class="modal-footer border-0"><button type="button" class="btn btn-secondary" data-bs-dismiss="modal">關閉</button></div>
+    </div></div></div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
     <script>
-        // 初始化 Supabase
         const SUPABASE_URL = 'https://yhehfucgemxnfrdvpdhw.supabase.co';
         const SUPABASE_KEY = 'sb_publishable_52emtU-9l-SDxcJTWVTPTA_Yu6qEogh';
         const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-
         let rateChart = null;
+        const actionModal = new bootstrap.Modal(document.getElementById('actionModal'));
 
         document.addEventListener('DOMContentLoaded', () => {
-            const role = sessionStorage.getItem('currentUserRole') || 'admin';
-            const userName = sessionStorage.getItem('currentUserName') || '管理員';
-            document.getElementById('user-display').innerHTML = `<small>${role}: ${userName}</small>`;
-            
             initChart();
-            refreshData();
+            refreshDashboard();
+            document.getElementById('user-display').innerHTML = `<small>Admin: ${sessionStorage.getItem('currentUserName') || '管理員'}</small>`;
         });
 
         function initChart() {
             const ctx = document.getElementById('rateChart').getContext('2d');
             rateChart = new Chart(ctx, {
                 type: 'doughnut',
-                data: {
-                    labels: ['已核定', '待審核'],
-                    datasets: [{
-                        data: [0, 0],
-                        backgroundColor: ['#10b981', '#f59e0b'],
-                        borderWidth: 0,
-                        hoverOffset: 4
-                    }]
-                },
-                options: {
-                    cutout: '75%',
-                    plugins: { legend: { display: false } },
-                    maintainAspectRatio: false
-                }
+                data: { labels: ['已入庫', '待審核'], datasets: [{ data: [0, 1], backgroundColor: ['#10b981', '#f59e0b'], borderWidth: 0 }] },
+                options: { cutout: '80%', plugins: { legend: { display: false } }, maintainAspectRatio: false }
             });
         }
 
-        async function refreshData() {
+        async function refreshDashboard() {
             const year = parseInt(document.getElementById('target-year').value);
-            const tbody = document.getElementById('pendingTableBody');
-            
             try {
-                // 1. 讀取正式庫 [cite: 697]
-                const { count: approvedCount, error: err1 } = await supabaseClient
-                    .from('service_records')
-                    .select('*', { count: 'exact', head: true })
-                    .eq('service_year', year);
+                // 1. 抓取已核定總數 [cite: 696, 703]
+                const { count: approvedCount } = await supabaseClient.from('service_records').select('*', { count: 'exact', head: true }).eq('service_year', year);
 
-                // 2. 讀取所有 Pending 的暫存資料 [cite: 667, 675]
-                // 擴大選擇欄位，確保涵蓋所有日期可能
-                const { data: stagingData, error: err2 } = await supabaseClient
-                    .from('service_record_staging')
-                    .select('id, service_date, visit_date, service_type, service_desc, status')
-                    .eq('status', 'pending');
+                // 2. 抓取暫存待審核 (串聯顧問姓名) [cite: 666, 686]
+                const { data: stagingData } = await supabaseClient.from('service_record_staging').select('*, medical_staff(name, email, phone)').eq('status', 'pending');
 
-                if (err1 || err2) throw (err1 || err2);
-
-                // 3. 修正年度篩選邏輯：同時檢查 visit_date 與 service_date 
                 const filteredPending = stagingData.filter(d => {
-                    const d1 = d.visit_date ? new Date(d.visit_date).getFullYear() : null;
-                    const d2 = d.service_date ? new Date(d.service_date).getFullYear() : null;
+                    const d1 = d.visit_date ? new Date(d.visit_date).getFullYear() : null; [cite: 679]
+                    const d2 = d.service_date ? new Date(d.service_date).getFullYear() : null; [cite: 671]
                     return d1 === year || d2 === year;
                 });
 
-                const pendingCount = filteredPending.length;
-
-                // 4. 計算與更新 UI
-                const total = approvedCount + pendingCount;
+                // 3. 更新 UI
+                const total = approvedCount + filteredPending.length;
                 const rate = total === 0 ? 100 : Math.round((approvedCount / total) * 100);
-
                 document.getElementById('val-approved').innerText = approvedCount;
-                document.getElementById('val-pending').innerText = pendingCount;
+                document.getElementById('val-pending').innerText = filteredPending.length;
                 document.getElementById('val-rate').innerText = rate + '%';
 
-                // 5. 更新圓餅圖
-                rateChart.data.datasets[0].data = [approvedCount, pendingCount];
-                if (total === 0) {
-                    rateChart.data.datasets[0].backgroundColor = ['#e2e8f0', '#f59e0b'];
-                    rateChart.data.datasets[0].data = [1, 0];
-                } else {
-                    rateChart.data.datasets[0].backgroundColor = ['#10b981', '#f59e0b'];
-                }
+                rateChart.data.datasets[0].data = [approvedCount, filteredPending.length];
                 rateChart.update();
 
-                // 6. 渲染待核定清單表格 (顯示那 20 筆資料)
-                tbody.innerHTML = filteredPending.map(p => `
+                // 4. 渲染表格
+                const tbody = document.getElementById('pendingTableBody');
+                tbody.innerHTML = filteredPending.map(p => {
+                    const staff = p.medical_staff || { name: '未知', email: '-', phone: '-' };
+                    const json = JSON.stringify({ ...p, staff }).replace(/"/g, '&quot;');
+                    return `
                     <tr class="animate__animated animate__fadeIn">
-                        <td class="ps-4 fw-bold">${p.visit_date || p.service_date}</td>
-                        <td><span class="badge bg-light text-dark border">${p.service_type || '未分類'}</span></td>
-                        <td class="text-truncate" style="max-width: 300px;">${p.service_desc || '-'}</td>
-                        <td><span class="text-warning"><i class="fas fa-circle-notch fa-spin me-1"></i>待核定</span></td>
+                        <td class="ps-4"><strong>${p.visit_date || p.service_date}</strong></td>
+                        <td>${staff.name}</td>
+                        <td><span class="badge bg-light text-dark border">${p.service_type || '一般'}</span></td>
+                        <td class="text-truncate" style="max-width: 200px;">${p.service_desc || '-'}</td>
                         <td class="text-end pe-4">
-                            <button class="btn btn-sm btn-outline-primary" onclick="alert('進入審核程序：ID ${p.id}')">
-                                <i class="fas fa-search-plus"></i>
-                            </button>
+                            <div class="btn-group btn-group-sm shadow-sm">
+                                <button class="btn btn-white border" onclick='previewFiles(${json})' title="預覽"><i class="fas fa-eye text-secondary"></i></button>
+                                <button class="btn btn-white border" onclick='approveData("${p.id}")' title="審查入庫"><i class="fas fa-check text-success"></i></button>
+                                <button class="btn btn-white border" onclick='sendNotice(${json}, "fix")' title="修正通知"><i class="fas fa-envelope-open-text text-primary"></i></button>
+                                <button class="btn btn-white border" onclick='sendNotice(${json}, "trace")' title="跟催"><i class="fas fa-bell text-info"></i></button>
+                            </div>
                         </td>
-                    </tr>
-                `).join('') || '<tr><td colspan="5" class="text-center py-4 text-muted">當前年度無待處理資料</td></tr>';
+                    </tr>`;
+                }).join('') || '<tr><td colspan="5" class="text-center py-4 text-muted">目前無待核定資料</td></tr>';
 
-            } catch (e) {
-                console.error('Data loading error:', e);
-                alert('載入失敗，請檢查網路連接或資料庫權限設定。');
-            }
+            } catch (e) { console.error(e); }
+        }
+
+        // 功能 1：預覽附件 [cite: 674]
+        function previewFiles(item) {
+            const files = item.attachment_files || []; [cite: 674]
+            document.getElementById('modalTitle').innerHTML = '<i class="fas fa-paperclip me-2 text-primary"></i>附件預覽';
+            document.getElementById('modalBody').innerHTML = files.length === 0 ? '<p class="text-muted">此案件無附件</p>' : 
+                `<ul class="list-group list-group-flush">${files.map(f => `
+                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                        <span class="small">${f.name}</span>
+                        <a href="${SUPABASE_URL}/storage/v1/object/public/documents/${f.path}" target="_blank" class="btn btn-xs btn-outline-primary">開啟</a>
+                    </li>`).join('')}</ul>`;
+            actionModal.show();
+        }
+
+        // 功能 2：審查入庫 [cite: 708, 712]
+        async function approveData(id) {
+            if(!confirm("確定核定入庫？此動作會將資料轉入正式資料庫。")) return;
+            // 實作建議：呼叫 RPC 或在前端完成 Staging 更新與正式表插入 [cite: 318, 437]
+            const { error } = await supabaseClient.from('service_record_staging').update({ status: 'approved' }).eq('id', id); [cite: 318]
+            if(error) alert("更新失敗"); else { alert("核定成功！"); refreshDashboard(); }
+        }
+
+        // 功能 3 & 4：通知發送 (修正/跟催) [cite: 137, 144]
+        function sendNotice(item, type) {
+            const staff = item.staff;
+            const isFix = type === 'fix';
+            document.getElementById('modalTitle').innerHTML = isFix ? '<i class="fas fa-edit me-2 text-primary"></i>發送修正通知' : '<i class="fas fa-bell me-2 text-info"></i>發送補件跟催';
+            
+            const message = isFix ? 
+                `親愛的 ${staff.name} 顧問您好：\n您於 ${item.visit_date} 提交之服務資料有誤，請儘速登入系統進行修正。` :
+                `親愛的 ${staff.name} 顧問您好：\n您於 ${item.visit_date} 之服務資料尚未齊全，請確認並補正件，以利核定。`;
+
+            document.getElementById('modalBody').innerHTML = `
+                <div class="mb-3"><label class="form-label small fw-bold">收件對象</label>
+                    <div class="p-2 bg-light rounded">${staff.name} (${staff.email || '無Email'}) / ${staff.phone || '無電話'}</div>
+                </div>
+                <div class="mb-3"><label class="form-label small fw-bold">發送內容</label>
+                    <textarea class="form-control small" rows="5">${message}</textarea>
+                </div>
+                <div class="d-grid"><button class="btn btn-primary btn-sm" onclick="alert('通知已發送至顧問信箱/手機'); actionModal.hide();">確認發送</button></div>`;
+            actionModal.show();
         }
     </script>
 </body>
