@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>登入 | OHSMS 職業衛生管理系統</title>
+    <title>登入 | 職業衛生服務管理系統</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <style>
@@ -35,7 +35,7 @@
         }
         #error-msg { display: none; }
         
-        /* 錯誤時的搖晃動畫 */
+        /* 搖晃動畫 */
         .shake { animation: shake 0.5s; }
         @keyframes shake {
             0% { transform: translate(1px, 1px) rotate(0deg); }
@@ -62,7 +62,7 @@
         <div class="card-body p-4">
             
             <div id="error-msg" class="alert alert-danger py-2 small" role="alert">
-                <i class="fas fa-exclamation-circle me-1"></i> <span id="error-text"></span>
+                <i class="fas fa-exclamation-circle me-1"></i> <span id="error-text">帳號或密碼錯誤</span>
             </div>
 
             <form id="loginForm">
@@ -87,8 +87,7 @@
                         <input class="form-check-input" type="checkbox" id="rememberMe">
                         <label class="form-check-label small text-muted" for="rememberMe">記住我</label>
                     </div>
-                    <a href="#" class="text-decoration-none small text-muted" data-bs-toggle="modal" data-bs-target="#forgotModal">忘記密碼?</a>
-                </div>
+                    </div>
 
                 <button type="submit" id="btn-login" class="btn btn-primary w-100 login-btn">登入系統</button>
             </form>
@@ -98,42 +97,28 @@
         </div>
     </div>
 
-    <div class="modal fade" id="forgotModal" tabindex="-1">
-        <div class="modal-dialog modal-dialog-centered">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title fs-5">重設密碼</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                </div>
-                <div class="modal-body">
-                    <p class="small text-muted mb-3">請輸入您的 Email，系統將發送重設密碼連結給您。</p>
-                    <input type="email" id="reset-email" class="form-control" placeholder="name@company.com">
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
-                    <button type="button" class="btn btn-primary" onclick="sendReset()">發送重設信</button>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
     <script>
-        // 1. 初始化 Supabase
+        // 1. 初始化
         const SUPABASE_URL = 'https://yhehfucgemxnfrdvpdhw.supabase.co';
         const SUPABASE_KEY = 'sb_publishable_52emtU-9l-SDxcJTWVTPTA_Yu6qEogh'; 
-        const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+        
+        // 檢查 SDK 是否載入
+        if (typeof window.supabase === 'undefined') {
+            alert('錯誤：Supabase SDK 未載入，請檢查網路連線或 CDN 網址。');
+        }
+
+        const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
         const form = document.getElementById('loginForm');
         const btnLogin = document.getElementById('btn-login');
         const errorMsg = document.getElementById('error-msg');
         const errorText = document.getElementById('error-text');
 
-        // 2. 登入主邏輯
         form.addEventListener('submit', async function(e) {
             e.preventDefault();
+            console.log('正在嘗試登入...');
             
             // UI 重置
             errorMsg.style.display = 'none';
@@ -144,100 +129,71 @@
             const password = document.getElementById('password').value.trim();
 
             try {
-                // --- Step A: 驗證帳密 ---
-                const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
+                // Step A: 驗證帳密
+                console.log('Step A: 呼叫 Auth API...');
+                const { data: authData, error: authError } = await supabaseClient.auth.signInWithPassword({
                     email: email,
                     password: password
                 });
 
-                if (authError) throw authError; // 這裡會抓到「密碼錯誤」或「信箱未驗證」
-
-                const userId = authData.user.id;
-
-                // --- Step B: 打卡 (更新最後登入時間) ---
-                // 我們使用 try-catch 包裹這裡，以免因為 UPDATE RLS 沒設好而擋住登入
-                try {
-                    await supabase.from('profiles').update({ last_sign_in_at: new Date() }).eq('id', userId);
-                } catch (updateErr) {
-                    console.warn("打卡失敗 (可能是 UPDATE RLS 未開啟)，但不影響登入", updateErr);
+                if (authError) {
+                    console.error('Auth Error:', authError);
+                    throw new Error('帳號或密碼錯誤 (Auth API)');
                 }
+                
+                console.log('Step A 成功，User UID:', authData.user.id);
 
-                // --- Step C: 讀取權限 (最關鍵一步) ---
-                const { data: profileData, error: profileError } = await supabase
+                // Step B: 查詢權限
+                console.log('Step B: 查詢 Profiles 表格...');
+                const userId = authData.user.id;
+                
+                const { data: profileData, error: profileError } = await supabaseClient
                     .from('profiles')
                     .select('*')
                     .eq('id', userId)
-                    .single();
+                    .single(); // 這裡會報錯，如果沒有找到對應 ID 的資料
 
                 if (profileError) {
-                    // 如果這裡報錯，通常是因為 RLS 的 SELECT 規則沒設好
-                    console.error("Profile Read Error:", profileError);
-                    throw new Error("無法讀取使用者資料，請聯繫管理員檢查資料庫權限 (RLS)。");
-                }
-                
-                if (!profileData) {
-                    throw new Error("登入成功，但系統中找不到您的個人檔案。");
+                    console.error('Profile Error Details:', profileError);
+                    // 特殊錯誤代碼 PGRST116 代表查無資料 (0 rows)
+                    if (profileError.code === 'PGRST116') {
+                        throw new Error('登入成功，但資料庫找不到您的資料！\n請確認您是否已將 Auth UID 填入 profiles 表格的 id 欄位。');
+                    }
+                    throw new Error('讀取使用者權限失敗: ' + profileError.message);
                 }
 
-                // --- Step D: 寫入 Session 並跳轉 ---
+                if (!profileData) {
+                    throw new Error('查無使用者資料 (Data is null)');
+                }
+
+                console.log('Step B 成功，角色為:', profileData.role);
+
+                // Step C: 寫入 Session 並跳轉
                 sessionStorage.setItem('currentUserId', userId);
                 sessionStorage.setItem('currentUserRole', profileData.role || 'user');
                 sessionStorage.setItem('currentUserName', profileData.full_name || email);
 
-                btnLogin.innerHTML = '<i class="fas fa-check me-2"></i>登入成功';
+                btnLogin.innerHTML = '<i class="fas fa-check me-2"></i>登入成功，跳轉中...';
+                
+                // 檢查 dashboard.html 是否存在 (這只是個提示，無法真正檢查檔案)
+                console.log('正在導向 dashboard.html');
+                
                 setTimeout(() => {
                     window.location.href = 'dashboard.html';
                 }, 500);
 
             } catch (err) {
-                console.error("Login Process Error:", err);
+                console.error('登入流程錯誤:', err);
                 
-                // 錯誤訊息翻譯與優化
-                let displayMsg = err.message;
-                
-                if (displayMsg.includes("Invalid login credentials")) {
-                    displayMsg = "帳號或密碼錯誤，請重新輸入。";
-                } else if (displayMsg.includes("Email not confirmed")) {
-                    displayMsg = "此帳號尚未啟用，請前往您的信箱點擊驗證連結。";
-                }
-
-                // 顯示錯誤
-                errorText.innerText = displayMsg;
+                // 顯示錯誤給使用者看
+                errorText.innerText = err.message; // 顯示具體錯誤文字
                 errorMsg.style.display = 'block';
                 btnLogin.disabled = false;
                 btnLogin.innerText = '登入系統';
                 
-                // 搖晃動畫
+                // 動畫
                 document.querySelector('.login-card').classList.add('shake');
                 setTimeout(() => document.querySelector('.login-card').classList.remove('shake'), 500);
             }
         });
-
-        // 3. 忘記密碼邏輯
-        async function sendReset() {
-            const email = document.getElementById('reset-email').value.trim();
-            if (!email) return alert('請輸入 Email');
-            
-            const btn = document.querySelector('#forgotModal .btn-primary');
-            const originalText = btn.innerText;
-            btn.disabled = true;
-            btn.innerText = '發送中...';
-
-            try {
-                const { error } = await supabase.auth.resetPasswordForEmail(email, {
-                    redirectTo: window.location.origin + '/dashboard.html'
-                });
-                if (error) throw error;
-
-                alert('重設信已發送！\n請至信箱收取信件，點擊連結後即可登入系統修改密碼。');
-                bootstrap.Modal.getInstance(document.getElementById('forgotModal')).hide();
-            } catch (e) {
-                alert('發送失敗: ' + e.message);
-            } finally {
-                btn.disabled = false;
-                btn.innerText = originalText;
-            }
-        }
     </script>
-</body>
-</html>
