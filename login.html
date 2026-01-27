@@ -97,13 +97,19 @@
         </div>
     </div>
 
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
     <script>
-        // 1. 初始化 Supabase (與您其他檔案的設定一致)
+        // 1. 初始化
         const SUPABASE_URL = 'https://yhehfucgemxnfrdvpdhw.supabase.co';
-        const SUPABASE_KEY = 'sb_publishable_52emtU-9l-SDxcJTWVTPTA_Yu6qEogh'; // 請確認這是否為您的最新 Key
-        const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+        const SUPABASE_KEY = 'sb_publishable_52emtU-9l-SDxcJTWVTPTA_Yu6qEogh'; 
+        
+        // 檢查 SDK 是否載入
+        if (typeof window.supabase === 'undefined') {
+            alert('錯誤：Supabase SDK 未載入，請檢查網路連線或 CDN 網址。');
+        }
+
+        const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
         const form = document.getElementById('loginForm');
         const btnLogin = document.getElementById('btn-login');
@@ -112,6 +118,7 @@
 
         form.addEventListener('submit', async function(e) {
             e.preventDefault();
+            console.log('正在嘗試登入...');
             
             // UI 重置
             errorMsg.style.display = 'none';
@@ -122,54 +129,71 @@
             const password = document.getElementById('password').value.trim();
 
             try {
-                // 2. 呼叫 Supabase 進行登入驗證
-                const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
+                // Step A: 驗證帳密
+                console.log('Step A: 呼叫 Auth API...');
+                const { data: authData, error: authError } = await supabaseClient.auth.signInWithPassword({
                     email: email,
                     password: password
                 });
 
-                if (authError) throw new Error('帳號或密碼錯誤');
+                if (authError) {
+                    console.error('Auth Error:', authError);
+                    throw new Error('帳號或密碼錯誤 (Auth API)');
+                }
+                
+                console.log('Step A 成功，User UID:', authData.user.id);
 
-                // 3. 登入成功後，去 profiles 表格抓取該使用者的「身份資料 (Role)」
-                //    因為 Auth 只管登入，不知道他是 Admin 還是 User
+                // Step B: 查詢權限
+                console.log('Step B: 查詢 Profiles 表格...');
                 const userId = authData.user.id;
                 
-                const { data: profileData, error: profileError } = await supabase
+                const { data: profileData, error: profileError } = await supabaseClient
                     .from('profiles')
                     .select('*')
                     .eq('id', userId)
-                    .single();
+                    .single(); // 這裡會報錯，如果沒有找到對應 ID 的資料
 
-                if (profileError || !profileData) {
-                    throw new Error('登入成功，但查無使用者權限資料 (Profile not found)。');
+                if (profileError) {
+                    console.error('Profile Error Details:', profileError);
+                    // 特殊錯誤代碼 PGRST116 代表查無資料 (0 rows)
+                    if (profileError.code === 'PGRST116') {
+                        throw new Error('登入成功，但資料庫找不到您的資料！\n請確認您是否已將 Auth UID 填入 profiles 表格的 id 欄位。');
+                    }
+                    throw new Error('讀取使用者權限失敗: ' + profileError.message);
                 }
 
-                // 4. 將權限寫入 Session Storage (供 Dashboard 判斷)
+                if (!profileData) {
+                    throw new Error('查無使用者資料 (Data is null)');
+                }
+
+                console.log('Step B 成功，角色為:', profileData.role);
+
+                // Step C: 寫入 Session 並跳轉
                 sessionStorage.setItem('currentUserId', userId);
-                sessionStorage.setItem('currentUserRole', profileData.role || 'user'); // admin, consultant, doc_control
+                sessionStorage.setItem('currentUserRole', profileData.role || 'user');
                 sessionStorage.setItem('currentUserName', profileData.full_name || email);
 
-                // 5. 導向儀表板
-                btnLogin.innerHTML = '<i class="fas fa-check me-2"></i>登入成功';
+                btnLogin.innerHTML = '<i class="fas fa-check me-2"></i>登入成功，跳轉中...';
+                
+                // 檢查 dashboard.html 是否存在 (這只是個提示，無法真正檢查檔案)
+                console.log('正在導向 dashboard.html');
+                
                 setTimeout(() => {
                     window.location.href = 'dashboard.html';
                 }, 500);
 
             } catch (err) {
-                // 錯誤處理
-                console.error(err);
-                errorText.innerText = err.message;
+                console.error('登入流程錯誤:', err);
+                
+                // 顯示錯誤給使用者看
+                errorText.innerText = err.message; // 顯示具體錯誤文字
                 errorMsg.style.display = 'block';
                 btnLogin.disabled = false;
                 btnLogin.innerText = '登入系統';
                 
-                // 動畫效果
+                // 動畫
                 document.querySelector('.login-card').classList.add('shake');
-                setTimeout(() => {
-                    document.querySelector('.login-card').classList.remove('shake');
-                }, 500);
+                setTimeout(() => document.querySelector('.login-card').classList.remove('shake'), 500);
             }
         });
     </script>
-</body>
-</html>
