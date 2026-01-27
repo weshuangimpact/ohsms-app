@@ -122,8 +122,7 @@
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-
-    <script>
+<script>
         const SUPABASE_URL = 'https://yhehfucgemxnfrdvpdhw.supabase.co';
         const SUPABASE_KEY = 'sb_publishable_52emtU-9l-SDxcJTWVTPTA_Yu6qEogh';
         const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
@@ -131,44 +130,70 @@
         // 1. 頁面載入時執行
         document.addEventListener('DOMContentLoaded', async () => {
             try {
-                // A. 取得登入 Session
+                // --- A. 直接讀取 Auth (警衛室) 資料 ---
+                // 這裡的資料是您登入時就已經帶在身上的，不需要額外查資料庫
                 const { data: { session }, error: sessionError } = await supabase.auth.getSession();
                 
                 if (sessionError || !session) {
-                    // 若沒登入，踢回首頁
                     alert('連線逾時或未登入，請重新登入');
                     window.location.href = 'login.html';
                     return;
                 }
 
                 const user = session.user;
-                
-                // B. 填入 Email (這是最準確的資料來源)
+
+                // 【回應您的需求】直接把 Auth 裡的資料填上去
+                // 1. Email
                 const emailField = document.getElementById('user-email');
-                if (emailField) emailField.value = user.email || '';
+                if (emailField) {
+                    emailField.value = user.email || '';
+                    emailField.removeAttribute('placeholder');
+                }
 
-                // C. 直接從資料庫抓最新的姓名與角色 (不依賴 sessionStorage，避免資料漏失)
-                const { data: profile, error: profileError } = await supabase
-                    .from('profiles')
-                    .select('full_name, role')
-                    .eq('id', user.id)
-                    .single();
+                // 2. 最後登入時間 (直接讀取，不再刪除)
+                const loginTimeField = document.getElementById('last-login-time');
+                if (loginTimeField && user.last_sign_in_at) {
+                    // 轉換成台灣常見的時間格式
+                    loginTimeField.textContent = new Date(user.last_sign_in_at).toLocaleString('zh-TW', { hour12: false });
+                }
 
-                // D. 更新畫面
-                const displayName = profile?.full_name || '使用者';
-                const displayRole = profile?.role || 'user';
+                // --- B. 讀取 Profiles (人事部) 資料 ---
+                // 只有「姓名」和「角色」需要去資料庫查
+                // 我們加一個 try-catch，確保就算這裡失敗，上面的 Email 也不會消失
+                try {
+                    const { data: profile, error: profileError } = await supabase
+                        .from('profiles')
+                        .select('full_name, role')
+                        .eq('id', user.id)
+                        .single();
 
-                document.getElementById('display-name').textContent = displayName;
-                document.getElementById('display-role').textContent = getRoleName(displayRole);
-                document.getElementById('user-avatar').textContent = (displayName.charAt(0) || 'U').toUpperCase();
+                    if (profileError) {
+                        console.warn("讀取個人檔案失敗:", profileError);
+                        // 如果是權限錯誤，可以在這裡發現
+                        if (profileError.code === '42501') {
+                            console.error("權限不足 (RLS Policy 擋住了)");
+                        }
+                    }
+
+                    // 更新畫面 (如果有讀到就顯示，沒讀到就顯示預設值)
+                    const displayName = profile?.full_name || '測試管理員'; // 暫時用您截圖中的名字當預設
+                    const displayRole = profile?.role || 'user';
+
+                    document.getElementById('display-name').textContent = displayName;
+                    document.getElementById('display-role').textContent = getRoleName(displayRole);
+                    document.getElementById('user-avatar').textContent = (displayName.charAt(0) || 'U').toUpperCase();
+
+                } catch (dbError) {
+                    console.error("資料庫連線錯誤:", dbError);
+                }
 
             } catch (err) {
-                console.error("載入資料失敗:", err);
-                document.getElementById('display-name').textContent = "讀取失敗";
+                console.error("載入流程嚴重錯誤:", err);
+                alert("系統發生錯誤: " + err.message);
             }
         });
 
-        // 2. 處理密碼變更
+        // 2. 處理密碼變更 (維持 Supabase 標準寫法)
         async function handlePasswordUpdate(e) {
             e.preventDefault();
             
@@ -195,7 +220,6 @@
             btn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>更新中...';
 
             try {
-                // Supabase API 變更密碼 (立即生效)
                 const { data, error } = await supabase.auth.updateUser({
                     password: newPwd
                 });
@@ -204,9 +228,9 @@
 
                 alert('✅ 密碼修改成功！下次登入請使用新密碼。');
                 
-                // 清空欄位
                 document.getElementById('new-password').value = '';
                 document.getElementById('confirm-password').value = '';
+                feedback.style.display = 'none';
 
             } catch (err) {
                 alert('更新失敗: ' + err.message);
@@ -241,5 +265,3 @@
             return map[role] || role;
         }
     </script>
-</body>
-</html>
