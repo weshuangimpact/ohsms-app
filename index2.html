@@ -12,19 +12,20 @@
         :root { --primary-bg: #f4f6f9; --admin-color: #4f46e5; }
         body { background-color: var(--primary-bg); font-family: 'Segoe UI', 'Microsoft JhengHei', sans-serif; }
         .section-title { border-left: 5px solid var(--admin-color); padding-left: 15px; margin-bottom: 20px; }
-        .info-card { padding: 1.25rem; border-radius: 0.5rem; font-size: 0.95rem; background-color: white; border: none; }
+        .info-card { padding: 1.25rem; border-radius: 0.5rem; background-color: white; border: none; }
         .stat-value { font-size: 2rem; font-weight: 700; color: var(--admin-color); }
-        .chart-container { position: relative; height: 300px; width: 100%; }
+        .chart-container { position: relative; height: 260px; width: 100%; }
+        .table-pending thead { background-color: #f8fafc; }
     </style>
 </head>
 <body>
 
     <nav class="navbar navbar-expand-lg navbar-dark bg-dark py-3 mb-4">
         <div class="container-fluid px-4">
-            <a class="navbar-brand" href="#"><i class="fas fa-chart-line me-2"></i>OHSMS 管理者控制台</a>
+            <a class="navbar-brand" href="dashboard.html"><i class="fas fa-shield-alt me-2"></i>OHSMS 管理者控制台</a>
             <div class="d-flex align-items-center">
-                <span class="text-light me-3" id="user-display"><small>Admin: 管理員</small></span>
-                <a href="dashboard.html" class="btn btn-outline-light btn-sm"><i class="fas fa-arrow-left me-1"></i> 返回主選單</a>
+                <span class="text-light me-3" id="user-display"></span>
+                <a href="dashboard.html" class="btn btn-outline-light btn-sm"><i class="fas fa-arrow-left me-1"></i> 返回儀表板</a>
             </div>
         </div>
     </nav>
@@ -32,8 +33,8 @@
     <div class="container-fluid px-4 pb-5">
         
         <div class="section-title">
-            <h4 class="fw-bold text-dark mb-0">服務進度總覽</h4>
-            <small class="text-muted">即時監控年度結案效率與待辦事項</small>
+            <h4 class="fw-bold text-dark mb-0">管理者服務監控總覽</h4>
+            <small class="text-muted">即時年度結案達成率與暫存資料審查</small>
         </div>
 
         <div class="row g-4 mb-4">
@@ -46,11 +47,13 @@
                         <h5 class="fw-bold mb-0">年度結案達成率公式</h5>
                     </div>
                     <div class="p-3 bg-light rounded border-start border-4 border-primary mb-3">
-                        <code class="text-dark fw-bold">已核定入庫 / ( 已核定入庫 + 暫存待審核 ) × 100%</code>
+                        <code class="text-dark fw-bold" style="font-size: 1.1rem;">
+                            已核定入庫 / ( 已核定入庫 + 暫存待審核 ) × 100%
+                        </code>
                     </div>
                     <p class="text-muted small mb-0">
                         <i class="fas fa-info-circle me-1"></i> <strong>說明：</strong><br>
-                        本數據採即時計算。若當年度無待審核案件，達成率即為 <span class="text-success fw-bold">100%</span>。已核定資料指已進入正式資料庫之紀錄。
+                        系統會掃描 <code>service_record_staging</code> 中狀態為 <code>pending</code> 的所有資料。若當年度無待審核案件，達成率即為 <span class="text-success fw-bold">100%</span>。
                     </p>
                 </div>
             </div>
@@ -58,10 +61,10 @@
             <div class="col-md-7">
                 <div class="card info-card shadow-sm h-100">
                     <div class="d-flex justify-content-between align-items-center mb-4">
-                        <h5 class="fw-bold mb-0">達成率分析</h5>
-                        <select class="form-select w-auto fw-bold text-primary" id="target-year" onchange="calculateRate()">
-                            <option value="2026" selected>2026 年度</option>
-                            <option value="2025">2025 年度</option>
+                        <h5 class="fw-bold mb-0">當前年度達成率 (即時計算)</h5>
+                        <select class="form-select w-auto fw-bold text-primary" id="target-year" onchange="refreshData()">
+                            <option value="2026">2026 年度</option>
+                            <option value="2025" selected>2025 年度</option>
                             <option value="2024">2024 年度</option>
                         </select>
                     </div>
@@ -72,22 +75,48 @@
                                 <canvas id="rateChart"></canvas>
                             </div>
                         </div>
-                        <div class="col-md-6">
-                            <div class="mb-3">
-                                <label class="text-muted small d-block">已核定入庫 (正式紀錄)</label>
-                                <span class="stat-value text-success" id="val-approved">0</span> <small>筆</small>
-                            </div>
-                            <div class="mb-3">
-                                <label class="text-muted small d-block">暫存待審核 (pending)</label>
-                                <span class="stat-value text-warning" id="val-pending">0</span> <small>筆</small>
-                            </div>
-                            <hr>
-                            <div>
-                                <label class="fw-bold d-block">當年度總達成率</label>
-                                <span class="stat-value" id="val-rate" style="font-size: 2.5rem;">0%</span>
+                        <div class="col-md-6 border-start">
+                            <div class="ps-3">
+                                <div class="mb-3">
+                                    <label class="text-muted small d-block">已核定入庫 (Formal)</label>
+                                    <span class="stat-value text-success" id="val-approved">0</span> <small class="text-muted">筆</small>
+                                </div>
+                                <div class="mb-3">
+                                    <label class="text-muted small d-block">暫存待審核 (Pending)</label>
+                                    <span class="stat-value text-warning" id="val-pending">0</span> <small class="text-muted">筆</small>
+                                </div>
+                                <hr>
+                                <div>
+                                    <label class="fw-bold d-block text-secondary">年度總達成率</label>
+                                    <span class="stat-value text-primary" id="val-rate" style="font-size: 2.8rem;">0%</span>
+                                </div>
                             </div>
                         </div>
                     </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card border-0 shadow-sm mt-4">
+            <div class="card-header bg-white py-3">
+                <h6 class="fw-bold mb-0 text-warning"><i class="fas fa-clock me-2"></i>待核定暫存清單 (Staging Area)</h6>
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0 align-middle">
+                        <thead class="table-pending">
+                            <tr>
+                                <th class="ps-4">服務日期</th>
+                                <th>服務類型</th>
+                                <th>描述摘要</th>
+                                <th>目前狀態</th>
+                                <th class="text-end pe-4">動作</th>
+                            </tr>
+                        </thead>
+                        <tbody id="pendingTableBody">
+                            <tr><td colspan="5" class="text-center py-4 text-muted">正在載入暫存資料...</td></tr>
+                        </tbody>
+                    </table>
                 </div>
             </div>
         </div>
@@ -99,7 +128,7 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
     <script>
-        // 初始化 Supabase 
+        // 初始化 Supabase
         const SUPABASE_URL = 'https://yhehfucgemxnfrdvpdhw.supabase.co';
         const SUPABASE_KEY = 'sb_publishable_52emtU-9l-SDxcJTWVTPTA_Yu6qEogh';
         const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
@@ -107,8 +136,12 @@
         let rateChart = null;
 
         document.addEventListener('DOMContentLoaded', () => {
+            const role = sessionStorage.getItem('currentUserRole') || 'admin';
+            const userName = sessionStorage.getItem('currentUserName') || '管理員';
+            document.getElementById('user-display').innerHTML = `<small>${role}: ${userName}</small>`;
+            
             initChart();
-            calculateRate();
+            refreshData();
         });
 
         function initChart() {
@@ -116,66 +149,87 @@
             rateChart = new Chart(ctx, {
                 type: 'doughnut',
                 data: {
-                    labels: ['已入庫', '待審核'],
+                    labels: ['已核定', '待審核'],
                     datasets: [{
                         data: [0, 0],
-                        backgroundColor: ['#059669', '#f59e0b'],
-                        borderWidth: 0
+                        backgroundColor: ['#10b981', '#f59e0b'],
+                        borderWidth: 0,
+                        hoverOffset: 4
                     }]
                 },
                 options: {
-                    cutout: '70%',
-                    plugins: { legend: { display: false } }
+                    cutout: '75%',
+                    plugins: { legend: { display: false } },
+                    maintainAspectRatio: false
                 }
             });
         }
 
-        async function calculateRate() {
+        async function refreshData() {
             const year = parseInt(document.getElementById('target-year').value);
+            const tbody = document.getElementById('pendingTableBody');
             
             try {
-                // 1. 讀取正式庫 service_records (已核定) [cite: 696, 703]
+                // 1. 讀取正式庫 [cite: 697]
                 const { count: approvedCount, error: err1 } = await supabaseClient
                     .from('service_records')
                     .select('*', { count: 'exact', head: true })
                     .eq('service_year', year);
 
-                // 2. 讀取暫存庫 service_record_staging (待審核) [cite: 667, 675]
-                // 註：staging 表中年度判斷以 visit_date 為主 [cite: 346, 679]
+                // 2. 讀取所有 Pending 的暫存資料 [cite: 667, 675]
+                // 擴大選擇欄位，確保涵蓋所有日期可能
                 const { data: stagingData, error: err2 } = await supabaseClient
                     .from('service_record_staging')
-                    .select('visit_date')
+                    .select('id, service_date, visit_date, service_type, service_desc, status')
                     .eq('status', 'pending');
 
                 if (err1 || err2) throw (err1 || err2);
 
-                // 篩選 staging 符合年度的資料
-                const pendingCount = stagingData.filter(d => 
-                    d.visit_date && new Date(d.visit_date).getFullYear() === year
-                ).length;
+                // 3. 修正年度篩選邏輯：同時檢查 visit_date 與 service_date 
+                const filteredPending = stagingData.filter(d => {
+                    const d1 = d.visit_date ? new Date(d.visit_date).getFullYear() : null;
+                    const d2 = d.service_date ? new Date(d.service_date).getFullYear() : null;
+                    return d1 === year || d2 === year;
+                });
 
-                // 3. 計算達成率
+                const pendingCount = filteredPending.length;
+
+                // 4. 計算與更新 UI
                 const total = approvedCount + pendingCount;
                 const rate = total === 0 ? 100 : Math.round((approvedCount / total) * 100);
 
-                // 4. 更新 UI
                 document.getElementById('val-approved').innerText = approvedCount;
                 document.getElementById('val-pending').innerText = pendingCount;
                 document.getElementById('val-rate').innerText = rate + '%';
 
-                // 5. 更新圖表
+                // 5. 更新圓餅圖
                 rateChart.data.datasets[0].data = [approvedCount, pendingCount];
                 if (total === 0) {
-                    rateChart.data.datasets[0].data = [1, 0]; // 預設顯示 100%
-                    rateChart.data.datasets[0].backgroundColor = ['#e5e7eb', '#f59e0b'];
+                    rateChart.data.datasets[0].backgroundColor = ['#e2e8f0', '#f59e0b'];
+                    rateChart.data.datasets[0].data = [1, 0];
                 } else {
-                    rateChart.data.datasets[0].backgroundColor = ['#059669', '#f59e0b'];
+                    rateChart.data.datasets[0].backgroundColor = ['#10b981', '#f59e0b'];
                 }
                 rateChart.update();
 
+                // 6. 渲染待核定清單表格 (顯示那 20 筆資料)
+                tbody.innerHTML = filteredPending.map(p => `
+                    <tr class="animate__animated animate__fadeIn">
+                        <td class="ps-4 fw-bold">${p.visit_date || p.service_date}</td>
+                        <td><span class="badge bg-light text-dark border">${p.service_type || '未分類'}</span></td>
+                        <td class="text-truncate" style="max-width: 300px;">${p.service_desc || '-'}</td>
+                        <td><span class="text-warning"><i class="fas fa-circle-notch fa-spin me-1"></i>待核定</span></td>
+                        <td class="text-end pe-4">
+                            <button class="btn btn-sm btn-outline-primary" onclick="alert('進入審核程序：ID ${p.id}')">
+                                <i class="fas fa-search-plus"></i>
+                            </button>
+                        </td>
+                    </tr>
+                `).join('') || '<tr><td colspan="5" class="text-center py-4 text-muted">當前年度無待處理資料</td></tr>';
+
             } catch (e) {
-                console.error('計算失敗:', e);
-                alert('數據載入失敗');
+                console.error('Data loading error:', e);
+                alert('載入失敗，請檢查網路連接或資料庫權限設定。');
             }
         }
     </script>
