@@ -109,12 +109,11 @@
                             <th class="ps-4 py-3">使用者</th>
                             <th>角色權限</th>
                             <th>帳號狀態</th>
-                            <th>最近登入</th>
                             <th class="text-end pe-4">管理</th>
                         </tr>
                     </thead>
                     <tbody id="userTableBody">
-                        <tr><td colspan="5" class="text-center py-5 text-muted"><i class="fas fa-spinner fa-spin me-2"></i>載入中...</td></tr>
+                        <tr><td colspan="4" class="text-center py-5 text-muted"><i class="fas fa-spinner fa-spin me-2"></i>載入中...</td></tr>
                     </tbody>
                 </table>
             </div>
@@ -262,7 +261,7 @@
             } catch (err) {
                 console.error('Fetch Error:', err);
                 document.getElementById('userTableBody').innerHTML = 
-                    `<tr><td colspan="5" class="text-center py-4 text-danger">讀取失敗：${err.message}</td></tr>`;
+                    `<tr><td colspan="4" class="text-center py-4 text-danger">讀取失敗：${err.message}</td></tr>`;
             }
         }
 
@@ -288,7 +287,7 @@
             document.getElementById('totalCount').innerText = users.length;
 
             if (users.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="5" class="text-center py-4 text-muted">查無資料</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="4" class="text-center py-4 text-muted">查無資料</td></tr>';
                 return;
             }
 
@@ -307,6 +306,7 @@
                 const tr = document.createElement('tr');
                 if (isResigned) tr.style.backgroundColor = '#fcfcfc';
 
+                // 已移除最後登入欄位
                 tr.innerHTML = `
                     <td class="ps-4">
                         <div class="d-flex align-items-center">
@@ -319,7 +319,6 @@
                     </td>
                     <td><span class="role-tag ${roleClass}">${roleName}</span></td>
                     <td>${statusBadge}</td>
-                    <td class="text-muted small">${user.last_sign_in_at ? new Date(user.last_sign_in_at).toLocaleDateString() : '尚未登入'}</td>
                     <td class="text-end pe-4">
                         <button class="btn btn-outline-secondary btn-sm" onclick="openEditModal('${user.id}')">
                             <i class="fas fa-cog me-1"></i> 管理
@@ -358,7 +357,7 @@
 
         // 5. 資料寫入功能 (CRUD)
 
-        // --- C. ★ 修正：執行新增 (呼叫 Edge Function 自動發邀請) ---
+        // --- C. 執行新增 (呼叫 Edge Function 自動發邀請) ---
         async function createUser() {
             const email = document.getElementById('new-email').value;
             const name = document.getElementById('new-name').value;
