@@ -15,7 +15,7 @@
         body {
             background-color: var(--primary-bg);
             font-family: 'Segoe UI', 'Microsoft JhengHei', sans-serif;
-            display: none; /* 權限驗證前先隱藏 */
+            display: none; /* 權限驗證前先隱藏，避免閃爍 */
         }
         .dashboard-card {
             border: none;
@@ -38,8 +38,6 @@
         .card-data { border-left-color: #4f46e5; }
         .card-admin { border-left-color: #212529; }
         .card-account { border-left-color: #0dcaf0; }
-        
-        /* [新增] 個人設定飾條顏色 (灰色) */
         .card-profile { border-left-color: #6c757d; }
 
         .icon-wrapper {
@@ -63,8 +61,8 @@
         // 權限檢查：無登入者直接踢回登入頁
         const role = sessionStorage.getItem('currentUserRole');
         if (!role) {
-            // window.location.href = 'login.html'; 
-            console.warn("未檢測到權限，模擬跳轉至登入頁");
+            // 如果沒登入，強制導回登入頁 (若在開發測試中可先註解掉下一行)
+            window.location.href = 'login.html'; 
         }
     </script>
 </head>
@@ -193,7 +191,7 @@
                         <div class="d-flex justify-content-between">
                             <div>
                                 <h6 class="text-uppercase text-dark fw-bold small mb-1">Audit Evidence</h6>
-                                <h5 class="card-title fw-bold mb-2">系統日誌與稽核證據</h5>
+                                <h5 class="card-title fw-bold mb-2">系統日誌與稽核</h5>
                             </div>
                             <div class="icon-wrapper bg-dark bg-opacity-10 text-dark">
                                 <i class="fas fa-clipboard-list"></i>
@@ -233,7 +231,7 @@
                         <div class="d-flex justify-content-between">
                             <div>
                                 <h6 class="text-uppercase fw-bold small mb-1" style="color: #6c757d;">Profile Settings</h6>
-                                <h5 class="card-title fw-bold mb-2">個人帳號密碼管理</h5>
+                                <h5 class="card-title fw-bold mb-2">個人設定</h5>
                             </div>
                             <div class="icon-wrapper bg-secondary bg-opacity-10 text-secondary">
                                 <i class="fas fa-user-lock"></i>
@@ -257,14 +255,15 @@
             // 1. 顯示畫面
             document.body.style.display = 'block';
 
-            // 2. 讀取使用者資訊
-            const userRole = sessionStorage.getItem('currentUserRole') || 'admin';
-            const userName = sessionStorage.getItem('currentUserName') || '管理員';
+            // 2. 讀取使用者資訊 (預設為 user 以策安全)
+            const userRole = sessionStorage.getItem('currentUserRole') || 'user';
+            const userName = sessionStorage.getItem('currentUserName') || '使用者';
             
+            // ★ 設定顯示的角色名稱 (對應資料庫角色)
             let roleTitle = '使用者';
             if(userRole === 'admin') roleTitle = '系統管理員';
-            if(userRole === 'medical') roleTitle = '醫護人員';
-            if(userRole === 'general') roleTitle = '文管人員';
+            if(userRole === 'consultant') roleTitle = '醫護顧問';   // 對應資料庫 consultant
+            if(userRole === 'doc_control') roleTitle = '文管人員';  // 對應資料庫 doc_control
             
             const userDisplay = document.getElementById('user-display');
             if(userDisplay) {
@@ -273,35 +272,42 @@
 
             // 3. 權限邏輯 (RBAC) - 控制卡片顯示
             const cards = {
-                manager: document.getElementById('card-index2'), // 管理者總覽
-                eval: document.getElementById('card-index3'),    // 評鑑助理
-                maint: document.getElementById('card-index6'),   // 系統操作日誌稽核
-                master: document.getElementById('card-index7'),  // 基本資料
-                users: document.getElementById('card-users'),    // Admin帳號管理
-                profile: document.getElementById('card-profile') // [新增] 個人設定 (全開)
+                manager: document.getElementById('card-index2'), // Manager Overview
+                eval: document.getElementById('card-index3'),    // Evaluation
+                maint: document.getElementById('card-index6'),   // Audit Logs
+                master: document.getElementById('card-index7'),  // Data Mgmt
+                users: document.getElementById('card-users'),    // User Mgmt
+                // upload: document.getElementById('card-index1') // 上傳區通常開放，故不強制加入隱藏清單
             };
 
-            // 初始化：先隱藏敏感項目 (manager 與 eval 預設顯示，profile 預設顯示)
+            // 【初始化：先隱藏敏感項目】(白名單策略)
+            if(cards.manager) cards.manager.style.display = 'none';
+            if(cards.eval) cards.eval.style.display = 'none';
             if(cards.maint) cards.maint.style.display = 'none';
             if(cards.master) cards.master.style.display = 'none';
             if(cards.users) cards.users.style.display = 'none';
 
+            // 【權限分配】
             if (userRole === 'admin') {
                 // Admin: 全開
+                if(cards.manager) cards.manager.style.display = 'block';
+                if(cards.eval) cards.eval.style.display = 'block';
                 if(cards.maint) cards.maint.style.display = 'block';
                 if(cards.master) cards.master.style.display = 'block';
                 if(cards.users) cards.users.style.display = 'block';
             }
-            else if (userRole === 'general') {
-                // 文管: 隱藏管理與評鑑，但可建立基本資料
-                if(cards.manager) cards.manager.style.display = 'none';
-                if(cards.eval) cards.eval.style.display = 'none';
-                if(cards.master) cards.master.style.display = 'block'; 
+            else if (userRole === 'doc_control') {
+                // 文管人員 (doc_control)
+                // 權限：基本資料建立(master)
+                if(cards.master) cards.master.style.display = 'block';
             }
-            else if (userRole === 'medical') {
-                // 醫護: 專注執行面 (維持預設隱藏: maint, master, users)
-                // Manager/Eval 保持顯示
+            else if (userRole === 'consultant') {
+                // 醫護顧問 (consultant)
+                // 權限：管理者總覽(manager)、評鑑助理(eval)
+                if(cards.manager) cards.manager.style.display = 'block';
+                if(cards.eval) cards.eval.style.display = 'block';
             }
+            // 一般 User (user) 只會看到預設沒被隱藏的卡片 (如: 資料上傳、個人設定)
         });
 
         // 登出功能
