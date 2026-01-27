@@ -35,7 +35,7 @@
         }
         #error-msg { display: none; }
         
-        /* 錯誤時的搖晃動畫 */
+        /* 搖晃動畫 */
         .shake { animation: shake 0.5s; }
         @keyframes shake {
             0% { transform: translate(1px, 1px) rotate(0deg); }
@@ -62,7 +62,7 @@
         <div class="card-body p-4">
             
             <div id="error-msg" class="alert alert-danger py-2 small" role="alert">
-                <i class="fas fa-exclamation-circle me-1"></i> <span id="error-text"></span>
+                <i class="fas fa-exclamation-circle me-1"></i> <span id="error-text">帳號或密碼錯誤</span>
             </div>
 
             <form id="loginForm">
@@ -137,7 +137,7 @@
         const errorMsg = document.getElementById('error-msg');
         const errorText = document.getElementById('error-text');
 
-        // --- 舊有的登入邏輯 (完全不動) ---
+        // --- 這是您原本的登入邏輯 (完全保留不動) ---
         form.addEventListener('submit', async function(e) {
             e.preventDefault();
             console.log('正在嘗試登入...');
