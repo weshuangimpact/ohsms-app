@@ -39,12 +39,12 @@
         
         <div class="formula-card animate__animated animate__fadeInDown shadow-sm">
             <div class="d-flex align-items-center">
-                <i class="fas fa-calculator fa-lg me-3 text-secondary"></i>
+                <i class="fas fa-server fa-lg me-3 text-success"></i>
                 <div>
-                    <h6 class="mb-1 fw-bold">年度達成率計算公式：</h6>
+                    <h6 class="mb-1 fw-bold">年度達成率計算公式 (雲端驗證版)：</h6>
                     <p class="mb-0 small text-muted">
-                        <strong>( 年度內附件已上傳筆數 ÷ 年度服務紀錄總筆數 ) × 100%</strong><br>
-                        基準說明：系統自動比對 <code>service_records</code> 內的 <code>attachment_files</code> 欄位，凡包含有效檔案路徑即計為完成。
+                        <strong>( 經系統驗證合格筆數 ÷ 年度服務紀錄總筆數 ) × 100%</strong><br>
+                        基準說明：系統後端 (Edge Function) 自動檢查 Storage 實體檔案存在且包含「紀錄表」關鍵字，標記為 <code>storage_verified: true</code> 即計為完成。
                     </p>
                 </div>
             </div>
@@ -79,7 +79,7 @@
                         </div>
                         <div class="col-6">
                             <div class="p-3 border rounded bg-light text-center">
-                                <div class="small text-muted">已上傳附件</div>
+                                <div class="small text-muted">已驗證歸檔</div>
                                 <div class="h5 mb-0 fw-bold text-success" id="uploaded-count">0</div>
                             </div>
                         </div>
@@ -153,8 +153,10 @@
             const { data: { session } } = await supabase.auth.getSession();
             if (!session) { location.href = 'login.html'; return; }
             document.getElementById('admin-name').innerText = `管理員: ${session.user.user_metadata.full_name || 'Admin'}`;
+            
             initChart();
             refreshAllData();
+            setupRealtimeSubscription(); // 啟動即時監聽
         });
 
         function initChart() {
@@ -162,7 +164,7 @@
             completionChart = new Chart(ctx, {
                 type: 'doughnut',
                 data: {
-                    labels: ['已完成', '未完成'],
+                    labels: ['已完成 (經驗證)', '未完成'],
                     datasets: [{
                         data: [0, 100],
                         backgroundColor: ['#198754', '#e9ecef'],
@@ -173,27 +175,48 @@
             });
         }
 
+        // ==========================================
+        // Real-time: 當後端驗證完畢，自動更新圖表
+        // ==========================================
+        function setupRealtimeSubscription() {
+            supabase
+                .channel('public:service_records')
+                .on('postgres_changes', 
+                    { event: 'UPDATE', schema: 'public', table: 'service_records' }, 
+                    (payload) => {
+                        // 只有當驗證狀態(storage_verified)改變時，才重新計算
+                        if (payload.new.storage_verified !== payload.old.storage_verified) {
+                            // console.log('收到後端驗證更新，刷新圖表...');
+                            calculateAnnualCompletion();
+                            // 可以選擇性加上 Toast 通知使用者
+                        }
+                    }
+                )
+                .subscribe();
+        }
+
         async function refreshAllData() {
             calculateAnnualCompletion();
             updateStats();
             loadReviewList();
         }
 
+        // ==========================================
+        // 極速版：直接讀取 Edge Function 驗證結果
+        // ==========================================
         async function calculateAnnualCompletion() {
             const yearStr = document.getElementById('year-filter').value;
             const yearInt = parseInt(yearStr, 10);
-
-            // ============================================================
-            // 修改重點：改用 visit_date (日期區間) 來篩選，不依賴 service_year
-            // ============================================================
+            
             const startDate = `${yearInt}-01-01`;
             const endDate = `${yearInt}-12-31`;
 
+            // 直接讀取 storage_verified 欄位，無需下載 attachment_files JSON
             const { data, error } = await supabase
                 .from('service_records')
-                .select('attachment_files')
-                .gte('visit_date', startDate)  // 大於等於 1月1日
-                .lte('visit_date', endDate);   // 小於等於 12月31日
+                .select('storage_verified') 
+                .gte('visit_date', startDate)
+                .lte('visit_date', endDate);
 
             if (error) { 
                 console.error("Completion calculation error:", error); 
@@ -201,13 +224,9 @@
             }
 
             const total = data.length;
-            const completed = data.filter(item => {
-                if (!item.attachment_files) return false;
-                try {
-                    const files = typeof item.attachment_files === 'string' ? JSON.parse(item.attachment_files) : item.attachment_files;
-                    return Array.isArray(files) && files.length > 0;
-                } catch (e) { return false; }
-            }).length;
+            
+            // 邏輯變更：直接計算 storage_verified 為 true 的數量
+            const completed = data.filter(r => r.storage_verified === true).length;
 
             const percentage = total > 0 ? Math.round((completed / total) * 100) : 0;
             
@@ -231,7 +250,6 @@
         }
 
         async function loadReviewList() {
-            // 注意：如果這段查詢失敗，代表您的資料庫關聯表 (FK) 可能尚未建立完全
             const { data, error } = await supabase
                 .from('service_record_staging')
                 .select('*, workplaces(companies(name)), medical_staff(name)')
