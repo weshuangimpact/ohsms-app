@@ -17,11 +17,17 @@
         .chart-container { position: relative; height: 260px; width: 100%; }
         .table-pending thead { background-color: #f8fafc; }
         
-        /* 預覽視窗專用樣式 (無浮水印) */
+        /* 預覽視窗專用樣式 */
         .preview-body { background: #f8f9fa; min-height: 400px; padding: 20px; }
         .file-item { background: white; border: 1px solid #dee2e6; padding: 15px; margin-bottom: 15px; border-radius: 8px; }
         .attachment-img { max-width: 100%; height: auto; border: 1px solid #ddd; box-shadow: 0 2px 5px rgba(0,0,0,0.1); margin-top: 10px; }
         .attachment-pdf-frame { width: 100%; height: 500px; border: 1px solid #ddd; margin-top: 10px; }
+        
+        /* 特殊說明區塊 */
+        .special-note-box {
+            background-color: #fff3cd; border: 1px solid #ffecb5; 
+            color: #664d03; padding: 15px; border-radius: 6px; margin-bottom: 20px;
+        }
     </style>
 </head>
 <body>
@@ -39,7 +45,7 @@
     <div class="container-fluid px-4 pb-5">
         
         <div class="section-title">
-            <h4 class="fw-bold text-dark mb-0">管理者服務監控總覽</h4>
+            <h4 class="fw-bold text-dark mb-0">管理者總覽 (Evaluation)</h4>
             <small class="text-muted">即時年度結案達成率與暫存資料審查</small>
         </div>
 
@@ -138,13 +144,100 @@
                     <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
                 </div>
                 <div class="modal-body preview-body" id="reviewContainer">
-                    <div class="text-center py-5"><div class="spinner-border text-primary"></div><p class="mt-2">正在讀取 Staging 暫存區檔案...</p></div>
-                </div>
+                    </div>
                 <div class="modal-footer bg-light justify-content-between">
                     <div class="text-muted small">此模式僅供預覽，不包含浮水印。</div>
-                    <div>
-                        <button type="button" class="btn btn-success fw-bold" onclick="alert('核定功能開發中')"><i class="fas fa-check me-1"></i>核定入庫</button>
+                    <div class="d-flex gap-2">
+                        <button type="button" class="btn btn-warning fw-bold text-dark" onclick="approveRecord('special')">
+                            <i class="fas fa-exclamation-circle me-1"></i>特案允許結案
+                        </button>
+                        <button type="button" class="btn btn-success fw-bold" onclick="approveRecord('standard')">
+                            <i class="fas fa-check me-1"></i>核定結案
+                        </button>
                     </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="reviewEmailModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header bg-secondary text-white">
+                    <h5 class="modal-title"><i class="fas fa-envelope-open-text me-2"></i>發送審查通知 (補件要求)</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <input type="hidden" id="email-target-id">
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">收件顧問</label>
+                        <input type="text" class="form-control bg-light" id="email-consultant-name" readonly>
+                        <small class="text-muted" id="email-consultant-addr">xxxx@example.com</small>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold text-danger">需補正原因 (可複選)</label>
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" value="附件錯置" id="reason1">
+                            <label class="form-check-label" for="reason1">附件錯置</label>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" value="缺件" id="reason2">
+                            <label class="form-check-label" for="reason2">缺件 (如：缺少照片或簽名檔)</label>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" value="其他" id="reason3" onchange="toggleOtherReason()">
+                            <label class="form-check-label" for="reason3">其他原因</label>
+                        </div>
+                        <input type="text" class="form-control mt-2" id="reason-other-text" placeholder="請填寫具體原因..." style="display:none;">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">補正期限</label>
+                        <div class="input-group">
+                            <span class="input-group-text">請於</span>
+                            <input type="number" class="form-control" id="email-deadline" value="3" min="1">
+                            <span class="input-group-text">天內完成</span>
+                        </div>
+                    </div>
+                    <div class="alert alert-light border small">
+                        <strong>預覽內容：</strong><br>
+                        親愛的 <span class="preview-name">XXX</span> 顧問，您的送審案件因上述原因需要補正，請盡速完成以利結案。
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                    <button type="button" class="btn btn-primary" onclick="sendReviewEmail()">
+                        <i class="fas fa-paper-plane me-1"></i> 確認發送
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="reminderEmailModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header bg-warning text-dark">
+                    <h5 class="modal-title"><i class="fas fa-bell me-2"></i>發送催收通知</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <input type="hidden" id="remind-target-id">
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">收件顧問</label>
+                        <input type="text" class="form-control bg-light" id="remind-consultant-name" readonly>
+                        <small class="text-muted" id="remind-consultant-addr"></small>
+                    </div>
+                    <div class="alert alert-warning border border-warning">
+                        <strong>信件內容預覽：</strong><br>
+                        親愛的 <span class="remind-preview-name">XXX</span> 顧問：<br>
+                        您的案件尚未結案，請盡速補齊附件，以利系統結案程序。
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                    <button type="button" class="btn btn-dark" onclick="sendReminderEmail()">
+                        <i class="fas fa-paper-plane me-1"></i> 確認催收
+                    </button>
                 </div>
             </div>
         </div>
@@ -155,19 +248,18 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
     <script>
-        // 初始化 Supabase
         const SUPABASE_URL = 'https://yhehfucgemxnfrdvpdhw.supabase.co';
         const SUPABASE_KEY = 'sb_publishable_52emtU-9l-SDxcJTWVTPTA_Yu6qEogh';
         const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
         let rateChart = null;
         let currentStagingData = []; 
+        let currentReviewId = null; // 當前正在審核的 ID
 
         document.addEventListener('DOMContentLoaded', () => {
             const role = sessionStorage.getItem('currentUserRole') || 'admin';
             const userName = sessionStorage.getItem('currentUserName') || '管理員';
             document.getElementById('user-display').innerHTML = `<small>${role}: ${userName}</small>`;
-            
             initChart();
             refreshData();
         });
@@ -178,18 +270,9 @@
                 type: 'doughnut',
                 data: {
                     labels: ['已核定', '待審核'],
-                    datasets: [{
-                        data: [0, 0],
-                        backgroundColor: ['#10b981', '#f59e0b'],
-                        borderWidth: 0,
-                        hoverOffset: 4
-                    }]
+                    datasets: [{ data: [0, 0], backgroundColor: ['#10b981', '#f59e0b'], borderWidth: 0 }]
                 },
-                options: {
-                    cutout: '75%',
-                    plugins: { legend: { display: false } },
-                    maintainAspectRatio: false
-                }
+                options: { cutout: '75%', plugins: { legend: { display: false } }, maintainAspectRatio: false }
             });
         }
 
@@ -198,18 +281,19 @@
             const tbody = document.getElementById('pendingTableBody');
             
             try {
-                // 1. 讀取正式庫統計
+                // 1. 讀取正式庫
                 const { count: approvedCount, error: err1 } = await supabaseClient
                     .from('service_records')
                     .select('*', { count: 'exact', head: true })
                     .eq('service_year', year);
 
-                // 2. 讀取 Pending 暫存資料
+                // 2. 讀取 Pending 資料 (加入 email 欄位)
+                // 修正：從 medical_staff 關聯取得 name 與 email
                 const { data: stagingData, error: err2 } = await supabaseClient
                     .from('service_record_staging')
                     .select(`
                         *,
-                        medical_staff:consultant_id ( name )
+                        medical_staff:consultant_id ( name, email )
                     `)
                     .eq('status', 'pending');
 
@@ -224,24 +308,16 @@
                 currentStagingData = filteredPending; 
                 const pendingCount = filteredPending.length;
 
-                // 更新統計 UI
+                // UI Update
                 const total = approvedCount + pendingCount;
                 const rate = total === 0 ? 100 : Math.round((approvedCount / total) * 100);
-
                 document.getElementById('val-approved').innerText = approvedCount;
                 document.getElementById('val-pending').innerText = pendingCount;
                 document.getElementById('val-rate').innerText = rate + '%';
-
                 rateChart.data.datasets[0].data = [approvedCount, pendingCount];
-                if (total === 0) {
-                    rateChart.data.datasets[0].backgroundColor = ['#e2e8f0', '#f59e0b'];
-                    rateChart.data.datasets[0].data = [1, 0];
-                } else {
-                    rateChart.data.datasets[0].backgroundColor = ['#10b981', '#f59e0b'];
-                }
                 rateChart.update();
 
-                // 渲染列表 (UI 調整：恢復原始按鈕群組)
+                // 渲染列表
                 tbody.innerHTML = filteredPending.map((p, index) => {
                     let descText = p.service_desc;
                     try {
@@ -253,6 +329,7 @@
                     const consultantName = p.medical_staff?.name || '未知顧問';
                     const displayDate = p.visit_date || p.service_date;
 
+                    // 使用 JSON.stringify 傳遞物件比較安全，避免引號問題，這裡用 ID 查找全域變數
                     return `
                     <tr class="animate__animated animate__fadeIn">
                         <td class="ps-4 fw-bold font-monospace">${displayDate}</td>
@@ -261,13 +338,13 @@
                         <td class="text-truncate" style="max-width: 250px;">${descText || '-'}</td>
                         <td class="text-end pe-4">
                             <div class="btn-group">
-                                <button class="btn btn-sm btn-outline-secondary" onclick="openStagingPreview('${p.id}')" title="檢視預覽">
+                                <button class="btn btn-sm btn-outline-secondary" onclick="openStagingPreview('${p.id}')" title="審核預覽">
                                     <i class="far fa-eye"></i>
                                 </button>
-                                <button class="btn btn-sm btn-outline-success" onclick="alert('通知信已發送至: ${consultantName}')" title="發送通知信">
+                                <button class="btn btn-sm btn-outline-success" onclick="openReviewEmailModal('${p.id}')" title="審查通知 (補件)">
                                     <i class="far fa-envelope"></i>
                                 </button>
-                                <button class="btn btn-sm btn-outline-primary" onclick="alert('催收提醒已發送！')" title="催收提醒">
+                                <button class="btn btn-sm btn-outline-primary" onclick="openReminderModal('${p.id}')" title="催收通知">
                                     <i class="far fa-bell"></i>
                                 </button>
                             </div>
@@ -276,84 +353,175 @@
                 `}).join('') || '<tr><td colspan="5" class="text-center py-4 text-muted">當前年度無待處理資料</td></tr>';
 
             } catch (e) {
-                console.error('Data loading error:', e);
-                alert('載入失敗，請檢查網路連接或資料庫權限設定。');
+                console.error(e);
+                alert('載入失敗');
             }
         }
 
+        // --- 1. 審核預覽邏輯 (含 Step 3 特殊說明) ---
         async function openStagingPreview(id) {
             const record = currentStagingData.find(r => r.id === id);
             if (!record) return;
+            currentReviewId = id; // 鎖定當前 ID
 
             const container = document.getElementById('reviewContainer');
-            container.innerHTML = `<div class="text-center py-5"><div class="spinner-border text-primary"></div><p>正在從暫存區 (Staging) 讀取檔案...</p></div>`;
-            
+            container.innerHTML = `<div class="text-center py-5"><div class="spinner-border text-primary"></div><p>正在讀取檔案...</p></div>`;
             new bootstrap.Modal(document.getElementById('reviewModal')).show();
 
             try {
-                let files = record.attachment_files;
-                // 安全性檢查：處理 undefined 或字串型別
-                if (typeof files === 'string') {
-                    try {
-                        files = JSON.parse(files);
-                    } catch(e) {
-                        files = [];
+                // 解析 Step 3 特殊說明 (通常存於 service_desc JSON 中)
+                let specialNoteHtml = '';
+                try {
+                    const descJson = JSON.parse(record.service_desc);
+                    // 假設 index1 將 Step 3 存為 "special_note" 或 "note"
+                    const note = descJson.special_note || descJson.note || descJson.process_summary;
+                    if(note) {
+                        specialNoteHtml = `
+                            <div class="special-note-box">
+                                <strong><i class="fas fa-exclamation-triangle me-2"></i>Step 3 特殊狀況說明 / 備註：</strong><br>
+                                ${note}
+                            </div>
+                        `;
                     }
-                }
+                } catch(e) {}
+
+                // 解析附件
+                let files = record.attachment_files;
+                if (typeof files === 'string') { try { files = JSON.parse(files); } catch(e) { files = []; } }
                 if (!files || !Array.isArray(files)) files = [];
 
+                let fileHtml = '';
                 if (files.length === 0) {
-                    container.innerHTML = `<div class="alert alert-warning text-center">此案件沒有上傳任何附件。</div>`;
-                    return;
+                    fileHtml = `<div class="alert alert-warning text-center">此案件沒有上傳任何附件。</div>`;
+                } else {
+                    const filesWithUrl = await Promise.all(files.map(async (f) => {
+                        const { data } = await supabaseClient.storage.from('staging').createSignedUrl(f.path, 600);
+                        return { ...f, url: data?.signedUrl };
+                    }));
+                    
+                    fileHtml = filesWithUrl.map(f => {
+                        if (!f.url) return `<div class="alert alert-danger">讀取失敗: ${f.name}</div>`;
+                        const isImg = f.name.match(/\.(jpeg|jpg|png|gif)$/i);
+                        const isPdf = f.name.match(/\.pdf$/i);
+                        let display = isImg ? `<img src="${f.url}" class="attachment-img">` : (isPdf ? `<iframe src="${f.url}#toolbar=0" class="attachment-pdf-frame"></iframe>` : `<div class="p-3 bg-white border mt-2"><a href="${f.url}" target="_blank">下載 (${f.name})</a></div>`);
+                        return `<div class="file-item"><div class="fw-bold text-primary"><i class="fas fa-file me-2"></i>${f.name}</div>${display}</div>`;
+                    }).join('');
                 }
 
-                // 產生 Signed URL
-                const filesWithUrl = await Promise.all(files.map(async (f) => {
-                    const { data } = await supabaseClient.storage
-                        .from('staging') 
-                        .createSignedUrl(f.path, 600);
-                    return { ...f, url: data?.signedUrl };
-                }));
-
-                const htmlContent = filesWithUrl.map(f => {
-                    if (!f.url) return `<div class="alert alert-danger">無法讀取檔案: ${f.name}</div>`;
-                    
-                    const isImg = f.name.match(/\.(jpeg|jpg|png|gif)$/i);
-                    const isPdf = f.name.match(/\.pdf$/i);
-                    let display = '';
-
-                    if (isImg) {
-                        display = `<img src="${f.url}" class="attachment-img">`;
-                    } else if (isPdf) {
-                        display = `<iframe src="${f.url}#toolbar=0" class="attachment-pdf-frame"></iframe>`;
-                    } else {
-                        display = `<div class="p-3 bg-white border mt-2"><a href="${f.url}" target="_blank" class="btn btn-outline-primary"><i class="fas fa-download me-2"></i>下載查看 (${f.name})</a></div>`;
-                    }
-
-                    return `
-                        <div class="file-item">
-                            <div class="d-flex justify-content-between align-items-center border-bottom pb-2">
-                                <span class="fw-bold text-primary"><i class="fas fa-file me-2"></i>${f.name}</span>
-                                <span class="badge bg-secondary">Staging</span>
-                            </div>
-                            ${display}
-                        </div>
-                    `;
-                }).join('');
-
                 container.innerHTML = `
-                    <div class="alert alert-info py-2 small">
-                        <strong>案件 ID:</strong> ${record.id} | 
-                        <strong>顧問:</strong> ${record.medical_staff?.name || 'Unknown'} | 
-                        <strong>日期:</strong> ${record.visit_date}
+                    <div class="alert alert-info py-2 small d-flex justify-content-between">
+                        <span><strong>顧問:</strong> ${record.medical_staff?.name}</span>
+                        <span><strong>日期:</strong> ${record.visit_date}</span>
                     </div>
-                    ${htmlContent}
+                    ${specialNoteHtml}
+                    ${fileHtml}
                 `;
-
             } catch (e) {
-                console.error(e);
-                container.innerHTML = `<div class="alert alert-danger">讀取失敗: ${e.message}</div>`;
+                container.innerHTML = `<div class="alert alert-danger">讀取錯誤: ${e.message}</div>`;
             }
+        }
+
+        // --- 2. 審查通知信邏輯 ---
+        function toggleOtherReason() {
+            const isChecked = document.getElementById('reason3').checked;
+            document.getElementById('reason-other-text').style.display = isChecked ? 'block' : 'none';
+        }
+
+        function openReviewEmailModal(id) {
+            const record = currentStagingData.find(r => r.id === id);
+            if(!record) return;
+            
+            document.getElementById('email-target-id').value = id;
+            document.getElementById('email-consultant-name').value = record.medical_staff?.name || '';
+            document.getElementById('email-consultant-addr').innerText = record.medical_staff?.email || '無 Email 資料';
+            document.querySelectorAll('.preview-name').forEach(el => el.innerText = record.medical_staff?.name || 'XXX');
+            
+            // 重置表單
+            document.getElementById('reason1').checked = false;
+            document.getElementById('reason2').checked = false;
+            document.getElementById('reason3').checked = false;
+            document.getElementById('reason-other-text').value = '';
+            document.getElementById('reason-other-text').style.display = 'none';
+
+            new bootstrap.Modal(document.getElementById('reviewEmailModal')).show();
+        }
+
+        function sendReviewEmail() {
+            const id = document.getElementById('email-target-id').value;
+            const name = document.getElementById('email-consultant-name').value;
+            const email = document.getElementById('email-consultant-addr').innerText;
+            const deadline = document.getElementById('email-deadline').value;
+            
+            let reasons = [];
+            if(document.getElementById('reason1').checked) reasons.push("附件錯置");
+            if(document.getElementById('reason2').checked) reasons.push("缺件");
+            if(document.getElementById('reason3').checked) {
+                const otherText = document.getElementById('reason-other-text').value.trim();
+                reasons.push("其他原因：" + (otherText || '未說明'));
+            }
+
+            if(reasons.length === 0) return alert('請至少勾選一項原因');
+
+            const content = `親愛的 ${name} 顧問，您的送審案件因以下原因：\n${reasons.join('、')}\n需要補正。請於 ${deadline} 天內，盡速完成，以利結案。`;
+            
+            // 模擬發送
+            alert(`[系統模擬發信]\n目標：${email}\n內容：\n${content}`);
+            bootstrap.Modal.getInstance(document.getElementById('reviewEmailModal')).hide();
+        }
+
+        // --- 3. 催收通知邏輯 ---
+        function openReminderModal(id) {
+            const record = currentStagingData.find(r => r.id === id);
+            if(!record) return;
+
+            document.getElementById('remind-target-id').value = id;
+            document.getElementById('remind-consultant-name').value = record.medical_staff?.name || '';
+            document.getElementById('remind-consultant-addr').innerText = record.medical_staff?.email || '無 Email 資料';
+            document.querySelectorAll('.remind-preview-name').forEach(el => el.innerText = record.medical_staff?.name || 'XXX');
+
+            new bootstrap.Modal(document.getElementById('reminderEmailModal')).show();
+        }
+
+        function sendReminderEmail() {
+            const name = document.getElementById('remind-consultant-name').value;
+            const email = document.getElementById('remind-consultant-addr').innerText;
+            const content = `親愛的 ${name} 顧問 您的案件尚未結案 請盡速補齊附件 以利結案`;
+
+            alert(`[系統模擬發信]\n目標：${email}\n內容：\n${content}`);
+            bootstrap.Modal.getInstance(document.getElementById('reminderEmailModal')).hide();
+        }
+
+        // --- 4. 結案審核邏輯 (標準 vs 特案) ---
+        async function approveRecord(type) {
+            if(!currentReviewId) return;
+            const record = currentStagingData.find(r => r.id === currentReviewId);
+            if(!record) return;
+
+            let auditNote = '';
+            let isSpecial = false;
+
+            if (type === 'special') {
+                const reason = prompt("【特案允許結案】\n請輸入允許結案的原因或備註 (必填)：\n(例如：工廠拒絕提供照片)");
+                if (reason === null) return; // 取消
+                if (reason.trim() === '') return alert('特案結案必須填寫原因！');
+                auditNote = reason;
+                isSpecial = true;
+            } else {
+                if(!confirm(`確定要核定此案件 (ID: ${currentReviewId}) 嗎？`)) return;
+                auditNote = '標準審核通過';
+            }
+
+            // 模擬資料庫更新 (實際上這裡應該呼叫 Supabase update)
+            // 1. 將 staging 資料搬移到 service_records
+            // 2. 設定 status = 'approved', is_special_case = isSpecial, audit_note = auditNote
+            // 3. 刪除 staging 資料
+            
+            // 這裡僅用 Alert 模擬成功
+            const statusText = isSpecial ? '特案核定' : '標準核定';
+            alert(`✅ ${statusText} 成功！\n備註：${auditNote}\n(系統將自動將資料移入正式資料庫)`);
+            
+            bootstrap.Modal.getInstance(document.getElementById('reviewModal')).hide();
+            refreshData(); // 重新整理列表
         }
     </script>
 </body>
