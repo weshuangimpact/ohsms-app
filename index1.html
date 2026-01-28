@@ -9,12 +9,12 @@
     
 <style>
     /* =========================================
-       1. 核心基礎與寬版設定
+       1. 核心基礎與寬版設定 (修正色調與版面)
        ========================================= */
     :root { 
         --primary-bg: #f4f6f9; 
-        --theme-color: #0dcaf0; /* 對應 Dashboard bg-info 亮藍色 */
-        --theme-light: #e0faff; /* 淺色背景用 */
+        --theme-color: #0d6efd; /* [修正] 改為 Plan 藍色 (#0d6efd) */
+        --theme-light: #e7f1ff; /* [修正] 淺藍色背景 */
     }
 
     body {
@@ -23,14 +23,24 @@
         display: none; /* Auth Guard */
     }
 
-    /* 強制寬版設定：覆蓋 Bootstrap container 預設寬度限制 */
+    /* [修正] 強制全寬設定：讓內容展開到最寬 */
     .container, .container-fluid {
         max-width: 100% !important;
-        padding-left: 2rem;
-        padding-right: 2rem;
+        padding-left: 1.5rem !important;
+        padding-right: 1.5rem !important;
     }
 
-    /* 標題飾條 - 亮藍色 */
+    /* [修正] 消除 wrapper 的內距，確保 Step 1 與 PDCA 貼齊邊緣 */
+    .card-body {
+        padding: 0 !important;
+    }
+
+    /* [修正] 標題區域：移除下方空隙，緊貼 PDCA 字卡 */
+    .d-flex.justify-content-between.align-items-center.mb-4 {
+        margin-bottom: 0.5rem !important; /* 將原本的 mb-4 (1.5rem) 縮小 */
+    }
+
+    /* 標題飾條 - 同步藍色 */
     .section-title { 
         border-left: 5px solid var(--theme-color); 
         padding-left: 15px; 
@@ -53,7 +63,7 @@
     }
 
     /* =========================================
-       2. Index1 專用：拖曳上傳區 (亮藍色系)
+       2. Index1 專用：拖曳上傳區 (藍色系)
        ========================================= */
     .upload-drop-zone {
         border: 2px dashed #cbd5e1;
@@ -74,7 +84,7 @@
         border-color: var(--theme-color);
         background-color: var(--theme-light);
         transform: translateY(-2px);
-        box-shadow: 0 4px 12px rgba(13, 202, 240, 0.15);
+        box-shadow: 0 4px 12px rgba(13, 110, 253, 0.15); /* Blue Shadow */
     }
     .upload-icon {
         font-size: 3rem;
@@ -170,21 +180,23 @@
         border-color: #198754;
     }
 
-    /* --- PDCA 說明區塊 (亮藍色風格) --- */
-.instruction-box {
-    background-color: #fff;
-    border-left: 5px solid var(--theme-color); /* 亮藍色 #0dcaf0 */
-    padding: 20px 25px;
-    border-radius: 4px;
-    margin-bottom: 30px;
-    text-align: left;
-    box-shadow: 0 2px 5px rgba(0,0,0,0.05);
-}
-.instruction-title {
-    color: #087990; /* 深青色 (配合亮藍色主題的深色文字，確保閱讀清晰) */
-    font-weight: 700;
-    margin-bottom: 10px;
-}
+    /* --- PDCA 說明區塊 (藍色風格) --- */
+    .instruction-box {
+        background-color: #fff;
+        border-left: 5px solid var(--theme-color);
+        padding: 20px 25px;
+        border-radius: 4px;
+        margin-bottom: 30px;
+        text-align: left;
+        box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+        /* [修正] 確保 PDCA 字卡也撐開 */
+        width: 100%;
+    }
+    .instruction-title {
+        color: #0a58ca; /* 深藍色 (配合 Plan Blue 主題) */
+        font-weight: 700;
+        margin-bottom: 10px;
+    }
     
     /* 其他輔助樣式 */
     .check-list-item { padding: 5px 0; }
