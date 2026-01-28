@@ -15,7 +15,6 @@
             color: #333;
         }
 
-        /* 卡片與容器樣式 */
         .settings-card {
             border: none;
             border-radius: 12px;
@@ -23,8 +22,8 @@
             background-color: white;
             overflow: hidden;
         }
-        
-        /* 表單樣式 */
+
+        /* 表單樣式優化 */
         .form-control:focus {
             box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.15);
         }
@@ -54,25 +53,27 @@
                 
                 <div class="text-center mb-4">
                     <h3 class="fw-bold">個人帳號設定</h3>
-                    <p class="text-muted">維護您的登入密碼與基本資訊</p>
+                    <p class="text-muted">請輸入您的帳號資訊以進行密碼變更</p>
                 </div>
 
                 <div class="settings-card">
                     <div class="p-4 p-md-5">
-                        <h6 class="fw-bold text-primary mb-3"><i class="fas fa-key me-2"></i>變更登入密碼</h6>
+                        <h6 class="fw-bold text-primary mb-3"><i class="fas fa-user-lock me-2"></i>變更登入密碼</h6>
+                        
+                        <div class="alert alert-light border small text-muted mb-4">
+                            <i class="fas fa-info-circle me-1"></i> 
+                            為了確保帳號安全，系統需要驗證您的<strong>原始帳號與密碼</strong>，確認無誤後才能設定新密碼。
+                        </div>
                         
                         <form id="passwordForm" onsubmit="handlePasswordUpdate(event)">
                             
                             <div class="mb-3">
-                                <label class="form-label text-muted small fw-bold">登入帳號 (Email)</label>
-                                <input type="email" id="user-email" class="form-control bg-light" value="讀取中..." readonly disabled>
-                                <div class="form-text">帳號若需變更請聯繫系統管理員。</div>
+                                <label class="form-label fw-bold small text-dark">登入帳號 (Email)</label>
+                                <input type="email" id="input-email" class="form-control" placeholder="請輸入您的登入信箱" required>
                             </div>
-                            
-                            <hr class="my-4">
 
                             <div class="mb-3">
-                                <label class="form-label text-dark small fw-bold">目前密碼 (驗證身分) *</label>
+                                <label class="form-label fw-bold small text-dark">目前密碼 (驗證身分)</label>
                                 <div class="input-group">
                                     <input type="password" class="form-control" id="current-password" placeholder="請輸入現在使用的密碼" required>
                                     <span class="input-group-text bg-white border-start-0">
@@ -80,22 +81,24 @@
                                     </span>
                                 </div>
                             </div>
+                            
+                            <hr class="my-4">
 
                             <div class="mb-3">
-                                <label class="form-label text-muted small fw-bold">新密碼</label>
+                                <label class="form-label fw-bold small text-primary">設定新密碼</label>
                                 <div class="input-group">
-                                    <input type="password" class="form-control" id="new-password" placeholder="請輸入新密碼 (至少 6 碼)" required minlength="6">
-                                    <span class="input-group-text bg-white border-start-0">
+                                    <input type="password" class="form-control border-primary" id="new-password" placeholder="請輸入新密碼 (至少 6 碼)" required minlength="6">
+                                    <span class="input-group-text bg-white border-start-0 border-primary">
                                         <i class="fas fa-eye password-toggle" onclick="togglePassword('new-password', this)"></i>
                                     </span>
                                 </div>
                             </div>
 
                             <div class="mb-4">
-                                <label class="form-label text-muted small fw-bold">確認新密碼</label>
+                                <label class="form-label fw-bold small text-primary">確認新密碼</label>
                                 <div class="input-group">
-                                    <input type="password" class="form-control" id="confirm-password" placeholder="請再次輸入新密碼" required minlength="6">
-                                    <span class="input-group-text bg-white border-start-0">
+                                    <input type="password" class="form-control border-primary" id="confirm-password" placeholder="請再次輸入新密碼" required minlength="6">
+                                    <span class="input-group-text bg-white border-start-0 border-primary">
                                         <i class="fas fa-eye password-toggle" onclick="togglePassword('confirm-password', this)"></i>
                                     </span>
                                 </div>
@@ -106,15 +109,11 @@
 
                             <div class="d-grid gap-2">
                                 <button type="submit" id="btn-save" class="btn btn-primary fw-bold py-2">
-                                    確認修改並儲存
+                                    驗證並儲存修改
                                 </button>
                             </div>
                         </form>
                     </div>
-                </div>
-
-                <div class="text-center mt-3">
-                    <small class="text-muted">最後登入時間: <span id="last-login-time">--</span></small>
                 </div>
 
             </div>
@@ -125,98 +124,84 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
     <script>
+        // 初始化 Supabase
         const SUPABASE_URL = 'https://yhehfucgemxnfrdvpdhw.supabase.co';
         const SUPABASE_KEY = 'sb_publishable_52emtU-9l-SDxcJTWVTPTA_Yu6qEogh';
         const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-        let currentUserEmail = '';
-
-        document.addEventListener('DOMContentLoaded', async () => {
-            // 使用 getUser() 替代 getSession() 以確保獲取最新狀態
-            const { data: { user }, error } = await supabase.auth.getUser();
-            
-            if (error || !user) {
-                // 若無登入資訊，導回登入頁或顯示錯誤
-                // window.location.href = 'login.html'; 
-                document.getElementById('user-email').value = '無法取得使用者資訊';
-                return;
-            }
-
-            // 填充基本資料
-            currentUserEmail = user.email;
-            document.getElementById('user-email').value = currentUserEmail;
-            
-            if(user.last_sign_in_at) {
-                document.getElementById('last-login-time').textContent = new Date(user.last_sign_in_at).toLocaleString();
-            }
+        // 自動填入 Email (如果 session 有紀錄的話，方便使用者，但不強制)
+        document.addEventListener('DOMContentLoaded', () => {
+             const savedEmail = sessionStorage.getItem('currentUserEmail'); // 假設登入時有存
+             if(savedEmail) {
+                 document.getElementById('input-email').value = savedEmail;
+             }
         });
 
-        // 處理密碼變更
         async function handlePasswordUpdate(e) {
             e.preventDefault();
             
+            const email = document.getElementById('input-email').value.trim();
             const currentPwd = document.getElementById('current-password').value;
             const newPwd = document.getElementById('new-password').value;
             const confirmPwd = document.getElementById('confirm-password').value;
             
             const feedback = document.getElementById('password-feedback');
-            const newPwdInput = document.getElementById('new-password');
             const confirmPwdInput = document.getElementById('confirm-password');
 
-            // 1. 前端驗證
-            newPwdInput.classList.remove('is-invalid');
+            // 1. 前端比對
             confirmPwdInput.classList.remove('is-invalid');
-            
             if (newPwd !== confirmPwd) {
                 confirmPwdInput.classList.add('is-invalid');
                 feedback.style.display = 'block';
                 return;
             }
             if (currentPwd === newPwd) {
-                alert('新密碼不能與目前密碼相同');
+                alert('新密碼不能與目前密碼相同，請重新輸入。');
                 return;
             }
 
-            // 2. 開始送出
+            // 2. 執行驗證與更新
             const btn = document.getElementById('btn-save');
             const originalBtnText = btn.innerHTML;
             btn.disabled = true;
-            btn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>處理中...';
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>驗證身分中...';
 
             try {
-                // A. 先驗證舊密碼 (嘗試登入)
+                // A. 步驟一：使用「帳號 + 舊密碼」嘗試登入 (Re-authentication)
+                // 這步非常重要，它確保了操作者擁有該帳號的密碼，並且建立了修改密碼所需的 Session
                 const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
-                    email: currentUserEmail,
+                    email: email,
                     password: currentPwd
                 });
 
                 if (signInError) {
-                    throw new Error('目前密碼輸入錯誤，無法變更。');
+                    throw new Error('驗證失敗：您的帳號或目前密碼不正確。');
                 }
 
-                // B. 舊密碼正確，執行更新
-                const { data, error } = await supabase.auth.updateUser({
+                // B. 步驟二：驗證成功後，更新密碼
+                btn.innerHTML = '<i class="fas fa-circle-notch fa-spin me-2"></i>更新密碼中...';
+                
+                const { data, error: updateError } = await supabase.auth.updateUser({
                     password: newPwd
                 });
 
-                if (error) throw error;
+                if (updateError) throw updateError;
 
-                alert('✅ 密碼修改成功！下次登入請使用新密碼。');
+                // C. 成功
+                alert('✅ 密碼修改成功！\n請使用新密碼重新登入。');
                 
-                // 清空欄位
-                document.getElementById('current-password').value = '';
-                document.getElementById('new-password').value = '';
-                document.getElementById('confirm-password').value = '';
+                // 為了安全，通常修改密碼後建議登出，或導回登入頁
+                sessionStorage.clear();
+                window.location.href = 'login.html'; // 或 dashboard.html
 
             } catch (err) {
                 alert('❌ 操作失敗: ' + err.message);
-            } finally {
                 btn.disabled = false;
                 btn.innerHTML = originalBtnText;
             }
         }
 
-        // 切換密碼顯示/隱藏
+        // 顯示/隱藏密碼小工具
         function togglePassword(inputId, icon) {
             const input = document.getElementById(inputId);
             if (input.type === 'password') {
