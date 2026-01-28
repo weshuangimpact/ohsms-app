@@ -88,7 +88,7 @@
         <div class="card shadow-sm mb-4">
             <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
                 <h6 class="fw-bold mb-0 text-primary">Step 2：勾選執行項目並上傳佐證 (PDF)</h6>
-                <small class="text-muted"><i class="fas fa-info-circle me-1"></i>系統將自動重新命名檔案 (A~Q)</small>
+                <small class="text-muted"><i class="fas fa-info-circle me-1"></i>系統將自動進行檔案分類排序 (A~Q)</small>
             </div>
             <div class="card-body bg-light">
                 <div id="upload-list-container">
@@ -138,6 +138,7 @@
         const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
         // ★★★ 核心設定：檔案命名對照表 (A~Q) ★★★
+        // 僅用於 saveData 內部邏輯，不影響 UI 顯示
         const FILE_CODE_MAP = {
             'core': 'A',
             '9-1': 'B', '9-2': 'C', '9-3': 'D', '9-4': 'E',
@@ -147,7 +148,7 @@
             'other': 'Q'
         };
 
-        // 項目清單
+        // 項目清單 (維持原本 UI 顯示文字)
         const UPLOAD_ITEMS = [
             { code: 'core', label: 'core 勞工健康服務執行紀錄表 (核心必要) 限PDF' },
             { code: '9-1', label: '9-1 勞工體格(健康)檢查結果之分析與評估、健康管理及資料保存。' },
@@ -258,11 +259,11 @@
             const visitDate = document.getElementById('input-date').value;
             const type = document.getElementById('input-type').value;
             const specialNote = document.getElementById('input-special-note').value;
-            const consultantId = sessionStorage.getItem('currentUserId'); // 假設 Auth ID 已綁定
+            const consultantId = sessionStorage.getItem('currentUserId'); 
 
             if (!companyId || !visitDate) return alert('請選擇公司與日期');
 
-            // 1. 收集要上傳的檔案
+            // 1. 收集要上傳的檔案 (維持原邏輯)
             const filesToUpload = [];
             
             // 檢查標準清單
@@ -297,14 +298,13 @@
                 };
 
                 const recordData = {
-                    company_id: companyId, // 若 staging 表有此欄位
-                    // 若 staging 是用 raw_data 存公司資訊，請自行調整，這裡假設結構有 company_id 或關聯
+                    company_id: companyId, 
                     visit_date: visitDate,
                     service_type: type,
-                    consultant_id: consultantId, // 記錄是誰上傳的
-                    service_desc: JSON.stringify(serviceDescObj), // 存成 JSON
+                    consultant_id: consultantId, 
+                    service_desc: JSON.stringify(serviceDescObj), 
                     status: 'pending',
-                    attachment_files: [] // 先給空，上傳完檔案再更新
+                    attachment_files: [] 
                 };
 
                 // 先 Insert 取得 ID
@@ -318,20 +318,23 @@
                 const recordId = record.id;
                 const year = new Date(visitDate).getFullYear();
 
-                // 3. 執行檔案上傳 (重新命名為 A~Q)
+                // 3. 執行檔案上傳 (★ 修改點：在此處執行 A~Q 改名)
                 const attachments = [];
 
                 for (const item of filesToUpload) {
                     const file = item.file;
-                    const fileCode = FILE_CODE_MAP[item.code] || 'Z'; // 取得 A~Q 代碼
+                    
+                    // --- 改名邏輯開始 ---
+                    const fileCode = FILE_CODE_MAP[item.code] || 'Z'; // 將 core 轉為 A
                     const fileExt = file.name.split('.').pop().toLowerCase(); // 取得副檔名
-                    const newFileName = `${fileCode}.${fileExt}`; // 範例: A.pdf
+                    const newFileName = `${fileCode}.${fileExt}`; // 例如 A.pdf
+                    // --- 改名邏輯結束 ---
                     
                     // 路徑: service_records/2026/record_uuid/A.pdf
                     const filePath = `service_records/${year}/${recordId}/${newFileName}`;
 
                     const { data: uploadData, error: uploadError } = await supabaseClient.storage
-                        .from('staging') // 上傳到 staging bucket
+                        .from('staging') 
                         .upload(filePath, file, {
                             cacheControl: '3600',
                             upsert: true
@@ -341,9 +344,9 @@
 
                     // 記錄檔案資訊 (供 Index2/3 讀取)
                     attachments.push({
-                        name: newFileName, // 這裡存 A.pdf
-                        original_name: file.name, // 保留原始檔名 (選填)
-                        code: item.code,
+                        name: newFileName,        // 存入 A.pdf
+                        original_name: file.name, // 保留原始檔名 (metadata)
+                        code: item.code,          // 保留原始代碼 (metadata)
                         path: filePath,
                         type: file.type
                     });
@@ -352,7 +355,7 @@
                 // 4. 更新 staging 表的 attachment_files 欄位
                 const { error: updateError } = await supabaseClient
                     .from('service_record_staging')
-                    .update({ attachment_files: attachments }) // 存入 JSONB
+                    .update({ attachment_files: attachments }) 
                     .eq('id', recordId);
 
                 if (updateError) throw updateError;
