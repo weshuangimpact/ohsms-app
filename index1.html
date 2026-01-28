@@ -367,7 +367,7 @@
             });
         });
 
-        // 1. 查詢公司
+// 1. 查詢公司 (修正與強化版)
         async function fetchCompanyData(btn) {
             const taxId = document.getElementById('input-tax-id').value.trim();
             btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
@@ -375,8 +375,13 @@
 
             try {
                 let query = supabaseClient.from('companies').select('*').order('created_at', {ascending:false});
-                if(taxId) query = query.or(`tax_id.eq.${taxId},name.ilike.%${taxId}%`);
-                else query = query.limit(50);
+                
+                if(taxId) {
+                    // 使用 Supabase 語法搜尋：統編完全符合 或 名稱模糊搜尋
+                    query = query.or(`tax_id.eq.${taxId},name.ilike.%${taxId}%`);
+                } else {
+                    query = query.limit(50);
+                }
 
                 const { data, error } = await query;
                 if(error) throw error;
@@ -391,26 +396,35 @@
                 } else {
                     showSelectionModal(data);
                 }
-            } catch(e) { alert(e.message); }
-            finally { 
+            } catch(e) { 
+                console.error(e);
+                alert('查詢失敗: ' + e.message); 
+            } finally { 
                 btn.innerHTML = '<i class="fas fa-magnifying-glass me-1"></i> 查詢';
                 btn.disabled = false; 
             }
         }
 
+        // 顯示多筆公司選擇視窗
         function showSelectionModal(companies) {
             const container = document.getElementById('companyListContainer');
             container.innerHTML = '';
+            
             companies.forEach(co => {
                 const item = document.createElement('a');
                 item.className = 'list-group-item list-group-item-action p-3';
+                item.style.cursor = 'pointer'; // 增加手型游標
                 item.innerHTML = `<h6 class="mb-1 text-primary fw-bold">${co.name}</h6><small class="text-muted">統編: ${co.tax_id}</small>`;
                 item.onclick = () => {
-                    bootstrap.Modal.getInstance(document.getElementById('companySelectModal')).hide();
+                    // 確保 Modal 正確關閉後再開啟下一步
+                    const modalEl = document.getElementById('companySelectModal');
+                    const modal = bootstrap.Modal.getInstance(modalEl);
+                    if (modal) modal.hide();
                     openModeModal(co);
                 };
                 container.appendChild(item);
             });
+            
             document.getElementById('totalCount').innerText = companies.length;
             new bootstrap.Modal(document.getElementById('companySelectModal')).show();
         }
