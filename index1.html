@@ -9,18 +9,30 @@
     
 <style>
     /* =========================================
-       1. 核心基礎樣式 (同步 Admin Users 風格)
+       1. 核心基礎與寬版設定
        ========================================= */
-    :root { --primary-bg: #f4f6f9; }
+    :root { 
+        --primary-bg: #f4f6f9; 
+        --theme-color: #0dcaf0; /* 對應 Dashboard bg-info 亮藍色 */
+        --theme-light: #e0faff; /* 淺色背景用 */
+    }
+
     body {
         background-color: var(--primary-bg);
         font-family: 'Segoe UI', 'Microsoft JhengHei', sans-serif;
         display: none; /* Auth Guard */
     }
 
-    /* 標題飾條 (使用 Admin 的 Cyan 青色 #0dcaf0) */
+    /* 強制寬版設定：覆蓋 Bootstrap container 預設寬度限制 */
+    .container, .container-fluid {
+        max-width: 100% !important;
+        padding-left: 2rem;
+        padding-right: 2rem;
+    }
+
+    /* 標題飾條 - 亮藍色 */
     .section-title { 
-        border-left: 5px solid #0dcaf0; 
+        border-left: 5px solid var(--theme-color); 
         padding-left: 15px; 
         margin-bottom: 20px; 
     }
@@ -41,7 +53,7 @@
     }
 
     /* =========================================
-       2. Index1 專用：拖曳上傳區 (新版樣式)
+       2. Index1 專用：拖曳上傳區 (亮藍色系)
        ========================================= */
     .upload-drop-zone {
         border: 2px dashed #cbd5e1;
@@ -59,22 +71,22 @@
         align-items: center;
     }
     .upload-drop-zone:hover, .upload-drop-zone.dragover {
-        border-color: #0dcaf0;
-        background-color: #e0faff;
+        border-color: var(--theme-color);
+        background-color: var(--theme-light);
         transform: translateY(-2px);
         box-shadow: 0 4px 12px rgba(13, 202, 240, 0.15);
     }
     .upload-icon {
         font-size: 3rem;
-        color: #0dcaf0;
+        color: var(--theme-color);
         margin-bottom: 15px;
     }
 
     /* =========================================
-       3. Index1 專用：功能元件 (已調整配色)
+       3. 功能元件 (配色同步)
        ========================================= */
     
-    /* 操作模式卡片 (Mode Card) */
+    /* 操作模式卡片 */
     .mode-card {
         border: 2px solid #e9ecef; 
         border-radius: 12px; 
@@ -83,15 +95,16 @@
         cursor: pointer; 
         transition: all 0.2s;
         height: 100%;
+        background: white;
     }
     .mode-card:hover { 
-        border-color: #0dcaf0; /* 改為青色 */
+        border-color: var(--theme-color); 
         background-color: #f8f9fa; 
         transform: translateY(-3px); 
     }
     .mode-card.active { 
-        border-color: #0dcaf0; /* 改為青色 */
-        background-color: #e0faff; /* 改為淺青色背景 */
+        border-color: var(--theme-color); 
+        background-color: var(--theme-light); 
     }
     .mode-icon { 
         font-size: 2.5rem; 
@@ -99,20 +112,27 @@
         color: #6c757d; 
     }
     .mode-card.active .mode-icon { 
-        color: #0dcaf0; /* 改為青色 */
+        color: var(--theme-color); 
     }
 
-    /* 危害辨識動態列表 (Hazard Row) */
+    /* 步驟標題 */
+    .step-title { 
+        border-left: 4px solid var(--theme-color); 
+        padding-left: 10px; 
+        font-weight: bold; 
+        color: var(--theme-color); 
+        margin-bottom: 1rem; 
+    }
+
+    /* 危害辨識列表 */
     .hazard-row {
         transition: all 0.3s ease;
         border-bottom: 1px dashed #e0e0e0;
         padding-bottom: 10px;
         margin-bottom: 10px;
     }
-    .hazard-row:last-child { 
-        border-bottom: none; 
-        margin-bottom: 0; 
-    }
+    .hazard-row:last-child { border-bottom: none; margin-bottom: 0; }
+    
     .btn-remove-hazard {
         color: #dc3545; 
         cursor: pointer; 
@@ -139,30 +159,26 @@
         transition: all 0.2s;
     }
     .btn-upload-action:hover {
-        color: #0dcaf0;
-        border-color: #0dcaf0;
+        color: var(--theme-color);
+        border-color: var(--theme-color);
         background-color: #f8f9fa;
     }
     .btn-upload-action.visible { display: inline-block; }
     .btn-upload-action.has-file {
         color: #fff;
-        background-color: #198754;
+        background-color: #198754; /* 上傳成功維持綠色 */
         border-color: #198754;
     }
 
     /* 其他輔助樣式 */
     .check-list-item { padding: 5px 0; }
     .check-list-item label { cursor: pointer; line-height: 1.5; font-size: 0.95rem; }
-    .step-title { 
-        border-left: 4px solid #0dcaf0; /* 改為青色 */
-        padding-left: 10px; 
-        font-weight: bold; 
-        color: #0dcaf0; /* 改為青色 */
-        margin-bottom: 1rem; 
-    }
-    
-    /* 隱藏原生 file input */
     #fileInput { display: none; }
+    
+    /* 進度條顏色 */
+    .progress-bar {
+        background-color: var(--theme-color);
+    }
 </style>
 
     <script>
