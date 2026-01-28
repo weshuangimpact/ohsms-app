@@ -190,6 +190,27 @@
         const SUPABASE_KEY = 'sb_publishable_52emtU-9l-SDxcJTWVTPTA_Yu6qEogh'; 
         const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
+        // A~Q 對照表 (用於顯示友善名稱)
+        const FILE_NAME_MAP = {
+            'A': '勞工健康服務執行紀錄表 (核心)',
+            'B': '9-1 健檢分析與評估',
+            'C': '9-2 選配工',
+            'D': '9-3 健檢追蹤管理',
+            'E': '9-4 母性/未滿18',
+            'F': '9-5 職衛紀錄保存',
+            'G': '9-6 衛教指導',
+            'H': '9-7 急救處置',
+            'I': '9-8 雇主報告',
+            'J': '11-1 危害辨識',
+            'K': '11-2 改善建議',
+            'L': '11-3 關連調查',
+            'M': '11-4 復工評估',
+            'N': '11-5 其他指定',
+            'O': '12 服務計畫',
+            'P': '13 管理方案',
+            'Q': 'Other 其他附件'
+        };
+
         document.getElementById('searchInput').addEventListener('keyup', (e) => { if(e.key === 'Enter') executeSearch(); });
 
         // 搜尋功能
@@ -278,7 +299,7 @@
             }
         }
 
-        // 開啟完整預覽 (修正版：直接調閱檔案，不產生報表)
+        // 開啟完整預覽 (修正版：直接調閱檔案，強制 A~Q 排序)
         async function openFullPreview(recordId, compNameEncoded, dataEncoded, consultNameEncoded) {
             const companyName = decodeURIComponent(compNameEncoded);
             const recordData = JSON.parse(decodeURIComponent(dataEncoded));
@@ -295,6 +316,11 @@
                 const storagePath = `service_records/${recordData.service_year}/${recordId}/`;
                 const { data: fileList } = await supabaseClient.storage.from('documents').list(storagePath);
 
+                // ★ 關鍵修正：強制依檔名排序 (A.pdf, B.pdf...)
+                if (fileList) {
+                    fileList.sort((a, b) => a.name.localeCompare(b.name));
+                }
+
                 let attachmentsHtml = '';
                 
                 if (fileList && fileList.length > 0) {
@@ -307,6 +333,11 @@
                     // 渲染檔案列表 (PDF 用 iframe, 圖片用 img)
                     attachmentsHtml = filesWithUrl.map(f => {
                         if(!f.url) return '';
+                        
+                        // 解析檔名與代碼
+                        const code = f.name.split('.')[0]; // A, B, C...
+                        const displayName = FILE_NAME_MAP[code] ? `${code}. ${FILE_NAME_MAP[code]}` : f.name;
+
                         const isImg = f.name.match(/\.(jpeg|jpg|png|gif)$/i);
                         const isPdf = f.name.match(/\.pdf$/i);
                         let content = '';
@@ -326,7 +357,7 @@
 
                         return `
                         <div class="attachment-item">
-                            <div class="file-header-badge"><i class="fas fa-file me-2"></i>${f.name}</div>
+                            <div class="file-header-badge"><i class="fas fa-file me-2"></i>${displayName}</div>
                             ${content}
                         </div>`;
                     }).join('');
