@@ -587,22 +587,60 @@
             document.getElementById('disp-hazard-count').value = totalCount;
         }
 
-        // 4. 送出資料 (修正版：多檔上傳 + 寫入 Staging)
+// 4. 送出資料 (修正版：依照 A~Q 規則命名並上傳)
         async function submitServiceRecord(btn) {
             const workplaceId = document.getElementById('hidden-workplace-id').value;
             const year = document.getElementById('target-year').value;
             const mode = document.getElementById('current-mode').value;
-            const fileInput = document.getElementById('fileUpload');
-            const files = fileInput.files; // ★ 取得檔案列表
+            
+            // ★ 定義檔案命名規則 (A~Q)
+            const FILE_CODE_MAP = {
+                'core': 'A', '9-1': 'B', '9-2': 'C', '9-3': 'D', '9-4': 'E',
+                '9-5': 'F', '9-6': 'G', '9-7': 'H', '9-8': 'I',
+                '11-1': 'J', '11-2': 'K', '11-3': 'L', '11-4': 'M', '11-5': 'N',
+                '12': 'O', '13': 'P', 'other': 'Q'
+            };
 
             if (!workplaceId) return alert('錯誤：場所 ID 遺失');
-            if (files.length === 0) return alert('請至少上傳一個檔案');
+
+            // 1. 掃描所有 checkbox 與對應的檔案輸入框，收集要上傳的檔案
+            let filesToUpload = [];
+            let checkItems = [];
+
+            CHECKLIST_ITEMS.forEach(item => {
+                const checkbox = document.getElementById(`c${item.code}`);
+                const fileInput = document.getElementById(`file-${item.code}`); // 抓取 Step 2 產生的個別檔案欄位
+                
+                // 收集勾選的項目文字
+                if (checkbox && checkbox.checked) {
+                    checkItems.push(item.code + ' ' + item.text);
+                }
+
+                // 收集檔案 (如果有選取)
+                if (fileInput && fileInput.files.length > 0) {
+                    filesToUpload.push({
+                        code: item.code,
+                        file: fileInput.files[0]
+                    });
+                }
+            });
+
+            // 檢查是否至少有一個檔案 (若需要強制)
+            if (filesToUpload.length === 0) {
+                 // 若 Step 3 的大框框有檔案，也可以視為 'other' (Q) 的備用來源
+                 const step3File = document.getElementById('fileUpload').files[0];
+                 if (step3File) {
+                     filesToUpload.push({ code: 'other', file: step3File });
+                 } else {
+                     return alert('請至少上傳一個佐證檔案 (於 Step 2 勾選並選取檔案)');
+                 }
+            }
 
             btn.disabled = true;
             btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 資料加密上傳中...';
 
             try {
-                // 更新主檔
+                // 更新主檔 (若在編輯模式)
                 if (typeof isEditMode !== 'undefined' && isEditMode) {
                      const hazardType = document.getElementById('disp-hazard-type').value;
                      const hazardCount = parseInt(document.getElementById('disp-hazard-count').value) || 0;
@@ -616,31 +654,57 @@
                      }).eq('id', workplaceId);
                 }
 
-                // 收集勾選項目
-                let checkItems = [];
-                document.querySelectorAll('.check-item:checked').forEach(el => {
-                    checkItems.push(el.value + ' ' + el.nextElementSibling.innerText);
-                });
-
-                const stagingContent = {
-                    note: mode === 'new' ? "年度訪視" : "文件補件",
-                    process_summary: document.getElementById('disp-process').value,
-                    hazard_summary: document.getElementById('disp-desc').value,
-                    checklist: checkItems
+                // ★ 產生本次案件的 UUID (為了讓檔案路徑與 DB 關聯一致，先產生 ID 或使用 Timestamp 模擬)
+                // 這裡為了確保唯一性與路徑整潔，我們使用 Staging 表寫入後回傳的 ID，
+                // 但為了先上傳檔案，我們改用 "Date.now()" 作為資料夾區隔，或直接先 Insert DB 取得 ID。
+                // 最佳做法：先 Insert DB (pending) -> 拿到 ID -> 上傳檔案 -> Update DB。
+                
+                // --- Phase 1: 先建立 DB 紀錄 (取得 ID) ---
+                const initialPayload = {
+                    workplace_id: workplaceId,
+                    service_year: parseInt(year),
+                    service_date: document.getElementById('visit-date').value || new Date().toISOString(),
+                    service_type: mode === 'new' ? 'Plan/Do' : '補件',
+                    status: 'uploading', // 中間狀態
+                    service_desc: JSON.stringify({
+                        note: mode === 'new' ? "年度訪視" : "文件補件",
+                        process_summary: document.getElementById('disp-process').value,
+                        hazard_summary: document.getElementById('disp-desc').value,
+                        checklist: checkItems,
+                        user_remark: document.getElementById('user-remark').value 
+                    }),
+                    attachment_files: [] // 先空著
                 };
 
-                // ★ 迴圈上傳所有檔案
-                const uploadPromises = Array.from(files).map(async (file) => {
-                    const filePath = `service_records/${year}/${workplaceId}/${Date.now()}_${file.name}`;
+                const { data: recordData, error: dbError } = await supabaseClient
+                    .from('service_record_staging')
+                    .insert([initialPayload])
+                    .select()
+                    .single();
+
+                if (dbError) throw new Error('建立暫存紀錄失敗: ' + dbError.message);
+                const recordId = recordData.id;
+
+                // --- Phase 2: 依照 A~Q 規則上傳檔案 ---
+                const uploadPromises = filesToUpload.map(async (item) => {
+                    const file = item.file;
+                    const codeChar = FILE_CODE_MAP[item.code] || 'Q'; // 查表，預設 Q
+                    const fileExt = file.name.split('.').pop().toLowerCase(); // 取得副檔名
+                    const newFileName = `${codeChar}.${fileExt}`; // 例如: A.pdf
+                    
+                    // 路徑結構: service_records / 年份 / 紀錄ID / A.pdf
+                    const filePath = `service_records/${year}/${recordId}/${newFileName}`;
                     
                     const { error } = await supabaseClient.storage
-                        .from('staging') // 上傳至 staging bucket
-                        .upload(filePath, file);
+                        .from('staging') 
+                        .upload(filePath, file, { upsert: true });
 
                     if (error) throw error;
 
                     return { 
-                        name: file.name, 
+                        name: newFileName,   // 存入 A.pdf
+                        original_name: file.name,
+                        code: item.code,     // 原始代碼 (core, 9-1...)
                         bucket: 'staging', 
                         path: filePath, 
                         type: file.type,
@@ -648,8 +712,30 @@
                     };
                 });
 
-                // 等待所有上傳完成
                 const uploadedFiles = await Promise.all(uploadPromises);
+
+                // --- Phase 3: 更新 DB，寫入檔案列表並改狀態為 pending ---
+                const { error: updateError } = await supabaseClient
+                    .from('service_record_staging')
+                    .update({ 
+                        attachment_files: uploadedFiles,
+                        status: 'pending'
+                    })
+                    .eq('id', recordId);
+
+                if (updateError) throw new Error('更新檔案列表失敗: ' + updateError.message);
+
+                alert('✅ 提交成功！資料已送出審核。');
+                location.reload();
+
+            } catch (e) {
+                console.error(e);
+                alert('錯誤: ' + e.message);
+                btn.disabled = false;
+                btn.innerHTML = '<i class="fas fa-paper-plane me-2"></i>確認完工並提交';
+            }
+        }
+        
 
 // 5. 寫入資料庫
                 const payload = {
