@@ -170,6 +170,22 @@
         border-color: #198754;
     }
 
+    /* --- PDCA 說明區塊 (亮藍色風格) --- */
+.instruction-box {
+    background-color: #fff;
+    border-left: 5px solid var(--theme-color); /* 亮藍色 #0dcaf0 */
+    padding: 20px 25px;
+    border-radius: 4px;
+    margin-bottom: 30px;
+    text-align: left;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+}
+.instruction-title {
+    color: #087990; /* 深青色 (配合亮藍色主題的深色文字，確保閱讀清晰) */
+    font-weight: 700;
+    margin-bottom: 10px;
+}
+    
     /* 其他輔助樣式 */
     .check-list-item { padding: 5px 0; }
     .check-list-item label { cursor: pointer; line-height: 1.5; font-size: 0.95rem; }
@@ -210,11 +226,14 @@
         <div class="card border-0 shadow-sm">
             <div class="card-body p-4 p-md-5">
 
-                <div class="demo-info-card">
-                    <i class="fas fa-compass me-2"></i>
-                    <strong>PDCA 設計理念：Plan (計畫) —— 基準確立與歷史繼承</strong><br>
-                    系統支援「更新歷程」與「補件」雙模式，確保資料脈絡清晰且具備不可否認性。
-                </div>
+<div class="instruction-box">
+    <div class="instruction-title">
+        <i class="fas fa-compass me-2"></i>PDCA 設計理念：Plan (計畫) —— 基準確立與歷史繼承
+    </div>
+    <p class="mb-0 text-dark" style="line-height: 1.6;">
+        系統支援「更新歷程」與「補件」雙模式，確保資料脈絡清晰且具備不可否認性。
+    </p>
+</div>
 
                 <div class="bg-light p-4 rounded mb-4 border">
                     <h5 class="step-title">Step 1：選擇對象與模式</h5>
