@@ -28,9 +28,15 @@
         .bg-inactive { background-color: #dc3545; }
 
         .role-badge { font-size: 0.85em; padding: 5px 10px; border-radius: 20px; }
-        .role-admin { background-color: #cfe2ff; color: #084298; }
-        .role-medical { background-color: #d1e7dd; color: #0f5132; }
-        .role-user { background-color: #f8f9fa; color: #666; border: 1px solid #ddd; }
+        /* 系統權限顏色 */
+        .sys-admin { background-color: #dc3545; color: white; } /* 紅 */
+        .sys-medical { background-color: #0d6efd; color: white; } /* 藍 */
+        .sys-general { background-color: #6c757d; color: white; } /* 灰 */
+        
+        /* 註冊狀態 Badge */
+        .reg-pending { background-color: #ffc107; color: #000; } /* 黃: 未註冊 */
+        .reg-done { background-color: #198754; color: white; }   /* 綠: 已註冊 */
+        .reg-void { background-color: #343a40; color: white; }   /* 黑: 已註銷 */
     </style>
 
     <script>
@@ -63,9 +69,8 @@
         <div class="d-flex justify-content-between align-items-center mb-4">
             <div class="section-title mb-0">
                 <h4 class="fw-bold text-dark mb-0">帳號權限管理 (Account Mgmt)</h4>
-                <small class="text-muted">管理醫護人員的系統登入權限與狀態</small>
+                <small class="text-muted">發送系統邀請與管理醫護人員登入權限</small>
             </div>
-            
             </div>
 
         <div class="card border-0 shadow-sm mb-4">
@@ -75,24 +80,25 @@
                         <label class="form-label fw-bold small text-muted">關鍵字搜尋</label>
                         <div class="input-group">
                             <span class="input-group-text bg-white border-end-0"><i class="fas fa-search text-muted"></i></span>
-                            <input type="text" id="search-input" class="form-control border-start-0" placeholder="輸入姓名、Email 或 職稱...">
+                            <input type="text" id="search-input" class="form-control border-start-0" placeholder="輸入姓名、Email...">
                         </div>
                     </div>
                     <div class="col-md-3">
-                        <label class="form-label fw-bold small text-muted">角色篩選</label>
+                        <label class="form-label fw-bold small text-muted">系統權限篩選</label>
                         <select class="form-select" id="filter-role">
-                            <option value="">全部角色</option>
-                            <option value="醫師">醫師</option>
-                            <option value="護理人員">護理人員</option>
-                            <option value="顧問">顧問</option>
+                            <option value="">全部權限</option>
+                            <option value="admin">Admin (管理員)</option>
+                            <option value="medical">Medical (醫護/顧問)</option>
+                            <option value="general">General (文管)</option>
                         </select>
                     </div>
                     <div class="col-md-3">
-                        <label class="form-label fw-bold small text-muted">狀態篩選</label>
-                        <select class="form-select" id="filter-status">
+                        <label class="form-label fw-bold small text-muted">註冊狀態篩選</label>
+                        <select class="form-select" id="filter-reg-status">
                             <option value="">全部狀態</option>
-                            <option value="active">使用中 (Active)</option>
-                            <option value="inactive">停用/離職 (Inactive)</option>
+                            <option value="pending">帳戶已建立 / 未註冊</option>
+                            <option value="done">帳戶已註冊</option>
+                            <option value="void">帳戶已註銷</option>
                         </select>
                     </div>
                     <div class="col-md-2 d-flex align-items-end">
@@ -114,16 +120,17 @@
                     <table class="table table-hover mb-0 align-middle">
                         <thead>
                             <tr>
-                                <th class="ps-4">狀態</th>
+                                <th class="ps-4">任職狀態</th>
                                 <th>姓名</th>
-                                <th>職務角色 (Role)</th>
+                                <th>系統權限 (System Role)</th>
                                 <th>Email (登入帳號)</th>
                                 <th>系統綁定</th>
+                                <th>帳戶註冊狀態</th>
                                 <th class="text-end pe-4">管理動作</th>
                             </tr>
                         </thead>
                         <tbody id="userTableBody">
-                            <tr><td colspan="6" class="text-center py-5 text-muted">資料載入中...</td></tr>
+                            <tr><td colspan="7" class="text-center py-5 text-muted">資料載入中...</td></tr>
                         </tbody>
                     </table>
                 </div>
@@ -132,52 +139,48 @@
 
     </div>
 
-    <div class="modal fade" id="userModal" tabindex="-1">
+    <div class="modal fade" id="inviteModal" tabindex="-1">
         <div class="modal-dialog">
             <div class="modal-content">
-                <div class="modal-header bg-info text-white">
-                    <h5 class="modal-title fw-bold" id="modalTitle">編輯帳號權限</h5>
+                <div class="modal-header bg-primary text-white">
+                    <h5 class="modal-title fw-bold"><i class="fas fa-paper-plane me-2"></i>發送註冊邀請</h5>
                     <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
                 </div>
                 <div class="modal-body">
-                    <input type="hidden" id="target-id"> <div class="mb-3 text-center">
-                        <div class="avatar-circle bg-light text-secondary rounded-circle d-flex align-items-center justify-content-center mx-auto mb-2" style="width:60px; height:60px; font-size:1.5rem; font-weight:bold;">
-                            <span id="display-avatar">U</span>
-                        </div>
-                        <h5 class="fw-bold mb-0" id="display-name">User Name</h5>
-                        <p class="text-muted small" id="display-role">Role</p>
+                    <input type="hidden" id="target-staff-id">
+                    
+                    <div class="alert alert-info border-0 bg-info bg-opacity-10 small">
+                        <i class="fas fa-info-circle me-1"></i> 系統將寄送邀請信至該信箱，使用者點擊後即可設定密碼並完成註冊。
                     </div>
 
+                    <div class="mb-3 text-center">
+                        <h5 class="fw-bold mb-0" id="invite-name">User Name</h5>
+                        <p class="text-muted small mb-0">準備發送邀請...</p>
+                    </div>
                     <hr>
 
-                    <form id="userForm">
+                    <form id="inviteForm">
                         <div class="mb-3">
-                            <label class="form-label fw-bold">Email (登入帳號)</label>
-                            <input type="email" class="form-control" id="edit-email" readonly disabled>
-                            <div class="form-text text-muted">若需修改 Email，請至「基本資料建立 > 醫護人員」修改。</div>
+                            <label class="form-label fw-bold">收件 Email</label>
+                            <input type="email" class="form-control bg-light" id="invite-email" readonly>
                         </div>
 
                         <div class="mb-3">
-                            <label class="form-label fw-bold">系統權限群組 (System Role)</label>
-                            <select class="form-select" id="edit-system-role">
+                            <label class="form-label fw-bold">分配系統權限 (System Role)</label>
+                            <select class="form-select" id="invite-system-role">
                                 <option value="medical">medical (一般醫護/顧問)</option>
                                 <option value="admin">admin (系統管理員)</option>
                                 <option value="general">general (一般文管)</option>
                             </select>
-                        </div>
-
-                        <div class="mb-3">
-                            <label class="form-label fw-bold">帳號狀態</label>
-                            <div class="form-check form-switch">
-                                <input class="form-check-input" type="checkbox" id="edit-is-active">
-                                <label class="form-check-label" for="edit-is-active">允許登入 (Active)</label>
-                            </div>
+                            <div class="form-text text-muted">請確認權限等級，Admin 擁有所有資料存取權。</div>
                         </div>
                     </form>
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
-                    <button type="button" class="btn btn-info text-white fw-bold" onclick="saveUserChanges()">儲存設定</button>
+                    <button type="button" class="btn btn-primary fw-bold" onclick="sendInvite()">
+                        <i class="fas fa-envelope-open-text me-1"></i> 發送邀請連結
+                    </button>
                 </div>
             </div>
         </div>
@@ -191,106 +194,148 @@
         const SUPABASE_KEY = 'sb_publishable_52emtU-9l-SDxcJTWVTPTA_Yu6qEogh';
         const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-        let allStaffData = []; // 暫存所有醫護資料
+        let mergedData = []; 
 
         document.addEventListener('DOMContentLoaded', () => {
-            loadUsers(); // 3. 修改重點：頁面載入時直接撈取名單
+            loadUsers(); 
         });
 
         // ==========================================
-        // 1. 讀取醫護人員名單 (取代原本讀取 profiles 的邏輯)
+        // 1. 讀取與整合資料 (Logic 2)
         // ==========================================
         async function loadUsers() {
             const tbody = document.getElementById('userTableBody');
-            tbody.innerHTML = '<tr><td colspan="6" class="text-center py-5"><div class="spinner-border text-primary"></div><div class="mt-2 text-muted">讀取醫護名單中...</div></td></tr>';
-
-            const keyword = document.getElementById('search-input').value.toLowerCase();
-            const roleFilter = document.getElementById('filter-role').value;
-            const statusFilter = document.getElementById('filter-status').value;
+            tbody.innerHTML = '<tr><td colspan="7" class="text-center py-5"><div class="spinner-border text-primary"></div><div class="mt-2 text-muted">讀取醫護名單與註冊狀態中...</div></td></tr>';
 
             try {
-                // 直接查詢 medical_staff 表格
-                const { data, error } = await supabaseClient
-                    .from('medical_staff')
-                    .select('*')
-                    .order('created_at', { ascending: false });
+                // 平行撈取兩張表
+                const [staffRes, profileRes] = await Promise.all([
+                    supabaseClient.from('medical_staff').select('*').order('created_at', { ascending: false }),
+                    supabaseClient.from('profiles').select('*')
+                ]);
 
-                if (error) throw error;
+                if (staffRes.error) throw staffRes.error;
+                if (profileRes.error) throw profileRes.error;
 
-                allStaffData = data; // 保存原始資料供後續使用
+                const staffList = staffRes.data;
+                const profileList = profileRes.data;
 
-                // 前端篩選邏輯
-                let filtered = data.filter(user => {
-                    // 關鍵字搜尋 (姓名 或 Email 或 職稱)
-                    const matchKeyword = !keyword || 
-                        (user.name && user.name.toLowerCase().includes(keyword)) ||
-                        (user.email && user.email.toLowerCase().includes(keyword)) ||
-                        (user.role && user.role.toLowerCase().includes(keyword));
+                // 整合邏輯：以 medical_staff 為主，Mapping profiles
+                mergedData = staffList.map(staff => {
+                    // 找對應的 profile
+                    const linkedProfile = profileList.find(p => p.id === staff.user_id);
+                    
+                    // 判斷註冊狀態 (Logic 2)
+                    let regStatus = 'pending'; // 預設：帳戶已建立未註冊
+                    if (staff.user_id) {
+                        if (linkedProfile) {
+                            // profiles 存在，通常視為已註冊
+                            // 這裡假設 profiles.status != 'active' 為已註銷，若無 status 欄位則預設 active
+                            if (linkedProfile.status === 'inactive' || linkedProfile.status === 'suspended') {
+                                regStatus = 'void'; // 帳戶已註銷
+                            } else {
+                                regStatus = 'done'; // 帳戶已註冊
+                            }
+                        } else {
+                            // 有 ID 但沒 Profile (理論上不該發生，除非資料不同步)
+                            regStatus = 'pending'; 
+                        }
+                    } else {
+                        regStatus = 'pending'; // user_id 是空 -> 未註冊
+                    }
 
-                    // 角色篩選 (對應 medical_staff 的 role 欄位)
-                    const matchRole = !roleFilter || user.role === roleFilter;
-
-                    // 狀態篩選 (is_active)
-                    const isActive = user.is_active;
-                    const matchStatus = !statusFilter || 
-                        (statusFilter === 'active' && isActive) ||
-                        (statusFilter === 'inactive' && !isActive);
-
-                    return matchKeyword && matchRole && matchStatus;
+                    return {
+                        ...staff,
+                        regStatus: regStatus,
+                        profileData: linkedProfile
+                    };
                 });
 
-                renderTable(filtered);
+                applyFilter(); // 執行篩選與渲染
 
             } catch (err) {
                 console.error(err);
-                tbody.innerHTML = `<tr><td colspan="6" class="text-center py-5 text-danger">讀取失敗: ${err.message}</td></tr>`;
+                tbody.innerHTML = `<tr><td colspan="7" class="text-center py-5 text-danger">讀取失敗: ${err.message}</td></tr>`;
             }
         }
 
-        function renderTable(users) {
-            const tbody = document.getElementById('userTableBody');
-            document.getElementById('total-count').innerText = `共 ${users.length} 筆`;
+        function applyFilter() {
+            const keyword = document.getElementById('search-input').value.toLowerCase();
+            const roleFilter = document.getElementById('filter-role').value;
+            const regFilter = document.getElementById('filter-reg-status').value;
 
-            if (users.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="6" class="text-center py-5 text-muted">查無符合條件的資料</td></tr>';
+            const filtered = mergedData.filter(item => {
+                // 關鍵字
+                const matchKeyword = !keyword || 
+                    (item.name && item.name.toLowerCase().includes(keyword)) ||
+                    (item.email && item.email.toLowerCase().includes(keyword));
+
+                // 系統權限 (Logic 1: 改撈 system_role)
+                const sysRole = item.system_role || 'medical';
+                const matchRole = !roleFilter || sysRole === roleFilter;
+
+                // 註冊狀態
+                const matchReg = !regFilter || item.regStatus === regFilter;
+
+                return matchKeyword && matchRole && matchReg;
+            });
+
+            renderTable(filtered);
+        }
+
+        function renderTable(data) {
+            const tbody = document.getElementById('userTableBody');
+            document.getElementById('total-count').innerText = `共 ${data.length} 筆`;
+
+            if (data.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="7" class="text-center py-5 text-muted">查無符合條件的資料</td></tr>';
                 return;
             }
 
-            tbody.innerHTML = users.map(user => {
-                // 狀態顯示
-                const isActive = user.is_active;
-                const statusHtml = isActive 
-                    ? `<span class="text-success fw-bold"><span class="status-dot bg-active"></span>Active</span>`
-                    : `<span class="text-danger"><span class="status-dot bg-inactive"></span>Inactive</span>`;
-                
-                // 角色樣式 (顯示職稱 role)
-                let roleClass = 'role-user';
-                if (user.role === '醫師') roleClass = 'role-admin'; // 借用樣式
-                if (user.role === '護理人員') roleClass = 'role-medical'; // 借用樣式
-                
-                // 系統綁定狀態 (檢查 user_id 是否有值)
-                const isBound = user.user_id ? '<span class="badge bg-primary">已綁定 Auth</span>' : '<span class="badge bg-secondary">未綁定</span>';
+            tbody.innerHTML = data.map(item => {
+                // 任職狀態
+                const isWorking = item.is_active; 
+                const workStatusHtml = isWorking 
+                    ? `<span class="text-success fw-bold"><span class="status-dot bg-active"></span>在職中</span>`
+                    : `<span class="text-secondary"><span class="status-dot bg-inactive"></span>已離職</span>`;
 
-                // 資料轉 JSON 供編輯按鈕使用
-                const userJson = encodeURIComponent(JSON.stringify(user));
+                // 系統權限 (Logic 1)
+                const sysRole = item.system_role || 'medical';
+                let roleBadgeClass = 'sys-medical';
+                if(sysRole === 'admin') roleBadgeClass = 'sys-admin';
+                if(sysRole === 'general') roleBadgeClass = 'sys-general';
+                const roleBadge = `<span class="role-badge ${roleBadgeClass}">${sysRole}</span>`;
+
+                // 系統綁定
+                const isBound = item.user_id ? '<span class="text-primary"><i class="fas fa-link me-1"></i>已綁定</span>' : '<span class="text-muted"><i class="fas fa-unlink me-1"></i>未綁定</span>';
+
+                // 註冊狀態 (Logic 2)
+                let regBadge = '';
+                if (item.regStatus === 'pending') regBadge = `<span class="badge reg-pending">未註冊</span>`;
+                else if (item.regStatus === 'done') regBadge = `<span class="badge reg-done">已註冊</span>`;
+                else if (item.regStatus === 'void') regBadge = `<span class="badge reg-void">已註銷</span>`;
+
+                // JSON for modal
+                const itemJson = encodeURIComponent(JSON.stringify(item));
 
                 return `
                 <tr class="animate__animated animate__fadeIn">
-                    <td class="ps-4">${statusHtml}</td>
+                    <td class="ps-4">${workStatusHtml}</td>
                     <td>
                         <div class="d-flex align-items-center">
                             <div class="bg-light rounded-circle text-center me-2 d-flex align-items-center justify-content-center" style="width:35px; height:35px; font-weight:bold; color:#666;">
-                                ${user.name.charAt(0)}
+                                ${item.name.charAt(0)}
                             </div>
-                            <span class="fw-bold text-dark">${user.name}</span>
+                            <span class="fw-bold text-dark">${item.name}</span>
                         </div>
                     </td>
-                    <td><span class="role-badge ${roleClass}">${user.role || '未設定'}</span></td>
-                    <td class="font-monospace text-muted">${user.email || '<span class="text-warning">無 Email</span>'}</td>
+                    <td>${roleBadge}</td>
+                    <td class="font-monospace text-muted small">${item.email || '-'}</td>
                     <td>${isBound}</td>
+                    <td>${regBadge}</td>
                     <td class="text-end pe-4">
-                        <button class="btn btn-sm btn-outline-info" onclick="openEditModal('${userJson}')">
-                            <i class="fas fa-cog me-1"></i> 設定
+                        <button class="btn btn-sm btn-outline-primary" onclick="openInviteModal('${itemJson}')">
+                            <i class="fas fa-envelope me-1"></i> 發送註冊邀請
                         </button>
                     </td>
                 </tr>
@@ -299,67 +344,85 @@
         }
 
         // ==========================================
-        // 2. 開啟編輯 Modal (針對 medical_staff)
+        // 2. 開啟發送邀請 Modal (Logic 3)
         // ==========================================
-        function openEditModal(jsonStr) {
-            const user = JSON.parse(decodeURIComponent(jsonStr));
+        function openInviteModal(jsonStr) {
+            const item = JSON.parse(decodeURIComponent(jsonStr));
             
-            document.getElementById('target-id').value = user.id;
-            document.getElementById('display-name').innerText = user.name;
-            document.getElementById('display-avatar').innerText = user.name.charAt(0);
-            document.getElementById('display-role').innerText = user.role;
-            
-            document.getElementById('edit-email').value = user.email || '';
-            document.getElementById('edit-system-role').value = user.system_role || 'medical'; // 預設 medical
-            document.getElementById('edit-is-active').checked = user.is_active;
+            document.getElementById('target-staff-id').value = item.id;
+            document.getElementById('invite-name').innerText = item.name;
+            document.getElementById('invite-email').value = item.email || '';
+            document.getElementById('invite-system-role').value = item.system_role || 'medical';
 
-            const modal = new bootstrap.Modal(document.getElementById('userModal'));
+            // 檢查是否有 Email
+            const btn = document.querySelector('#inviteModal .btn-primary');
+            if (!item.email) {
+                alert('該人員尚未設定 Email，請先至「基本資料建立」補齊資料。');
+                return; // 阻止開啟
+            }
+            
+            // 如果已經註冊，提示使用者
+            if (item.regStatus === 'done') {
+                if(!confirm('此帳號顯示「已註冊」，確定要重新發送邀請信嗎？\n(這通常用於重設密碼或權限變更通知)')) return;
+            }
+
+            const modal = new bootstrap.Modal(document.getElementById('inviteModal'));
             modal.show();
         }
 
         // ==========================================
-        // 3. 儲存變更 (更新 medical_staff)
+        // 3. 呼叫 Edge Function 發送邀請 (Logic 3)
         // ==========================================
-        async function saveUserChanges() {
-            const id = document.getElementById('target-id').value;
-            const newSystemRole = document.getElementById('edit-system-role').value;
-            const newIsActive = document.getElementById('edit-is-active').checked;
-            
-            const btn = document.querySelector('#userModal .btn-info');
+        async function sendInvite() {
+            const staffId = document.getElementById('target-staff-id').value;
+            const email = document.getElementById('invite-email').value;
+            const role = document.getElementById('invite-system-role').value;
+            const name = document.getElementById('invite-name').innerText;
+
+            const btn = document.querySelector('#inviteModal .btn-primary');
             const originalText = btn.innerHTML;
             btn.disabled = true;
-            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 儲存中...';
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 發送中...';
 
             try {
-                // 更新 medical_staff 資料表
-                const { error } = await supabaseClient
+                // 1. 呼叫 Edge Function
+                // URL: https://yhehfucgemxnfrdvpdhw.supabase.co/functions/v1/invite-user
+                const { data, error } = await supabaseClient.functions.invoke('invite-user', {
+                    body: { 
+                        email: email, 
+                        role: role, 
+                        full_name: name,
+                        staff_id: staffId // 傳遞 staff_id 讓後端可以更新 medical_staff 的 user_id (如果後端有寫這段邏輯)
+                    }
+                });
+
+                if (error) {
+                    // 解析 Edge Function 回傳的錯誤
+                    let errMsg = error.message;
+                    try {
+                        // 嘗試讀取 body 錯誤訊息
+                        if(error.context && error.context.json) {
+                            const body = await error.context.json();
+                            if(body.error) errMsg = body.error;
+                        }
+                    } catch(e){}
+                    throw new Error(errMsg);
+                }
+
+                // 2. 同步更新 medical_staff 的 system_role (因為邀請時可能變更了權限)
+                // 注意: Edge Function 通常負責 Auth 註冊，我們這邊順便更新 DB 紀錄
+                await supabaseClient
                     .from('medical_staff')
-                    .update({
-                        system_role: newSystemRole,
-                        is_active: newIsActive,
-                        // 如果有 user_id，未來可能也需要同步更新 auth.users 或 profiles，
-                        // 但依據您的指示，目前專注於 medical_staff。
-                        updated_by: sessionStorage.getItem('currentUserId') // 紀錄操作者
-                    })
-                    .eq('id', id);
+                    .update({ system_role: role })
+                    .eq('id', staffId);
 
-                if (error) throw error;
-
-                // 寫入稽核日誌 (Audit Log)
-                await supabaseClient.from('audit_logs').insert([{
-                    user_role: sessionStorage.getItem('currentUserRole'),
-                    user_name: sessionStorage.getItem('currentUserName'),
-                    action_type: '更新',
-                    target_table: 'medical_staff',
-                    details: `修改權限: ${document.getElementById('display-name').innerText} (Role: ${newSystemRole}, Active: ${newIsActive})`
-                }]);
-
-                alert('✅ 設定已更新');
-                bootstrap.Modal.getInstance(document.getElementById('userModal')).hide();
-                loadUsers(); // 重新整理列表
+                alert(`✅ 邀請信已發送至 ${email}`);
+                bootstrap.Modal.getInstance(document.getElementById('inviteModal')).hide();
+                loadUsers(); // 重整列表
 
             } catch (err) {
-                alert('更新失敗: ' + err.message);
+                console.error(err);
+                alert('❌ 發送失敗: ' + err.message);
             } finally {
                 btn.disabled = false;
                 btn.innerHTML = originalText;
