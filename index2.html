@@ -23,10 +23,11 @@
         .attachment-img { max-width: 100%; height: auto; border: 1px solid #ddd; box-shadow: 0 2px 5px rgba(0,0,0,0.1); margin-top: 10px; }
         .attachment-pdf-frame { width: 100%; height: 500px; border: 1px solid #ddd; margin-top: 10px; }
         
-        /* 特殊說明區塊 */
+        /* 特殊說明區塊 (Step 3) */
         .special-note-box {
             background-color: #fff3cd; border: 1px solid #ffecb5; 
             color: #664d03; padding: 15px; border-radius: 6px; margin-bottom: 20px;
+            animation: fadeIn 0.5s;
         }
     </style>
 </head>
@@ -254,7 +255,7 @@
 
         let rateChart = null;
         let currentStagingData = []; 
-        let currentReviewId = null; // 當前正在審核的 ID
+        let currentReviewId = null; 
 
         document.addEventListener('DOMContentLoaded', () => {
             const role = sessionStorage.getItem('currentUserRole') || 'admin';
@@ -288,7 +289,6 @@
                     .eq('service_year', year);
 
                 // 2. 讀取 Pending 資料 (加入 email 欄位)
-                // 修正：從 medical_staff 關聯取得 name 與 email
                 const { data: stagingData, error: err2 } = await supabaseClient
                     .from('service_record_staging')
                     .select(`
@@ -318,24 +318,30 @@
                 rateChart.update();
 
                 // 渲染列表
-                tbody.innerHTML = filteredPending.map((p, index) => {
-                    let descText = p.service_desc;
+                tbody.innerHTML = filteredPending.map((p) => {
+                    let descText = '-';
+                    // 強化 JSON 解析容錯
                     try {
-                        const parsed = JSON.parse(p.service_desc);
-                        if(parsed.process_summary) descText = parsed.process_summary;
-                        else if (parsed.note) descText = parsed.note;
-                    } catch(e) {} 
+                        if (p.service_desc && p.service_desc.trim().startsWith('{')) {
+                            const parsed = JSON.parse(p.service_desc);
+                            // 優先順序：Process Summary -> Note -> Raw Text
+                            descText = parsed.process_summary || parsed.note || '詳細資料請見預覽';
+                        } else {
+                            descText = p.service_desc || '-';
+                        }
+                    } catch(e) {
+                        descText = p.service_desc || '-';
+                    }
 
                     const consultantName = p.medical_staff?.name || '未知顧問';
                     const displayDate = p.visit_date || p.service_date;
 
-                    // 使用 JSON.stringify 傳遞物件比較安全，避免引號問題，這裡用 ID 查找全域變數
                     return `
                     <tr class="animate__animated animate__fadeIn">
                         <td class="ps-4 fw-bold font-monospace">${displayDate}</td>
                         <td>${consultantName}</td>
                         <td><span class="badge bg-light text-dark border">${p.service_type || '一般訪視'}</span></td>
-                        <td class="text-truncate" style="max-width: 250px;">${descText || '-'}</td>
+                        <td class="text-truncate" style="max-width: 250px;">${descText}</td>
                         <td class="text-end pe-4">
                             <div class="btn-group">
                                 <button class="btn btn-sm btn-outline-secondary" onclick="openStagingPreview('${p.id}')" title="審核預覽">
@@ -358,34 +364,37 @@
             }
         }
 
-        // --- 1. 審核預覽邏輯 (含 Step 3 特殊說明) ---
+        // --- 1. 審核預覽邏輯 (含 Step 3 特殊說明與防呆) ---
         async function openStagingPreview(id) {
             const record = currentStagingData.find(r => r.id === id);
             if (!record) return;
-            currentReviewId = id; // 鎖定當前 ID
+            currentReviewId = id; 
 
             const container = document.getElementById('reviewContainer');
             container.innerHTML = `<div class="text-center py-5"><div class="spinner-border text-primary"></div><p>正在讀取檔案...</p></div>`;
             new bootstrap.Modal(document.getElementById('reviewModal')).show();
 
             try {
-                // 解析 Step 3 特殊說明 (通常存於 service_desc JSON 中)
+                // A. 解析 Step 3 特殊說明
                 let specialNoteHtml = '';
                 try {
-                    const descJson = JSON.parse(record.service_desc);
-                    // 假設 index1 將 Step 3 存為 "special_note" 或 "note"
-                    const note = descJson.special_note || descJson.note || descJson.process_summary;
-                    if(note) {
+                    let noteContent = '';
+                    if (record.service_desc && record.service_desc.trim().startsWith('{')) {
+                        const descJson = JSON.parse(record.service_desc);
+                        noteContent = descJson.special_note || descJson.note;
+                    }
+                    
+                    if(noteContent) {
                         specialNoteHtml = `
                             <div class="special-note-box">
                                 <strong><i class="fas fa-exclamation-triangle me-2"></i>Step 3 特殊狀況說明 / 備註：</strong><br>
-                                ${note}
+                                ${noteContent}
                             </div>
                         `;
                     }
-                } catch(e) {}
+                } catch(e) { console.warn("Note parse error", e); }
 
-                // 解析附件
+                // B. 解析附件 (加入防呆機制，解決 replace 錯誤)
                 let files = record.attachment_files;
                 if (typeof files === 'string') { try { files = JSON.parse(files); } catch(e) { files = []; } }
                 if (!files || !Array.isArray(files)) files = [];
@@ -395,28 +404,40 @@
                     fileHtml = `<div class="alert alert-warning text-center">此案件沒有上傳任何附件。</div>`;
                 } else {
                     const filesWithUrl = await Promise.all(files.map(async (f) => {
+                        // 防呆：確保 path 存在
+                        if(!f.path) return { ...f, url: null, error: 'Path missing' };
                         const { data } = await supabaseClient.storage.from('staging').createSignedUrl(f.path, 600);
                         return { ...f, url: data?.signedUrl };
                     }));
                     
                     fileHtml = filesWithUrl.map(f => {
-                        if (!f.url) return `<div class="alert alert-danger">讀取失敗: ${f.name}</div>`;
-                        const isImg = f.name.match(/\.(jpeg|jpg|png|gif)$/i);
-                        const isPdf = f.name.match(/\.pdf$/i);
-                        let display = isImg ? `<img src="${f.url}" class="attachment-img">` : (isPdf ? `<iframe src="${f.url}#toolbar=0" class="attachment-pdf-frame"></iframe>` : `<div class="p-3 bg-white border mt-2"><a href="${f.url}" target="_blank">下載 (${f.name})</a></div>`);
-                        return `<div class="file-item"><div class="fw-bold text-primary"><i class="fas fa-file me-2"></i>${f.name}</div>${display}</div>`;
+                        // 防呆：確保 name 存在，避免 replace 錯誤
+                        const fileName = f.name || '未知檔名';
+                        
+                        if (!f.url) return `<div class="alert alert-danger">讀取失敗: ${fileName}</div>`;
+                        
+                        const isImg = fileName.match(/\.(jpeg|jpg|png|gif)$/i);
+                        const isPdf = fileName.match(/\.pdf$/i);
+                        
+                        let display = '';
+                        if (isImg) display = `<img src="${f.url}" class="attachment-img">`;
+                        else if (isPdf) display = `<iframe src="${f.url}#toolbar=0" class="attachment-pdf-frame"></iframe>`;
+                        else display = `<div class="p-3 bg-white border mt-2"><a href="${f.url}" target="_blank">下載 (${fileName})</a></div>`;
+                        
+                        return `<div class="file-item"><div class="fw-bold text-primary"><i class="fas fa-file me-2"></i>${fileName}</div>${display}</div>`;
                     }).join('');
                 }
 
                 container.innerHTML = `
                     <div class="alert alert-info py-2 small d-flex justify-content-between">
-                        <span><strong>顧問:</strong> ${record.medical_staff?.name}</span>
+                        <span><strong>顧問:</strong> ${record.medical_staff?.name || '未知'}</span>
                         <span><strong>日期:</strong> ${record.visit_date}</span>
                     </div>
                     ${specialNoteHtml}
                     ${fileHtml}
                 `;
             } catch (e) {
+                console.error(e);
                 container.innerHTML = `<div class="alert alert-danger">讀取錯誤: ${e.message}</div>`;
             }
         }
@@ -447,7 +468,6 @@
         }
 
         function sendReviewEmail() {
-            const id = document.getElementById('email-target-id').value;
             const name = document.getElementById('email-consultant-name').value;
             const email = document.getElementById('email-consultant-addr').innerText;
             const deadline = document.getElementById('email-deadline').value;
@@ -464,7 +484,6 @@
 
             const content = `親愛的 ${name} 顧問，您的送審案件因以下原因：\n${reasons.join('、')}\n需要補正。請於 ${deadline} 天內，盡速完成，以利結案。`;
             
-            // 模擬發送
             alert(`[系統模擬發信]\n目標：${email}\n內容：\n${content}`);
             bootstrap.Modal.getInstance(document.getElementById('reviewEmailModal')).hide();
         }
@@ -502,7 +521,7 @@
 
             if (type === 'special') {
                 const reason = prompt("【特案允許結案】\n請輸入允許結案的原因或備註 (必填)：\n(例如：工廠拒絕提供照片)");
-                if (reason === null) return; // 取消
+                if (reason === null) return; 
                 if (reason.trim() === '') return alert('特案結案必須填寫原因！');
                 auditNote = reason;
                 isSpecial = true;
@@ -511,17 +530,16 @@
                 auditNote = '標準審核通過';
             }
 
-            // 模擬資料庫更新 (實際上這裡應該呼叫 Supabase update)
-            // 1. 將 staging 資料搬移到 service_records
-            // 2. 設定 status = 'approved', is_special_case = isSpecial, audit_note = auditNote
-            // 3. 刪除 staging 資料
-            
-            // 這裡僅用 Alert 模擬成功
+            // 模擬資料庫更新 (整合後續後端邏輯)
+            // 這裡先用 Alert 模擬成功
             const statusText = isSpecial ? '特案核定' : '標準核定';
+            
+            // TODO: 呼叫 Supabase API 進行搬移與更新
+            
             alert(`✅ ${statusText} 成功！\n備註：${auditNote}\n(系統將自動將資料移入正式資料庫)`);
             
             bootstrap.Modal.getInstance(document.getElementById('reviewModal')).hide();
-            refreshData(); // 重新整理列表
+            refreshData(); 
         }
     </script>
 </body>
