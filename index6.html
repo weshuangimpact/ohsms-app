@@ -86,16 +86,21 @@
     <div class="container-fluid px-4 pb-5">
         
         <div class="d-flex justify-content-between align-items-center mb-4">
-            <h4 class="fw-bold text-dark mb-0"><i class="fas fa-history me-2"></i>系統稽核紀錄 (Audit Logs)</h4>
+            <div>
+                <h2 class="fw-bold text-dark"><i class="fas fa-history me-2"></i>系統稽核紀錄 (Audit Logs)</h2>
+                <p class="text-muted mb-0">本頁面紀錄系統內所有關鍵操作</p>
+            </div>
             <button class="btn btn-success btn-sm fw-bold" onclick="exportLogs()">
                 <i class="fas fa-file-csv me-2"></i>匯出 CSV
             </button>
         </div>
 
         <div class="audit-info-card shadow-sm">
-            <strong><i class="fas fa-info-circle me-2"></i>操作說明：</strong>
-            本頁面紀錄系統內所有關鍵操作。<br>
-            <span class="text-danger fw-bold">注意：</span> 請選擇時間範圍後點擊查詢。
+            <strong><i class="fas fa-fingerprint me-2"></i>5W1H 設計理念 —— 保存完整操作歷程 (Audit Trail)</strong><br>
+            <span style="line-height: 1.8;">
+            本系統依循資安稽核標準，詳實記錄 <strong>Who</strong> (操作者)、<strong>When</strong> (時間)、<strong>Where</strong> (來源模組)、<strong>What</strong> (執行動作) 與 <strong>How</strong> (異動內容)。
+            透過完整的軌跡留存，確保所有資料異動具備不可否認性 (Non-repudiation) 與可追溯性。
+            </span>
         </div>
 
         <div class="search-box">
