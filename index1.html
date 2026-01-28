@@ -1,57 +1,608 @@
-// 4. 送出資料 (修正版：依照 A~Q 規則命名並上傳)
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>顧問資料上傳 (Plan/Do) | OHSMS</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    
+    <style>
+        :root { --primary-bg: #f4f6f9; }
+        body {
+            background-color: var(--primary-bg);
+            font-family: 'Segoe UI', 'Microsoft JhengHei', sans-serif;
+            display: none; 
+        }
+
+        /* 樣式保持不變 */
+        .demo-info-card { background-color: #fffbeb; border-left: 4px solid #f59e0b; color: #92400e; padding: 1rem; margin-bottom: 1.5rem; border-radius: 0.375rem; font-size: 0.9rem; line-height: 1.6; }
+        .tracking-info-card { background-color: #eff6ff; border-left: 4px solid #3b82f6; color: #1e40af; padding: 1rem; margin-bottom: 1rem; border-radius: 0.375rem; font-size: 0.9rem; }
+        
+        .input-readonly { background-color: #f8fafc; border: 1px solid #cbd5e1; color: #475569; cursor: default; }
+        .input-readonly:focus { outline: none; box-shadow: none; }
+        
+        .input-editable { background-color: #ffffff; border: 1px solid #3b82f6; color: #1e293b; box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2); }
+        
+        .step-title { border-left: 4px solid #0d6efd; padding-left: 10px; font-weight: bold; color: #0d6efd; margin-bottom: 1rem; }
+        .select-row:hover { background-color: #f1f5f9; cursor: pointer; }
+        
+        /* 操作模式卡片 */
+        .mode-card {
+            border: 2px solid #e9ecef; border-radius: 12px; padding: 20px; text-align: center; cursor: pointer; transition: all 0.2s;
+        }
+        .mode-card:hover { border-color: #0d6efd; background-color: #f8f9fa; transform: translateY(-3px); }
+        .mode-card.active { border-color: #0d6efd; background-color: #e7f1ff; }
+        .mode-icon { font-size: 2.5rem; margin-bottom: 10px; color: #6c757d; }
+        .mode-card.active .mode-icon { color: #0d6efd; }
+
+        /* 動態危害清單樣式 */
+        .hazard-row {
+            transition: all 0.3s ease;
+            border-bottom: 1px dashed #e0e0e0;
+            padding-bottom: 10px;
+            margin-bottom: 10px;
+        }
+        .hazard-row:last-child { border-bottom: none; margin-bottom: 0; }
+        .btn-remove-hazard {
+            color: #dc3545; cursor: pointer; transition: all 0.2s; padding: 8px; border-radius: 50%;
+        }
+        .btn-remove-hazard:hover { background-color: #fee2e2; transform: scale(1.1); }
+        .border-dashed { border-style: dashed !important; }
+/* [新增] 隱藏式上傳按鈕樣式 */
+        .btn-upload-action {
+            display: none; /* 預設隱藏 */
+            cursor: pointer;
+            color: #6c757d;
+            font-size: 0.9rem;
+            margin-left: 10px;
+            padding: 2px 8px;
+            border: 1px solid #dee2e6;
+            border-radius: 15px;
+            background: #fff;
+            transition: all 0.2s;
+        }
+        .btn-upload-action:hover {
+            color: #0d6efd;
+            border-color: #0d6efd;
+            background-color: #f8f9fa;
+        }
+        .btn-upload-action.visible {
+            display: inline-block; /* 被勾選時顯示 */
+        }
+        .btn-upload-action.has-file {
+            color: #fff;
+            background-color: #198754;
+            border-color: #198754;
+        }        
+        /* 法規檢核表樣式 */
+        .check-list-item { padding: 5px 0; }
+        .check-list-item label { cursor: pointer; line-height: 1.5; font-size: 0.95rem; }
+    </style>
+
+    <script>
+        const role = sessionStorage.getItem('currentUserRole');
+        // if (!role) { window.location.href = 'login.html'; }
+    </script>
+</head>
+<body>
+
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark py-3 mb-4">
+        <div class="container-fluid px-4">
+            <a class="navbar-brand" href="dashboard.html"><i class="fas fa-shield-alt me-2"></i>OHSMS</a>
+            <div class="d-flex align-items-center">
+                <span class="text-light me-3" id="user-display"></span>
+                <a href="dashboard.html" class="btn btn-outline-light btn-sm"><i class="fas fa-arrow-left me-1"></i> 返回儀表板</a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container pb-5">
+        
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <div>
+                <h2 class="fw-bold text-dark"><i class="fas fa-file-arrow-up me-2 text-primary"></i>顧問資料上傳</h2>
+                <p class="text-muted mb-0">Plan & Do 階段：建立基準與執行紀錄 V1.06 (多檔上傳版)</p>
+            </div>
+        </div>
+
+        <div class="card border-0 shadow-sm">
+            <div class="card-body p-4 p-md-5">
+
+                <div class="demo-info-card">
+                    <i class="fas fa-compass me-2"></i>
+                    <strong>PDCA 設計理念：Plan (計畫) —— 基準確立與歷史繼承</strong><br>
+                    系統支援「更新歷程」與「補件」雙模式，確保資料脈絡清晰且具備不可否認性。
+                </div>
+
+                <div class="bg-light p-4 rounded mb-4 border">
+                    <h5 class="step-title">Step 1：選擇對象與模式</h5>
+                    <div class="row g-3 align-items-end">
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold small text-muted">統一編號 / 公司名稱</label>
+                            <div class="input-group">
+                                <input type="text" id="input-tax-id" class="form-control" placeholder="輸入統編 或 直接點擊查詢">
+                                <button class="btn btn-primary" onclick="fetchCompanyData(this)">
+                                    <i class="fas fa-magnifying-glass me-1"></i> 查詢
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="company-data-section" style="display: none;">
+                    
+                    <hr class="my-5">
+                    <input type="hidden" id="hidden-company-id">
+                    <input type="hidden" id="hidden-workplace-id">
+                    <input type="hidden" id="current-mode" value=""> <input type="hidden" id="target-year" value="">
+
+                    <div class="alert alert-info d-flex justify-content-between align-items-center border-info" role="alert">
+                        <div>
+                            <span class="badge bg-primary me-2" id="mode-badge">模式</span>
+                            <span id="mode-text" class="fw-bold text-dark"></span>
+                        </div>
+                        <button id="edit-btn" onclick="toggleEditMode()" class="btn btn-light btn-sm border fw-bold">
+                            <i class="fas fa-pen-to-square me-1"></i> 啟用編輯
+                        </button>
+                    </div>
+
+                    <div class="card mb-4 border">
+                        <div class="card-header bg-light fw-bold text-dark">一、作業場所基本資料</div>
+                        <div class="card-body">
+                            <div class="row g-3">
+                                <div class="col-md-6"><label class="form-label small text-muted fw-bold">事業單位名稱</label><input type="text" id="disp-name" class="form-control input-readonly data-field" readonly></div>
+                                <div class="col-md-6"><label class="form-label small text-muted fw-bold">部門名稱</label><input type="text" id="disp-dept" class="form-control input-readonly data-field" readonly></div>
+                                <div class="col-12 mt-4"><h6 class="border-bottom pb-2 fw-bold text-secondary">勞工人數統計</h6></div>
+                                <div class="col-md-6">
+                                    <div class="d-flex align-items-center mb-2">
+                                        <span class="fw-bold me-3" style="width: 80px;">行政人員</span>
+                                        <span class="text-muted me-2">男</span><input type="number" id="disp-admin-m" class="form-control input-readonly data-field text-center me-2" style="width: 70px;" readonly>
+                                        <span class="text-muted me-3">人</span>
+                                        <span class="text-muted me-2">女</span><input type="number" id="disp-admin-f" class="form-control input-readonly data-field text-center me-2" style="width: 70px;" readonly>
+                                        <span class="text-muted">人</span>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="d-flex align-items-center mb-2">
+                                        <span class="fw-bold me-3" style="width: 80px;">現場人員</span>
+                                        <span class="text-muted me-2">男</span><input type="number" id="disp-site-m" class="form-control input-readonly data-field text-center me-2" style="width: 70px;" readonly>
+                                        <span class="text-muted me-3">人</span>
+                                        <span class="text-muted me-2">女</span><input type="number" id="disp-site-f" class="form-control input-readonly data-field text-center me-2" style="width: 70px;" readonly>
+                                        <span class="text-muted">人</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="card mb-4 border">
+                        <div class="card-header bg-light fw-bold text-dark d-flex justify-content-between">
+                            <span>特別危害健康作業 (1~2)</span>
+                            <span class="badge bg-warning text-dark"><i class="fas fa-exclamation-triangle me-1"></i>風險關注</span>
+                        </div>
+                        <div class="card-body">
+                            <div class="row mb-2 small text-muted fw-bold ps-2">
+                                <div class="col-7">危害類型 (環境變更)</div>
+                                <div class="col-4">暴露人數</div>
+                                <div class="col-1"></div>
+                            </div>
+
+                            <div id="hazard-list-container">
+                                </div>
+
+                            <div class="mt-2">
+                                <button id="btn-add-hazard" type="button" class="btn btn-outline-primary btn-sm border-dashed w-100" style="display: none;" onclick="addHazardRow()">
+                                    <i class="fas fa-plus me-1"></i> 新增危害項目
+                                </button>
+                            </div>
+                            
+                            <input type="hidden" id="disp-hazard-type" class="data-field">
+                            <input type="hidden" id="disp-hazard-count" class="data-field">
+                        </div>
+                    </div>
+
+                    <div class="card mb-4 border">
+                        <div class="card-header bg-light fw-bold text-dark">二、作業場所與勞動條件概況</div>
+                        <div class="card-body">
+                            <div class="mb-3"><label class="form-label small text-muted fw-bold">1. 工作流程 (製程)</label><textarea id="disp-process" class="form-control input-readonly data-field" rows="2" readonly></textarea></div>
+                            <div class="mb-3"><label class="form-label small text-muted fw-bold">2. 工作型態與時間</label><textarea id="disp-pattern" class="form-control input-readonly data-field" rows="2" readonly></textarea></div>
+                            <div class="mb-0"><label class="form-label small text-muted fw-bold">3. 人員及危害特性概述</label><textarea id="disp-desc" class="form-control input-readonly data-field" rows="2" readonly></textarea></div>
+                        </div>
+                    </div>
+<div class="mt-5">
+    
+                        <h5 class="step-title">Step 1.5：設定執行時間</h5>
+                        <div class="card border bg-light">
+                            <div class="card-body">
+                                <div class="row g-3 align-items-center">
+                                    <div class="col-md-4">
+                                        <label class="form-label fw-bold text-dark">執行日期</label>
+                                        <input type="date" id="visit-date" class="form-control border-primary shadow-sm">
+                                    </div>
+                                    <div class="col-md-8">
+                                        <label class="form-label fw-bold text-dark">執行時間</label>
+                                        <div class="d-flex align-items-center gap-2">
+                                            <input type="time" id="start-time" class="form-control border-primary shadow-sm" value="09:00">
+                                            <span class="fw-bold text-muted">至</span>
+                                            <input type="time" id="end-time" class="form-control border-primary shadow-sm" value="12:00">
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="mt-5">
+                        <h5 class="step-title">Step 2：臨場服務項目 (法規檢核)</h5>
+                        <div class="tracking-info-card"><i class="fas fa-link me-2"></i><strong>系統自動化連動通知：</strong><br>勾選項目將同步至管理者介面。</div>
+                        
+                        <div class="card border border-primary bg-primary bg-opacity-10 mb-3">
+                            <div class="card-body d-flex align-items-center py-2">
+                                <input class="form-check-input me-3" type="checkbox" checked disabled style="transform: scale(1.2);">
+                                <div><h6 class="mb-0 fw-bold text-primary">勞工健康服務執行紀錄表 (核心必要)</h6></div>
+                            </div>
+                        </div>
+
+<div id="checklist-container" class="ps-2">
+                            </div>
+
+<div class="mt-5">
+                        <h5 class="step-title">Step 3：特殊狀況說明與其他附件 (選填)</h5>
+                        
+                        <div class="mb-3">
+                            <label for="user-remark" class="form-label fw-bold text-dark">
+                                <i class="fas fa-comment-dots me-1 text-primary"></i> 補充說明 / 未完成理由
+                            </label>
+                            <textarea id="user-remark" class="form-control" rows="3" placeholder="例如：核心紀錄表尚未用印，僅先上傳草稿；或是現場環境無法拍照等理由..."></textarea>
+                        </div>
+
+                        <label class="form-label fw-bold text-dark">其他附件補充 (非必要)</label>
+                        <div class="border-2 border-dashed border-secondary rounded p-4 text-center bg-light" style="cursor: pointer;" onclick="document.getElementById('fileUpload').click()">
+                            <i class="fas fa-cloud-arrow-up fa-2x text-secondary mb-2"></i>
+                            <h6 class="fw-bold text-secondary mb-0">點擊選擇檔案 (影音、補充資料，不限格式)</h6>
+                            <input type="file" id="fileUpload" style="display: none;" multiple>
+                            <small class="text-muted d-block mt-2" id="fileNameDisplay">尚未選擇檔案</small>
+                        </div>
+                    </div>
+
+                    <div class="d-flex justify-content-end mt-4 pt-3 border-top">
+                        <button class="btn btn-secondary me-2" onclick="location.reload()">取消重置</button>
+                        <button class="btn btn-primary px-4 fw-bold shadow" onclick="submitServiceRecord(this)">
+                            <i class="fas fa-paper-plane me-2"></i>確認完工並提交
+                        </button>
+                    </div>
+                </div> 
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="companySelectModal" tabindex="-1" data-bs-backdrop="static">
+        <div class="modal-dialog modal-lg modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header bg-primary text-white">
+                    <h5 class="modal-title fw-bold"><i class="fas fa-list me-2"></i>請選擇事業單位</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body p-0" style="min-height: 300px;">
+                    <div class="list-group list-group-flush" id="companyListContainer"></div>
+                </div>
+                <div class="modal-footer bg-light"><small class="text-muted me-auto">共 <span id="totalCount">0</span> 筆</small><button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button></div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="modeSelectModal" tabindex="-1" data-bs-backdrop="static">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header bg-dark text-white">
+                    <h5 class="modal-title fw-bold"><i class="fas fa-sliders-h me-2"></i>請選擇操作模式</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body p-4">
+                    <h6 class="fw-bold mb-3 text-center text-primary" id="selected-company-name">目標公司</h6>
+                    
+                    <div class="row g-3">
+                        <div class="col-6">
+                            <div class="mode-card h-100" onclick="selectMode('new')">
+                                <i class="fas fa-history mode-icon"></i>
+                                <h6 class="fw-bold">更新服務歷程</h6>
+                                <p class="small text-muted mb-0">建立新年度或新日期的服務紀錄 (自動帶入舊資料)</p>
+                            </div>
+                        </div>
+                        <div class="col-6">
+                            <div class="mode-card h-100" onclick="selectMode('amend')">
+                                <i class="fas fa-file-signature mode-icon"></i>
+                                <h6 class="fw-bold">補件 / 修正</h6>
+                                <p class="small text-muted mb-0">針對「既有」的年度紀錄進行檔案補充或修改</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div id="year-selector-area" class="mt-4 pt-3 border-top" style="display:none;">
+                        <label class="form-label fw-bold small text-muted">請選擇目標年度</label>
+                        <select class="form-select" id="mode-year-select">
+                            <option value="2026">2026 (115年)</option>
+                            <option value="2025" selected>2025 (114年)</option>
+                            <option value="2024">2024 (113年)</option>
+                        </select>
+                        <button class="btn btn-success w-100 mt-3 fw-bold" onclick="confirmMode()">
+                            確認並開始 <i class="fas fa-arrow-right ms-1"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    
+    <script>
+        const SUPABASE_URL = 'https://yhehfucgemxnfrdvpdhw.supabase.co';
+        const SUPABASE_KEY = 'sb_publishable_52emtU-9l-SDxcJTWVTPTA_Yu6qEogh';
+        const { createClient } = supabase;
+        const supabaseClient = createClient(SUPABASE_URL, SUPABASE_KEY);
+
+        let currentCompany = null; // 暫存選中的公司物件
+        let selectedMode = '';     // 'new' or 'amend'
+
+        document.addEventListener('DOMContentLoaded', function() {
+            document.body.style.display = 'block';
+            const userName = sessionStorage.getItem('currentUserName') || 'User';
+            document.getElementById('user-display').innerHTML = `<small>Hi, ${userName}</small>`;
+            
+            renderDynamicChecklist();
+            
+            // ★ 修改：檔案選擇顯示邏輯 (支援多檔)
+            document.getElementById('fileUpload').addEventListener('change', function(e){
+                const count = e.target.files.length;
+                const display = document.getElementById('fileNameDisplay');
+                if (count === 0) {
+                    display.innerText = '尚未選擇檔案';
+                } else if (count === 1) {
+                    display.innerText = e.target.files[0].name;
+                } else {
+                    display.innerText = `已選擇 ${count} 個檔案`;
+                }
+            });
+        });
+
+        // 1. 查詢公司
+        async function fetchCompanyData(btn) {
+            const taxId = document.getElementById('input-tax-id').value.trim();
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+            btn.disabled = true;
+
+            try {
+                let query = supabaseClient.from('companies').select('*').order('created_at', {ascending:false});
+                if(taxId) query = query.or(`tax_id.eq.${taxId},name.ilike.%${taxId}%`);
+                else query = query.limit(50);
+
+                const { data, error } = await query;
+                if(error) throw error;
+
+                if(!data || data.length === 0) {
+                    alert('查無資料');
+                    return;
+                }
+
+                if(data.length === 1) {
+                    openModeModal(data[0]);
+                } else {
+                    showSelectionModal(data);
+                }
+            } catch(e) { alert(e.message); }
+            finally { 
+                btn.innerHTML = '<i class="fas fa-magnifying-glass me-1"></i> 查詢';
+                btn.disabled = false; 
+            }
+        }
+
+        function showSelectionModal(companies) {
+            const container = document.getElementById('companyListContainer');
+            container.innerHTML = '';
+            companies.forEach(co => {
+                const item = document.createElement('a');
+                item.className = 'list-group-item list-group-item-action p-3';
+                item.innerHTML = `<h6 class="mb-1 text-primary fw-bold">${co.name}</h6><small class="text-muted">統編: ${co.tax_id}</small>`;
+                item.onclick = () => {
+                    bootstrap.Modal.getInstance(document.getElementById('companySelectModal')).hide();
+                    openModeModal(co);
+                };
+                container.appendChild(item);
+            });
+            document.getElementById('totalCount').innerText = companies.length;
+            new bootstrap.Modal(document.getElementById('companySelectModal')).show();
+        }
+
+        // 2. 開啟模式選擇
+        function openModeModal(company) {
+            currentCompany = company;
+            document.getElementById('selected-company-name').innerText = company.name;
+            document.getElementById('year-selector-area').style.display = 'none';
+            document.querySelectorAll('.mode-card').forEach(el => el.classList.remove('active'));
+            selectedMode = '';
+            new bootstrap.Modal(document.getElementById('modeSelectModal')).show();
+        }
+
+        function selectMode(mode) {
+            selectedMode = mode;
+            document.querySelectorAll('.mode-card').forEach(el => el.classList.remove('active'));
+            event.currentTarget.classList.add('active');
+            document.getElementById('year-selector-area').style.display = 'block';
+        }
+
+        // 3. 確認模式並載入資料
+        async function confirmMode() {
+            if(!selectedMode) return;
+            const year = document.getElementById('mode-year-select').value;
+            
+            // UI 設定
+            document.getElementById('hidden-company-id').value = currentCompany.id;
+            document.getElementById('disp-name').value = currentCompany.name;
+            document.getElementById('current-mode').value = selectedMode;
+            document.getElementById('target-year').value = year;
+
+            const badge = document.getElementById('mode-badge');
+            const text = document.getElementById('mode-text');
+            
+            if(selectedMode === 'new') {
+                badge.className = 'badge bg-success me-2';
+                badge.innerText = '新增歷程';
+                text.innerText = `建立 ${year} 年度服務紀錄 (自動帶入歷史底稿)`;
+            } else {
+                badge.className = 'badge bg-warning text-dark me-2';
+                badge.innerText = '補件/修正';
+                text.innerText = `修正 ${year} 年度現有紀錄`;
+            }
+
+            // 關閉 Modal
+            bootstrap.Modal.getInstance(document.getElementById('modeSelectModal')).hide();
+            
+            // 開始撈取資料
+            await loadWorkplaceAndHistory(currentCompany.id, year, selectedMode);
+        }
+
+        async function loadWorkplaceAndHistory(companyId, year, mode) {
+            // 1. 撈場所
+            const { data: wp } = await supabaseClient.from('workplaces').select('*').eq('company_id', companyId).limit(1);
+            
+            if(!wp || wp.length === 0) {
+                alert('該公司尚未建立作業場所資料，請先至「基本資料建立」新增。');
+                return;
+            }
+            
+            const workplace = wp[0];
+            document.getElementById('hidden-workplace-id').value = workplace.id;
+            document.getElementById('disp-dept').value = workplace.department_name || '全廠';
+            
+            // 填入基本人數
+            document.getElementById('disp-admin-m').value = workplace.admin_male || 0;
+            document.getElementById('disp-admin-f').value = workplace.admin_female || 0;
+            document.getElementById('disp-site-m').value = workplace.site_male || 0;
+            document.getElementById('disp-site-f').value = workplace.site_female || 0;
+            
+            // 填入危害資料
+            const typeStr = workplace.hazard_type || '';
+            const countTotal = workplace.hazard_count || 0;
+            
+            document.getElementById('disp-hazard-type').value = typeStr;
+            document.getElementById('disp-hazard-count').value = countTotal;
+
+            // 清空並重建列表
+            const container = document.getElementById('hazard-list-container');
+            container.innerHTML = '';
+            
+            if (typeStr && typeStr !== '無') {
+                addHazardRow(typeStr, countTotal); 
+            } else {
+                if (mode === 'new') addHazardRow('', 0); 
+            }
+            
+            const hazardInputs = container.querySelectorAll('input');
+            hazardInputs.forEach(input => {
+                input.readOnly = true;
+                input.classList.add('input-readonly');
+            });
+            container.querySelectorAll('.btn-remove-hazard').forEach(btn => btn.style.display = 'none');
+
+
+            // 2. 撈歷史紀錄
+            let query = supabaseClient.from('service_records').select('*').eq('workplace_id', workplace.id);
+            
+            if (mode === 'amend') {
+                query = query.eq('service_year', parseInt(year));
+            } else {
+                query = query.order('service_year', {ascending: false}).limit(1);
+            }
+
+            const { data: history } = await query;
+
+            if (mode === 'amend' && (!history || history.length === 0)) {
+                alert(`查無 ${year} 年度的服務紀錄，無法進行補件。\n請改選「更新服務歷程」來建立第一筆資料。`);
+                return;
+            }
+
+            if (history && history.length > 0) {
+                const rec = history[0];
+                document.getElementById('disp-process').value = rec.process_desc || '';
+                document.getElementById('disp-pattern').value = rec.work_pattern || '';
+                document.getElementById('disp-desc').value = rec.hazard_desc || '';
+                if(mode === 'new') alert(`系統已自動帶入最近一次 (${rec.service_year || '未知'}年) 的紀錄作為底稿。`);
+            } else {
+                document.getElementById('disp-process').value = '';
+                document.getElementById('disp-pattern').value = '';
+                document.getElementById('disp-desc').value = '';
+            }
+
+            document.getElementById('company-data-section').style.display = 'block';
+            document.getElementById('company-data-section').scrollIntoView({ behavior: 'smooth' });
+        }
+
+        // 動態增加危害列
+        function addHazardRow(name = '', count = 0) {
+            const container = document.getElementById('hazard-list-container');
+            const rowId = 'row-' + Date.now();
+            
+            const div = document.createElement('div');
+            div.className = 'hazard-row row align-items-center';
+            div.id = rowId;
+            
+            const isEditing = document.getElementById('edit-btn').classList.contains('btn-primary');
+            const inputClass = isEditing ? 'form-control input-editable hazard-input' : 'form-control input-readonly hazard-input';
+            const readonlyAttr = isEditing ? '' : 'readonly';
+            const btnDisplay = isEditing ? 'block' : 'none';
+
+            div.innerHTML = `
+                <div class="col-7">
+                    <input type="text" class="${inputClass} hazard-name-input" value="${name}" placeholder="輸入危害名稱 (如: 噪音)" ${readonlyAttr} oninput="calculateHazardTotals()">
+                </div>
+                <div class="col-4">
+                    <input type="number" class="${inputClass} hazard-count-input" value="${count}" placeholder="人數" ${readonlyAttr} oninput="calculateHazardTotals()">
+                </div>
+                <div class="col-1 text-center">
+                    <i class="fas fa-trash-alt btn-remove-hazard" style="display: ${btnDisplay};" onclick="removeHazardRow(this)"></i>
+                </div>
+            `;
+            container.appendChild(div);
+            if(name === '' && count === 0) calculateHazardTotals();
+        }
+
+        function removeHazardRow(btn) {
+            const row = btn.closest('.hazard-row');
+            row.remove();
+            calculateHazardTotals();
+        }
+
+        function calculateHazardTotals() {
+            const names = [];
+            let totalCount = 0;
+            document.querySelectorAll('.hazard-row').forEach(row => {
+                const nameVal = row.querySelector('.hazard-name-input').value.trim();
+                const countVal = parseInt(row.querySelector('.hazard-count-input').value) || 0;
+                if (nameVal) names.push(nameVal);
+                totalCount += countVal;
+            });
+            document.getElementById('disp-hazard-type').value = names.join('、');
+            document.getElementById('disp-hazard-count').value = totalCount;
+        }
+
+        // 4. 送出資料 (修正版：多檔上傳 + 寫入 Staging)
         async function submitServiceRecord(btn) {
             const workplaceId = document.getElementById('hidden-workplace-id').value;
             const year = document.getElementById('target-year').value;
             const mode = document.getElementById('current-mode').value;
-            
-            // ★ 定義檔案命名規則 (A~Q)
-            const FILE_CODE_MAP = {
-                'core': 'A', '9-1': 'B', '9-2': 'C', '9-3': 'D', '9-4': 'E',
-                '9-5': 'F', '9-6': 'G', '9-7': 'H', '9-8': 'I',
-                '11-1': 'J', '11-2': 'K', '11-3': 'L', '11-4': 'M', '11-5': 'N',
-                '12': 'O', '13': 'P', 'other': 'Q'
-            };
+            const fileInput = document.getElementById('fileUpload');
+            const files = fileInput.files; // ★ 取得檔案列表
 
             if (!workplaceId) return alert('錯誤：場所 ID 遺失');
-
-            // 1. 掃描所有 checkbox 與對應的檔案輸入框，收集要上傳的檔案
-            let filesToUpload = [];
-            let checkItems = [];
-
-            CHECKLIST_ITEMS.forEach(item => {
-                const checkbox = document.getElementById(`c${item.code}`);
-                const fileInput = document.getElementById(`file-${item.code}`); // 抓取 Step 2 產生的個別檔案欄位
-                
-                // 收集勾選的項目文字
-                if (checkbox && checkbox.checked) {
-                    checkItems.push(item.code + ' ' + item.text);
-                }
-
-                // 收集檔案 (如果有選取)
-                if (fileInput && fileInput.files.length > 0) {
-                    filesToUpload.push({
-                        code: item.code,
-                        file: fileInput.files[0]
-                    });
-                }
-            });
-
-            // 檢查是否至少有一個檔案 (若需要強制)
-            if (filesToUpload.length === 0) {
-                 // 若 Step 3 的大框框有檔案，也可以視為 'other' (Q) 的備用來源
-                 const step3File = document.getElementById('fileUpload').files[0];
-                 if (step3File) {
-                     filesToUpload.push({ code: 'other', file: step3File });
-                 } else {
-                     return alert('請至少上傳一個佐證檔案 (於 Step 2 勾選並選取檔案)');
-                 }
-            }
+            if (files.length === 0) return alert('請至少上傳一個檔案');
 
             btn.disabled = true;
             btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 資料加密上傳中...';
 
             try {
-                // 更新主檔 (若在編輯模式)
+                // 更新主檔
                 if (typeof isEditMode !== 'undefined' && isEditMode) {
                      const hazardType = document.getElementById('disp-hazard-type').value;
                      const hazardCount = parseInt(document.getElementById('disp-hazard-count').value) || 0;
@@ -65,57 +616,31 @@
                      }).eq('id', workplaceId);
                 }
 
-                // ★ 產生本次案件的 UUID (為了讓檔案路徑與 DB 關聯一致，先產生 ID 或使用 Timestamp 模擬)
-                // 這裡為了確保唯一性與路徑整潔，我們使用 Staging 表寫入後回傳的 ID，
-                // 但為了先上傳檔案，我們改用 "Date.now()" 作為資料夾區隔，或直接先 Insert DB 取得 ID。
-                // 最佳做法：先 Insert DB (pending) -> 拿到 ID -> 上傳檔案 -> Update DB。
-                
-                // --- Phase 1: 先建立 DB 紀錄 (取得 ID) ---
-                const initialPayload = {
-                    workplace_id: workplaceId,
-                    service_year: parseInt(year),
-                    service_date: document.getElementById('visit-date').value || new Date().toISOString(),
-                    service_type: mode === 'new' ? 'Plan/Do' : '補件',
-                    status: 'uploading', // 中間狀態
-                    service_desc: JSON.stringify({
-                        note: mode === 'new' ? "年度訪視" : "文件補件",
-                        process_summary: document.getElementById('disp-process').value,
-                        hazard_summary: document.getElementById('disp-desc').value,
-                        checklist: checkItems,
-                        user_remark: document.getElementById('user-remark').value 
-                    }),
-                    attachment_files: [] // 先空著
+                // 收集勾選項目
+                let checkItems = [];
+                document.querySelectorAll('.check-item:checked').forEach(el => {
+                    checkItems.push(el.value + ' ' + el.nextElementSibling.innerText);
+                });
+
+                const stagingContent = {
+                    note: mode === 'new' ? "年度訪視" : "文件補件",
+                    process_summary: document.getElementById('disp-process').value,
+                    hazard_summary: document.getElementById('disp-desc').value,
+                    checklist: checkItems
                 };
 
-                const { data: recordData, error: dbError } = await supabaseClient
-                    .from('service_record_staging')
-                    .insert([initialPayload])
-                    .select()
-                    .single();
-
-                if (dbError) throw new Error('建立暫存紀錄失敗: ' + dbError.message);
-                const recordId = recordData.id;
-
-                // --- Phase 2: 依照 A~Q 規則上傳檔案 ---
-                const uploadPromises = filesToUpload.map(async (item) => {
-                    const file = item.file;
-                    const codeChar = FILE_CODE_MAP[item.code] || 'Q'; // 查表，預設 Q
-                    const fileExt = file.name.split('.').pop().toLowerCase(); // 取得副檔名
-                    const newFileName = `${codeChar}.${fileExt}`; // 例如: A.pdf
-                    
-                    // 路徑結構: service_records / 年份 / 紀錄ID / A.pdf
-                    const filePath = `service_records/${year}/${recordId}/${newFileName}`;
+                // ★ 迴圈上傳所有檔案
+                const uploadPromises = Array.from(files).map(async (file) => {
+                    const filePath = `service_records/${year}/${workplaceId}/${Date.now()}_${file.name}`;
                     
                     const { error } = await supabaseClient.storage
-                        .from('staging') 
-                        .upload(filePath, file, { upsert: true });
+                        .from('staging') // 上傳至 staging bucket
+                        .upload(filePath, file);
 
                     if (error) throw error;
 
                     return { 
-                        name: newFileName,   // 存入 A.pdf
-                        original_name: file.name,
-                        code: item.code,     // 原始代碼 (core, 9-1...)
+                        name: file.name, 
                         bucket: 'staging', 
                         path: filePath, 
                         type: file.type,
@@ -123,18 +648,32 @@
                     };
                 });
 
+                // 等待所有上傳完成
                 const uploadedFiles = await Promise.all(uploadPromises);
 
-                // --- Phase 3: 更新 DB，寫入檔案列表並改狀態為 pending ---
-                const { error: updateError } = await supabaseClient
-                    .from('service_record_staging')
-                    .update({ 
-                        attachment_files: uploadedFiles,
-                        status: 'pending'
-                    })
-                    .eq('id', recordId);
+// 5. 寫入資料庫
+                const payload = {
+                    workplace_id: workplaceId,
+                    service_year: parseInt(year),
+                    service_date: visitDate || new Date().toISOString(),
+                    service_type: mode === 'new' ? 'Plan/Do' : '補件',
+                    status: 'pending',
+                    
+                    // ★ 修改重點：將說明框內容存入 JSON
+                    service_desc: JSON.stringify({
+                        note: mode === 'new' ? "年度訪視" : "文件補件",
+                        process_summary: document.getElementById('disp-process').value,
+                        hazard_summary: document.getElementById('disp-desc').value,
+                        checklist: checkItems, // 注意變數名稱是否為 checkItems 或 checkLabels，請以您函式內定義的為準
+                        
+                        // ★ 新增這行：讀取使用者填寫的說明
+                        user_remark: document.getElementById('user-remark').value 
+                    }),
+                    
+                    attachment_files: uploadedData 
+                };
 
-                if (updateError) throw new Error('更新檔案列表失敗: ' + updateError.message);
+                if (dbError) throw new Error('寫入暫存表失敗: ' + dbError.message);
 
                 alert('✅ 提交成功！資料已送出審核。');
                 location.reload();
@@ -146,3 +685,123 @@
                 btn.innerHTML = '<i class="fas fa-paper-plane me-2"></i>確認完工並提交';
             }
         }
+
+        let isEditMode = false;
+        function toggleEditMode() {
+            const btn = document.getElementById('edit-btn');
+            const fields = document.querySelectorAll('.data-field');
+            const hazardInputs = document.querySelectorAll('.hazard-input');
+            const addBtn = document.getElementById('btn-add-hazard');
+            const removeBtns = document.querySelectorAll('.btn-remove-hazard');
+
+            isEditMode = !isEditMode;
+            
+            if (isEditMode) {
+                fields.forEach(f => { f.readOnly = false; f.classList.remove('input-readonly'); f.classList.add('input-editable'); });
+                hazardInputs.forEach(f => { f.readOnly = false; f.classList.remove('input-readonly'); f.classList.add('input-editable'); });
+                
+                addBtn.style.display = 'block';
+                removeBtns.forEach(b => b.style.display = 'block');
+
+                btn.innerHTML = '<i class="fas fa-save me-1"></i> 儲存變更';
+                btn.classList.add('btn-primary');
+            } else {
+                fields.forEach(f => { f.readOnly = true; f.classList.remove('input-editable'); f.classList.add('input-readonly'); });
+                hazardInputs.forEach(f => { f.readOnly = true; f.classList.remove('input-editable'); f.classList.add('input-readonly'); });
+                
+                addBtn.style.display = 'none';
+                removeBtns.forEach(b => b.style.display = 'none');
+
+                btn.innerHTML = '<i class="fas fa-pen-to-square me-1"></i> 啟用編輯';
+                btn.classList.remove('btn-primary');
+            }
+        }
+        // ==========================================
+        // ★ 新增：動態法規清單與上傳互動邏輯
+        // ==========================================
+        
+// 1. 定義法規項目 (修改：為核心項目增加 PDF 限制)
+        const CHECKLIST_ITEMS = [
+            { code: 'core', text: '勞工健康服務執行紀錄表 (核心必要)', accept: '.pdf' }, 
+            { code: '9-1', text: '勞工體格(健康)檢查結果之分析與評估、健康管理及資料保存。' },
+            { code: '9-2', text: '協助雇主選配勞工從事適當之工作。' },
+            { code: '9-3', text: '辦理健康檢查結果異常者之追蹤管理及健康指導。' },
+            { code: '9-4', text: '辦理未滿十八歲勞工、有母性健康危害之虞之勞工...評估及個案管理。' },
+            { code: '9-5', text: '職業衛生或職業健康之相關研究報告及傷害、疾病紀錄之保存。' },
+            { code: '9-6', text: '勞工之健康教育、衛生指導、身心健康保護、健康促進...之策劃及實施。' },
+            { code: '9-7', text: '工作相關傷病之預防、健康諮詢與急救及緊急處置。' },
+            { code: '9-8', text: '定期向雇主報告及勞工健康服務之建議。' },
+            { code: '11-1', text: '辨識與評估工作場所環境、作業及組織內部影響勞工身心健康之危害因子。' },
+            { code: '11-2', text: '提出作業環境安全衛生設施改善規劃之建議。' },
+            { code: '11-3', text: '調查勞工健康情形與作業之關連性。' },
+            { code: '11-4', text: '提供復工勞工之職能評估、職務再設計或調整之諮詢及建議。' },
+            { code: '11-5', text: '其他經中央主管機關指定公告者。' },
+            { code: '12', text: '訂定勞工健康服務計畫，據以執行，每年評估成效及檢討。' },
+            { code: '13', text: '訂定勞工健康管理方案，據以辦理，每年評估成效及檢討。' },
+            { code: 'other', text: '其他附件' }
+        ];
+
+// 2. 渲染清單函式 (修改：支援 accept 屬性)
+        function renderDynamicChecklist() {
+            const container = document.getElementById('checklist-container');
+            if (!container) return;
+            
+            let html = '';
+            CHECKLIST_ITEMS.forEach(item => {
+                const acceptAttr = item.accept ? `accept="${item.accept}"` : 'accept="image/*,.pdf"';
+                const typeHint = item.accept === '.pdf' ? '<span class="badge bg-danger ms-1" style="font-size:0.7em">限PDF</span>' : '';
+
+                html += `
+                <div class="check-row py-2 border-bottom border-light">
+                    <div class="d-flex align-items-center flex-wrap">
+                        <div class="form-check me-2">
+                            <input class="form-check-input check-item" type="checkbox" id="c${item.code}" value="${item.code}" onchange="toggleUploadBtn(this)">
+                            <label class="form-check-label" for="c${item.code}">
+                                <span class="fw-bold text-dark me-1">${item.code}</span> ${item.text} ${typeHint}
+                            </label>
+                        </div>
+                        
+                        <div class="upload-wrapper ms-auto" id="wrapper-${item.code}">
+                            <input type="file" id="file-${item.code}" class="d-none item-file" data-code="${item.code}" ${acceptAttr} onchange="updateFileState(this)">
+                            <label for="file-${item.code}" class="btn-upload-action" id="btn-${item.code}">
+                                <i class="fas fa-paperclip me-1"></i> <span class="btn-text">上傳佐證</span>
+                            </label>
+                            <small class="text-muted ms-2 file-name-display" id="name-${item.code}"></small>
+                        </div>
+                    </div>
+                </div>`;
+            });
+            container.innerHTML = html;
+        }
+
+        // 3. 勾選 checkbox 後顯示/隱藏上傳按鈕
+        function toggleUploadBtn(checkbox) {
+            const code = checkbox.value;
+            const btn = document.getElementById(`btn-${code}`);
+            if (checkbox.checked) {
+                btn.classList.add('visible');
+            } else {
+                btn.classList.remove('visible');
+            }
+        }
+
+        // 4. 檔案選取後更新按鈕樣式
+        function updateFileState(input) {
+            const code = input.dataset.code;
+            const btn = document.getElementById(`btn-${code}`);
+            const nameDisplay = document.getElementById(`name-${code}`);
+            
+            if (input.files && input.files[0]) {
+                btn.classList.add('has-file');
+                btn.innerHTML = '<i class="fas fa-check me-1"></i> 已選取';
+                nameDisplay.innerText = input.files[0].name;
+            } else {
+                btn.classList.remove('has-file');
+                btn.innerHTML = '<i class="fas fa-paperclip me-1"></i> 上傳佐證';
+                nameDisplay.innerText = '';
+            }
+        }
+    </script>
+    
+</body>
+</html>
