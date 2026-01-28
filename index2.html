@@ -66,7 +66,7 @@
                     </div>
                     <p class="text-muted small mb-0">
                         <i class="fas fa-info-circle me-1"></i> <strong>說明：</strong><br>
-                        系統會掃描 <code>service_record_staging</code> 中狀態為 <code>pending</code> 的所有資料。若當年度無待審核案件，達成率即為 <span class="text-success fw-bold">100%</span>。
+                        系統會掃描資料庫中狀態為待審查的所有資料。若當年度無待審核案件(全部完成結案)，達成率即為100%</span>。
                     </p>
                 </div>
             </div>
@@ -364,7 +364,7 @@
             }
         }
 
-        // --- 1. 審核預覽邏輯 (含 Step 3 特殊說明與防呆) ---
+        // --- 1. 審核預覽邏輯 (含 Step 3 特殊說明、日期修正、檔案 A~Q 排序) ---
         async function openStagingPreview(id) {
             const record = currentStagingData.find(r => r.id === id);
             if (!record) return;
@@ -381,10 +381,12 @@
                     let noteContent = '';
                     if (record.service_desc && record.service_desc.trim().startsWith('{')) {
                         const descJson = JSON.parse(record.service_desc);
-                        noteContent = descJson.special_note || descJson.note;
+                        noteContent = descJson.user_remark || descJson.special_note || descJson.note;
+                    } else {
+                        noteContent = record.service_desc;
                     }
                     
-                    if(noteContent) {
+                    if(noteContent && noteContent !== 'undefined') {
                         specialNoteHtml = `
                             <div class="special-note-box">
                                 <strong><i class="fas fa-exclamation-triangle me-2"></i>Step 3 特殊狀況說明 / 備註：</strong><br>
@@ -394,24 +396,30 @@
                     }
                 } catch(e) { console.warn("Note parse error", e); }
 
-                // B. 解析附件 (加入防呆機制，解決 replace 錯誤)
+                // B. 解析附件並進行 A~Q 排序
                 let files = record.attachment_files;
                 if (typeof files === 'string') { try { files = JSON.parse(files); } catch(e) { files = []; } }
                 if (!files || !Array.isArray(files)) files = [];
+
+                // ★ 強制依照檔名 A, B, C... 排序
+                files.sort((a, b) => {
+                    const nameA = a.name || '';
+                    const nameB = b.name || '';
+                    return nameA.localeCompare(nameB);
+                });
 
                 let fileHtml = '';
                 if (files.length === 0) {
                     fileHtml = `<div class="alert alert-warning text-center">此案件沒有上傳任何附件。</div>`;
                 } else {
                     const filesWithUrl = await Promise.all(files.map(async (f) => {
-                        // 防呆：確保 path 存在
+                        // 防呆
                         if(!f.path) return { ...f, url: null, error: 'Path missing' };
                         const { data } = await supabaseClient.storage.from('staging').createSignedUrl(f.path, 600);
                         return { ...f, url: data?.signedUrl };
                     }));
                     
                     fileHtml = filesWithUrl.map(f => {
-                        // 防呆：確保 name 存在，避免 replace 錯誤
                         const fileName = f.name || '未知檔名';
                         
                         if (!f.url) return `<div class="alert alert-danger">讀取失敗: ${fileName}</div>`;
@@ -424,14 +432,26 @@
                         else if (isPdf) display = `<iframe src="${f.url}#toolbar=0" class="attachment-pdf-frame"></iframe>`;
                         else display = `<div class="p-3 bg-white border mt-2"><a href="${f.url}" target="_blank">下載 (${fileName})</a></div>`;
                         
-                        return `<div class="file-item"><div class="fw-bold text-primary"><i class="fas fa-file me-2"></i>${fileName}</div>${display}</div>`;
+                        // 顯示原始檔名供參考
+                        const originalNameDisplay = f.original_name ? `<br><small class="text-muted">(${f.original_name})</small>` : '';
+
+                        return `<div class="file-item">
+                                    <div class="fw-bold text-primary border-bottom pb-2 mb-2">
+                                        <i class="fas fa-file me-2"></i>${fileName}
+                                        ${originalNameDisplay}
+                                    </div>
+                                    ${display}
+                                </div>`;
                     }).join('');
                 }
+
+                // ★ 日期修正：抓取跟列表一樣的邏輯
+                const displayDate = record.visit_date || record.service_date || '未設定日期';
 
                 container.innerHTML = `
                     <div class="alert alert-info py-2 small d-flex justify-content-between">
                         <span><strong>顧問:</strong> ${record.medical_staff?.name || '未知'}</span>
-                        <span><strong>日期:</strong> ${record.visit_date}</span>
+                        <span><strong>送審日期:</strong> ${displayDate}</span>
                     </div>
                     ${specialNoteHtml}
                     ${fileHtml}
