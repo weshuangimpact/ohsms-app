@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>管理者總覽 (Evaluation) | OHSMS</title>
+    <title>管理者總覽 (Admin Dashboard) | OHSMS</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css"/>
@@ -105,7 +105,7 @@
 
         <div class="card border-0 shadow-sm mt-4">
             <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
-                <h6 class="fw-bold mb-0 text-warning"><i class="fas fa-clock me-2"></i>待核定暫存清單 (Staging Area)</h6>
+                <h6 class="fw-bold mb-0 text-dark"><i class="fas fa-list-ul me-2 text-warning"></i>待核定暫存清單 (Staging Area)</h6>
                 <button class="btn btn-sm btn-outline-secondary" onclick="refreshData()"><i class="fas fa-sync-alt"></i></button>
             </div>
             <div class="card-body p-0">
@@ -143,7 +143,6 @@
                 <div class="modal-footer bg-light justify-content-between">
                     <div class="text-muted small">此模式僅供預覽，不包含浮水印。</div>
                     <div>
-                        <button type="button" class="btn btn-outline-danger me-2" onclick="alert('退回功能開發中')"><i class="fas fa-times me-1"></i>退回補件</button>
                         <button type="button" class="btn btn-success fw-bold" onclick="alert('核定功能開發中')"><i class="fas fa-check me-1"></i>核定入庫</button>
                     </div>
                 </div>
@@ -162,7 +161,6 @@
         const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
         let rateChart = null;
-        // 暫存目前的資料以便 Modal 使用
         let currentStagingData = []; 
 
         document.addEventListener('DOMContentLoaded', () => {
@@ -207,7 +205,6 @@
                     .eq('service_year', year);
 
                 // 2. 讀取 Pending 暫存資料
-                // ★ 修正：加入 attachment_files (抓檔案路徑) 與 medical_staff (抓顧問名)
                 const { data: stagingData, error: err2 } = await supabaseClient
                     .from('service_record_staging')
                     .select(`
@@ -218,17 +215,16 @@
 
                 if (err1 || err2) throw (err1 || err2);
 
-                // 3. 篩選年度 (檢查 visit_date 或 service_date)
                 const filteredPending = stagingData.filter(d => {
                     const d1 = d.visit_date ? new Date(d.visit_date).getFullYear() : null;
                     const d2 = d.service_date ? new Date(d.service_date).getFullYear() : null;
                     return d1 === year || d2 === year;
                 });
 
-                currentStagingData = filteredPending; // 存入全域變數供 Modal 使用
+                currentStagingData = filteredPending; 
                 const pendingCount = filteredPending.length;
 
-                // 4. 更新統計 UI
+                // 更新統計 UI
                 const total = approvedCount + pendingCount;
                 const rate = total === 0 ? 100 : Math.round((approvedCount / total) * 100);
 
@@ -245,20 +241,18 @@
                 }
                 rateChart.update();
 
-                // 5. 渲染列表
+                // 渲染列表 (UI 調整：恢復原始按鈕群組)
                 tbody.innerHTML = filteredPending.map((p, index) => {
-                    // 解析描述 JSON
                     let descText = p.service_desc;
                     try {
                         const parsed = JSON.parse(p.service_desc);
-                        if(parsed.process_summary) descText = parsed.process_summary; // 優先顯示作業摘要
+                        if(parsed.process_summary) descText = parsed.process_summary;
                         else if (parsed.note) descText = parsed.note;
-                    } catch(e) {} // 不是 JSON 就直接顯示文字
+                    } catch(e) {} 
 
                     const consultantName = p.medical_staff?.name || '未知顧問';
                     const displayDate = p.visit_date || p.service_date;
 
-                    // ★ 動作按鈕：呼叫 openStagingPreview
                     return `
                     <tr class="animate__animated animate__fadeIn">
                         <td class="ps-4 fw-bold font-monospace">${displayDate}</td>
@@ -267,11 +261,14 @@
                         <td class="text-truncate" style="max-width: 250px;">${descText || '-'}</td>
                         <td class="text-end pe-4">
                             <div class="btn-group">
-                                <button class="btn btn-sm btn-outline-dark" onclick="openStagingPreview('${p.id}')" title="檢視檔案">
+                                <button class="btn btn-sm btn-outline-secondary" onclick="openStagingPreview('${p.id}')" title="檢視預覽">
                                     <i class="far fa-eye"></i>
                                 </button>
-                                <button class="btn btn-sm btn-outline-success" onclick="alert('核定 ID: ${p.id}')" title="快速核定">
-                                    <i class="fas fa-check"></i>
+                                <button class="btn btn-sm btn-outline-success" onclick="alert('通知信已發送至: ${consultantName}')" title="發送通知信">
+                                    <i class="far fa-envelope"></i>
+                                </button>
+                                <button class="btn btn-sm btn-outline-primary" onclick="alert('催收提醒已發送！')" title="催收提醒">
+                                    <i class="far fa-bell"></i>
                                 </button>
                             </div>
                         </td>
@@ -284,7 +281,6 @@
             }
         }
 
-        // ★ 新增：開啟預覽視窗 (Staging Bucket)
         async function openStagingPreview(id) {
             const record = currentStagingData.find(r => r.id === id);
             if (!record) return;
@@ -295,12 +291,15 @@
             new bootstrap.Modal(document.getElementById('reviewModal')).show();
 
             try {
-                // 1. 解析附件清單 (JSONB)
-                // 根據 index1 的上傳邏輯，attachment_files 存的是物件陣列: [{bucket, path, name, type...}]
                 let files = record.attachment_files;
-                
-                // 相容性處理：如果是字串就 parse，如果是 null 就給空陣列
-                if (typeof files === 'string') files = JSON.parse(files);
+                // 安全性檢查：處理 undefined 或字串型別
+                if (typeof files === 'string') {
+                    try {
+                        files = JSON.parse(files);
+                    } catch(e) {
+                        files = [];
+                    }
+                }
                 if (!files || !Array.isArray(files)) files = [];
 
                 if (files.length === 0) {
@@ -308,17 +307,14 @@
                     return;
                 }
 
-                // 2. 針對 Staging Bucket 產生 Signed URL
-                // 這裡假設 attachment_files 裡的 path 是完整的 (e.g., "service_records/2026/xxx/file.pdf")
+                // 產生 Signed URL
                 const filesWithUrl = await Promise.all(files.map(async (f) => {
-                    // ★ 關鍵：指定 bucket 為 'staging'
                     const { data } = await supabaseClient.storage
                         .from('staging') 
-                        .createSignedUrl(f.path, 600); // 10分鐘有效
+                        .createSignedUrl(f.path, 600);
                     return { ...f, url: data?.signedUrl };
                 }));
 
-                // 3. 渲染內容 (無浮水印)
                 const htmlContent = filesWithUrl.map(f => {
                     if (!f.url) return `<div class="alert alert-danger">無法讀取檔案: ${f.name}</div>`;
                     
@@ -348,7 +344,7 @@
                 container.innerHTML = `
                     <div class="alert alert-info py-2 small">
                         <strong>案件 ID:</strong> ${record.id} | 
-                        <strong>顧問:</strong> ${record.medical_staff?.name} | 
+                        <strong>顧問:</strong> ${record.medical_staff?.name || 'Unknown'} | 
                         <strong>日期:</strong> ${record.visit_date}
                     </div>
                     ${htmlContent}
