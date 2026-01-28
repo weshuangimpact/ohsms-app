@@ -9,14 +9,20 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css"/>
     
     <style>
-        :root { --primary-bg: #f4f6f9; }
+        /* [修正] 主色調設定為 #0dcaf0 (Account/Info Color) */
+        :root { 
+            --primary-bg: #f4f6f9; 
+            --theme-color: #0dcaf0; 
+        }
+        
         body {
             background-color: var(--primary-bg);
             font-family: 'Segoe UI', 'Microsoft JhengHei', sans-serif;
             display: none; /* Auth Guard */
         }
         
-        .section-title { border-left: 5px solid #0dcaf0; padding-left: 15px; margin-bottom: 20px; }
+        /* 標題飾條顏色套用變數 */
+        .section-title { border-left: 5px solid var(--theme-color); padding-left: 15px; margin-bottom: 20px; }
         
         .card-header { background-color: white; border-bottom: 1px solid #f0f0f0; }
         .table th { font-weight: 600; color: #555; background-color: #f8f9fa; }
@@ -37,6 +43,22 @@
         .reg-pending { background-color: #ffc107; color: #000; } /* 黃: 未註冊 */
         .reg-done { background-color: #198754; color: white; }   /* 綠: 已註冊 */
         .reg-void { background-color: #343a40; color: white; }   /* 黑: 已註銷 */
+
+        /* [新增] 5W1H 說明區塊 (配合主色 Cyan) */
+        .instruction-box {
+            background-color: #fff;
+            border-left: 5px solid var(--theme-color);
+            padding: 20px 25px;
+            border-radius: 4px;
+            margin-bottom: 30px;
+            text-align: left;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+        }
+        .instruction-title {
+            color: #0aa2c0; /* 深青色，確保文字閱讀對比度 */
+            font-weight: 700;
+            margin-bottom: 10px;
+        }
     </style>
 
     <script>
@@ -71,7 +93,16 @@
                 <h4 class="fw-bold text-dark mb-0">帳號權限管理 (Account Mgmt)</h4>
                 <small class="text-muted">發送系統邀請與管理醫護人員登入權限</small>
             </div>
+        </div>
+
+        <div class="instruction-box">
+            <div class="instruction-title">
+                <i class="fas fa-user-shield me-2"></i>5W1H 設計理念：帳號權限與責任追溯
             </div>
+            <p class="mb-0 text-dark" style="line-height: 1.6;">
+                本模組依 5W1H 原則，記錄帳號之身分、角色、權限來源與生效歷程，作為系統操作稽核與責任追溯之制度依據。
+            </p>
+        </div>
 
         <div class="card border-0 shadow-sm mb-4">
             <div class="card-body p-4 bg-light rounded">
@@ -112,7 +143,7 @@
 
         <div class="card border-0 shadow">
             <div class="card-header py-3 d-flex justify-content-between align-items-center">
-                <h6 class="fw-bold mb-0 text-dark"><i class="fas fa-users me-2"></i>醫護人員名單 (Medical Staff)</h6>
+                <h6 class="fw-bold mb-0 text-dark"><i class="fas fa-users me-2" style="color: #0dcaf0;"></i>醫護人員名單 (Medical Staff)</h6>
                 <span class="badge bg-light text-dark border" id="total-count">共 0 筆</span>
             </div>
             <div class="card-body p-0">
@@ -142,7 +173,7 @@
     <div class="modal fade" id="inviteModal" tabindex="-1">
         <div class="modal-dialog">
             <div class="modal-content">
-                <div class="modal-header bg-primary text-white">
+                <div class="modal-header bg-info text-white">
                     <h5 class="modal-title fw-bold"><i class="fas fa-paper-plane me-2"></i>發送註冊邀請</h5>
                     <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
                 </div>
@@ -178,7 +209,7 @@
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
-                    <button type="button" class="btn btn-primary fw-bold" onclick="sendInvite()">
+                    <button type="button" class="btn btn-info text-white fw-bold" onclick="sendInvite()">
                         <i class="fas fa-envelope-open-text me-1"></i> 發送邀請連結
                     </button>
                 </div>
@@ -201,11 +232,11 @@
         });
 
         // ==========================================
-        // 1. 讀取與整合資料 (Logic 2)
+        // 1. 讀取與整合資料
         // ==========================================
         async function loadUsers() {
             const tbody = document.getElementById('userTableBody');
-            tbody.innerHTML = '<tr><td colspan="7" class="text-center py-5"><div class="spinner-border text-primary"></div><div class="mt-2 text-muted">讀取醫護名單與註冊狀態中...</div></td></tr>';
+            tbody.innerHTML = '<tr><td colspan="7" class="text-center py-5"><div class="spinner-border text-info"></div><div class="mt-2 text-muted">讀取醫護名單與註冊狀態中...</div></td></tr>';
 
             try {
                 // 平行撈取兩張表
@@ -225,19 +256,16 @@
                     // 找對應的 profile
                     const linkedProfile = profileList.find(p => p.id === staff.user_id);
                     
-                    // 判斷註冊狀態 (Logic 2)
+                    // 判斷註冊狀態
                     let regStatus = 'pending'; // 預設：帳戶已建立未註冊
                     if (staff.user_id) {
                         if (linkedProfile) {
-                            // profiles 存在，通常視為已註冊
-                            // 這裡假設 profiles.status != 'active' 為已註銷，若無 status 欄位則預設 active
                             if (linkedProfile.status === 'inactive' || linkedProfile.status === 'suspended') {
                                 regStatus = 'void'; // 帳戶已註銷
                             } else {
                                 regStatus = 'done'; // 帳戶已註冊
                             }
                         } else {
-                            // 有 ID 但沒 Profile (理論上不該發生，除非資料不同步)
                             regStatus = 'pending'; 
                         }
                     } else {
@@ -270,7 +298,7 @@
                     (item.name && item.name.toLowerCase().includes(keyword)) ||
                     (item.email && item.email.toLowerCase().includes(keyword));
 
-                // 系統權限 (Logic 1: 改撈 system_role)
+                // 系統權限
                 const sysRole = item.system_role || 'medical';
                 const matchRole = !roleFilter || sysRole === roleFilter;
 
@@ -299,7 +327,7 @@
                     ? `<span class="text-success fw-bold"><span class="status-dot bg-active"></span>在職中</span>`
                     : `<span class="text-secondary"><span class="status-dot bg-inactive"></span>已離職</span>`;
 
-                // 系統權限 (Logic 1)
+                // 系統權限
                 const sysRole = item.system_role || 'medical';
                 let roleBadgeClass = 'sys-medical';
                 if(sysRole === 'admin') roleBadgeClass = 'sys-admin';
@@ -307,9 +335,9 @@
                 const roleBadge = `<span class="role-badge ${roleBadgeClass}">${sysRole}</span>`;
 
                 // 系統綁定
-                const isBound = item.user_id ? '<span class="text-primary"><i class="fas fa-link me-1"></i>已綁定</span>' : '<span class="text-muted"><i class="fas fa-unlink me-1"></i>未綁定</span>';
+                const isBound = item.user_id ? '<span class="text-info"><i class="fas fa-link me-1"></i>已綁定</span>' : '<span class="text-muted"><i class="fas fa-unlink me-1"></i>未綁定</span>';
 
-                // 註冊狀態 (Logic 2)
+                // 註冊狀態
                 let regBadge = '';
                 if (item.regStatus === 'pending') regBadge = `<span class="badge reg-pending">未註冊</span>`;
                 else if (item.regStatus === 'done') regBadge = `<span class="badge reg-done">已註冊</span>`;
@@ -334,7 +362,7 @@
                     <td>${isBound}</td>
                     <td>${regBadge}</td>
                     <td class="text-end pe-4">
-                        <button class="btn btn-sm btn-outline-primary" onclick="openInviteModal('${itemJson}')">
+                        <button class="btn btn-sm btn-outline-info" onclick="openInviteModal('${itemJson}')">
                             <i class="fas fa-envelope me-1"></i> 發送註冊邀請
                         </button>
                     </td>
@@ -344,7 +372,7 @@
         }
 
         // ==========================================
-        // 2. 開啟發送邀請 Modal (Logic 3)
+        // 2. 開啟發送邀請 Modal
         // ==========================================
         function openInviteModal(jsonStr) {
             const item = JSON.parse(decodeURIComponent(jsonStr));
@@ -355,7 +383,6 @@
             document.getElementById('invite-system-role').value = item.system_role || 'medical';
 
             // 檢查是否有 Email
-            const btn = document.querySelector('#inviteModal .btn-primary');
             if (!item.email) {
                 alert('該人員尚未設定 Email，請先至「基本資料建立」補齊資料。');
                 return; // 阻止開啟
@@ -371,7 +398,7 @@
         }
 
         // ==========================================
-        // 3. 呼叫 Edge Function 發送邀請 (Logic 3)
+        // 3. 呼叫 Edge Function 發送邀請
         // ==========================================
         async function sendInvite() {
             const staffId = document.getElementById('target-staff-id').value;
@@ -379,28 +406,25 @@
             const role = document.getElementById('invite-system-role').value;
             const name = document.getElementById('invite-name').innerText;
 
-            const btn = document.querySelector('#inviteModal .btn-primary');
+            const btn = document.querySelector('#inviteModal .btn-info');
             const originalText = btn.innerHTML;
             btn.disabled = true;
             btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 發送中...';
 
             try {
                 // 1. 呼叫 Edge Function
-                // URL: https://yhehfucgemxnfrdvpdhw.supabase.co/functions/v1/invite-user
                 const { data, error } = await supabaseClient.functions.invoke('invite-user', {
                     body: { 
                         email: email, 
                         role: role, 
                         full_name: name,
-                        staff_id: staffId // 傳遞 staff_id 讓後端可以更新 medical_staff 的 user_id (如果後端有寫這段邏輯)
+                        staff_id: staffId
                     }
                 });
 
                 if (error) {
-                    // 解析 Edge Function 回傳的錯誤
                     let errMsg = error.message;
                     try {
-                        // 嘗試讀取 body 錯誤訊息
                         if(error.context && error.context.json) {
                             const body = await error.context.json();
                             if(body.error) errMsg = body.error;
@@ -409,8 +433,7 @@
                     throw new Error(errMsg);
                 }
 
-                // 2. 同步更新 medical_staff 的 system_role (因為邀請時可能變更了權限)
-                // 注意: Edge Function 通常負責 Auth 註冊，我們這邊順便更新 DB 紀錄
+                // 2. 同步更新 medical_staff 的 system_role
                 await supabaseClient
                     .from('medical_staff')
                     .update({ system_role: role })
