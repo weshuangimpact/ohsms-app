@@ -92,11 +92,15 @@
         }
         .attachment-item { border: 1px solid #eee; padding: 10px; margin-bottom: 15px; text-align: center; }
         .attachment-img { max-width: 100%; height: auto; border: 1px solid #ddd; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
-        .attachment-pdf-frame { width: 100%; height: 500px; border: 1px solid #ddd; }
+        .attachment-pdf-frame { width: 100%; height: 600px; border: 1px solid #ddd; }
         .watermark {
             position: absolute; top: 40%; left: 50%; transform: translate(-50%, -50%) rotate(-45deg);
             font-size: 5rem; color: rgba(255,0,0,0.08); border: 5px solid rgba(255,0,0,0.08);
             padding: 20px; pointer-events: none; z-index: 10; white-space: nowrap;
+        }
+        .file-header-badge {
+            font-size: 0.9rem; padding: 8px 12px; border-radius: 4px; 
+            background: #f8f9fa; border: 1px solid #dee2e6; color: #495057; display: inline-block; margin-bottom: 10px;
         }
     </style>
 </head>
@@ -111,7 +115,7 @@
 
             <div class="d-flex align-items-center">
                 <span class="user-greeting me-4">Hi ! 系統管理員</span>
-                <a href="https://weshuangimpact.github.io/ohsms-app/dashboard.html" class="btn-back-dashboard">
+                <a href="dashboard.html" class="btn-back-dashboard">
                     <i class="fas fa-arrow-left me-2"></i>返回儀表板
                 </a>
             </div>
@@ -163,7 +167,7 @@
         <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
             <div class="modal-content">
                 <div class="modal-header bg-dark text-white">
-                    <h5 class="modal-title"><i class="fas fa-file-contract me-2"></i>完整歷程與稽核憑證</h5>
+                    <h5 class="modal-title"><i class="fas fa-file-contract me-2"></i>原始佐證調閱</h5>
                     <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
                 </div>
                 <div class="modal-body p-0" oncontextmenu="return false;">
@@ -188,6 +192,7 @@
 
         document.getElementById('searchInput').addEventListener('keyup', (e) => { if(e.key === 'Enter') executeSearch(); });
 
+        // 搜尋功能
         async function executeSearch() {
             const query = document.getElementById('searchInput').value.trim();
             const container = document.getElementById('resultsArea');
@@ -199,9 +204,7 @@
             loader.style.display = 'block';
 
             try {
-                // ★★★ 核心修正 1：SQL 查詢 ★★★
-                // 這裡的 medical_staff (name) 是根據 service_records 中的 consultant_id (或 medical_staff_id) 外鍵
-                // 去關聯 medical_staff 表。這能確保我們抓到的是「紀錄當下」連結的那位員工。
+                // 查詢 service_records 並關聯 workplaces 與 medical_staff
                 const { data, error } = await supabaseClient
                     .from('service_records')
                     .select(`
@@ -217,13 +220,10 @@
 
                 if(error) throw error;
 
+                // 前端關鍵字過濾
                 const filtered = data.filter(r => {
-                    // ★★★ 核心修正 2：搜尋比對 ★★★
-                    // 比對時，我們也使用關聯過來的 medical_staff.name
-                    // 這樣如果搜尋 "甲"，就能找到甲以前做過的所有紀錄
                     const historicalConsultantName = r.medical_staff?.name || '';
                     const companyName = r.workplaces?.companies?.name || '';
-                    
                     const searchTarget = `${companyName} ${r.service_year} ${historicalConsultantName} ${r.raw_data}`.toLowerCase();
                     return searchTarget.includes(query.toLowerCase());
                 });
@@ -235,19 +235,15 @@
                     return;
                 }
 
+                // 渲染結果卡片
                 container.innerHTML = filtered.map(rec => {
                     const company = rec.workplaces?.companies?.name || '未知公司';
                     const date = rec.visit_date || 'N/A';
                     
-                    // ★★★ 核心修正 3：顯示邏輯 ★★★
-                    // 1. 先抓取 FK 關聯的 medical_staff.name (這是最準確的歷史紀錄)
-                    // 2. 如果沒有 FK (舊資料可能沒有)，才去 parse raw_data
                     let displayConsultant = '未知顧問';
-
                     if (rec.medical_staff && rec.medical_staff.name) {
-                        displayConsultant = rec.medical_staff.name; // 這是歷史真相
+                        displayConsultant = rec.medical_staff.name; 
                     } else {
-                        // 後備方案：解析 JSON 備註
                         try { 
                             const parsed = JSON.parse(rec.raw_data);
                             if(parsed && parsed.consultant_name) displayConsultant = parsed.consultant_name;
@@ -256,7 +252,6 @@
 
                     const dataStr = encodeURIComponent(JSON.stringify(rec));
                     const compStr = encodeURIComponent(company);
-                    // 傳遞 consultant 名字給預覽視窗
                     const consultStr = encodeURIComponent(displayConsultant);
 
                     return `
@@ -271,10 +266,7 @@
                                     <span class="badge bg-secondary">${displayConsultant}</span>
                                 </div>
                             </div>
-                            <p class="text-muted mt-2 mb-0 text-truncate">${rec.hazard_desc || '無危害描述'}</p>
-                            <div class="mt-3 pt-2 border-top text-primary small">
-                                <i class="fas fa-paperclip me-1"></i> 包含執行紀錄表與相關附件
-                            </div>
+                            <p class="text-muted mt-2 mb-0 text-truncate">點擊查看原始佐證檔案</p>
                         </div>
                     `;
                 }).join('');
@@ -286,73 +278,89 @@
             }
         }
 
+        // 開啟完整預覽 (修正版：直接調閱檔案，不產生報表)
         async function openFullPreview(recordId, compNameEncoded, dataEncoded, consultNameEncoded) {
             const companyName = decodeURIComponent(compNameEncoded);
             const recordData = JSON.parse(decodeURIComponent(dataEncoded));
-            const consultantName = decodeURIComponent(consultNameEncoded); // 接收正確的顧問名
             
             const container = document.getElementById('previewContainer');
             
-            container.innerHTML = `<div class="text-white text-center mt-5"><div class="spinner-border"></div><p>正在組合完整卷宗...</p></div>`;
+            // 顯示 Loading
+            container.innerHTML = `<div class="text-white text-center mt-5"><div class="spinner-border"></div><p>正在連線至雲端硬碟調閱卷宗...</p></div>`;
             new bootstrap.Modal(document.getElementById('previewModal')).show();
 
             try {
+                // 直接讀取 storage/documents 中的資料夾
+                // 假設路徑結構為: service_records/年份/RecordID/
                 const storagePath = `service_records/${recordData.service_year}/${recordId}/`;
                 const { data: fileList } = await supabaseClient.storage.from('documents').list(storagePath);
 
                 let attachmentsHtml = '';
                 
                 if (fileList && fileList.length > 0) {
+                    // 產生 Signed URL (10分鐘有效)
                     const filesWithUrl = await Promise.all(fileList.map(async (f) => {
                         const { data } = await supabaseClient.storage.from('documents').createSignedUrl(`${storagePath}${f.name}`, 600);
                         return { name: f.name, url: data?.signedUrl };
                     }));
 
+                    // 渲染檔案列表 (PDF 用 iframe, 圖片用 img)
                     attachmentsHtml = filesWithUrl.map(f => {
                         if(!f.url) return '';
-                        const isImg = f.name.match(/\.(jpeg|jpg|png)$/i);
+                        const isImg = f.name.match(/\.(jpeg|jpg|png|gif)$/i);
                         const isPdf = f.name.match(/\.pdf$/i);
                         let content = '';
-                        if (isImg) content = `<img src="${f.url}" class="attachment-img" alt="${f.name}">`;
-                        else if (isPdf) content = `<iframe src="${f.url}#toolbar=0" class="attachment-pdf-frame"></iframe>`;
-                        else content = `<div class="p-4 bg-light border">附件格式歸檔 (${f.name})</div>`;
 
-                        return `<div class="attachment-item"><div class="badge bg-dark mb-2">${f.name}</div>${content}</div>`;
+                        if (isImg) {
+                            content = `<img src="${f.url}" class="attachment-img" alt="${f.name}">`;
+                        } else if (isPdf) {
+                            content = `<iframe src="${f.url}#toolbar=0" class="attachment-pdf-frame"></iframe>`;
+                        } else {
+                            // 其他檔案格式
+                            content = `<div class="p-5 bg-light border text-muted">
+                                <i class="fas fa-file-alt fa-3x mb-3"></i><br>
+                                此格式 (${f.name.split('.').pop()}) 不支援線上預覽<br>
+                                <a href="${f.url}" target="_blank" class="btn btn-outline-primary btn-sm mt-3">嘗試在新視窗開啟</a>
+                            </div>`;
+                        }
+
+                        return `
+                        <div class="attachment-item">
+                            <div class="file-header-badge"><i class="fas fa-file me-2"></i>${f.name}</div>
+                            ${content}
+                        </div>`;
                     }).join('');
                 } else {
-                    attachmentsHtml = `<div class="alert alert-warning text-center">本案件尚無上傳佐證附件。</div>`;
+                    attachmentsHtml = `
+                    <div class="alert alert-warning text-center p-5">
+                        <i class="fas fa-folder-open fa-3x mb-3"></i><br>
+                        <h5>查無檔案</h5>
+                        <p>雲端資料庫中找不到本案件的佐證附件。</p>
+                        <small class="text-muted">路徑: ${storagePath}</small>
+                    </div>`;
                 }
 
+                // 渲染單一 Paper Sheet (只包含浮水印與檔案)
                 container.innerHTML = `
                     <div class="paper-sheet">
-                        <div class="watermark">${companyName} 評鑑專用</div>
-                        <h2 class="text-center fw-bold mb-4 border-bottom pb-3">勞工健康服務執行紀錄表</h2>
-                        <div class="row mb-3">
-                            <div class="col-6"><strong>事業單位：</strong> ${companyName}</div>
-                            <div class="col-6"><strong>訪視日期：</strong> ${recordData.visit_date}</div>
+                        <div class="watermark">${companyName} 原始資料</div>
+                        
+                        <div class="border-bottom pb-3 mb-4">
+                            <h4 class="fw-bold text-primary"><i class="fas fa-folder-open me-2"></i>原始佐證資料調閱</h4>
+                            <div class="d-flex justify-content-between text-muted small mt-2">
+                                <span>事業單位：${companyName}</span>
+                                <span>歸檔年度：${recordData.service_year}</span>
+                                <span>訪視日期：${recordData.visit_date}</span>
+                            </div>
                         </div>
-                        <div class="row mb-3">
-                            <div class="col-12"><strong>負責顧問 (當時)：</strong> <span class="text-primary fw-bold">${consultantName}</span></div>
+
+                        <div class="attachments-container">
+                            ${attachmentsHtml}
                         </div>
-                        <div class="bg-light p-3 border rounded mb-3">
-                            <h5 class="fw-bold"><i class="fas fa-clipboard-list me-2"></i>作業描述與危害</h5>
-                            <p>${recordData.process_desc || '無'}</p>
-                            <hr>
-                            <p class="text-danger"><strong>危害特性：</strong> ${recordData.hazard_desc || '無'}</p>
+
+                        <div class="text-center mt-5 text-muted small border-top pt-3">
+                            <i class="fas fa-shield-alt me-1"></i> OHSMS Secure Storage Access
                         </div>
-                        <div class="mb-4">
-                            <h5 class="fw-bold"><i class="fas fa-user-md me-2"></i>執行項目確認</h5>
-                            <ul class="list-group list-group-flush">
-                                <li class="list-group-item"><i class="far fa-check-square text-success me-2"></i>工作環境現場訪視</li>
-                                <li class="list-group-item"><i class="far fa-check-square text-success me-2"></i>健康檢查分級管理</li>
-                            </ul>
-                        </div>
-                    </div>
-                    <div class="paper-sheet">
-                        <div class="watermark">佐證資料</div>
-                        <h4 class="fw-bold border-start border-4 border-primary ps-3 mb-4">相關附件憑證 (Evidence)</h4>
-                        ${attachmentsHtml}
-                        <div class="text-center mt-5 text-muted small border-top pt-3">--- 卷宗結束 ---</div>
                     </div>
                 `;
             } catch (e) {
