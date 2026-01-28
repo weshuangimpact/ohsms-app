@@ -24,16 +24,6 @@
             overflow: hidden;
         }
         
-        /* 頭像樣式 */
-        .avatar-large {
-            width: 80px; height: 80px;
-            background-color: #e9ecef; color: #6c757d;
-            border-radius: 50%;
-            display: flex; align-items: center; justify-content: center;
-            font-size: 2.5rem; font-weight: bold;
-            margin: 0 auto 15px auto;
-        }
-
         /* 表單樣式 */
         .form-control:focus {
             box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.15);
@@ -68,12 +58,6 @@
                 </div>
 
                 <div class="settings-card">
-                    <div class="p-4 text-center border-bottom">
-                        <div class="avatar-large" id="user-avatar"><i class="fas fa-user"></i></div>
-                        <h5 class="fw-bold mb-1" id="display-name">載入中...</h5>
-                        <p class="text-muted small mb-0" id="display-role">--</p>
-                    </div>
-
                     <div class="p-4 p-md-5">
                         <h6 class="fw-bold text-primary mb-3"><i class="fas fa-key me-2"></i>變更登入密碼</h6>
                         
@@ -81,8 +65,20 @@
                             
                             <div class="mb-3">
                                 <label class="form-label text-muted small fw-bold">登入帳號 (Email)</label>
-                                <input type="email" id="user-email" class="form-control bg-light" readonly disabled placeholder="讀取中...">
+                                <input type="email" id="user-email" class="form-control bg-light" value="讀取中..." readonly disabled>
                                 <div class="form-text">帳號若需變更請聯繫系統管理員。</div>
+                            </div>
+                            
+                            <hr class="my-4">
+
+                            <div class="mb-3">
+                                <label class="form-label text-dark small fw-bold">目前密碼 (驗證身分) *</label>
+                                <div class="input-group">
+                                    <input type="password" class="form-control" id="current-password" placeholder="請輸入現在使用的密碼" required>
+                                    <span class="input-group-text bg-white border-start-0">
+                                        <i class="fas fa-eye password-toggle" onclick="togglePassword('current-password', this)"></i>
+                                    </span>
+                                </div>
                             </div>
 
                             <div class="mb-3">
@@ -116,110 +112,89 @@
                         </form>
                     </div>
                 </div>
+
+                <div class="text-center mt-3">
+                    <small class="text-muted">最後登入時間: <span id="last-login-time">--</span></small>
                 </div>
+
+            </div>
         </div>
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script>
+
+    <script>
         const SUPABASE_URL = 'https://yhehfucgemxnfrdvpdhw.supabase.co';
         const SUPABASE_KEY = 'sb_publishable_52emtU-9l-SDxcJTWVTPTA_Yu6qEogh';
         const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-        // 1. 頁面載入時執行
+        let currentUserEmail = '';
+
         document.addEventListener('DOMContentLoaded', async () => {
-            try {
-                // --- A. 直接讀取 Auth (警衛室) 資料 ---
-                // 這裡的資料是您登入時就已經帶在身上的，不需要額外查資料庫
-                const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-                
-                if (sessionError || !session) {
-                    alert('連線逾時或未登入，請重新登入');
-                    window.location.href = 'login.html';
-                    return;
-                }
+            // 使用 getUser() 替代 getSession() 以確保獲取最新狀態
+            const { data: { user }, error } = await supabase.auth.getUser();
+            
+            if (error || !user) {
+                // 若無登入資訊，導回登入頁或顯示錯誤
+                // window.location.href = 'login.html'; 
+                document.getElementById('user-email').value = '無法取得使用者資訊';
+                return;
+            }
 
-                const user = session.user;
-
-                // 【回應您的需求】直接把 Auth 裡的資料填上去
-                // 1. Email
-                const emailField = document.getElementById('user-email');
-                if (emailField) {
-                    emailField.value = user.email || '';
-                    emailField.removeAttribute('placeholder');
-                }
-
-                // 2. 最後登入時間 (直接讀取，不再刪除)
-                const loginTimeField = document.getElementById('last-login-time');
-                if (loginTimeField && user.last_sign_in_at) {
-                    // 轉換成台灣常見的時間格式
-                    loginTimeField.textContent = new Date(user.last_sign_in_at).toLocaleString('zh-TW', { hour12: false });
-                }
-
-                // --- B. 讀取 Profiles (人事部) 資料 ---
-                // 只有「姓名」和「角色」需要去資料庫查
-                // 我們加一個 try-catch，確保就算這裡失敗，上面的 Email 也不會消失
-                try {
-                    const { data: profile, error: profileError } = await supabase
-                        .from('profiles')
-                        .select('full_name, role')
-                        .eq('id', user.id)
-                        .single();
-
-                    if (profileError) {
-                        console.warn("讀取個人檔案失敗:", profileError);
-                        // 如果是權限錯誤，可以在這裡發現
-                        if (profileError.code === '42501') {
-                            console.error("權限不足 (RLS Policy 擋住了)");
-                        }
-                    }
-
-                    // 更新畫面 (如果有讀到就顯示，沒讀到就顯示預設值)
-                    const displayName = profile?.full_name || '測試管理員'; // 暫時用您截圖中的名字當預設
-                    const displayRole = profile?.role || 'user';
-
-                    document.getElementById('display-name').textContent = displayName;
-                    document.getElementById('display-role').textContent = getRoleName(displayRole);
-                    document.getElementById('user-avatar').textContent = (displayName.charAt(0) || 'U').toUpperCase();
-
-                } catch (dbError) {
-                    console.error("資料庫連線錯誤:", dbError);
-                }
-
-            } catch (err) {
-                console.error("載入流程嚴重錯誤:", err);
-                alert("系統發生錯誤: " + err.message);
+            // 填充基本資料
+            currentUserEmail = user.email;
+            document.getElementById('user-email').value = currentUserEmail;
+            
+            if(user.last_sign_in_at) {
+                document.getElementById('last-login-time').textContent = new Date(user.last_sign_in_at).toLocaleString();
             }
         });
 
-        // 2. 處理密碼變更 (維持 Supabase 標準寫法)
+        // 處理密碼變更
         async function handlePasswordUpdate(e) {
             e.preventDefault();
             
+            const currentPwd = document.getElementById('current-password').value;
             const newPwd = document.getElementById('new-password').value;
             const confirmPwd = document.getElementById('confirm-password').value;
+            
             const feedback = document.getElementById('password-feedback');
             const newPwdInput = document.getElementById('new-password');
             const confirmPwdInput = document.getElementById('confirm-password');
 
-            // 前端驗證
+            // 1. 前端驗證
             newPwdInput.classList.remove('is-invalid');
             confirmPwdInput.classList.remove('is-invalid');
-
+            
             if (newPwd !== confirmPwd) {
                 confirmPwdInput.classList.add('is-invalid');
                 feedback.style.display = 'block';
                 return;
             }
+            if (currentPwd === newPwd) {
+                alert('新密碼不能與目前密碼相同');
+                return;
+            }
 
-            // 開始送出
+            // 2. 開始送出
             const btn = document.getElementById('btn-save');
             const originalBtnText = btn.innerHTML;
             btn.disabled = true;
-            btn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>更新中...';
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>處理中...';
 
             try {
+                // A. 先驗證舊密碼 (嘗試登入)
+                const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
+                    email: currentUserEmail,
+                    password: currentPwd
+                });
+
+                if (signInError) {
+                    throw new Error('目前密碼輸入錯誤，無法變更。');
+                }
+
+                // B. 舊密碼正確，執行更新
                 const { data, error } = await supabase.auth.updateUser({
                     password: newPwd
                 });
@@ -228,19 +203,20 @@
 
                 alert('✅ 密碼修改成功！下次登入請使用新密碼。');
                 
+                // 清空欄位
+                document.getElementById('current-password').value = '';
                 document.getElementById('new-password').value = '';
                 document.getElementById('confirm-password').value = '';
-                feedback.style.display = 'none';
 
             } catch (err) {
-                alert('更新失敗: ' + err.message);
+                alert('❌ 操作失敗: ' + err.message);
             } finally {
                 btn.disabled = false;
                 btn.innerHTML = originalBtnText;
             }
         }
 
-        // 3. 切換密碼顯示/隱藏
+        // 切換密碼顯示/隱藏
         function togglePassword(inputId, icon) {
             const input = document.getElementById(inputId);
             if (input.type === 'password') {
@@ -253,15 +229,6 @@
                 icon.classList.add('fa-eye');
             }
         }
-
-        // 4. 角色名稱對應表
-        function getRoleName(role) {
-            const map = {
-                'admin': '系統管理員',
-                'consultant': '醫護顧問',
-                'doc_control': '文管人員',
-                'user': '一般用戶'
-            };
-            return map[role] || role;
-        }
     </script>
+</body>
+</html>
