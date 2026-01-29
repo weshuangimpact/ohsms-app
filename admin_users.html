@@ -351,7 +351,7 @@
             new bootstrap.Modal(document.getElementById('inviteModal')).show();
         }
 
-        // [重要修正] 直接開通 (使用臨時 Client 避免 Admin 被登出)
+        // [重要修正] 直接開通 (使用臨時 Client + 虛擬儲存，徹底避免 Admin 被登出)
         async function directActivateUser() {
             const staffId = document.getElementById('target-staff-id').value;
             const existingUserId = document.getElementById('target-user-id')?.value;
@@ -373,13 +373,20 @@
             try {
                 // A. 處理 Auth 帳號
                 if (!finalUserId) {
-                    // ★★★ 重點：建立一個「不儲存 Session」的臨時 Client 用於註冊 ★★★
-                    // 這樣才不會把當前的 Admin 踢下線
+                    // ★★★ 定義一個虛擬儲存空間，防止新帳號的 Token 寫入瀏覽器 ★★★
+                    const dummyStorage = {
+                        getItem: (key) => null,
+                        setItem: (key, value) => {}, // 什麼都不做
+                        removeItem: (key) => {}
+                    };
+
+                    // ★★★ 建立完全隔離的 Client ★★★
                     const tempClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY, {
                         auth: {
                             persistSession: false, 
                             autoRefreshToken: false,
-                            detectSessionInUrl: false
+                            detectSessionInUrl: false,
+                            storage: dummyStorage // 關鍵：讓此 Client 的身分不會污染全域
                         }
                     });
 
@@ -406,7 +413,7 @@
                 if (!finalUserId) throw new Error("無法取得有效的 User ID。");
 
                 // B. [核心] 強制 Upsert Profile 
-                // ★★★ 這裡使用全域的 `supabaseClient` (也就是 Admin) 來寫入，因此擁有 Admin 權限 ★★★
+                // ★★★ 這裡繼續使用全域的 `supabaseClient` (它還是 Admin) 來寫入 ★★★
                 const { error: profileError } = await supabaseClient
                     .from('profiles')
                     .upsert({
