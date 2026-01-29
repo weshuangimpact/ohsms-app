@@ -88,13 +88,14 @@
                                             <tr>
                                                 <th>統編</th>
                                                 <th>公司名稱</th>
+                                                <th>地址</th>
                                                 <th>聯絡人</th>
                                                 <th>合約狀態</th>
                                                 <th class="text-end">操作</th>
                                             </tr>
                                         </thead>
                                         <tbody id="companyTableBody">
-                                            <tr><td colspan="5" class="text-center py-4">載入中...</td></tr>
+                                            <tr><td colspan="6" class="text-center py-4">載入中...</td></tr>
                                         </tbody>
                                     </table>
                                 </div>
@@ -496,14 +497,14 @@
         async function loadCompanies() {
             const tbody = document.getElementById('companyTableBody');
             const search = document.getElementById('search-company').value.trim();
-            tbody.innerHTML = '<tr><td colspan="5" class="text-center py-4"><div class="spinner-border spinner-border-sm text-primary"></div></td></tr>';
+            tbody.innerHTML = '<tr><td colspan="6" class="text-center py-4"><div class="spinner-border spinner-border-sm text-primary"></div></td></tr>';
 
             let query = supabaseClient.from('companies').select('*').order('created_at', {ascending: false});
             if(search) query = query.ilike('name', `%${search}%`);
 
             const { data, error } = await query;
             if(error) {
-                tbody.innerHTML = `<tr><td colspan="5" class="text-center text-danger">載入失敗: ${error.message}</td></tr>`;
+                tbody.innerHTML = `<tr><td colspan="6" class="text-center text-danger">載入失敗: ${error.message}</td></tr>`;
                 return;
             }
 
@@ -511,7 +512,7 @@
             document.getElementById('stat-active-contract').innerText = data.filter(c => c.is_active).length;
 
             if(data.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="5" class="text-center text-muted py-4">尚無資料</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="6" class="text-center text-muted py-4">尚無資料</td></tr>';
                 return;
             }
 
@@ -519,6 +520,7 @@
                 <tr>
                     <td class="font-monospace">${c.tax_id}</td>
                     <td class="fw-bold text-primary" style="cursor:pointer" onclick="editCompany('${c.id}')">${c.name}</td>
+                    <td>${c.address || '-'}</td>
                     <td>${c.contact_person || '-'}</td>
                     <td>${c.is_active ? '<span class="badge bg-success">服務中</span>' : '<span class="badge bg-secondary">已結束</span>'}</td>
                     <td class="text-end">
@@ -558,7 +560,7 @@
             new bootstrap.Modal(document.getElementById('companyModal')).show();
         }
 
-async function saveCompany() {
+        async function saveCompany() {
             const id = document.getElementById('company-id').value; // 如果有值代表是編輯，無值代表新增
             const payload = {
                 tax_id: document.getElementById('company-tax-id').value,
@@ -617,6 +619,12 @@ async function saveCompany() {
                 bootstrap.Modal.getInstance(document.getElementById('companyModal')).hide();
                 loadCompanies();
             }
+        }
+
+        function toggleEndDate(checkbox) {
+            const endInput = document.getElementById('contract-end');
+            endInput.disabled = checkbox.checked;
+            if(checkbox.checked) endInput.value = '';
         }
 
         // ==========================================
@@ -723,15 +731,14 @@ async function saveCompany() {
         }
         
         // ==========================================
-        // 3. 服務執行歷程邏輯 (NEW)
+        // 3. 服務執行歷程邏輯
         // ==========================================
         async function loadRecords() {
             const tbody = document.getElementById('recordTableBody');
             const search = document.getElementById('search-record').value.trim();
             tbody.innerHTML = '<tr><td colspan="5" class="text-center py-4"><div class="spinner-border spinner-border-sm text-warning"></div></td></tr>';
 
-            // 關聯查詢：需將 workplace_id 轉為 company name，consultant_id 轉為 staff name
-            // 注意：Supabase 關聯語法 workplaces!inner(companies(name)) 
+            // 關聯查詢
             let query = supabaseClient.from('service_records')
                 .select(`
                     id, visit_date, start_time, end_time, service_year,
@@ -742,7 +749,7 @@ async function saveCompany() {
                 `)
                 .order('visit_date', {ascending: false});
 
-            // 前端簡單篩選 (Supabase 關聯過濾較複雜，此處示範前端過濾)
+            // 前端簡單篩選
             const { data, error } = await query;
 
             if(error) {
@@ -860,13 +867,13 @@ async function saveCompany() {
         function downloadTemplate(type) {
             let csvContent = "data:text/csv;charset=utf-8,\uFEFF";
             if(type === 'company') {
-                csvContent += "統一編號,事業單位名稱,聯絡人,電話,合約開始日期(YYYY-MM-DD),合約結束日期(YYYY-MM-DD)\n";
-                csvContent += "85204196,範例公司,王大明,0912345678,2025-01-01,2025-12-31";
+                // [FIXED] 增加「公司地址」欄位
+                csvContent += "統一編號,事業單位名稱,公司地址,聯絡人,電話,合約開始日期(YYYY-MM-DD),合約結束日期(YYYY-MM-DD)\n";
+                csvContent += "85204196,範例公司,台北市信義區忠孝東路一段1號,王大明,0912345678,2025-01-01,2025-12-31";
             } else if (type === 'staff') {
                 csvContent += "姓名,身分角色(醫師/護理人員/顧問),職務型態(全職/兼職),電話,Email,入職日期(YYYY-MM-DD)\n";
                 csvContent += "李小美,護理人員,全職,0987654321,nurse@test.com,2024-05-20";
             } else if (type === 'record') {
-                // 新增：歷程範本
                 csvContent += "公司名稱,顧問姓名,服務日期(YYYY-MM-DD),開始時間(HH:MM),結束時間(HH:MM),執行事項\n";
                 csvContent += "範例公司,王顧問,2025-06-15,09:00,12:00,噪音檢測";
             }
@@ -904,21 +911,34 @@ async function saveCompany() {
             let html = '<table class="table table-sm table-bordered"><thead><tr class="table-secondary">';
 
             if(type === 'company') {
-                html += '<th>統編</th><th>名稱</th><th>狀態</th><th>開始日</th><th>結束日</th></tr></thead><tbody>';
+                // [FIXED] 配合地址欄位更新，調整表格標頭
+                html += '<th>統編</th><th>名稱</th><th>地址</th><th>聯絡人</th><th>狀態</th><th>開始日</th><th>結束日</th></tr></thead><tbody>';
                 rows.forEach(row => {
                     if(!row[0]) return; 
-                    const taxId = row[0]; const name = row[1]; const contact = row[2]; const phone = row[3];   
-                    const startDate = formatDate(row[4]); const endDate = formatDate(row[5]);
+                    // [FIXED] 配合地址欄位更新，調整讀取索引
+                    const taxId = row[0]; 
+                    const name = row[1]; 
+                    const address = row[2]; // 新增地址讀取
+                    const contact = row[3]; 
+                    const phone = row[4];   
+                    const startDate = formatDate(row[5]); 
+                    const endDate = formatDate(row[6]);
+                    
                     let isActive = true;
                     if(endDate && endDate < new Date().toISOString().split('T')[0]) isActive = false;
 
                     pendingImportData.push({
-                        tax_id: String(taxId).trim(), name: String(name).trim(),
-                        contact_person: contact, phone: String(phone || ''),
-                        contract_start_date: startDate, contract_end_date: endDate,
-                        is_active: isActive, created_by: sessionStorage.getItem('currentUserId')
+                        tax_id: String(taxId).trim(), 
+                        name: String(name).trim(),
+                        address: String(address || ''), // 寫入 Payload
+                        contact_person: contact, 
+                        phone: String(phone || ''),
+                        contract_start_date: startDate, 
+                        contract_end_date: endDate,
+                        is_active: isActive, 
+                        created_by: sessionStorage.getItem('currentUserId')
                     });
-                    html += `<tr><td>${taxId}</td><td>${name}</td><td>${isActive?'Y':'N'}</td><td>${startDate||''}</td><td>${endDate||''}</td></tr>`;
+                    html += `<tr><td>${taxId}</td><td>${name}</td><td>${address||''}</td><td>${contact||''}</td><td>${isActive?'Y':'N'}</td><td>${startDate||''}</td><td>${endDate||''}</td></tr>`;
                 });
 
             } else if (type === 'staff') {
@@ -936,10 +956,8 @@ async function saveCompany() {
                 });
 
             } else if (type === 'record') {
-                // 新增：歷程匯入預覽
                 html += '<th>公司</th><th>顧問</th><th>日期</th><th>時間</th></tr></thead><tbody>';
                 
-                // 必須先抓取對照表
                 previewArea.innerHTML = '<div class="text-center p-3"><span class="spinner-border"></span> 正在建立名稱對照表...</div>';
                 new bootstrap.Modal(document.getElementById('importModal')).show();
 
@@ -1009,6 +1027,9 @@ async function saveCompany() {
                     options = { onConflict: 'tax_id' };
                     const { error } = await supabaseClient.from(targetTable).upsert(pendingImportData, options);
                     if(error) throw error;
+                    
+                    // [Optimization] 公司匯入後，可考慮觸發 SQL 修復確保有 Workplaces (雖然這邊沒做 Trigger，但後續編輯或新增會補)
+                    
                 } else if(pendingImportType === 'staff') {
                     targetTable = 'medical_staff';
                     const { error } = await supabaseClient.from(targetTable).insert(pendingImportData);
