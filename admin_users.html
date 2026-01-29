@@ -9,6 +9,7 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css"/>
     
     <style>
+        /* [修正] 主色調設定為 #0dcaf0 (Account/Info Color) */
         :root { 
             --primary-bg: #f4f6f9; 
             --theme-color: #0dcaf0; 
@@ -20,19 +21,22 @@
             display: none; /* Auth Guard */
         }
         
+        /* 標題飾條顏色套用變數 */
         .section-title { border-left: 5px solid var(--theme-color); padding-left: 15px; margin-bottom: 20px; }
+        
         .card-header { background-color: white; border-bottom: 1px solid #f0f0f0; }
         .table th { font-weight: 600; color: #555; background-color: #f8f9fa; }
         .table td { vertical-align: middle; }
         
         .role-badge { font-size: 0.85rem; padding: 0.4em 0.8em; }
         .role-admin { background-color: #dc3545; color: white; }
-        .role-manager { background-color: #0d6efd; color: white; }
+        .role-manager { background-color: #0d6efd; color: white; } /* 文管 */
         .role-consultant { background-color: #ffc107; color: #000; }
         .role-medical { background-color: #198754; color: white; }
     </style>
 
     <script>
+        // 簡易權限控管
         document.addEventListener('DOMContentLoaded', function() {
             const role = sessionStorage.getItem('currentUserRole');
             if (role !== 'admin') {
@@ -69,6 +73,7 @@
         </div>
 
         <div class="row g-4">
+            
             <div class="col-lg-8">
                 <div class="card border-0 shadow-sm h-100">
                     <div class="card-header py-3 d-flex justify-content-between align-items-center">
@@ -136,6 +141,7 @@
                 </div>
             </div>
         </div>
+
     </div>
 
     <div class="modal fade" id="inviteModal" tabindex="-1">
@@ -197,6 +203,7 @@
             loadMedicalStaff();
         });
 
+        // 1. 載入使用者列表 (從 profiles table)
         async function loadUsers() {
             const tbody = document.getElementById('userTableBody');
             tbody.innerHTML = '<tr><td colspan="5" class="text-center py-4"><div class="spinner-border spinner-border-sm text-info"></div></td></tr>';
@@ -216,9 +223,11 @@
                 return;
             }
 
+            // 更新統計
             document.getElementById('count-active').innerText = data.filter(u => u.is_active).length;
             document.getElementById('count-pending').innerText = data.filter(u => !u.is_active).length;
 
+            // Render Table
             tbody.innerHTML = data.map(user => {
                 let badgeClass = 'bg-secondary';
                 if(user.role === 'admin') badgeClass = 'role-admin';
@@ -249,11 +258,12 @@
             }).join('');
         }
 
+        // 2. 載入未綁定帳號的醫護人員 (供下拉選單用)
         async function loadMedicalStaff() {
             const { data, error } = await supabaseClient
                 .from('medical_staff')
                 .select('id, name, email, role')
-                .is('user_id', null) 
+                .is('user_id', null) // 只找還沒綁定 User ID 的
                 .eq('is_active', true);
 
             if (!error && data) {
@@ -282,17 +292,20 @@
                 document.getElementById('invite-name').value = staff.name;
                 document.getElementById('invite-email').value = staff.email || '';
                 
+                // 自動對應角色
                 const roleSelect = document.getElementById('invite-role');
                 if (staff.role === '顧問') roleSelect.value = 'consultant';
                 else if (staff.role === '醫師' || staff.role === '護理人員') roleSelect.value = 'medical_staff';
             }
         }
 
+        // 3. 發送邀請 (呼叫 Edge Function)
+        // [修正] 只呼叫 Edge Function，不做前端 update
         async function sendInvite() {
             const email = document.getElementById('invite-email').value;
             const name = document.getElementById('invite-name').value;
             const role = document.getElementById('invite-role').value;
-            const staffId = document.getElementById('invite-staff-select').value || null;
+            const staffId = document.getElementById('invite-staff-select').value || null; // 取得選中的 Staff ID
 
             if (!email || !name) return alert('請填寫完整資訊');
 
@@ -302,13 +315,13 @@
             btn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>發送中...';
 
             try {
-                // 呼叫更新後的 Edge Function (只做這件事，不做其他 update)
+                // 1. 呼叫 Edge Function (由後端完成 發信+綁定)
                 const { data, error } = await supabaseClient.functions.invoke('invite-user', {
                     body: { 
                         email: email, 
                         role: role, 
                         full_name: name,
-                        staff_id: staffId // 傳送 ID 讓後端處理綁定
+                        staff_id: staffId
                     }
                 });
 
@@ -323,10 +336,10 @@
                     throw new Error(errMsg);
                 }
 
-                alert(`✅ 邀請信已發送至 ${email}，且資料已完成綁定！`);
+                alert(`✅ 邀請信已發送至 ${email}，綁定作業已完成！`);
                 bootstrap.Modal.getInstance(document.getElementById('inviteModal')).hide();
-                loadUsers(); 
-                loadMedicalStaff(); 
+                loadUsers(); // 重整列表
+                loadMedicalStaff(); // 重整下拉選單
 
             } catch (err) {
                 console.error(err);
