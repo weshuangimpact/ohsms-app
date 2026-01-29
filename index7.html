@@ -21,17 +21,6 @@
         .nav-pills .nav-link.active { background-color: var(--theme-color); color: white; }
         .import-area { border: 2px dashed #cbd5e1; border-radius: 8px; padding: 20px; text-align: center; background: #fff; transition: all 0.3s; cursor: pointer; }
         .import-area:hover { border-color: var(--theme-color); background: #eef2ff; }
-        
-        /* 5W1H Card Style */
-        .info-card-5w1h {
-            background: linear-gradient(to right, #eef2ff, #fff);
-            border-left: 5px solid #6366f1;
-            border-radius: 8px;
-            padding: 1.5rem;
-            margin-bottom: 2rem;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
-        }
-        .badge-5w1h { width: 60px; display: inline-block; text-align: center; }
     </style>
 
     <script>
@@ -60,15 +49,6 @@
 
     <div class="container-fluid px-4 pb-5">
         
-        <div class="d-flex justify-content-between align-items-center mb-3">
-            <div class="section-title mb-0">
-                <h4 class="fw-bold text-dark mb-0">基本資料建立</h4>
-                <small class="text-muted">管理客戶公司主檔、作業場所、醫護人員與服務歷程</small>
-            </div>
-        </div>
-
-<div class="container-fluid px-4 pb-5">
-        
         <div class="d-flex justify-content-between align-items-center mb-4">
             <div>
                 <h4 class="fw-bold text-dark"><i class="fas fa-database me-2 text-primary"></i>基本資料建立</h4>
@@ -78,8 +58,6 @@
                 </p>
             </div>
         </div>
-        <ul class="nav nav-pills mb-4" id="pills-tab" role="tablist">
-            ```
 
         <ul class="nav nav-pills mb-4" id="pills-tab" role="tablist">
             <li class="nav-item" role="presentation">
@@ -612,6 +590,7 @@
             if(id) {
                 ({ error } = await supabaseClient.from('companies').update(payload).eq('id', id));
             } else {
+                // 自動建立 Workplace 邏輯
                 payload.created_by = sessionStorage.getItem('currentUserId');
                 const { data, error: insertError } = await supabaseClient.from('companies').insert(payload).select('id').single();
                 error = insertError;
@@ -666,6 +645,7 @@
                 return;
             }
             
+            // 中文顯示對照
             const roleMap = {
                 'consultant': '顧問',
                 'admin': '管理員',
@@ -773,7 +753,6 @@
                 `)
                 .order('visit_date', {ascending: false});
 
-            // 前端簡單篩選
             const { data, error } = await query;
 
             if(error) {
@@ -781,7 +760,7 @@
                 return;
             }
             
-            // 過濾邏輯
+            // 前端過濾
             let filteredData = data;
             if (search) {
                 const s = search.toLowerCase();
@@ -799,7 +778,6 @@
                 return;
             }
 
-            // 渲染列表 (修正: 按鈕不再 disabled, 綁定 editRecord)
             tbody.innerHTML = filteredData.map(r => {
                 const compName = r.workplaces?.companies?.name || '<span class="text-muted">未知公司</span>';
                 const staffName = r.medical_staff?.name || '<span class="text-muted">未知顧問</span>';
@@ -819,7 +797,6 @@
         }
 
         async function openRecordModal() {
-            // 1. 載入選項
             await loadDropdowns();
 
             document.getElementById('recordForm').reset();
@@ -842,9 +819,8 @@
              staffSelect.innerHTML = '<option value="">請選擇...</option>' + staffs.map(s => `<option value="${s.id}">${s.name}</option>`).join('');
         }
         
-        // 編輯功能實作
         async function editRecord(id) {
-            await loadDropdowns(); // 確保下拉選單有資料
+            await loadDropdowns(); 
 
             // 抓取資料 (包含關聯的 workplace -> company_id)
             const { data, error } = await supabaseClient
@@ -855,10 +831,9 @@
 
             if (error) return alert('讀取失敗: ' + error.message);
 
-            // 填寫表單
             document.getElementById('record-id').value = data.id;
             
-            // 關鍵：將 workplace_id 轉換為 company_id 以設定下拉選單
+            // 回填公司 (透過 workplace 反查)
             if (data.workplaces && data.workplaces.company_id) {
                 document.getElementById('record-company').value = data.workplaces.company_id;
             }
@@ -869,7 +844,6 @@
             document.getElementById('record-end').value = data.end_time || '';
             document.getElementById('record-items').value = data.execution_items || '';
 
-            // UI 調整
             document.getElementById('recordModalTitle').innerText = '編輯服務歷程';
             document.getElementById('btn-delete-record').style.display = 'block'; // 編輯模式顯示刪除
             new bootstrap.Modal(document.getElementById('recordModal')).show();
@@ -886,7 +860,7 @@
 
             if(!companyId || !consultantId || !visitDate) return alert('公司、顧問與日期為必填');
 
-            // 1. 取得 workplaceId (假設每個公司至少有一個全廠)
+            // 取得 workplaceId
             const { data: wpData, error: wpError } = await supabaseClient.from('workplaces').select('id').eq('company_id', companyId).limit(1);
             
             if (wpError || !wpData || wpData.length === 0) {
@@ -908,10 +882,8 @@
 
             let error;
             if (id) {
-                // Update
                 ({ error } = await supabaseClient.from('service_records').update(payload).eq('id', id));
             } else {
-                // Insert
                 payload.created_by = sessionStorage.getItem('currentUserId');
                 ({ error } = await supabaseClient.from('service_records').insert(payload));
             }
@@ -924,7 +896,6 @@
             }
         }
         
-        // 刪除功能
         async function deleteRecord() {
             const id = document.getElementById('record-id').value;
             if(!id) return;
@@ -943,7 +914,7 @@
 
 
         // ==========================================
-        // 4. 匯入功能 (Excel Import) - 支援 3 種模式
+        // 4. 匯入功能 (Excel Import) - 修正版
         // ==========================================
         let pendingImportData = [];
         let pendingImportType = '';
@@ -957,7 +928,7 @@
                 csvContent += "姓名,身分角色(醫師/護理人員/顧問),職務型態(全職/兼職),電話,Email,入職日期(YYYY-MM-DD)\n";
                 csvContent += "李小美,護理人員,全職,0987654321,nurse@test.com,2024-05-20";
             } else if (type === 'record') {
-                // 修正：移除時間欄位，避免匯入錯誤
+                // 移除時間欄位
                 csvContent += "公司名稱,顧問姓名,服務日期(YYYY-MM-DD),執行事項\n";
                 csvContent += "範例公司,王顧問,2025-06-15,噪音檢測";
             }
@@ -1042,7 +1013,6 @@
                     });
 
                 } else if (type === 'record') {
-                    // 修正：欄位減少 (公司, 顧問, 日期, 事項)
                     html += '<th>公司</th><th>顧問</th><th>日期</th><th>事項</th></tr></thead><tbody>';
                     
                     previewArea.innerHTML = '<div class="text-center p-3"><span class="spinner-border"></span> 正在建立名稱對照表...</div>';
@@ -1068,8 +1038,6 @@
                         const cName = String(row[0]).trim();
                         const sName = String(row[1]).trim();
                         const date = formatDate(row[2]);
-                        
-                        // 修正：row[3] 變更為 事項 (原本是開始時間)
                         const items = row[3]; 
 
                         const wpId = compMap[cName];
@@ -1098,7 +1066,6 @@
             }
         }
 
-        // 修正：強化日期格式處理 (支援 2024/8/1 格式)
         function formatDate(cellVal) {
             if(!cellVal) return null;
             if(typeof cellVal === 'number') {
