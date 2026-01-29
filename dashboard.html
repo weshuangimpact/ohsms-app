@@ -32,13 +32,13 @@
         }
         
         /* 卡片左側飾條顏色定義 */
-        .card-plan { border-left-color: #0d6efd; }
-        .card-check { border-left-color: #198754; }
-        .card-eval { border-left-color: #ffc107; }
-        .card-maint { border-left-color: #6610f2; }
-        .card-data { border-left-color: #4f46e5; }
-        .card-admin { border-left-color: #212529; }
-        .card-profile { border-left-color: #6c757d; }
+        .card-plan { border-left-color: #0d6efd; }      /* Index 1: Blue */
+        .card-check { border-left-color: #198754; }     /* Index 2: Green */
+        .card-eval { border-left-color: #ffc107; }      /* Index 3: Yellow */
+        .card-maint { border-left-color: #6610f2; }     /* Index 6: Purple */
+        .card-data { border-left-color: #4f46e5; }      /* Index 7: Indigo */
+        .card-admin { border-left-color: #212529; }     /* Users: Dark */
+        .card-profile { border-left-color: #6c757d; }   /* Profile: Gray */
 
         .icon-wrapper {
             width: 50px;
@@ -56,6 +56,7 @@
             margin-top: 8px;
         }
         
+        /* 歡迎區塊 */
         .welcome-section {
             background-color: white;
             padding: 1.5rem;
@@ -66,7 +67,7 @@
     </style>
 
     <script>
-        // 1. 權限檢查
+        // 1. 權限檢查：無登入者直接踢回 login.html
         const role = sessionStorage.getItem('currentUserRole');
         if (!role) {
             window.location.href = 'login.html'; 
@@ -259,15 +260,16 @@
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script>
         document.addEventListener('DOMContentLoaded', () => {
-            // 1. 顯示頁面
+            // 1. 顯示頁面內容 (Auth Passed)
             document.body.style.display = 'block';
 
-            // 2. 更新使用者資訊
+            // 2. 更新使用者資訊顯示
             const userName = sessionStorage.getItem('currentUserName') || '使用者';
             const userRole = sessionStorage.getItem('currentUserRole') || 'guest';
             
             document.getElementById('user-name-display').innerText = userName;
             
+            // 角色名稱轉換顯示
             const roleMap = {
                 'admin': '系統管理員',
                 'manager': '管理者',
@@ -277,47 +279,50 @@
             };
             document.getElementById('user-role-display').innerText = roleMap[userRole] || userRole;
 
-            // 3. 取得所有卡片元素
+            // 3. 設定卡片物件參照
             const cards = {
-                index1: document.getElementById('card-index1'),    // Plan/Do
-                index2: document.getElementById('card-index2'),    // Check/Act
-                index3: document.getElementById('card-index3'),    // AI Eval
-                index6: document.getElementById('card-index6'),    // Audit Logs
-                index7: document.getElementById('card-index7'),    // Data Import
-                users:  document.getElementById('card-users'),     // Admin Users
-                profile: document.getElementById('card-profile')   // Settings
+                plan: document.getElementById('card-index1'),     // Index 1 (Plan/Do)
+                manager: document.getElementById('card-index2'),  // Index 2 (Check/Act)
+                eval: document.getElementById('card-index3'),     // Index 3 (Eval)
+                maint: document.getElementById('card-index6'),    // Index 6 (Audit Logs)
+                master: document.getElementById('card-index7'),   // Index 7 (Data)
+                users: document.getElementById('card-users'),     // Admin Users
+                profile: document.getElementById('card-profile')  // Settings
             };
 
-            // 4. ★★★ 權限與頁面可見性設定 (邏輯修正) ★★★
-            // 預設全部隱藏，再根據角色開啟
-            for (let key in cards) {
-                if(cards[key]) cards[key].style.display = 'none';
-            }
+            // 4. 權限控管邏輯 (Visibility Logic)
+            // 先隱藏所有卡片，再依權限開啟
+            Object.values(cards).forEach(card => {
+                if(card) card.style.display = 'none';
+            });
 
-            if (userRole === 'admin' || userRole === 'manager') {
-                // 1. Admin 保持全開 (全部顯示)
-                for (let key in cards) {
-                    if(cards[key]) cards[key].style.display = 'block';
-                }
-            } 
+            if (userRole === 'admin') {
+                // 1. admin 保持全開
+                Object.values(cards).forEach(card => {
+                    if(card) card.style.display = 'block';
+                });
+            }
             else if (userRole === 'medical') {
-                // 2. Medical 可見 index1, profile_settings
-                if(cards.index1) cards.index1.style.display = 'block';
+                // 2. medical 可見 index1, profile_settings
+                if(cards.plan) cards.plan.style.display = 'block';
                 if(cards.profile) cards.profile.style.display = 'block';
-            } 
+            }
             else if (userRole === 'doc_control' || userRole === 'consultant') {
-                // 3. 文管 可見 index1, 3, 7, profile_settings
-                if(cards.index1) cards.index1.style.display = 'block';
-                if(cards.index3) cards.index3.style.display = 'block';
-                if(cards.index7) cards.index7.style.display = 'block';
-                if(cards.profile) cards.profile.style.display = 'block';
+                // 3. 文管 (doc_control) 可見 index1, 3, 7, profile_settings
+                // (註：同時保留 consultant 判斷以防舊資料相容)
+                if(cards.plan) cards.plan.style.display = 'block';   // Index 1
+                if(cards.eval) cards.eval.style.display = 'block';   // Index 3
+                if(cards.master) cards.master.style.display = 'block'; // Index 7
+                if(cards.profile) cards.profile.style.display = 'block'; // Profile
             }
-            // Guest 或其他角色預設全隱藏 (只留 Profile)
-            else {
-                if(cards.profile) cards.profile.style.display = 'block';
+            else if (userRole === 'manager') {
+                 // 若有 manager 角色，通常視同 admin 或比照辦理，這裡暫設為全開，或依您需求調整
+                 Object.values(cards).forEach(card => {
+                    if(card) card.style.display = 'block';
+                });
             }
-
-            // 5. 初始化時間
+            
+            // 5. 初始化時間與日期
             updateTime();
             setInterval(updateTime, 1000);
             
@@ -326,6 +331,7 @@
             document.getElementById('current-date').innerText = dateStr;
         });
 
+        // 登出功能
         function logout() {
             if(confirm('確定要登出系統嗎？')) {
                 sessionStorage.clear();
@@ -333,6 +339,7 @@
             }
         }
 
+        // 時鐘功能
         function updateTime() {
             const now = new Date();
             const timeString = now.getHours().toString().padStart(2, '0') + ':' + 
