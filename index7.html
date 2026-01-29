@@ -800,34 +800,42 @@
             return String(cellVal).trim();
         }
 
-        document.getElementById('btn-confirm-import').addEventListener('click', async function() {
-            const btn = this;
-            btn.disabled = true;
-            btn.innerText = '匯入中...';
+// 在 index7.html 的確認匯入事件中
+document.getElementById('btn-confirm-import').addEventListener('click', async function() {
+    const btn = this;
+    // 關鍵修正：確保抓得到目前登入者的正確 UUID
+    const currentUserId = sessionStorage.getItem('currentUserId'); 
 
-            try {
-                if(pendingImportType === 'company') {
-                    const { error } = await supabaseClient.from('companies').upsert(pendingImportData, { onConflict: 'tax_id' });
-                    if(error) throw error;
-                } else {
-                    const { error } = await supabaseClient.from('medical_staff').insert(pendingImportData);
-                    if(error) throw error;
-                }
+    if (!currentUserId) {
+        alert('❌ 偵測不到登入資訊，請重新登入後再執行匯入。');
+        window.location.href = 'login.html';
+        return;
+    }
 
-                alert('✅ 匯入成功！');
-                bootstrap.Modal.getInstance(document.getElementById('importModal')).hide();
-                
-                if(pendingImportType === 'company') loadCompanies();
-                else loadStaff();
+    btn.disabled = true;
+    btn.innerText = '匯入中...';
 
-            } catch(e) {
-                console.error(e);
-                alert('❌ 匯入發生錯誤: ' + e.message);
-            } finally {
-                btn.disabled = false;
-                btn.innerText = '確認匯入';
-            }
+    try {
+        // 執行匯入動作 (companies 或 medical_staff)
+        let result;
+        if(pendingImportType === 'company') {
+            result = await supabaseClient.from('companies').upsert(pendingImportData, { onConflict: 'tax_id' });
+        } else {
+            result = await supabaseClient.from('medical_staff').insert(pendingImportData);
+        }
+
+        if(result.error) throw result.error;
+
+        // ★ 手動補上一筆稽核日誌，並確保使用正確的 currentUserId
+        await supabaseClient.from('audit_logs').insert({
+            user_id: currentUserId, // 這裡絕對不能是 null 或錯誤格式
+            action_type: 'IMPORT',
+            target_table: pendingImportType === 'company' ? 'companies' : 'medical_staff',
+            details: `批次匯入 ${pendingImportData.length} 筆資料`
         });
+
+        alert('✅ 匯入成功！');
+        // ...其餘邏輯 (隱藏 Modal、重新載入清單)
 
     </script>
 </body>
