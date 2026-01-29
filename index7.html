@@ -52,7 +52,7 @@
         <div class="d-flex justify-content-between align-items-center mb-4">
             <div class="section-title mb-0">
                 <h4 class="fw-bold text-dark mb-0">基本資料建立</h4>
-                <small class="text-muted">管理客戶公司主檔、作業場所與醫護人員名單</small>
+                <small class="text-muted">管理客戶公司主檔、作業場所、醫護人員與服務歷程</small>
             </div>
         </div>
 
@@ -62,6 +62,9 @@
             </li>
             <li class="nav-item" role="presentation">
                 <button class="nav-link" id="pills-staff-tab" data-bs-toggle="pill" data-bs-target="#pills-staff" type="button" role="tab">2. 醫護/顧問名單</button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="pills-record-tab" data-bs-toggle="pill" data-bs-target="#pills-record" type="button" role="tab">3. 服務執行歷程</button>
             </li>
         </ul>
 
@@ -194,6 +197,72 @@
                 </div>
             </div>
 
+            <div class="tab-pane fade" id="pills-record" role="tabpanel">
+                <div class="row g-4">
+                    <div class="col-lg-8">
+                        <div class="card border-0 shadow-sm h-100">
+                            <div class="card-header py-3 d-flex justify-content-between align-items-center">
+                                <h6 class="fw-bold mb-0 text-dark"><i class="fas fa-history me-2 text-warning"></i>服務歷程 (Service Records)</h6>
+                                <div class="input-group input-group-sm w-auto">
+                                    <input type="text" class="form-control" placeholder="搜尋公司或顧問..." id="search-record">
+                                    <button class="btn btn-outline-secondary" onclick="loadRecords()"><i class="fas fa-search"></i></button>
+                                </div>
+                            </div>
+                            <div class="card-body p-0">
+                                <div class="table-responsive" style="max-height: 600px;">
+                                    <table class="table table-hover mb-0">
+                                        <thead class="table-light sticky-top">
+                                            <tr>
+                                                <th>日期</th>
+                                                <th>客戶公司</th>
+                                                <th>負責顧問</th>
+                                                <th>起訖時間</th>
+                                                <th class="text-end">操作</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="recordTableBody">
+                                            <tr><td colspan="5" class="text-center py-4">載入中...</td></tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="col-lg-4">
+                        <div class="d-grid gap-2 mb-4">
+                            <button class="btn btn-warning fw-bold py-2 text-dark" onclick="openRecordModal()">
+                                <i class="fas fa-plus me-2"></i>新增服務歷程
+                            </button>
+                        </div>
+
+                        <div class="card border-0 shadow-sm mb-4">
+                            <div class="card-header bg-white fw-bold"><i class="fas fa-file-import me-2"></i>批次匯入歷程</div>
+                            <div class="card-body">
+                                <div class="import-area" onclick="document.getElementById('file-record').click()">
+                                    <i class="fas fa-cloud-upload-alt fa-2x text-muted mb-2"></i>
+                                    <p class="mb-0 small text-muted">點擊上傳 Excel / CSV</p>
+                                    <input type="file" id="file-record" hidden accept=".csv, .xlsx, .xls" onchange="handleFileSelect(this, 'record')">
+                                </div>
+                                <div class="mt-2 text-end">
+                                    <a href="#" class="small text-decoration-none" onclick="downloadTemplate('record')"><i class="fas fa-download me-1"></i>下載範本</a>
+                                </div>
+                            </div>
+                        </div>
+                        
+                         <div class="card border-0 shadow-sm bg-light">
+                            <div class="card-body">
+                                <h6 class="fw-bold text-muted small">歷程統計</h6>
+                                <div class="d-flex justify-content-between mb-1">
+                                    <span>總服務場次：</span>
+                                    <strong id="stat-record-count">0</strong>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
         </div>
     </div>
 
@@ -276,9 +345,10 @@
                             <div class="col-md-6">
                                 <label class="form-label fw-bold small">身分角色</label>
                                 <select class="form-select" id="staff-role">
-<option value="admin">管理員</option>
-<option value="consultant">顧問</option>
-<option value="doc_control">文管人員</option>
+                                    <option value="consultant">顧問</option>
+                                    <option value="admin">管理員</option>
+                                    <option value="medical">護理人員/醫師</option>
+                                    <option value="doc_control">文管人員</option>
                                 </select>
                             </div>
                         </div>
@@ -326,6 +396,64 @@
         </div>
     </div>
 
+    <div class="modal fade" id="recordModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header bg-warning text-dark">
+                    <h5 class="modal-title" id="recordModalTitle">新增服務歷程</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="recordForm">
+                        <input type="hidden" id="record-id">
+                        
+                        <div class="mb-3">
+                            <label class="form-label fw-bold small">服務客戶 (公司) *</label>
+                            <select class="form-select" id="record-company" required>
+                                <option value="">載入中...</option>
+                            </select>
+                            <div class="form-text small">系統將自動對應至該公司的作業場所 (Workplace)</div>
+                        </div>
+
+                        <div class="row g-3 mb-3">
+                            <div class="col-md-6">
+                                <label class="form-label fw-bold small">負責顧問 *</label>
+                                <select class="form-select" id="record-consultant" required>
+                                    <option value="">載入中...</option>
+                                </select>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label fw-bold small">服務日期 *</label>
+                                <input type="date" class="form-control" id="record-date" required>
+                            </div>
+                        </div>
+
+                        <div class="row g-3 mb-3">
+                            <div class="col-md-6">
+                                <label class="form-label fw-bold small">開始時間</label>
+                                <input type="time" class="form-control" id="record-start">
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label fw-bold small">結束時間</label>
+                                <input type="time" class="form-control" id="record-end">
+                            </div>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label class="form-label fw-bold small">執行事項 (選填)</label>
+                            <input type="text" class="form-control" id="record-items" placeholder="例如：噪音檢測、法規諮詢...">
+                        </div>
+
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                    <button type="button" class="btn btn-warning text-dark" onclick="saveRecord()">確認建立</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <div class="modal fade" id="importModal" tabindex="-1">
         <div class="modal-dialog modal-lg">
             <div class="modal-content">
@@ -359,6 +487,7 @@
         document.addEventListener('DOMContentLoaded', () => {
             loadCompanies();
             loadStaff();
+            loadRecords(); // 載入歷程
         });
 
         // ==========================================
@@ -568,9 +697,138 @@
             input.disabled = checkbox.checked;
             if(checkbox.checked) input.value = '';
         }
+        
+        // ==========================================
+        // 3. 服務執行歷程邏輯 (NEW)
+        // ==========================================
+        async function loadRecords() {
+            const tbody = document.getElementById('recordTableBody');
+            const search = document.getElementById('search-record').value.trim();
+            tbody.innerHTML = '<tr><td colspan="5" class="text-center py-4"><div class="spinner-border spinner-border-sm text-warning"></div></td></tr>';
+
+            // 關聯查詢：需將 workplace_id 轉為 company name，consultant_id 轉為 staff name
+            // 注意：Supabase 關聯語法 workplaces!inner(companies(name)) 
+            let query = supabaseClient.from('service_records')
+                .select(`
+                    id, visit_date, start_time, end_time, service_year,
+                    workplaces (
+                        id, companies ( name )
+                    ),
+                    medical_staff ( name )
+                `)
+                .order('visit_date', {ascending: false});
+
+            // 前端簡單篩選 (Supabase 關聯過濾較複雜，此處示範前端過濾)
+            const { data, error } = await query;
+
+            if(error) {
+                tbody.innerHTML = `<tr><td colspan="5" class="text-center text-danger">載入失敗: ${error.message}</td></tr>`;
+                return;
+            }
+            
+            // 過濾邏輯
+            let filteredData = data;
+            if (search) {
+                const s = search.toLowerCase();
+                filteredData = data.filter(r => {
+                    const compName = r.workplaces?.companies?.name || '';
+                    const staffName = r.medical_staff?.name || '';
+                    return compName.toLowerCase().includes(s) || staffName.toLowerCase().includes(s);
+                });
+            }
+
+            document.getElementById('stat-record-count').innerText = filteredData.length;
+
+            if(filteredData.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="5" class="text-center text-muted py-4">尚無資料</td></tr>';
+                return;
+            }
+
+            tbody.innerHTML = filteredData.map(r => {
+                const compName = r.workplaces?.companies?.name || '<span class="text-muted">未知公司</span>';
+                const staffName = r.medical_staff?.name || '<span class="text-muted">未知顧問</span>';
+                const timeStr = (r.start_time && r.end_time) ? `${r.start_time.slice(0,5)} ~ ${r.end_time.slice(0,5)}` : '-';
+                
+                return `
+                <tr>
+                    <td class="font-monospace">${r.visit_date}</td>
+                    <td class="fw-bold">${compName}</td>
+                    <td>${staffName}</td>
+                    <td class="small">${timeStr}</td>
+                    <td class="text-end">
+                        <button class="btn btn-sm btn-outline-dark" onclick="editRecord('${r.id}')" disabled title="暫僅支援新增與匯入"><i class="fas fa-edit"></i></button>
+                    </td>
+                </tr>
+            `}).join('');
+        }
+
+        async function openRecordModal() {
+            // 1. 載入選項
+            const coSelect = document.getElementById('record-company');
+            const staffSelect = document.getElementById('record-consultant');
+            
+            // 讀取公司
+            const { data: companies } = await supabaseClient.from('companies').select('id, name').eq('is_active', true).order('name');
+            coSelect.innerHTML = '<option value="">請選擇...</option>' + companies.map(c => `<option value="${c.id}">${c.name}</option>`).join('');
+
+            // 讀取顧問
+            const { data: staffs } = await supabaseClient.from('medical_staff').select('id, name').eq('is_active', true).order('name');
+            staffSelect.innerHTML = '<option value="">請選擇...</option>' + staffs.map(s => `<option value="${s.id}">${s.name}</option>`).join('');
+
+            document.getElementById('recordForm').reset();
+            document.getElementById('record-id').value = '';
+            new bootstrap.Modal(document.getElementById('recordModal')).show();
+        }
+        
+        // 尚未實作編輯，僅實作新增
+        function editRecord(id) {
+            alert('目前僅開放新增與匯入功能。如需修改請直接操作資料庫或聯絡管理員。');
+        }
+
+        async function saveRecord() {
+            const companyId = document.getElementById('record-company').value;
+            const consultantId = document.getElementById('record-consultant').value;
+            const visitDate = document.getElementById('record-date').value;
+            const startTime = document.getElementById('record-start').value || null;
+            const endTime = document.getElementById('record-end').value || null;
+            const items = document.getElementById('record-items').value || null;
+
+            if(!companyId || !consultantId || !visitDate) return alert('公司、顧問與日期為必填');
+
+            // 1. 根據 Company ID 找出對應的 Workplace ID (這裡假設抓第一個 Workplace)
+            const { data: wpData, error: wpError } = await supabaseClient.from('workplaces').select('id').eq('company_id', companyId).limit(1);
+            
+            if (wpError || !wpData || wpData.length === 0) {
+                return alert('錯誤：該公司尚未建立作業場所 (Workplace)，無法建立歷程。請先至公司資料建立場所。');
+            }
+            const workplaceId = wpData[0].id;
+
+            // 2. 寫入
+            const year = new Date(visitDate).getFullYear();
+            const payload = {
+                workplace_id: workplaceId,
+                visit_date: visitDate,
+                service_year: year,
+                consultant_id: consultantId,
+                start_time: startTime,
+                end_time: endTime,
+                execution_items: items,
+                created_by: sessionStorage.getItem('currentUserId')
+            };
+
+            const { error } = await supabaseClient.from('service_records').insert(payload);
+            
+            if(error) alert('建立失敗: ' + error.message);
+            else {
+                alert('✅ 建立成功！');
+                bootstrap.Modal.getInstance(document.getElementById('recordModal')).hide();
+                loadRecords();
+            }
+        }
+
 
         // ==========================================
-        // 3. 匯入功能 (Excel Import) - 修正邏輯
+        // 4. 匯入功能 (Excel Import) - 支援 3 種模式
         // ==========================================
         let pendingImportData = [];
         let pendingImportType = '';
@@ -580,14 +838,18 @@
             if(type === 'company') {
                 csvContent += "統一編號,事業單位名稱,聯絡人,電話,合約開始日期(YYYY-MM-DD),合約結束日期(YYYY-MM-DD)\n";
                 csvContent += "85204196,範例公司,王大明,0912345678,2025-01-01,2025-12-31";
-            } else {
+            } else if (type === 'staff') {
                 csvContent += "姓名,身分角色(醫師/護理人員/顧問),職務型態(全職/兼職),電話,Email,入職日期(YYYY-MM-DD)\n";
                 csvContent += "李小美,護理人員,全職,0987654321,nurse@test.com,2024-05-20";
+            } else if (type === 'record') {
+                // 新增：歷程範本
+                csvContent += "公司名稱,顧問姓名,服務日期(YYYY-MM-DD),開始時間(HH:MM),結束時間(HH:MM),執行事項\n";
+                csvContent += "範例公司,王顧問,2025-06-15,09:00,12:00,噪音檢測";
             }
             const encodedUri = encodeURI(csvContent);
             const link = document.createElement("a");
             link.setAttribute("href", encodedUri);
-            link.setAttribute("download", type === 'company' ? "公司主檔匯入範本.csv" : "醫護人員匯入範本.csv");
+            link.setAttribute("download", `${type}_import_template.csv`);
             document.body.appendChild(link);
             link.click();
             document.body.removeChild(link);
@@ -611,7 +873,7 @@
             reader.readAsArrayBuffer(file);
         }
 
-        function parseAndImportData(rows, type) {
+        async function parseAndImportData(rows, type) {
             pendingImportType = type;
             pendingImportData = [];
             const previewArea = document.getElementById('import-preview-area');
@@ -619,72 +881,85 @@
 
             if(type === 'company') {
                 html += '<th>統編</th><th>名稱</th><th>狀態</th><th>開始日</th><th>結束日</th></tr></thead><tbody>';
-                
                 rows.forEach(row => {
                     if(!row[0]) return; 
-                    
-                    const taxId = row[0];
-                    const name = row[1];
-                    const address = null; 
-                    const contact = row[2]; 
-                    const phone = row[3];   
-                    const startDate = formatDate(row[4]);
-                    const endDate = formatDate(row[5]);
-
-                    // ★ 修正重點：自動判斷合約是否有效
+                    const taxId = row[0]; const name = row[1]; const contact = row[2]; const phone = row[3];   
+                    const startDate = formatDate(row[4]); const endDate = formatDate(row[5]);
                     let isActive = true;
-                    if(endDate) {
-                        const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
-                        if(endDate < today) isActive = false;
-                    }
+                    if(endDate && endDate < new Date().toISOString().split('T')[0]) isActive = false;
 
                     pendingImportData.push({
-                        tax_id: String(taxId).trim(),
-                        name: String(name).trim(),
-                        address: address,
-                        contact_person: contact,
-                        phone: String(phone || ''),
-                        contract_start_date: startDate,
-                        contract_end_date: endDate,
-                        is_active: isActive, // 套用判斷結果
-                        created_by: sessionStorage.getItem('currentUserId')
+                        tax_id: String(taxId).trim(), name: String(name).trim(),
+                        contact_person: contact, phone: String(phone || ''),
+                        contract_start_date: startDate, contract_end_date: endDate,
+                        is_active: isActive, created_by: sessionStorage.getItem('currentUserId')
                     });
-
-                    const statusBadge = isActive ? '<span class="badge bg-success">服務中</span>' : '<span class="badge bg-secondary">已結束</span>';
-                    html += `<tr><td>${taxId}</td><td>${name}</td><td>${statusBadge}</td><td>${startDate||''}</td><td>${endDate||''}</td></tr>`;
+                    html += `<tr><td>${taxId}</td><td>${name}</td><td>${isActive?'Y':'N'}</td><td>${startDate||''}</td><td>${endDate||''}</td></tr>`;
                 });
 
-            } else {
+            } else if (type === 'staff') {
                 html += '<th>姓名</th><th>角色</th><th>職務</th><th>Email</th><th>入職日</th></tr></thead><tbody>';
-                
                 rows.forEach(row => {
                     if(!row[0]) return;
-
-                    const name = row[0];
-                    const role = row[1] || '護理人員';
-                    const type = row[2] || '兼職';
-                    const phone = row[3];
-                    const email = row[4]; 
-                    const onboard = formatDate(row[5]);
-
+                    const name = row[0]; const role = row[1] || '護理人員'; const type = row[2] || '兼職';
+                    const phone = row[3]; const email = row[4]; const onboard = formatDate(row[5]);
                     pendingImportData.push({
-                        name: String(name).trim(),
-                        role: role,
-                        employment_type: type,
-                        phone: String(phone || ''),
-                        email: email,
-                        onboard_date: onboard,
-                        is_active: true,
-                        created_by: sessionStorage.getItem('currentUserId')
+                        name: String(name).trim(), role: role, employment_type: type,
+                        phone: String(phone || ''), email: email, onboard_date: onboard,
+                        is_active: true, created_by: sessionStorage.getItem('currentUserId')
                     });
-
                     html += `<tr><td>${name}</td><td>${role}</td><td>${type}</td><td>${email||''}</td><td>${onboard||''}</td></tr>`;
+                });
+
+            } else if (type === 'record') {
+                // 新增：歷程匯入預覽
+                html += '<th>公司</th><th>顧問</th><th>日期</th><th>時間</th></tr></thead><tbody>';
+                
+                // 必須先抓取對照表
+                previewArea.innerHTML = '<div class="text-center p-3"><span class="spinner-border"></span> 正在建立名稱對照表...</div>';
+                new bootstrap.Modal(document.getElementById('importModal')).show();
+
+                const { data: allCompanies } = await supabaseClient.from('companies').select('id, name, workplaces(id)');
+                const { data: allStaff } = await supabaseClient.from('medical_staff').select('id, name');
+
+                // 建立 Map
+                const compMap = {}; // name -> workplace_id (first one)
+                allCompanies.forEach(c => {
+                    if(c.workplaces && c.workplaces.length > 0) compMap[c.name.trim()] = c.workplaces[0].id;
+                });
+                const staffMap = {}; // name -> id
+                allStaff.forEach(s => {
+                    staffMap[s.name.trim()] = s.id;
+                });
+
+                rows.forEach(row => {
+                    if(!row[0]) return;
+                    const cName = String(row[0]).trim();
+                    const sName = String(row[1]).trim();
+                    const date = formatDate(row[2]);
+                    const start = row[3];
+                    const end = row[4];
+                    const items = row[5];
+
+                    const wpId = compMap[cName];
+                    const stId = staffMap[sName];
+                    const year = date ? new Date(date).getFullYear() : null;
+
+                    if(wpId && stId && date) {
+                         pendingImportData.push({
+                            workplace_id: wpId, consultant_id: stId, visit_date: date,
+                            service_year: year, start_time: start, end_time: end, execution_items: items,
+                            created_by: sessionStorage.getItem('currentUserId')
+                        });
+                        html += `<tr><td>${cName}</td><td>${sName}</td><td>${date}</td><td>${start}-${end}</td></tr>`;
+                    } else {
+                        html += `<tr class="table-danger"><td>${cName}(${wpId?'OK':'無場所'})</td><td>${sName}(${stId?'OK':'無人'})</td><td colspan="2">對應失敗</td></tr>`;
+                    }
                 });
             }
 
             html += '</tbody></table>';
             previewArea.innerHTML = html;
-            new bootstrap.Modal(document.getElementById('importModal')).show();
         }
 
         function formatDate(cellVal) {
@@ -702,13 +977,21 @@
             btn.innerText = '匯入中...';
 
             try {
+                let targetTable = '';
+                let options = {};
+                
                 if(pendingImportType === 'company') {
-                    // 公司：維持 Upsert (因為 tax_id 是 unique)
-                    const { error } = await supabaseClient.from('companies').upsert(pendingImportData, { onConflict: 'tax_id' });
+                    targetTable = 'companies';
+                    options = { onConflict: 'tax_id' };
+                    const { error } = await supabaseClient.from(targetTable).upsert(pendingImportData, options);
                     if(error) throw error;
-                } else {
-                    // ★ 修正重點：醫護人員改用 Insert (避免 Email 非 unique 導致 upsert 失敗)
-                    const { error } = await supabaseClient.from('medical_staff').insert(pendingImportData);
+                } else if(pendingImportType === 'staff') {
+                    targetTable = 'medical_staff';
+                    const { error } = await supabaseClient.from(targetTable).insert(pendingImportData);
+                    if(error) throw error;
+                } else if(pendingImportType === 'record') {
+                    targetTable = 'service_records';
+                    const { error } = await supabaseClient.from(targetTable).insert(pendingImportData);
                     if(error) throw error;
                 }
 
@@ -716,7 +999,8 @@
                 bootstrap.Modal.getInstance(document.getElementById('importModal')).hide();
                 
                 if(pendingImportType === 'company') loadCompanies();
-                else loadStaff();
+                else if(pendingImportType === 'staff') loadStaff();
+                else loadRecords();
 
             } catch(e) {
                 console.error(e);
