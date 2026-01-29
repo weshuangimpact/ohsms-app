@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>基本資料建立| OHSMS</title>
+    <title>基本資料建立 | OHSMS</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.css"></script>
@@ -13,18 +13,12 @@
         :root { --primary-bg: #f4f6f9; --theme-color: #4f46e5; }
         body { background-color: var(--primary-bg); font-family: 'Segoe UI', 'Microsoft JhengHei', sans-serif; display: none; }
         
-        /* 標題飾條 */
         .section-title { border-left: 5px solid var(--theme-color); padding-left: 15px; margin-bottom: 20px; }
-        
         .card-header { background-color: white; border-bottom: 1px solid #f0f0f0; }
         .table th { font-weight: 600; color: #555; background-color: #f8f9fa; white-space: nowrap; }
         .table td { vertical-align: middle; }
-
-        /* 頁籤樣式 */
         .nav-pills .nav-link { color: #555; font-weight: 600; }
         .nav-pills .nav-link.active { background-color: var(--theme-color); color: white; }
-
-        /* 匯入區塊樣式 */
         .import-area { border: 2px dashed #cbd5e1; border-radius: 8px; padding: 20px; text-align: center; background: #fff; transition: all 0.3s; cursor: pointer; }
         .import-area:hover { border-color: var(--theme-color); background: #eef2ff; }
     </style>
@@ -343,7 +337,7 @@
                     <div id="import-preview-area" class="table-responsive mb-3" style="max-height: 400px;">
                         </div>
                     <div class="alert alert-info small mb-0">
-                        <i class="fas fa-info-circle me-1"></i> 請確認資料無誤。統編/Email 若重複將會更新舊資料。
+                        <i class="fas fa-info-circle me-1"></i> 請確認資料無誤。公司統編若重複將更新資料；醫護人員將直接新增。
                     </div>
                 </div>
                 <div class="modal-footer">
@@ -576,7 +570,7 @@
         }
 
         // ==========================================
-        // 3. 匯入功能 (Excel Import) - 已修正欄位錯位
+        // 3. 匯入功能 (Excel Import) - 修正邏輯
         // ==========================================
         let pendingImportData = [];
         let pendingImportType = '';
@@ -585,7 +579,7 @@
             let csvContent = "data:text/csv;charset=utf-8,\uFEFF";
             if(type === 'company') {
                 csvContent += "統一編號,事業單位名稱,聯絡人,電話,合約開始日期(YYYY-MM-DD),合約結束日期(YYYY-MM-DD)\n";
-                csvContent += "85204196,範例公司,王大明,0912345678,2025-01-01,";
+                csvContent += "85204196,範例公司,王大明,0912345678,2025-01-01,2025-12-31";
             } else {
                 csvContent += "姓名,身分角色(醫師/護理人員/顧問),職務型態(全職/兼職),電話,Email,入職日期(YYYY-MM-DD)\n";
                 csvContent += "李小美,護理人員,全職,0987654321,nurse@test.com,2024-05-20";
@@ -596,6 +590,7 @@
             link.setAttribute("download", type === 'company' ? "公司主檔匯入範本.csv" : "醫護人員匯入範本.csv");
             document.body.appendChild(link);
             link.click();
+            document.body.removeChild(link);
         }
 
         function handleFileSelect(input, type) {
@@ -607,12 +602,11 @@
                 const data = new Uint8Array(e.target.result);
                 const workbook = XLSX.read(data, {type: 'array'});
                 const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
-                const jsonData = XLSX.utils.sheet_to_json(firstSheet, {header: 1}); // 讀取為二維陣列
+                const jsonData = XLSX.utils.sheet_to_json(firstSheet, {header: 1}); 
                 
-                // 移除標題列
-                jsonData.shift();
+                jsonData.shift(); // 移除標題
                 parseAndImportData(jsonData, type);
-                input.value = ''; // Reset
+                input.value = ''; 
             };
             reader.readAsArrayBuffer(file);
         }
@@ -623,26 +617,26 @@
             const previewArea = document.getElementById('import-preview-area');
             let html = '<table class="table table-sm table-bordered"><thead><tr class="table-secondary">';
 
-            // 建立預覽表格 Header
             if(type === 'company') {
-                html += '<th>統編</th><th>名稱</th><th>聯絡人</th><th>電話</th><th>合約開始</th></tr></thead><tbody>';
+                html += '<th>統編</th><th>名稱</th><th>狀態</th><th>開始日</th><th>結束日</th></tr></thead><tbody>';
                 
                 rows.forEach(row => {
-                    if(!row[0]) return; // Skip empty rows
-                    
-                    // [修正] 公司 CSV 欄位順序對應: 
-                    // [0]統編, [1]名稱, [2]聯絡人, [3]電話, [4]開始日, [5]結束日
-                    // 原程式可能誤以為有地址欄位，現已修正移除地址讀取
+                    if(!row[0]) return; 
                     
                     const taxId = row[0];
                     const name = row[1];
-                    const address = null; // CSV 無地址欄位
-                    const contact = row[2]; // Index 2 是聯絡人
-                    const phone = row[3];   // Index 3 是電話
-                    
-                    // 處理日期格式 (Excel 可能讀成數字或字串)
+                    const address = null; 
+                    const contact = row[2]; 
+                    const phone = row[3];   
                     const startDate = formatDate(row[4]);
                     const endDate = formatDate(row[5]);
+
+                    // ★ 修正重點：自動判斷合約是否有效
+                    let isActive = true;
+                    if(endDate) {
+                        const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
+                        if(endDate < today) isActive = false;
+                    }
 
                     pendingImportData.push({
                         tax_id: String(taxId).trim(),
@@ -652,11 +646,12 @@
                         phone: String(phone || ''),
                         contract_start_date: startDate,
                         contract_end_date: endDate,
-                        is_active: true,
+                        is_active: isActive, // 套用判斷結果
                         created_by: sessionStorage.getItem('currentUserId')
                     });
 
-                    html += `<tr><td>${taxId}</td><td>${name}</td><td>${contact||''}</td><td>${phone||''}</td><td>${startDate||''}</td></tr>`;
+                    const statusBadge = isActive ? '<span class="badge bg-success">服務中</span>' : '<span class="badge bg-secondary">已結束</span>';
+                    html += `<tr><td>${taxId}</td><td>${name}</td><td>${statusBadge}</td><td>${startDate||''}</td><td>${endDate||''}</td></tr>`;
                 });
 
             } else {
@@ -665,17 +660,11 @@
                 rows.forEach(row => {
                     if(!row[0]) return;
 
-                    // [修正] 醫護 CSV 欄位順序對應:
-                    // [0]姓名, [1]角色, [2]型態, [3]電話, [4]Email, [5]入職日
-                    // 原程式可能誤以為有證照欄位，現已修正
-
                     const name = row[0];
                     const role = row[1] || '護理人員';
                     const type = row[2] || '兼職';
                     const phone = row[3];
-                    const email = row[4]; // Index 4 是 Email
-                    // Index 5 是日期
-                    
+                    const email = row[4]; 
                     const onboard = formatDate(row[5]);
 
                     pendingImportData.push({
@@ -695,40 +684,33 @@
 
             html += '</tbody></table>';
             previewArea.innerHTML = html;
-            
-            // 開啟確認視窗
             new bootstrap.Modal(document.getElementById('importModal')).show();
         }
 
-        // 輔助：格式化 Excel 日期
         function formatDate(cellVal) {
             if(!cellVal) return null;
-            // 若 Excel 解析出數字 (Excel Date Serial)
             if(typeof cellVal === 'number') {
                 const date = new Date(Math.round((cellVal - 25569)*86400*1000));
                 return date.toISOString().split('T')[0];
             }
-            // 若是字串，嘗試直接回傳 (假設格式正確)
             return String(cellVal).trim();
         }
 
-        // 確認匯入按鈕
         document.getElementById('btn-confirm-import').addEventListener('click', async function() {
             const btn = this;
             btn.disabled = true;
             btn.innerText = '匯入中...';
 
             try {
-                const table = pendingImportType === 'company' ? 'companies' : 'medical_staff';
-                const conflictKey = pendingImportType === 'company' ? 'tax_id' : 'email'; // 簡易防重機制: 公司認統編, 人員認Email (若無Email則可能重複)
-
-                // 使用 Upsert (需先確認 Table 是否有設 Unique Constraint)
-                // 若無 Unique，則可能變新增。這裡簡單用迴圈處理 Upsert 邏輯 (或直接 Insert)
-                // 為了安全，使用 upsert 語法
-                
-                const { error } = await supabaseClient.from(table).upsert(pendingImportData, { onConflict: conflictKey });
-                
-                if(error) throw error;
+                if(pendingImportType === 'company') {
+                    // 公司：維持 Upsert (因為 tax_id 是 unique)
+                    const { error } = await supabaseClient.from('companies').upsert(pendingImportData, { onConflict: 'tax_id' });
+                    if(error) throw error;
+                } else {
+                    // ★ 修正重點：醫護人員改用 Insert (避免 Email 非 unique 導致 upsert 失敗)
+                    const { error } = await supabaseClient.from('medical_staff').insert(pendingImportData);
+                    if(error) throw error;
+                }
 
                 alert('✅ 匯入成功！');
                 bootstrap.Modal.getInstance(document.getElementById('importModal')).hide();
