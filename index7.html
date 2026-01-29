@@ -3,213 +3,226 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>基本資料建立 | OHSMS</title>
+    <title>帳號權限管理 | OHSMS</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css"/>
+    
     <style>
-        :root { --primary-bg: #f4f6f9; --theme-color: #4f46e5; }
-        body { background-color: var(--primary-bg); font-family: 'Segoe UI', 'Microsoft JhengHei', sans-serif; display: none; }
-        
-        .section-title { border-left: 5px solid var(--theme-color); padding-left: 15px; margin-bottom: 20px; }
-        .card-header { background-color: white; border-bottom: 1px solid #f0f0f0; }
-        .table th { font-weight: 600; color: #495057; background-color: #f8f9fa; }
-        
-        .import-zone {
-            border: 2px dashed #dee2e6;
-            border-radius: 10px;
-            padding: 40px;
-            text-align: center;
-            background: #fff;
-            transition: all 0.3s;
-            cursor: pointer;
+        :root { 
+            --primary-bg: #f4f6f9; 
+            --theme-color: #0dcaf0; 
+            --theme-text: #055160;
         }
-        .import-zone:hover { border-color: var(--theme-color); background: #f0f0ff; }
         
-        .preview-table-wrapper { max-height: 400px; overflow-y: auto; }
+        body {
+            background-color: var(--primary-bg);
+            font-family: 'Segoe UI', 'Microsoft JhengHei', sans-serif;
+            display: none; /* Auth Guard */
+        }
+        
+        .section-title { 
+            border-left: 5px solid var(--theme-color); 
+            padding-left: 15px; 
+            margin-bottom: 20px; 
+        }
+
+        .user-card {
+            border: none;
+            border-radius: 12px;
+            transition: transform 0.2s;
+            background: white;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+        }
+        .user-card:hover { transform: translateY(-3px); }
+
+        .status-badge { font-size: 0.75rem; padding: 4px 10px; border-radius: 20px; }
+        .role-icon { width: 40px; height: 40px; display: flex; align-items: center; justify-content: center; border-radius: 50%; }
     </style>
 </head>
 <body>
 
-    <div class="container py-4">
+    <nav class="navbar navbar-dark bg-dark px-4 mb-4">
+        <span class="navbar-brand fw-bold">OHSMS 系統權限中心</span>
+        <button class="btn btn-outline-light btn-sm" onclick="location.href='dashboard.html'">
+            <i class="fas fa-home me-1"></i> 回儀表板
+        </button>
+    </nav>
+
+    <div class="container pb-5">
         <div class="d-flex justify-content-between align-items-center mb-4">
-            <h3 class="section-title mb-0">批次資料匯入管理</h3>
-            <button class="btn btn-outline-secondary btn-sm" onclick="location.href='dashboard.html'">
-                <i class="fas fa-arrow-left me-1"></i> 回儀表板
+            <div>
+                <h3 class="section-title mb-0">使用者帳號管理</h3>
+                <p class="text-muted small mb-0">維護系統存取權限與人員職務設定</p>
+            </div>
+            <button class="btn btn-info text-white fw-bold shadow-sm" data-bs-toggle="modal" data-bs-target="#inviteModal">
+                <i class="fas fa-user-plus me-1"></i> 邀請新成員
             </button>
         </div>
 
-        <div class="row g-4">
-            <div class="col-md-6">
-                <div class="card h-100 border-0 shadow-sm">
-                    <div class="card-body">
-                        <div class="d-flex align-items-center mb-3">
-                            <div class="icon-box bg-primary bg-opacity-10 text-primary p-3 rounded-3 me-3">
-                                <i class="fas fa-building fa-lg"></i>
-                            </div>
-                            <div>
-                                <h5 class="fw-bold mb-0">事業單位資料</h5>
-                                <small class="text-muted">匯入公司名稱、統編與聯繫資訊</small>
-                            </div>
-                        </div>
-                        <div class="import-zone" onclick="triggerUpload('company')">
-                            <i class="fas fa-file-excel fa-2x mb-2 text-muted"></i>
-                            <p class="mb-0">點擊或拖放 Excel 檔案</p>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <div class="col-md-6">
-                <div class="card h-100 border-0 shadow-sm">
-                    <div class="card-body">
-                        <div class="d-flex align-items-center mb-3">
-                            <div class="icon-box bg-success bg-opacity-10 text-success p-3 rounded-3 me-3">
-                                <i class="fas fa-user-md fa-lg"></i>
-                            </div>
-                            <div>
-                                <h5 class="fw-bold mb-0">顧問/醫護名單</h5>
-                                <small class="text-muted">匯入專業人員姓名、Email 與證號</small>
-                            </div>
-                        </div>
-                        <div class="import-zone" onclick="triggerUpload('staff')">
-                            <i class="fas fa-file-csv fa-2x mb-2 text-muted"></i>
-                            <p class="mb-0">點擊或拖放 Excel 檔案</p>
-                        </div>
-                    </div>
-                </div>
+        <div class="row g-3" id="user-list">
+            <div class="col-12 text-center py-5">
+                <div class="spinner-border text-info" role="status"></div>
+                <p class="mt-2 text-muted">正在載入帳號清單...</p>
             </div>
         </div>
+    </div>
 
-        <input type="file" id="fileInput" hidden accept=".xlsx, .xls">
-
-        <div class="modal fade" id="importModal" tabindex="-1">
-            <div class="modal-dialog modal-xl">
-                <div class="modal-content">
-                    <div class="modal-header">
-                        <h5 class="modal-title fw-bold">資料匯入確認</h5>
-                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+    <div class="modal fade" id="inviteModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content border-0 shadow">
+                <div class="modal-header bg-info text-white">
+                    <h5 class="modal-title fw-bold"><i class="fas fa-envelope-open-text me-2"></i>發送邀請郵件</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body p-4">
+                    <div class="mb-3">
+                        <label class="form-label small fw-bold">成員姓名</label>
+                        <input type="text" class="form-control" id="invite-name" placeholder="請輸入姓名">
                     </div>
-                    <div class="modal-body">
-                        <div id="role-selector-container" class="mb-3" style="display:none;">
-                            <label class="form-label fw-bold">請選擇匯入人員的預設職務：</label>
-                            <select class="form-select" id="default-import-role">
-                                <option value="admin">管理員(admin)</option>
-                                <option value="consultant" selected>顧問(consultant)</option>
-                                <option value="doc_control">文管(doc_control)</option>
-                            </select>
-                        </div>
-
-                        <div class="alert alert-info py-2 small">
-                            <i class="fas fa-info-circle me-1"></i> 請確認下方資料正確性。
-                        </div>
-                        <div class="preview-table-wrapper">
-                            <table class="table table-sm table-hover border" id="previewTable">
-                                <thead><tr id="previewHeader"></tr></thead>
-                                <tbody id="previewBody"></tbody>
-                            </table>
-                        </div>
+                    <div class="mb-3">
+                        <label class="form-label small fw-bold">電子郵件 (登入帳號)</label>
+                        <input type="email" class="form-control" id="invite-email" placeholder="example@domain.com">
                     </div>
-                    <div class="modal-footer">
-                        <button type="button" class="btn btn-light" data-bs-dismiss="modal">取消</button>
-                        <button type="button" class="btn btn-primary px-4" id="btn-confirm-import">確認匯入</button>
+                    <div class="mb-3">
+                        <label class="form-label small fw-bold">職務身分</label>
+                        <select class="form-select" id="invite-role">
+                            <option value="admin">管理員(admin)</option>
+                            <option value="consultant">顧問(consultant)</option>
+                            <option value="doc_control">文管(doc_control)</option>
+                        </select>
                     </div>
+                    <div class="alert alert-light border small text-muted">
+                        <i class="fas fa-info-circle me-1"></i> 系統將發送邀請信至該信箱，成員設定密碼後即可登入。
+                    </div>
+                </div>
+                <div class="modal-footer border-0">
+                    <button type="button" class="btn btn-light" data-bs-dismiss="modal">取消</button>
+                    <button type="button" class="btn btn-info text-white px-4" onclick="sendInvite()">確認發送邀請</button>
                 </div>
             </div>
         </div>
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script>
-        // 保持您原本的頁面邏輯
-        document.addEventListener('DOMContentLoaded', () => {
+        // 初始化與原版一致
+        const supabaseUrl = 'YOUR_SUPABASE_URL';
+        const supabaseKey = 'YOUR_SUPABASE_KEY';
+        const supabaseClient = supabase.createClient(supabaseUrl, supabaseKey);
+
+        // 僅修改對應顯示名稱與角色代碼
+        const roleMap = {
+            'admin': { name: '管理員', color: 'bg-dark', icon: 'fa-user-shield' },
+            'consultant': { name: '顧問', color: 'bg-primary', icon: 'fa-user-tie' },
+            'doc_control': { name: '文管', color: 'bg-warning', icon: 'fa-file-medical' }
+        };
+
+        document.addEventListener('DOMContentLoaded', async () => {
+            const role = sessionStorage.getItem('currentUserRole');
+            if (role !== 'admin') {
+                alert('權限不足');
+                window.location.href = 'dashboard.html';
+                return;
+            }
             document.body.style.display = 'block';
+            loadUsers();
         });
 
-        let pendingImportData = [];
-        let pendingImportType = '';
+        async function loadUsers() {
+            const container = document.getElementById('user-list');
+            try {
+                const { data: users, error } = await supabaseClient
+                    .from('medical_staff')
+                    .select('*')
+                    .order('created_at', { ascending: false });
 
-        function triggerUpload(type) {
-            pendingImportType = type;
-            // 只有醫護人員匯入時顯示身分選擇 (若需要)
-            document.getElementById('role-selector-container').style.display = (type === 'staff') ? 'block' : 'none';
-            document.getElementById('fileInput').click();
+                if (error) throw error;
+
+                container.innerHTML = users.map(user => {
+                    const r = roleMap[user.role] || { name: user.role, color: 'bg-secondary', icon: 'fa-user' };
+                    const statusClass = user.is_active ? 'bg-success text-white' : 'bg-danger text-white';
+                    const statusText = user.is_active ? '啟動中' : '已停用';
+
+                    return `
+                    <div class="col-md-6 col-lg-4 animate__animated animate__fadeIn">
+                        <div class="card user-card p-3">
+                            <div class="d-flex align-items-center mb-3">
+                                <div class="role-icon ${r.color} text-white me-3">
+                                    <i class="fas ${r.icon}"></i>
+                                </div>
+                                <div class="flex-grow-1">
+                                    <h6 class="fw-bold mb-0">${user.name}</h6>
+                                    <small class="text-muted">${user.email}</small>
+                                </div>
+                                <span class="status-badge ${statusClass}">${statusText}</span>
+                            </div>
+                            <div class="d-flex justify-content-between align-items-center pt-2 border-top">
+                                <span class="badge bg-light text-dark border">${r.name}</span>
+                                <div class="btn-group">
+                                    <button class="btn btn-sm btn-outline-secondary" onclick="toggleStatus('${user.id}', ${!user.is_active}, '${user.name}')">
+                                        ${user.is_active ? '停用' : '恢復'}
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>`;
+                }).join('');
+            } catch (err) {
+                container.innerHTML = `<div class="alert alert-danger">${err.message}</div>`;
+            }
         }
 
-        document.getElementById('fileInput').addEventListener('change', function(e) {
-            const file = e.target.files[0];
-            if (!file) return;
-            const reader = new FileReader();
-            reader.onload = function(e) {
-                const data = new Uint8Array(e.target.result);
-                const workbook = XLSX.read(data, { type: 'array' });
-                const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
-                const jsonData = XLSX.utils.sheet_to_json(firstSheet);
-                
-                pendingImportData = jsonData;
-                renderPreview(jsonData);
-                new bootstrap.Modal(document.getElementById('importModal')).show();
-            };
-            reader.readAsArrayBuffer(file);
-            this.value = ''; 
-        });
+        async function sendInvite() {
+            const name = document.getElementById('invite-name').value.trim();
+            const email = document.getElementById('invite-email').value.trim();
+            const role = document.getElementById('invite-role').value;
 
-        function renderPreview(data) {
-            const header = document.getElementById('previewHeader');
-            const body = document.getElementById('previewBody');
-            header.innerHTML = '';
-            body.innerHTML = '';
+            if (!name || !email) return alert('請填寫完整資訊');
 
-            if (data.length === 0) return;
-
-            const keys = Object.keys(data[0]);
-            keys.forEach(key => {
-                header.innerHTML += `<th>${key}</th>`;
-            });
-
-            data.slice(0, 10).forEach(row => {
-                let tr = '<tr>';
-                keys.forEach(key => {
-                    tr += `<td>${row[key] || ''}</td>`;
-                });
-                tr += '</tr>';
-                body.innerHTML += tr;
-            });
-        }
-
-        document.getElementById('btn-confirm-import').addEventListener('click', async function() {
-            const btn = this;
-            const selectedRole = document.getElementById('default-import-role').value;
-            
+            const btn = document.querySelector('#inviteModal .btn-info');
+            const originalText = btn.innerHTML;
             btn.disabled = true;
-            btn.innerText = '匯入中...';
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>發送中...';
 
             try {
-                // 這裡維持您原始的匯入邏輯，不添加 audit_logs 修復，避免造成 bug
-                if(pendingImportType === 'company') {
-                    const { error } = await supabaseClient.from('companies').upsert(pendingImportData, { onConflict: 'tax_id' });
-                    if(error) throw error;
-                } else {
-                    // 如果匯入資料中沒有 role，則帶入選擇的 defaultRole
-                    const dataToInsert = pendingImportData.map(item => ({
-                        ...item,
-                        role: item.role || selectedRole
-                    }));
-                    const { error } = await supabaseClient.from('medical_staff').insert(dataToInsert);
-                    if(error) throw error;
-                }
+                // 維持原有的 Edge Function 呼叫
+                const { data, error } = await supabaseClient.functions.invoke('invite-user', {
+                    body: { email, name, role }
+                });
 
-                alert('✅ 匯入成功！');
-                bootstrap.Modal.getInstance(document.getElementById('importModal')).hide();
+                if (error) throw error;
 
-            } catch(e) {
-                alert('❌ 匯入發生錯誤: ' + e.message);
+                alert('✅ 邀請已發送');
+                bootstrap.Modal.getInstance(document.getElementById('inviteModal')).hide();
+                loadUsers();
+            } catch (err) {
+                alert(err.message);
             } finally {
                 btn.disabled = false;
-                btn.innerText = '確認匯入';
+                btn.innerHTML = originalText;
             }
-        });
+        }
+
+        async function toggleStatus(staffId, isActive, name) {
+            const actionName = isActive ? "恢復權限" : "停用權限";
+            if (!confirm(`確定要對「${name}」執行【${actionName}】嗎？`)) return;
+
+            try {
+                const { error: staffError } = await supabaseClient.from('medical_staff').update({ is_active: isActive }).eq('id', staffId);
+                if (staffError) throw staffError;
+
+                const { data: staffData } = await supabaseClient.from('medical_staff').select('user_id').eq('id', staffId).single();
+                if (staffData && staffData.user_id) {
+                    await supabaseClient.from('profiles').update({ is_active: isActive, status: isActive ? 'active' : 'inactive' }).eq('id', staffData.user_id);
+                }
+                alert(`✅ 已成功${actionName}！`);
+                loadUsers();
+            } catch (err) {
+                alert(err.message);
+            }
+        }
     </script>
 </body>
 </html>
