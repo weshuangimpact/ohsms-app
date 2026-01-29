@@ -21,6 +21,17 @@
         .nav-pills .nav-link.active { background-color: var(--theme-color); color: white; }
         .import-area { border: 2px dashed #cbd5e1; border-radius: 8px; padding: 20px; text-align: center; background: #fff; transition: all 0.3s; cursor: pointer; }
         .import-area:hover { border-color: var(--theme-color); background: #eef2ff; }
+        
+        /* 5W1H Card Style */
+        .info-card-5w1h {
+            background: linear-gradient(to right, #eef2ff, #fff);
+            border-left: 5px solid #6366f1;
+            border-radius: 8px;
+            padding: 1.5rem;
+            margin-bottom: 2rem;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        }
+        .badge-5w1h { width: 60px; display: inline-block; text-align: center; }
     </style>
 
     <script>
@@ -49,10 +60,46 @@
 
     <div class="container-fluid px-4 pb-5">
         
-        <div class="d-flex justify-content-between align-items-center mb-4">
+        <div class="d-flex justify-content-between align-items-center mb-3">
             <div class="section-title mb-0">
                 <h4 class="fw-bold text-dark mb-0">基本資料建立</h4>
                 <small class="text-muted">管理客戶公司主檔、作業場所、醫護人員與服務歷程</small>
+            </div>
+        </div>
+
+        <div class="info-card-5w1h">
+            <h5 class="fw-bold text-primary mb-3"><i class="fas fa-project-diagram me-2"></i>設計精神：已服務執行紀錄表 如何成為 5W1H 的 服務歷程基礎</h5>
+            <div class="row g-3">
+                <div class="col-md-4 col-sm-6">
+                    <span class="badge bg-primary badge-5w1h me-2">Who</span>
+                    <strong class="text-dark">負責顧問 (Medical Staff)</strong>
+                    <div class="small text-muted ps-5">確認執行者身分與資格</div>
+                </div>
+                <div class="col-md-4 col-sm-6">
+                    <span class="badge bg-success badge-5w1h me-2">When</span>
+                    <strong class="text-dark">服務時間 (Date & Time)</strong>
+                    <div class="small text-muted ps-5">精確記錄訪視日期與時數</div>
+                </div>
+                <div class="col-md-4 col-sm-6">
+                    <span class="badge bg-warning text-dark badge-5w1h me-2">Where</span>
+                    <strong class="text-dark">作業場所 (Workplace)</strong>
+                    <div class="small text-muted ps-5">鎖定公司與具體場域</div>
+                </div>
+                <div class="col-md-4 col-sm-6">
+                    <span class="badge bg-danger badge-5w1h me-2">What</span>
+                    <strong class="text-dark">執行事項 (Items)</strong>
+                    <div class="small text-muted ps-5">噪音檢測、法規諮詢等內容</div>
+                </div>
+                <div class="col-md-4 col-sm-6">
+                    <span class="badge bg-info text-dark badge-5w1h me-2">Why</span>
+                    <strong class="text-dark">合約依據 (Basis)</strong>
+                    <div class="small text-muted ps-5">基於法規需求與合約責任</div>
+                </div>
+                <div class="col-md-4 col-sm-6">
+                    <span class="badge bg-secondary badge-5w1h me-2">How</span>
+                    <strong class="text-dark">執行過程 (Process)</strong>
+                    <div class="small text-muted ps-5">透過現場訪視與技術指導</div>
+                </div>
             </div>
         </div>
 
@@ -246,6 +293,7 @@
                                     <input type="file" id="file-record" hidden accept=".csv, .xlsx, .xls" onchange="handleFileSelect(this, 'record')">
                                 </div>
                                 <div class="mt-2 text-end">
+                                    <small class="text-muted d-block mb-1"><i class="fas fa-info-circle"></i> 匯入僅需日期與事項，時間請手動補登</small>
                                     <a href="#" class="small text-decoration-none" onclick="downloadTemplate('record')"><i class="fas fa-download me-1"></i>下載範本</a>
                                 </div>
                             </div>
@@ -446,9 +494,14 @@
 
                     </form>
                 </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
-                    <button type="button" class="btn btn-warning text-dark" onclick="saveRecord()">確認建立</button>
+                <div class="modal-footer justify-content-between">
+                    <button type="button" class="btn btn-danger" id="btn-delete-record" onclick="deleteRecord()" style="display:none;">
+                        <i class="fas fa-trash me-1"></i>刪除
+                    </button>
+                    <div>
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                        <button type="button" class="btn btn-warning text-dark" onclick="saveRecord()">儲存</button>
+                    </div>
                 </div>
             </div>
         </div>
@@ -560,7 +613,7 @@
         }
 
         async function saveCompany() {
-            const id = document.getElementById('company-id').value; // 如果有值代表是編輯，無值代表新增
+            const id = document.getElementById('company-id').value; 
             const payload = {
                 tax_id: document.getElementById('company-tax-id').value,
                 name: document.getElementById('company-name').value,
@@ -575,38 +628,25 @@
 
             if(!payload.tax_id || !payload.name) return alert('統編與名稱為必填');
 
-            // 1. 執行公司資料儲存
             let error;
-            let newCompanyId = id; // 用來存公司ID
+            let newCompanyId = id;
 
             if(id) {
-                // --- 編輯模式 ---
                 ({ error } = await supabaseClient.from('companies').update(payload).eq('id', id));
             } else {
-                // --- 新增模式 (關鍵修改) ---
                 payload.created_by = sessionStorage.getItem('currentUserId');
-                
-                // 改用 select() 以便拿回新產生的 ID
-                const { data, error: insertError } = await supabaseClient
-                    .from('companies')
-                    .insert(payload)
-                    .select('id')
-                    .single();
-                
+                const { data, error: insertError } = await supabaseClient.from('companies').insert(payload).select('id').single();
                 error = insertError;
                 
                 if (!error && data) {
                     newCompanyId = data.id;
-                    
-                    // ★ 自動建立預設作業場所 (解決您遇到的錯誤)
                     const { error: wpError } = await supabaseClient.from('workplaces').insert({
                         company_id: newCompanyId,
-                        department_name: '全廠', // 預設名稱
-                        hazard_type: '無',      // 預設無危害
+                        department_name: '全廠',
+                        hazard_type: '無',
                         hazard_count: 0,
                         created_by: sessionStorage.getItem('currentUserId')
                     });
-
                     if (wpError) console.error('自動建立場所失敗:', wpError);
                 }
             }
@@ -648,12 +688,11 @@
                 return;
             }
             
-            // 修正：身分代碼轉中文
             const roleMap = {
                 'consultant': '顧問',
                 'admin': '管理員',
                 'doc_control': '文管人員',
-                'medical': '醫護人員' // 僅顯示用，預防舊資料有
+                'medical': '醫護人員'
             };
 
             tbody.innerHTML = data.map(s => `
@@ -782,6 +821,7 @@
                 return;
             }
 
+            // 渲染列表 (修正: 按鈕不再 disabled, 綁定 editRecord)
             tbody.innerHTML = filteredData.map(r => {
                 const compName = r.workplaces?.companies?.name || '<span class="text-muted">未知公司</span>';
                 const staffName = r.medical_staff?.name || '<span class="text-muted">未知顧問</span>';
@@ -794,7 +834,7 @@
                     <td>${staffName}</td>
                     <td class="small">${timeStr}</td>
                     <td class="text-end">
-                        <button class="btn btn-sm btn-outline-dark" onclick="editRecord('${r.id}')" disabled title="暫僅支援新增與匯入"><i class="fas fa-edit"></i></button>
+                        <button class="btn btn-sm btn-outline-primary" onclick="editRecord('${r.id}')"><i class="fas fa-edit"></i></button>
                     </td>
                 </tr>
             `}).join('');
@@ -802,28 +842,63 @@
 
         async function openRecordModal() {
             // 1. 載入選項
-            const coSelect = document.getElementById('record-company');
-            const staffSelect = document.getElementById('record-consultant');
-            
-            // 讀取公司
-            const { data: companies } = await supabaseClient.from('companies').select('id, name').eq('is_active', true).order('name');
-            coSelect.innerHTML = '<option value="">請選擇...</option>' + companies.map(c => `<option value="${c.id}">${c.name}</option>`).join('');
-
-            // 讀取顧問
-            const { data: staffs } = await supabaseClient.from('medical_staff').select('id, name').eq('is_active', true).order('name');
-            staffSelect.innerHTML = '<option value="">請選擇...</option>' + staffs.map(s => `<option value="${s.id}">${s.name}</option>`).join('');
+            await loadDropdowns();
 
             document.getElementById('recordForm').reset();
             document.getElementById('record-id').value = '';
+            document.getElementById('recordModalTitle').innerText = '新增服務歷程';
+            document.getElementById('btn-delete-record').style.display = 'none'; // 新增模式隱藏刪除
             new bootstrap.Modal(document.getElementById('recordModal')).show();
         }
+
+        async function loadDropdowns() {
+             const coSelect = document.getElementById('record-company');
+             const staffSelect = document.getElementById('record-consultant');
+             
+             // 讀取公司
+             const { data: companies } = await supabaseClient.from('companies').select('id, name').eq('is_active', true).order('name');
+             coSelect.innerHTML = '<option value="">請選擇...</option>' + companies.map(c => `<option value="${c.id}">${c.name}</option>`).join('');
+ 
+             // 讀取顧問
+             const { data: staffs } = await supabaseClient.from('medical_staff').select('id, name').eq('is_active', true).order('name');
+             staffSelect.innerHTML = '<option value="">請選擇...</option>' + staffs.map(s => `<option value="${s.id}">${s.name}</option>`).join('');
+        }
         
-        // 尚未實作編輯，僅實作新增
-        function editRecord(id) {
-            alert('目前僅開放新增與匯入功能。如需修改請直接操作資料庫或聯絡管理員。');
+        // 編輯功能實作
+        async function editRecord(id) {
+            await loadDropdowns(); // 確保下拉選單有資料
+
+            // 抓取資料 (包含關聯的 workplace -> company_id)
+            const { data, error } = await supabaseClient
+                .from('service_records')
+                .select('*, workplaces(company_id)')
+                .eq('id', id)
+                .single();
+
+            if (error) return alert('讀取失敗: ' + error.message);
+
+            // 填寫表單
+            document.getElementById('record-id').value = data.id;
+            
+            // 關鍵：將 workplace_id 轉換為 company_id 以設定下拉選單
+            if (data.workplaces && data.workplaces.company_id) {
+                document.getElementById('record-company').value = data.workplaces.company_id;
+            }
+
+            document.getElementById('record-consultant').value = data.consultant_id;
+            document.getElementById('record-date').value = data.visit_date;
+            document.getElementById('record-start').value = data.start_time || '';
+            document.getElementById('record-end').value = data.end_time || '';
+            document.getElementById('record-items').value = data.execution_items || '';
+
+            // UI 調整
+            document.getElementById('recordModalTitle').innerText = '編輯服務歷程';
+            document.getElementById('btn-delete-record').style.display = 'block'; // 編輯模式顯示刪除
+            new bootstrap.Modal(document.getElementById('recordModal')).show();
         }
 
         async function saveRecord() {
+            const id = document.getElementById('record-id').value;
             const companyId = document.getElementById('record-company').value;
             const consultantId = document.getElementById('record-consultant').value;
             const visitDate = document.getElementById('record-date').value;
@@ -833,16 +908,15 @@
 
             if(!companyId || !consultantId || !visitDate) return alert('公司、顧問與日期為必填');
 
-            // 1. 根據 Company ID 找出對應的 Workplace ID (這裡假設抓第一個 Workplace)
+            // 1. 取得 workplaceId (假設每個公司至少有一個全廠)
             const { data: wpData, error: wpError } = await supabaseClient.from('workplaces').select('id').eq('company_id', companyId).limit(1);
             
             if (wpError || !wpData || wpData.length === 0) {
-                return alert('錯誤：該公司尚未建立作業場所 (Workplace)，無法建立歷程。請先至公司資料建立場所。');
+                return alert('錯誤：該公司尚未建立作業場所 (Workplace)。請先至公司資料建立場所。');
             }
             const workplaceId = wpData[0].id;
-
-            // 2. 寫入
             const year = new Date(visitDate).getFullYear();
+
             const payload = {
                 workplace_id: workplaceId,
                 visit_date: visitDate,
@@ -851,14 +925,39 @@
                 start_time: startTime,
                 end_time: endTime,
                 execution_items: items,
-                created_by: sessionStorage.getItem('currentUserId')
+                updated_by: sessionStorage.getItem('currentUserId')
             };
 
-            const { error } = await supabaseClient.from('service_records').insert(payload);
-            
-            if(error) alert('建立失敗: ' + error.message);
+            let error;
+            if (id) {
+                // Update
+                ({ error } = await supabaseClient.from('service_records').update(payload).eq('id', id));
+            } else {
+                // Insert
+                payload.created_by = sessionStorage.getItem('currentUserId');
+                ({ error } = await supabaseClient.from('service_records').insert(payload));
+            }
+
+            if(error) alert('儲存失敗: ' + error.message);
             else {
-                alert('✅ 建立成功！');
+                alert('✅ 儲存成功！');
+                bootstrap.Modal.getInstance(document.getElementById('recordModal')).hide();
+                loadRecords();
+            }
+        }
+        
+        // 刪除功能
+        async function deleteRecord() {
+            const id = document.getElementById('record-id').value;
+            if(!id) return;
+
+            if(!confirm('確定要刪除此筆服務紀錄嗎？此動作無法復原。')) return;
+
+            const { error } = await supabaseClient.from('service_records').delete().eq('id', id);
+
+            if(error) alert('刪除失敗: ' + error.message);
+            else {
+                alert('🗑️ 已刪除資料');
                 bootstrap.Modal.getInstance(document.getElementById('recordModal')).hide();
                 loadRecords();
             }
@@ -880,8 +979,9 @@
                 csvContent += "姓名,身分角色(醫師/護理人員/顧問),職務型態(全職/兼職),電話,Email,入職日期(YYYY-MM-DD)\n";
                 csvContent += "李小美,護理人員,全職,0987654321,nurse@test.com,2024-05-20";
             } else if (type === 'record') {
-                csvContent += "公司名稱,顧問姓名,服務日期(YYYY-MM-DD),開始時間(HH:MM),結束時間(HH:MM),執行事項\n";
-                csvContent += "範例公司,王顧問,2025-06-15,09:00,12:00,噪音檢測";
+                // 修正：移除時間欄位，避免匯入錯誤
+                csvContent += "公司名稱,顧問姓名,服務日期(YYYY-MM-DD),執行事項\n";
+                csvContent += "範例公司,王顧問,2025-06-15,噪音檢測";
             }
             const encodedUri = encodeURI(csvContent);
             const link = document.createElement("a");
@@ -916,7 +1016,6 @@
             const previewArea = document.getElementById('import-preview-area');
             let html = '<table class="table table-sm table-bordered"><thead><tr class="table-secondary">';
 
-            // 修正：必須先呼叫 Modal show 才能看見預覽視窗
             const modal = new bootstrap.Modal(document.getElementById('importModal'));
             modal.show();
 
@@ -965,7 +1064,8 @@
                     });
 
                 } else if (type === 'record') {
-                    html += '<th>公司</th><th>顧問</th><th>日期</th><th>時間</th></tr></thead><tbody>';
+                    // 修正：欄位減少 (公司, 顧問, 日期, 事項)
+                    html += '<th>公司</th><th>顧問</th><th>日期</th><th>事項</th></tr></thead><tbody>';
                     
                     previewArea.innerHTML = '<div class="text-center p-3"><span class="spinner-border"></span> 正在建立名稱對照表...</div>';
                     
@@ -990,9 +1090,9 @@
                         const cName = String(row[0]).trim();
                         const sName = String(row[1]).trim();
                         const date = formatDate(row[2]);
-                        const start = row[3];
-                        const end = row[4];
-                        const items = row[5];
+                        
+                        // 修正：row[3] 變更為 事項 (原本是開始時間)
+                        const items = row[3]; 
 
                         const wpId = compMap[cName];
                         const stId = staffMap[sName];
@@ -1001,10 +1101,10 @@
                         if(wpId && stId && date) {
                              pendingImportData.push({
                                 workplace_id: wpId, consultant_id: stId, visit_date: date,
-                                service_year: year, start_time: start, end_time: end, execution_items: items,
+                                service_year: year, execution_items: items,
                                 created_by: sessionStorage.getItem('currentUserId')
                             });
-                            html += `<tr><td>${cName}</td><td>${sName}</td><td>${date}</td><td>${start}-${end}</td></tr>`;
+                            html += `<tr><td>${cName}</td><td>${sName}</td><td>${date}</td><td>${items||''}</td></tr>`;
                         } else {
                             html += `<tr class="table-danger"><td>${cName}(${wpId?'OK':'無場所'})</td><td>${sName}(${stId?'OK':'無人'})</td><td colspan="2">對應失敗</td></tr>`;
                         }
