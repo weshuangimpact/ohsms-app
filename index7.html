@@ -904,113 +904,132 @@
             reader.readAsArrayBuffer(file);
         }
 
-        async function parseAndImportData(rows, type) {
+async function parseAndImportData(rows, type) {
             pendingImportType = type;
             pendingImportData = [];
             const previewArea = document.getElementById('import-preview-area');
             let html = '<table class="table table-sm table-bordered"><thead><tr class="table-secondary">';
 
-            if(type === 'company') {
-                // [FIXED] 配合地址欄位更新，調整表格標頭
-                html += '<th>統編</th><th>名稱</th><th>地址</th><th>聯絡人</th><th>狀態</th><th>開始日</th><th>結束日</th></tr></thead><tbody>';
-                rows.forEach(row => {
-                    if(!row[0]) return; 
-                    // [FIXED] 配合地址欄位更新，調整讀取索引
-                    const taxId = row[0]; 
-                    const name = row[1]; 
-                    const address = row[2]; // 新增地址讀取
-                    const contact = row[3]; 
-                    const phone = row[4];   
-                    const startDate = formatDate(row[5]); 
-                    const endDate = formatDate(row[6]);
-                    
-                    let isActive = true;
-                    if(endDate && endDate < new Date().toISOString().split('T')[0]) isActive = false;
+            // ★ 修正 1：先開啟 Modal，讓使用者知道系統有反應
+            const modal = new bootstrap.Modal(document.getElementById('importModal'));
+            modal.show();
 
-                    pendingImportData.push({
-                        tax_id: String(taxId).trim(), 
-                        name: String(name).trim(),
-                        address: String(address || ''), // 寫入 Payload
-                        contact_person: contact, 
-                        phone: String(phone || ''),
-                        contract_start_date: startDate, 
-                        contract_end_date: endDate,
-                        is_active: isActive, 
-                        created_by: sessionStorage.getItem('currentUserId')
-                    });
-                    html += `<tr><td>${taxId}</td><td>${name}</td><td>${address||''}</td><td>${contact||''}</td><td>${isActive?'Y':'N'}</td><td>${startDate||''}</td><td>${endDate||''}</td></tr>`;
-                });
+            try {
+                if(type === 'company') {
+                    html += '<th>統編</th><th>名稱</th><th>地址</th><th>聯絡人</th><th>狀態</th><th>開始日</th><th>結束日</th></tr></thead><tbody>';
+                    rows.forEach(row => {
+                        if(!row[0]) return; 
+                        const taxId = row[0]; 
+                        const name = row[1]; 
+                        const address = row[2];
+                        const contact = row[3]; 
+                        const phone = row[4];   
+                        const startDate = formatDate(row[5]); 
+                        const endDate = formatDate(row[6]);
+                        
+                        let isActive = true;
+                        // 簡單判斷：如果有結束日且小於今天，則為失效
+                        if(endDate && endDate < new Date().toISOString().split('T')[0]) isActive = false;
 
-            } else if (type === 'staff') {
-                html += '<th>姓名</th><th>角色</th><th>職務</th><th>Email</th><th>入職日</th></tr></thead><tbody>';
-                rows.forEach(row => {
-                    if(!row[0]) return;
-                    const name = row[0]; const role = row[1] || '護理人員'; const type = row[2] || '兼職';
-                    const phone = row[3]; const email = row[4]; const onboard = formatDate(row[5]);
-                    pendingImportData.push({
-                        name: String(name).trim(), role: role, employment_type: type,
-                        phone: String(phone || ''), email: email, onboard_date: onboard,
-                        is_active: true, created_by: sessionStorage.getItem('currentUserId')
-                    });
-                    html += `<tr><td>${name}</td><td>${role}</td><td>${type}</td><td>${email||''}</td><td>${onboard||''}</td></tr>`;
-                });
-
-            } else if (type === 'record') {
-                html += '<th>公司</th><th>顧問</th><th>日期</th><th>時間</th></tr></thead><tbody>';
-                
-                previewArea.innerHTML = '<div class="text-center p-3"><span class="spinner-border"></span> 正在建立名稱對照表...</div>';
-                new bootstrap.Modal(document.getElementById('importModal')).show();
-
-                const { data: allCompanies } = await supabaseClient.from('companies').select('id, name, workplaces(id)');
-                const { data: allStaff } = await supabaseClient.from('medical_staff').select('id, name');
-
-                // 建立 Map
-                const compMap = {}; // name -> workplace_id (first one)
-                allCompanies.forEach(c => {
-                    if(c.workplaces && c.workplaces.length > 0) compMap[c.name.trim()] = c.workplaces[0].id;
-                });
-                const staffMap = {}; // name -> id
-                allStaff.forEach(s => {
-                    staffMap[s.name.trim()] = s.id;
-                });
-
-                rows.forEach(row => {
-                    if(!row[0]) return;
-                    const cName = String(row[0]).trim();
-                    const sName = String(row[1]).trim();
-                    const date = formatDate(row[2]);
-                    const start = row[3];
-                    const end = row[4];
-                    const items = row[5];
-
-                    const wpId = compMap[cName];
-                    const stId = staffMap[sName];
-                    const year = date ? new Date(date).getFullYear() : null;
-
-                    if(wpId && stId && date) {
-                         pendingImportData.push({
-                            workplace_id: wpId, consultant_id: stId, visit_date: date,
-                            service_year: year, start_time: start, end_time: end, execution_items: items,
+                        pendingImportData.push({
+                            tax_id: String(taxId).trim(), 
+                            name: String(name).trim(),
+                            address: String(address || ''),
+                            contact_person: contact, 
+                            phone: String(phone || ''),
+                            contract_start_date: startDate, 
+                            contract_end_date: endDate,
+                            is_active: isActive, 
                             created_by: sessionStorage.getItem('currentUserId')
                         });
-                        html += `<tr><td>${cName}</td><td>${sName}</td><td>${date}</td><td>${start}-${end}</td></tr>`;
-                    } else {
-                        html += `<tr class="table-danger"><td>${cName}(${wpId?'OK':'無場所'})</td><td>${sName}(${stId?'OK':'無人'})</td><td colspan="2">對應失敗</td></tr>`;
-                    }
-                });
-            }
+                        html += `<tr><td>${taxId}</td><td>${name}</td><td>${address||''}</td><td>${contact||''}</td><td>${isActive?'Y':'N'}</td><td>${startDate||''}</td><td>${endDate||''}</td></tr>`;
+                    });
 
-            html += '</tbody></table>';
-            previewArea.innerHTML = html;
+                } else if (type === 'staff') {
+                    html += '<th>姓名</th><th>角色</th><th>職務</th><th>Email</th><th>入職日</th></tr></thead><tbody>';
+                    rows.forEach(row => {
+                        if(!row[0]) return;
+                        const name = row[0]; const role = row[1] || '護理人員'; const type = row[2] || '兼職';
+                        const phone = row[3]; const email = row[4]; const onboard = formatDate(row[5]);
+                        pendingImportData.push({
+                            name: String(name).trim(), role: role, employment_type: type,
+                            phone: String(phone || ''), email: email, onboard_date: onboard,
+                            is_active: true, created_by: sessionStorage.getItem('currentUserId')
+                        });
+                        html += `<tr><td>${name}</td><td>${role}</td><td>${type}</td><td>${email||''}</td><td>${onboard||''}</td></tr>`;
+                    });
+
+                } else if (type === 'record') {
+                    html += '<th>公司</th><th>顧問</th><th>日期</th><th>時間</th></tr></thead><tbody>';
+                    
+                    previewArea.innerHTML = '<div class="text-center p-3"><span class="spinner-border"></span> 正在建立名稱對照表...</div>';
+                    
+                    const { data: allCompanies } = await supabaseClient.from('companies').select('id, name, workplaces(id)');
+                    const { data: allStaff } = await supabaseClient.from('medical_staff').select('id, name');
+
+                    const compMap = {}; 
+                    if(allCompanies) {
+                        allCompanies.forEach(c => {
+                            if(c.workplaces && c.workplaces.length > 0) compMap[c.name.trim()] = c.workplaces[0].id;
+                        });
+                    }
+                    const staffMap = {};
+                    if(allStaff) {
+                        allStaff.forEach(s => {
+                            staffMap[s.name.trim()] = s.id;
+                        });
+                    }
+
+                    rows.forEach(row => {
+                        if(!row[0]) return;
+                        const cName = String(row[0]).trim();
+                        const sName = String(row[1]).trim();
+                        const date = formatDate(row[2]);
+                        const start = row[3];
+                        const end = row[4];
+                        const items = row[5];
+
+                        const wpId = compMap[cName];
+                        const stId = staffMap[sName];
+                        const year = date ? new Date(date).getFullYear() : null;
+
+                        if(wpId && stId && date) {
+                             pendingImportData.push({
+                                workplace_id: wpId, consultant_id: stId, visit_date: date,
+                                service_year: year, start_time: start, end_time: end, execution_items: items,
+                                created_by: sessionStorage.getItem('currentUserId')
+                            });
+                            html += `<tr><td>${cName}</td><td>${sName}</td><td>${date}</td><td>${start}-${end}</td></tr>`;
+                        } else {
+                            html += `<tr class="table-danger"><td>${cName}(${wpId?'OK':'無場所'})</td><td>${sName}(${stId?'OK':'無人'})</td><td colspan="2">對應失敗</td></tr>`;
+                        }
+                    });
+                }
+
+                html += '</tbody></table>';
+                previewArea.innerHTML = html;
+
+            } catch (e) {
+                console.error(e);
+                previewArea.innerHTML = `<div class="alert alert-danger">解析失敗: ${e.message}</div>`;
+            }
         }
 
+        // ★ 修正 2：強化日期格式處理 (支援 2024/8/1 -> 2024-08-01)
         function formatDate(cellVal) {
             if(!cellVal) return null;
+            // 處理 Excel 數值型日期
             if(typeof cellVal === 'number') {
                 const date = new Date(Math.round((cellVal - 25569)*86400*1000));
                 return date.toISOString().split('T')[0];
             }
-            return String(cellVal).trim();
+            // 處理文字型日期
+            const strVal = String(cellVal).trim();
+            const dateObj = new Date(strVal);
+            if (!isNaN(dateObj.getTime())) {
+                return dateObj.toISOString().split('T')[0];
+            }
+            return strVal;
         }
 
         document.getElementById('btn-confirm-import').addEventListener('click', async function() {
