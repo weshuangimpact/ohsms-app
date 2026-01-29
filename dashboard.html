@@ -291,33 +291,44 @@
             if(cards.users) cards.users.style.display = 'none';
 
             // 根據角色開啟/關閉
-// 權限邏輯控管 (嚴格過濾)
             if (userRole === 'admin') {
-                // Admin 全開
-            } 
-            else if (userRole === 'medical') {
-                // 醫護人員: 只能看 index1, profile_settings
+                // Admin: 全開
+                if(cards.maint) cards.maint.style.display = 'block';
+                if(cards.master) cards.master.style.display = 'block';
+                if(cards.users) cards.users.style.display = 'block';
+            }
+            else if (userRole === 'doc_control' || userRole === 'general') {
+                // 文管 (doc_control): 
+                // 可見: index1, index3, index7, index6, profile
+                // 隱藏: index2, admin_users
+                
+                // 開啟: master(index7), maint(index6)
+                if(cards.master) cards.master.style.display = 'block';
+                if(cards.maint) cards.maint.style.display = 'block';
+                
+                // 隱藏: manager(index2)
                 if(cards.manager) cards.manager.style.display = 'none';
-                if(cards.eval) cards.eval.style.display = 'none';
-                if(cards.plan) cards.plan.style.display = 'none';
-                if(cards.maint) cards.maint.style.display = 'none';
-                if(cards.users) cards.users.style.display = 'none';
-            } 
-            else if (userRole === 'doc_control') {
-                // General (文管): 只能看 index1, index3, index7, profile_settings
-                if(cards.manager) cards.manager.style.display = 'none';
-                if(cards.plan) cards.plan.style.display = 'none';
-                if(cards.users) cards.users.style.display = 'none';
+                
+                // users 預設已隱藏
             }
             else if (userRole === 'consultant') {
-                // 顧問: 只能看 index1, profile_settings
-                if(cards.manager) cards.manager.style.display = 'none';
-                if(cards.eval) cards.eval.style.display = 'none';
-                if(cards.plan) cards.plan.style.display = 'none';
-                if(cards.maint) cards.maint.style.display = 'none';
-                if(cards.users) cards.users.style.display = 'none';
+                // 顧問 (consultant):
+                // 可見: index1, profile
+                // 隱藏: index2, index3, index6, index7, users
+                
+                // 隱藏預設可見的卡片
+                if(cards.manager) cards.manager.style.display = 'none'; // index2
+                if(cards.eval) cards.eval.style.display = 'none';       // index3
+                
+                // master, maint, users 預設已隱藏
+            }
+            else if (userRole === 'medical') {
+                // 醫護: 專注執行面 (維持原樣)
+                // Manager/Eval/Plan/Profile 保持顯示
+                // Maint/Master/Users 保持隱藏
             }
         });
+
         // 登出功能
         function logout() {
             if(confirm('確定要登出系統嗎？')) {
