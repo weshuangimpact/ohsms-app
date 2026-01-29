@@ -558,8 +558,8 @@
             new bootstrap.Modal(document.getElementById('companyModal')).show();
         }
 
-        async function saveCompany() {
-            const id = document.getElementById('company-id').value;
+async function saveCompany() {
+            const id = document.getElementById('company-id').value; // 如果有值代表是編輯，無值代表新增
             const payload = {
                 tax_id: document.getElementById('company-tax-id').value,
                 name: document.getElementById('company-name').value,
@@ -574,25 +574,49 @@
 
             if(!payload.tax_id || !payload.name) return alert('統編與名稱為必填');
 
+            // 1. 執行公司資料儲存
             let error;
+            let newCompanyId = id; // 用來存公司ID
+
             if(id) {
+                // --- 編輯模式 ---
                 ({ error } = await supabaseClient.from('companies').update(payload).eq('id', id));
             } else {
+                // --- 新增模式 (關鍵修改) ---
                 payload.created_by = sessionStorage.getItem('currentUserId');
-                ({ error } = await supabaseClient.from('companies').insert(payload));
+                
+                // 改用 select() 以便拿回新產生的 ID
+                const { data, error: insertError } = await supabaseClient
+                    .from('companies')
+                    .insert(payload)
+                    .select('id')
+                    .single();
+                
+                error = insertError;
+                
+                if (!error && data) {
+                    newCompanyId = data.id;
+                    
+                    // ★ 自動建立預設作業場所 (解決您遇到的錯誤)
+                    const { error: wpError } = await supabaseClient.from('workplaces').insert({
+                        company_id: newCompanyId,
+                        department_name: '全廠', // 預設名稱
+                        hazard_type: '無',      // 預設無危害
+                        hazard_count: 0,
+                        created_by: sessionStorage.getItem('currentUserId')
+                    });
+
+                    if (wpError) console.error('自動建立場所失敗:', wpError);
+                }
             }
 
-            if(error) alert('儲存失敗: ' + error.message);
-            else {
+            if(error) {
+                alert('儲存失敗: ' + error.message);
+            } else {
+                alert('✅ 儲存成功！' + (!id ? '(已自動建立預設作業場所)' : ''));
                 bootstrap.Modal.getInstance(document.getElementById('companyModal')).hide();
                 loadCompanies();
             }
-        }
-
-        function toggleEndDate(checkbox) {
-            const endInput = document.getElementById('contract-end');
-            endInput.disabled = checkbox.checked;
-            if(checkbox.checked) endInput.value = '';
         }
 
         // ==========================================
