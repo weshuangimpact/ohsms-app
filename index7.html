@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>基本資料建立 | OHSMS</title>
+    <title>基本資料建立 (Data Mgmt) | OHSMS</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.css"></script>
@@ -51,7 +51,7 @@
         
         <div class="d-flex justify-content-between align-items-center mb-4">
             <div class="section-title mb-0">
-                <h4 class="fw-bold text-dark mb-0">基本資料建立</h4>
+                <h4 class="fw-bold text-dark mb-0">基本資料建立 (Data Management)</h4>
                 <small class="text-muted">管理客戶公司主檔、作業場所與醫護人員名單</small>
             </div>
         </div>
@@ -231,6 +231,15 @@
                                 <input type="text" class="form-control" id="company-phone">
                             </div>
                         </div>
+                        
+                        <div class="mb-3 bg-light p-2 rounded border">
+                            <label class="form-label fw-bold small text-primary"><i class="fas fa-user-md me-1"></i>負責顧問/醫護人員</label>
+                            <select class="form-select" id="company-consultant">
+                                <option value="">(載入中...)</option>
+                            </select>
+                            <small class="text-muted" style="font-size: 0.75rem;">請選擇負責服務此公司的主要顧問或醫護</small>
+                        </div>
+
                         <hr>
                         <div class="row g-3 mb-3">
                             <div class="col-md-6">
@@ -362,6 +371,35 @@
         });
 
         // ==========================================
+        // 0. 共用函式：載入顧問選單 (Dropdown)
+        // ==========================================
+        async function loadConsultantOptions(selectedId = null) {
+            const select = document.getElementById('company-consultant');
+            select.innerHTML = '<option value="">載入中...</option>';
+            
+            // 抓取所有 "服務中 (is_active=true)" 的醫護人員
+            const { data, error } = await supabaseClient
+                .from('medical_staff')
+                .select('id, name, role')
+                .eq('is_active', true)
+                .order('name');
+            
+            if (error) {
+                console.error(error);
+                select.innerHTML = '<option value="">(載入失敗)</option>';
+                return [];
+            }
+
+            let html = '<option value="">(未指派)</option>';
+            data.forEach(staff => {
+                const isSelected = (selectedId && staff.id === selectedId) ? 'selected' : '';
+                html += `<option value="${staff.id}" ${isSelected}>${staff.name} (${staff.role})</option>`;
+            });
+            select.innerHTML = html;
+            return data; // 回傳資料供匯入比對使用
+        }
+
+        // ==========================================
         // 1. 公司主檔邏輯
         // ==========================================
         async function loadCompanies() {
@@ -399,17 +437,25 @@
             `).join('');
         }
 
-        function openCompanyModal() {
+        async function openCompanyModal() {
             document.getElementById('companyForm').reset();
             document.getElementById('company-id').value = '';
             document.getElementById('companyModalTitle').innerText = '新增事業單位';
             document.getElementById('contract-end').disabled = true;
+            
+            // 載入下拉選單
+            await loadConsultantOptions();
+            
             new bootstrap.Modal(document.getElementById('companyModal')).show();
         }
 
         async function editCompany(id) {
             const { data, error } = await supabaseClient.from('companies').select('*').eq('id', id).single();
             if(error) return alert('讀取失敗');
+
+            // 先載入下拉選單，並預選 consultant_id (若資料庫有此欄位)
+            // 注意：若資料庫還沒建立 consultant_id 欄位，data.consultant_id 會是 undefined
+            await loadConsultantOptions(data.consultant_id);
 
             document.getElementById('company-id').value = data.id;
             document.getElementById('company-tax-id').value = data.tax_id;
@@ -440,6 +486,7 @@
                 contract_start_date: document.getElementById('contract-start').value || null,
                 contract_end_date: document.getElementById('contract-end').value || null,
                 is_active: document.getElementById('contract-active').checked,
+                consultant_id: document.getElementById('company-consultant').value || null, // [新增] 儲存顧問ID
                 updated_by: sessionStorage.getItem('currentUserId')
             };
 
@@ -570,7 +617,7 @@
         }
 
         // ==========================================
-        // 3. 匯入功能 (Excel Import) - 修正邏輯
+        // 3. 匯入功能 (Excel Import) - 含顧問對應邏輯
         // ==========================================
         let pendingImportData = [];
         let pendingImportType = '';
@@ -578,8 +625,9 @@
         function downloadTemplate(type) {
             let csvContent = "data:text/csv;charset=utf-8,\uFEFF";
             if(type === 'company') {
-                csvContent += "統一編號,事業單位名稱,聯絡人,電話,合約開始日期(YYYY-MM-DD),合約結束日期(YYYY-MM-DD)\n";
-                csvContent += "85204196,範例公司,王大明,0912345678,2025-01-01,2025-12-31";
+                // [新增] 範本增加第7欄: 負責顧問
+                csvContent += "統一編號,事業單位名稱,聯絡人,電話,合約開始日期(YYYY-MM-DD),合約結束日期(YYYY-MM-DD),負責顧問(選填)\n";
+                csvContent += "85204196,範例公司,王大明,0912345678,2025-01-01,2025-12-31,王大衛";
             } else {
                 csvContent += "姓名,身分角色(醫師/護理人員/顧問),職務型態(全職/兼職),電話,Email,入職日期(YYYY-MM-DD)\n";
                 csvContent += "李小美,護理人員,全職,0987654321,nurse@test.com,2024-05-20";
@@ -611,14 +659,22 @@
             reader.readAsArrayBuffer(file);
         }
 
-        function parseAndImportData(rows, type) {
+        async function parseAndImportData(rows, type) {
             pendingImportType = type;
             pendingImportData = [];
             const previewArea = document.getElementById('import-preview-area');
             let html = '<table class="table table-sm table-bordered"><thead><tr class="table-secondary">';
+            
+            // 準備顧問對照表 (Name -> ID)
+            let staffMap = {};
+            if (type === 'company') {
+                 // 這裡呼叫共用函式取得清單，但不更新下拉選單UI，純粹拿資料
+                const staffList = await loadConsultantOptions(); 
+                staffList.forEach(s => staffMap[s.name] = s.id);
+            }
 
             if(type === 'company') {
-                html += '<th>統編</th><th>名稱</th><th>狀態</th><th>開始日</th><th>結束日</th></tr></thead><tbody>';
+                html += '<th>統編</th><th>名稱</th><th>狀態</th><th>負責顧問</th></tr></thead><tbody>';
                 
                 rows.forEach(row => {
                     if(!row[0]) return; 
@@ -630,11 +686,15 @@
                     const phone = row[3];   
                     const startDate = formatDate(row[4]);
                     const endDate = formatDate(row[5]);
+                    
+                    // [新增邏輯] 讀取第7欄 (Index 6) 的顧問姓名
+                    const consultantName = row[6] ? String(row[6]).trim() : '';
+                    const consultantId = consultantName ? (staffMap[consultantName] || null) : null;
 
-                    // ★ 修正重點：自動判斷合約是否有效
+                    // 合約狀態判斷
                     let isActive = true;
                     if(endDate) {
-                        const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
+                        const today = new Date().toISOString().split('T')[0];
                         if(endDate < today) isActive = false;
                     }
 
@@ -646,12 +706,15 @@
                         phone: String(phone || ''),
                         contract_start_date: startDate,
                         contract_end_date: endDate,
-                        is_active: isActive, // 套用判斷結果
+                        is_active: isActive,
+                        consultant_id: consultantId, // 存入 ID
                         created_by: sessionStorage.getItem('currentUserId')
                     });
 
                     const statusBadge = isActive ? '<span class="badge bg-success">服務中</span>' : '<span class="badge bg-secondary">已結束</span>';
-                    html += `<tr><td>${taxId}</td><td>${name}</td><td>${statusBadge}</td><td>${startDate||''}</td><td>${endDate||''}</td></tr>`;
+                    const consultantDisplay = consultantId ? consultantName : (consultantName ? '<span class="text-danger">查無此人</span>' : '<span class="text-muted">-</span>');
+                    
+                    html += `<tr><td>${taxId}</td><td>${name}</td><td>${statusBadge}</td><td>${consultantDisplay}</td></tr>`;
                 });
 
             } else {
@@ -703,11 +766,9 @@
 
             try {
                 if(pendingImportType === 'company') {
-                    // 公司：維持 Upsert (因為 tax_id 是 unique)
                     const { error } = await supabaseClient.from('companies').upsert(pendingImportData, { onConflict: 'tax_id' });
                     if(error) throw error;
                 } else {
-                    // ★ 修正重點：醫護人員改用 Insert (避免 Email 非 unique 導致 upsert 失敗)
                     const { error } = await supabaseClient.from('medical_staff').insert(pendingImportData);
                     if(error) throw error;
                 }
