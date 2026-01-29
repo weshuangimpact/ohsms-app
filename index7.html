@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>基本資料建立 (Data Mgmt) | OHSMS</title>
+    <title>基本資料建立 | OHSMS</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.css"></script>
@@ -51,7 +51,7 @@
         
         <div class="d-flex justify-content-between align-items-center mb-4">
             <div class="section-title mb-0">
-                <h4 class="fw-bold text-dark mb-0">基本資料建立 (Data Management)</h4>
+                <h4 class="fw-bold text-dark mb-0">基本資料建立</h4>
                 <small class="text-muted">管理客戶公司主檔、作業場所與醫護人員名單</small>
             </div>
         </div>
@@ -86,12 +86,13 @@
                                                 <th>統編</th>
                                                 <th>公司名稱</th>
                                                 <th>聯絡人</th>
+                                                <th>負責顧問</th>
                                                 <th>合約狀態</th>
                                                 <th class="text-end">操作</th>
                                             </tr>
                                         </thead>
                                         <tbody id="companyTableBody">
-                                            <tr><td colspan="5" class="text-center py-4">載入中...</td></tr>
+                                            <tr><td colspan="6" class="text-center py-4">載入中...</td></tr>
                                         </tbody>
                                     </table>
                                 </div>
@@ -377,7 +378,6 @@
             const select = document.getElementById('company-consultant');
             select.innerHTML = '<option value="">載入中...</option>';
             
-            // 抓取所有 "服務中 (is_active=true)" 的醫護人員
             const { data, error } = await supabaseClient
                 .from('medical_staff')
                 .select('id, name, role')
@@ -396,23 +396,27 @@
                 html += `<option value="${staff.id}" ${isSelected}>${staff.name} (${staff.role})</option>`;
             });
             select.innerHTML = html;
-            return data; // 回傳資料供匯入比對使用
+            return data;
         }
 
         // ==========================================
-        // 1. 公司主檔邏輯
+        // 1. 公司主檔邏輯 (含顧問顯示)
         // ==========================================
         async function loadCompanies() {
             const tbody = document.getElementById('companyTableBody');
             const search = document.getElementById('search-company').value.trim();
-            tbody.innerHTML = '<tr><td colspan="5" class="text-center py-4"><div class="spinner-border spinner-border-sm text-primary"></div></td></tr>';
+            tbody.innerHTML = '<tr><td colspan="6" class="text-center py-4"><div class="spinner-border spinner-border-sm text-primary"></div></td></tr>';
 
-            let query = supabaseClient.from('companies').select('*').order('created_at', {ascending: false});
+            // [修正] 讀取時透過 Join 抓取 medical_staff 的姓名
+            let query = supabaseClient.from('companies')
+                .select('*, medical_staff(name)')
+                .order('created_at', {ascending: false});
+            
             if(search) query = query.ilike('name', `%${search}%`);
 
             const { data, error } = await query;
             if(error) {
-                tbody.innerHTML = `<tr><td colspan="5" class="text-center text-danger">載入失敗: ${error.message}</td></tr>`;
+                tbody.innerHTML = `<tr><td colspan="6" class="text-center text-danger">載入失敗: ${error.message}</td></tr>`;
                 return;
             }
 
@@ -420,21 +424,26 @@
             document.getElementById('stat-active-contract').innerText = data.filter(c => c.is_active).length;
 
             if(data.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="5" class="text-center text-muted py-4">尚無資料</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="6" class="text-center text-muted py-4">尚無資料</td></tr>';
                 return;
             }
 
-            tbody.innerHTML = data.map(c => `
+            tbody.innerHTML = data.map(c => {
+                // 處理顧問名稱顯示 (若無則顯示 - )
+                const consultantName = c.medical_staff ? c.medical_staff.name : '<span class="text-muted text-opacity-50">-</span>';
+                
+                return `
                 <tr>
                     <td class="font-monospace">${c.tax_id}</td>
                     <td class="fw-bold text-primary" style="cursor:pointer" onclick="editCompany('${c.id}')">${c.name}</td>
                     <td>${c.contact_person || '-'}</td>
+                    <td><small class="fw-bold text-dark">${consultantName}</small></td>
                     <td>${c.is_active ? '<span class="badge bg-success">服務中</span>' : '<span class="badge bg-secondary">已結束</span>'}</td>
                     <td class="text-end">
                         <button class="btn btn-sm btn-outline-primary" onclick="editCompany('${c.id}')"><i class="fas fa-edit"></i></button>
                     </td>
                 </tr>
-            `).join('');
+            `}).join('');
         }
 
         async function openCompanyModal() {
@@ -442,10 +451,7 @@
             document.getElementById('company-id').value = '';
             document.getElementById('companyModalTitle').innerText = '新增事業單位';
             document.getElementById('contract-end').disabled = true;
-            
-            // 載入下拉選單
             await loadConsultantOptions();
-            
             new bootstrap.Modal(document.getElementById('companyModal')).show();
         }
 
@@ -453,8 +459,6 @@
             const { data, error } = await supabaseClient.from('companies').select('*').eq('id', id).single();
             if(error) return alert('讀取失敗');
 
-            // 先載入下拉選單，並預選 consultant_id (若資料庫有此欄位)
-            // 注意：若資料庫還沒建立 consultant_id 欄位，data.consultant_id 會是 undefined
             await loadConsultantOptions(data.consultant_id);
 
             document.getElementById('company-id').value = data.id;
@@ -486,7 +490,7 @@
                 contract_start_date: document.getElementById('contract-start').value || null,
                 contract_end_date: document.getElementById('contract-end').value || null,
                 is_active: document.getElementById('contract-active').checked,
-                consultant_id: document.getElementById('company-consultant').value || null, // [新增] 儲存顧問ID
+                consultant_id: document.getElementById('company-consultant').value || null,
                 updated_by: sessionStorage.getItem('currentUserId')
             };
 
@@ -625,7 +629,6 @@
         function downloadTemplate(type) {
             let csvContent = "data:text/csv;charset=utf-8,\uFEFF";
             if(type === 'company') {
-                // [新增] 範本增加第7欄: 負責顧問
                 csvContent += "統一編號,事業單位名稱,聯絡人,電話,合約開始日期(YYYY-MM-DD),合約結束日期(YYYY-MM-DD),負責顧問(選填)\n";
                 csvContent += "85204196,範例公司,王大明,0912345678,2025-01-01,2025-12-31,王大衛";
             } else {
@@ -665,10 +668,8 @@
             const previewArea = document.getElementById('import-preview-area');
             let html = '<table class="table table-sm table-bordered"><thead><tr class="table-secondary">';
             
-            // 準備顧問對照表 (Name -> ID)
             let staffMap = {};
             if (type === 'company') {
-                 // 這裡呼叫共用函式取得清單，但不更新下拉選單UI，純粹拿資料
                 const staffList = await loadConsultantOptions(); 
                 staffList.forEach(s => staffMap[s.name] = s.id);
             }
@@ -687,11 +688,9 @@
                     const startDate = formatDate(row[4]);
                     const endDate = formatDate(row[5]);
                     
-                    // [新增邏輯] 讀取第7欄 (Index 6) 的顧問姓名
                     const consultantName = row[6] ? String(row[6]).trim() : '';
                     const consultantId = consultantName ? (staffMap[consultantName] || null) : null;
 
-                    // 合約狀態判斷
                     let isActive = true;
                     if(endDate) {
                         const today = new Date().toISOString().split('T')[0];
@@ -707,7 +706,7 @@
                         contract_start_date: startDate,
                         contract_end_date: endDate,
                         is_active: isActive,
-                        consultant_id: consultantId, // 存入 ID
+                        consultant_id: consultantId,
                         created_by: sessionStorage.getItem('currentUserId')
                     });
 
