@@ -348,7 +348,6 @@
                                 <select class="form-select" id="staff-role">
                                     <option value="consultant">顧問</option>
                                     <option value="admin">管理員</option>
-                                    <option value="medical">護理人員/醫師</option>
                                     <option value="doc_control">文管人員</option>
                                 </select>
                             </div>
@@ -648,11 +647,19 @@
                 tbody.innerHTML = '<tr><td colspan="6" class="text-center text-muted py-4">尚無資料</td></tr>';
                 return;
             }
+            
+            // 修正：身分代碼轉中文
+            const roleMap = {
+                'consultant': '顧問',
+                'admin': '管理員',
+                'doc_control': '文管人員',
+                'medical': '醫護人員' // 僅顯示用，預防舊資料有
+            };
 
             tbody.innerHTML = data.map(s => `
                 <tr>
                     <td class="fw-bold">${s.name} ${!s.is_active ? '<span class="badge bg-danger ms-1">離職</span>' : ''}</td>
-                    <td>${s.role}</td>
+                    <td>${roleMap[s.role] || s.role}</td> 
                     <td>${s.employment_type || '-'}</td>
                     <td>${s.phone || '-'}</td>
                     <td>${s.email || '-'}</td>
@@ -867,7 +874,6 @@
         function downloadTemplate(type) {
             let csvContent = "data:text/csv;charset=utf-8,\uFEFF";
             if(type === 'company') {
-                // [FIXED] 增加「公司地址」欄位
                 csvContent += "統一編號,事業單位名稱,公司地址,聯絡人,電話,合約開始日期(YYYY-MM-DD),合約結束日期(YYYY-MM-DD)\n";
                 csvContent += "85204196,範例公司,台北市信義區忠孝東路一段1號,王大明,0912345678,2025-01-01,2025-12-31";
             } else if (type === 'staff') {
@@ -904,13 +910,13 @@
             reader.readAsArrayBuffer(file);
         }
 
-async function parseAndImportData(rows, type) {
+        async function parseAndImportData(rows, type) {
             pendingImportType = type;
             pendingImportData = [];
             const previewArea = document.getElementById('import-preview-area');
             let html = '<table class="table table-sm table-bordered"><thead><tr class="table-secondary">';
 
-            // ★ 修正 1：先開啟 Modal，讓使用者知道系統有反應
+            // 修正：必須先呼叫 Modal show 才能看見預覽視窗
             const modal = new bootstrap.Modal(document.getElementById('importModal'));
             modal.show();
 
@@ -928,7 +934,6 @@ async function parseAndImportData(rows, type) {
                         const endDate = formatDate(row[6]);
                         
                         let isActive = true;
-                        // 簡單判斷：如果有結束日且小於今天，則為失效
                         if(endDate && endDate < new Date().toISOString().split('T')[0]) isActive = false;
 
                         pendingImportData.push({
@@ -1015,15 +1020,13 @@ async function parseAndImportData(rows, type) {
             }
         }
 
-        // ★ 修正 2：強化日期格式處理 (支援 2024/8/1 -> 2024-08-01)
+        // 修正：強化日期格式處理 (支援 2024/8/1 格式)
         function formatDate(cellVal) {
             if(!cellVal) return null;
-            // 處理 Excel 數值型日期
             if(typeof cellVal === 'number') {
                 const date = new Date(Math.round((cellVal - 25569)*86400*1000));
                 return date.toISOString().split('T')[0];
             }
-            // 處理文字型日期
             const strVal = String(cellVal).trim();
             const dateObj = new Date(strVal);
             if (!isNaN(dateObj.getTime())) {
@@ -1038,24 +1041,14 @@ async function parseAndImportData(rows, type) {
             btn.innerText = '匯入中...';
 
             try {
-                let targetTable = '';
-                let options = {};
-                
                 if(pendingImportType === 'company') {
-                    targetTable = 'companies';
-                    options = { onConflict: 'tax_id' };
-                    const { error } = await supabaseClient.from(targetTable).upsert(pendingImportData, options);
+                    const { error } = await supabaseClient.from('companies').upsert(pendingImportData, { onConflict: 'tax_id' });
                     if(error) throw error;
-                    
-                    // [Optimization] 公司匯入後，可考慮觸發 SQL 修復確保有 Workplaces (雖然這邊沒做 Trigger，但後續編輯或新增會補)
-                    
                 } else if(pendingImportType === 'staff') {
-                    targetTable = 'medical_staff';
-                    const { error } = await supabaseClient.from(targetTable).insert(pendingImportData);
+                    const { error } = await supabaseClient.from('medical_staff').insert(pendingImportData);
                     if(error) throw error;
                 } else if(pendingImportType === 'record') {
-                    targetTable = 'service_records';
-                    const { error } = await supabaseClient.from(targetTable).insert(pendingImportData);
+                    const { error } = await supabaseClient.from('service_records').insert(pendingImportData);
                     if(error) throw error;
                 }
 
