@@ -29,11 +29,11 @@
             margin-bottom: 20px; 
         }
 
-        /* [修正 1] 5W1H 整合式理念字卡 */
+        /* 5W1H 整合式理念字卡 */
         .concept-card {
             background: white;
             border: none;
-            border-left: 5px solid var(--theme-color); /* 統一色調 */
+            border-left: 5px solid var(--theme-color);
             border-radius: 8px;
             box-shadow: 0 2px 4px rgba(0,0,0,0.05);
             padding: 20px;
@@ -62,10 +62,10 @@
             margin-bottom: 20px;
         }
 
-        /* 列表卡片 (統一色調) */
+        /* 列表卡片 */
         .card-list {
             border: none;
-            border-left: 5px solid var(--theme-color); /* 統一色調 */
+            border-left: 5px solid var(--theme-color);
             box-shadow: 0 4px 6px rgba(0,0,0,0.05);
         }
 
@@ -185,10 +185,9 @@
                 </div>
                 <div class="modal-body">
                     <input type="hidden" id="target-staff-id">
-                    
-                    <div class="alert alert-info bg-opacity-10 border-info border-opacity-25 mb-3 small" style="color: #055160;">
+                    <input type="hidden" id="target-user-id"> <div class="alert alert-info bg-opacity-10 border-info border-opacity-25 mb-3 small" style="color: #055160;">
                         <i class="fas fa-info-circle me-1"></i> 
-                        此操作將建立 Profiles 並連結 Medical Staff。請將預設密碼告知使用者。
+                        此操作將自動檢測帳號狀態。若帳號已存在，系統將自動進行修復與重新連結。
                     </div>
 
                     <div class="mb-3">
@@ -224,7 +223,7 @@
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
                     <button type="button" class="btn btn-theme fw-bold" onclick="directActivateUser()">
-                        <i class="fas fa-check-circle me-1"></i> 確認開通
+                        <i class="fas fa-check-circle me-1"></i> 確認開通/修復
                     </button>
                 </div>
             </div>
@@ -243,7 +242,7 @@
             loadUsers();
         });
 
-        // 1. 列表載入函式
+        // 1. 列表載入函式 (智慧判斷按鈕狀態)
         async function loadUsers() {
             const tbody = document.getElementById('userTableBody');
             const keyword = document.getElementById('search-input').value.trim().toLowerCase();
@@ -252,12 +251,10 @@
             tbody.innerHTML = '<tr><td colspan="5" class="text-center py-5 text-muted"><i class="fas fa-spinner fa-spin me-2"></i>資料載入中...</td></tr>';
 
             try {
-                // 讀取 medical_staff
                 let query = supabaseClient.from('medical_staff').select('*').order('created_at', { ascending: false });
                 const { data: staffData, error } = await query;
                 if(error) throw error;
 
-                // 讀取 profiles (為了取得 email 和 login status)
                 const userIds = staffData.map(s => s.user_id).filter(id => id);
                 let profilesMap = {};
                 if(userIds.length > 0) {
@@ -265,7 +262,6 @@
                     if(profiles) profiles.forEach(p => profilesMap[p.id] = p);
                 }
 
-                // 篩選邏輯
                 let filtered = staffData;
                 if(keyword) filtered = filtered.filter(s => (s.name && s.name.toLowerCase().includes(keyword)) || (s.email && s.email.toLowerCase().includes(keyword)));
                 if(roleFilter) filtered = filtered.filter(s => s.system_role === roleFilter);
@@ -275,11 +271,13 @@
                     return;
                 }
 
-                // 渲染列表
                 tbody.innerHTML = filtered.map(s => {
                     const profile = profilesMap[s.user_id];
-                    // ★ 判斷：必須有 user_id 且 profile 存在才算完整帳號
-                    const hasAccount = !!(s.user_id); 
+                    
+                    // 邏輯核心：只要 Profile 不存在 (無論是否有 user_id)，都視為「未完整開通」
+                    // 這樣異常資料 (有 id 沒 profile) 就會自動顯示「啟用帳號」按鈕
+                    const isFullyActive = !!(s.user_id && profile);
+                    
                     const emailValue = profile ? profile.email : (s.email || '');
                     const emailDisplay = emailValue || '<span class="text-muted fst-italic">未綁定帳號</span>';
                     
@@ -291,32 +289,24 @@
                         default: roleBadge = '<span class="badge role-badge-general">文管/其他</span>'; break;
                     }
 
-                    // 狀態顯示 (依據 is_active)
                     const statusBadge = s.is_active 
                         ? '<span class="badge bg-success bg-opacity-10 text-success">在職 (Active)</span>' 
                         : '<span class="badge bg-secondary">已停用 (Inactive)</span>';
 
-                    // [修正 3] 管理動作按鈕邏輯
                     let actionBtn = '';
-                    if (hasAccount) {
-                        // 如果有帳號，根據狀態顯示「停用」或「復權」
+
+                    if (isFullyActive) {
+                        // 正常狀態：顯示停用/恢復
                         if (s.is_active) {
-                            actionBtn = `
-                                <button class="btn btn-sm btn-outline-danger fw-bold" onclick="toggleStatus('${s.id}', false, '${s.name}')" title="點擊停用此帳號">
-                                    <i class="fas fa-ban me-1"></i>停用權限
-                                </button>
-                            `;
+                            actionBtn = `<button class="btn btn-sm btn-outline-danger fw-bold" onclick="toggleStatus('${s.id}', false, '${s.name}')"><i class="fas fa-ban me-1"></i>停用權限</button>`;
                         } else {
-                            actionBtn = `
-                                <button class="btn btn-sm btn-outline-success fw-bold" onclick="toggleStatus('${s.id}', true, '${s.name}')" title="點擊恢復此帳號">
-                                    <i class="fas fa-redo me-1"></i>恢復權限
-                                </button>
-                            `;
+                            actionBtn = `<button class="btn btn-sm btn-outline-success fw-bold" onclick="toggleStatus('${s.id}', true, '${s.name}')"><i class="fas fa-redo me-1"></i>恢復權限</button>`;
                         }
                     } else {
-                        // 沒有帳號 -> 顯示「啟用帳號」
+                        // 未開通 或 異常狀態 (Missing Profile)：統一顯示「啟用帳號」
+                        // 注意：這裡我們會把 user_id (若有) 傳進去，方便後續判斷是修復還是新開
                         actionBtn = `
-                            <button class="btn btn-sm btn-theme fw-bold" onclick="openActivateModal('${s.id}', '${s.name}', '${s.system_role || 'consultant'}', '${emailValue}')">
+                            <button class="btn btn-sm btn-theme fw-bold" onclick="openActivateModal('${s.id}', '${s.name}', '${s.system_role || 'consultant'}', '${emailValue}', '${s.user_id || ''}')">
                                 <i class="fas fa-key me-1"></i>啟用帳號
                             </button>
                         `;
@@ -339,9 +329,11 @@
             }
         }
 
-        // 2. 開啟開通視窗
-        function openActivateModal(id, name, defaultRole, email) {
+        // 2. 開啟視窗 (接收 user_id 參數)
+        function openActivateModal(id, name, defaultRole, email, existingUserId) {
             document.getElementById('target-staff-id').value = id;
+            document.getElementById('target-user-id').value = existingUserId || ''; // 存入隱藏欄位
+            
             document.getElementById('invite-name').innerText = name;
             document.getElementById('invite-system-role').value = defaultRole;
             document.getElementById('invite-email').value = email || ''; 
@@ -350,10 +342,12 @@
             new bootstrap.Modal(document.getElementById('inviteModal')).show();
         }
 
-        // [修正 2] 直接開通 (Direct SignUp) - 強制同步 Profiles
+        // 3. 智慧開通與修復 (Smart Activation)
         async function directActivateUser() {
             const staffId = document.getElementById('target-staff-id').value;
-            const email = document.getElementById('invite-email').value;
+            const existingUserId = document.getElementById('target-user-id').value; // 取得舊 ID
+            
+            const email = document.getElementById('invite-email').value.trim();
             const password = document.getElementById('invite-password').value;
             const role = document.getElementById('invite-system-role').value;
             const name = document.getElementById('invite-name').innerText;
@@ -363,96 +357,100 @@
             const btn = document.querySelector('#inviteModal .btn-theme');
             const originalText = btn.innerHTML;
             btn.disabled = true;
-            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 開通中...';
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 處理中...';
+
+            let finalUserId = existingUserId;
+            let isRepairMode = !!existingUserId; // 標記是否為修復模式
 
             try {
-                // A. 建立 Auth 使用者
-                const { data: authData, error: authError } = await supabaseClient.auth.signUp({
-                    email: email,
-                    password: password,
-                    options: { data: { full_name: name, role: role } }
-                });
+                // A. 處理 Auth 帳號
+                if (!finalUserId) {
+                    // 情況 1: 全新開通 -> 嘗試 SignUp
+                    const { data: authData, error: authError } = await supabaseClient.auth.signUp({
+                        email: email,
+                        password: password,
+                        options: { data: { full_name: name, role: role } }
+                    });
 
-                if (authError) throw authError;
+                    if (authError) {
+                        // 特殊處理：如果錯誤是 "User already registered"，代表其實帳號已存在但我們不知道 ID
+                        // 這時候我們無法直接取得 ID (安全限制)，只能提示管理員
+                        if (authError.message.includes("already registered")) {
+                             throw new Error("此 Email 已被註冊！若需修復舊帳號，請確認 Email 無誤後手動處理，或聯繫系統管理員。");
+                        }
+                        throw authError;
+                    }
+                    finalUserId = authData.user?.id;
+                } else {
+                    // 情況 2: 已知 User ID (異常修復) -> 跳過 SignUp，直接往下修復 Profile
+                    // 這裡我們不重設密碼，因為管理員不知道舊密碼。若需重設，請使用者自行用「忘記密碼」。
+                    // (或者我們可以使用 admin.updateUserByEmail 來強制重設，但前端 SDK 做不到)
+                    console.log("偵測到舊 ID，進入修復模式...");
+                }
 
-                const newUserId = authData.user?.id;
-                if (!newUserId) throw new Error("帳號建立異常，無法取得 User ID。");
+                if (!finalUserId) throw new Error("無法取得有效的 User ID。");
 
-                // B. [重要] 強制寫入 Profiles (分流原則：Profile 是系統權限核心)
+                // B. [核心] 強制 Upsert Profile (無論是新舊，都強制覆蓋確保資料正確)
                 const { error: profileError } = await supabaseClient
                     .from('profiles')
                     .upsert({
-                        id: newUserId,
+                        id: finalUserId,
                         email: email,
                         full_name: name,
                         role: role,
                         status: 'active',
                         is_active: true,
-                        created_by: (await supabaseClient.auth.getUser()).data.user?.id // 記錄是誰開通的
+                        created_by: (await supabaseClient.auth.getUser()).data.user?.id
                     });
 
-                if (profileError) console.warn("Profile 寫入警告:", profileError);
+                if (profileError) throw new Error("Profile 寫入失敗: " + profileError.message);
 
-                // C. 更新 Medical Staff (連結人事資料與系統帳號)
+                // C. 綁定/更新 Medical Staff
                 const { error: staffError } = await supabaseClient
                     .from('medical_staff')
                     .update({ 
-                        user_id: newUserId,     
+                        user_id: finalUserId,     
                         system_role: role,
                         is_active: true,
-                        email: email // 同步更新名單上的 Email
+                        email: email // 同步更新 Email
                     })
                     .eq('id', staffId);
                 
-                if (staffError) throw new Error("帳號建立成功但名單綁定失敗: " + staffError.message);
+                if (staffError) throw new Error("名單綁定失敗: " + staffError.message);
 
-                alert(`✅ 帳號開通成功！\n\n使用者：${name}\n帳號：${email}\n預設密碼：${password}\n\n系統已同步建立 Profiles 資料。`);
+                // D. 完成提示
+                let msg = `✅ 帳號${isRepairMode ? '修復' : '開通'}成功！\n\n使用者：${name}\n帳號：${email}`;
+                if(!isRepairMode) msg += `\n預設密碼：${password}`;
+                else msg += `\n(修復模式不變更原有密碼)`;
+                
+                alert(msg);
                 
                 bootstrap.Modal.getInstance(document.getElementById('inviteModal')).hide();
                 loadUsers();
 
             } catch (err) {
                 console.error(err);
-                if (err.message.includes("already registered")) {
-                    alert('❌ 失敗：此 Email 已經被註冊過了！\n若是舊帳號，請確認是否需要手動綁定。');
-                } else {
-                    alert('❌ 開通失敗: ' + err.message);
-                }
+                alert('❌ 操作失敗: ' + err.message);
             } finally {
                 btn.disabled = false;
                 btn.innerHTML = originalText;
             }
         }
 
-        // [修正 3] 切換帳號狀態 (停用/復權)
+        // 4. 切換帳號狀態
         async function toggleStatus(staffId, isActive, name) {
             const actionName = isActive ? "恢復權限" : "停用權限";
-            if (!confirm(`確定要對「${name}」執行【${actionName}】嗎？\n\n${isActive ? '該人員將可重新登入系統。' : '該人員將無法再登入系統，但資料會保留。'}`)) {
-                return;
-            }
+            if (!confirm(`確定要對「${name}」執行【${actionName}】嗎？`)) return;
 
             try {
                 // 1. 更新 medical_staff
-                const { error: staffError } = await supabaseClient
-                    .from('medical_staff')
-                    .update({ is_active: isActive })
-                    .eq('id', staffId);
-
+                const { error: staffError } = await supabaseClient.from('medical_staff').update({ is_active: isActive }).eq('id', staffId);
                 if (staffError) throw staffError;
 
-                // 2. 嘗試更新 profiles (如果有的話)
-                // 先查 user_id
-                const { data: staffData } = await supabaseClient
-                    .from('medical_staff')
-                    .select('user_id')
-                    .eq('id', staffId)
-                    .single();
-
+                // 2. 同步更新 profiles
+                const { data: staffData } = await supabaseClient.from('medical_staff').select('user_id').eq('id', staffId).single();
                 if (staffData && staffData.user_id) {
-                    await supabaseClient
-                        .from('profiles')
-                        .update({ is_active: isActive, status: isActive ? 'active' : 'inactive' })
-                        .eq('id', staffData.user_id);
+                    await supabaseClient.from('profiles').update({ is_active: isActive, status: isActive ? 'active' : 'inactive' }).eq('id', staffData.user_id);
                 }
 
                 alert(`✅ 已成功${actionName}！`);
