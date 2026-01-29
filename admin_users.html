@@ -378,13 +378,14 @@
                         if (authError.message.includes("already registered")) {
                              throw new Error("此 Email 已被註冊！若需修復舊帳號，請確認 Email 無誤後手動處理，或聯繫系統管理員。");
                         }
+                        if (authError.message.includes("rate limit")) {
+                             throw new Error("系統忙碌中 (Rate Limit Exceeded)。請稍後再試，或請管理員至 Supabase 後台調整限制。");
+                        }
                         throw authError;
                     }
                     finalUserId = authData.user?.id;
                 } else {
                     // 情況 2: 已知 User ID (異常修復) -> 跳過 SignUp，直接往下修復 Profile
-                    // 這裡我們不重設密碼，因為管理員不知道舊密碼。若需重設，請使用者自行用「忘記密碼」。
-                    // (或者我們可以使用 admin.updateUserByEmail 來強制重設，但前端 SDK 做不到)
                     console.log("偵測到舊 ID，進入修復模式...");
                 }
 
