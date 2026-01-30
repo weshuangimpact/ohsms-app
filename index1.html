@@ -38,6 +38,15 @@
 
     .instruction-box { background-color: #fff; border-left: 5px solid var(--theme-color); padding: 20px 25px; border-radius: 4px; margin-bottom: 30px; text-align: left; box-shadow: 0 2px 5px rgba(0,0,0,0.05); width: 100%; }
     .instruction-title { color: #0a58ca; font-weight: 700; margin-bottom: 10px; }
+    
+    /* 備註欄樣式 */
+    .remark-box {
+        border: 2px dashed #cbd5e1;
+        background-color: #f8fafc;
+        border-radius: 6px;
+        padding: 15px;
+        margin-bottom: 20px;
+    }
 </style>
 
     <script>
@@ -119,7 +128,7 @@
                         <button class="btn btn-outline-secondary btn-sm" onclick="backToStep1()"><i class="fas fa-sync-alt me-1"></i> 重選案件</button>
                     </div>
 
-                    <div class="alert alert-light border-start border-4 border-primary mb-4 bg-light">
+                    <div class="alert alert-light border-start border-4 border-primary mb-3 bg-light">
                         <div class="row align-items-center gy-2">
                             <div class="col-lg-4">
                                 <i class="fas fa-info-circle text-primary me-2 fa-lg"></i>
@@ -159,6 +168,11 @@
                         </div>
                     </div>
 
+                    <div class="remark-box">
+                        <label for="service-remark" class="form-label fw-bold text-dark small"><i class="fas fa-sticky-note me-1 text-warning"></i>特殊事項備註 / 允許結案理由 (選填)</label>
+                        <textarea class="form-control" id="service-remark" rows="2" placeholder="例如：因工廠文件管制 9-1 無法提供，故缺件... (此欄位可作為特案結案之依據)"></textarea>
+                    </div>
+
                     <form id="execution-form">
                         <h6 class="fw-bold mb-3"><i class="fas fa-check-square me-2 text-primary"></i>(必要) 勞工健康服務執行紀錄項目</h6>
                         <p class="text-muted small">請勾選本次服務所執行的項目，並直接上傳附件。系統將自動處理檔名以符合資料庫規範。</p>
@@ -172,6 +186,33 @@
         </div>
     </div>
 
+    <div class="modal fade" id="actionChoiceModal" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header bg-primary text-white">
+                    <h5 class="modal-title"><i class="fas fa-code-branch me-2"></i>選擇作業模式</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="alert alert-warning border-warning">
+                        <i class="fas fa-exclamation-triangle me-1"></i> 
+                        系統檢測到此母案下已有 <strong>待審核 (Pending)</strong> 的服務紀錄。
+                    </div>
+                    <p class="mb-3">請問您是要「修改」剛才送審的案件，還是要「新增」另一筆不同日期的服務？</p>
+                    
+                    <div class="list-group mb-3" id="pending-list-group">
+                        </div>
+
+                    <div class="d-grid">
+                        <button class="btn btn-outline-primary fw-bold" id="btn-create-new">
+                            <i class="fas fa-plus-circle me-2"></i>新增另一筆服務紀錄 (New)
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     
@@ -180,7 +221,9 @@
         const SUPABASE_KEY = 'sb_publishable_52emtU-9l-SDxcJTWVTPTA_Yu6qEogh';
         const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
         const BUCKET_NAME = 'staging'; 
-        let currentRecordId = null;
+        
+        let currentRecordId = null; // 母案 ID (service_records)
+        let currentStagingId = null; // 暫存案 ID (service_record_staging) - 若為 null 代表新增模式
         let currentUserId = sessionStorage.getItem('currentUserId'); 
 
         const checklistItems = [
@@ -244,7 +287,6 @@
         }
         function triggerItemUpload(itemId) { document.getElementById(`file-input-${itemId}`).click(); }
 
-        // 切換顯示「其他」輸入框
         function toggleServiceTypeOther() {
             const select = document.getElementById('service-type-select');
             const otherInput = document.getElementById('service-type-other');
@@ -258,33 +300,36 @@
         }
 
         // ==========================================
-        // ★ 核心修正區：強制重命名 Logic (A-Q + Timestamp)
+        // 核心上傳 Logic (A-Q + Timestamp)
         // ==========================================
         async function handleItemFileUpload(itemId, code, input) {
             if (!input.files || !input.files[0]) return;
             const file = input.files[0];
             
-            // UI 狀態切換
             document.getElementById(`btn-upload-${itemId}`).style.display = 'none';
             document.getElementById(`btn-group-${itemId}`).style.display = 'none';
             document.getElementById(`spinner-${itemId}`).style.display = 'block';
 
             try {
-                // 1. 產生強制檔名： [代號]_[時間戳].[副檔名]
+                // 如果是編輯模式 (Staging)，檔案存在 staging id 下；如果是新增模式，暫時還沒有 staging id
+                // 這裡簡化邏輯：我們一律使用 currentRecordId (母案ID) 作為資料夾
+                // 這樣不管是哪個 Staging，都共用同一個母案的資料夾結構，這在邏輯上是通的 (同一個案子的歷史)
+                // 或是：每個 Staging 應該有獨立資料夾？
+                // 考量目前邏輯：`submitRecord` 會讀取 `list(currentRecordId)`。
+                // 所以：檔案必須放在 `currentRecordId` (母案ID) 資料夾下。
+                
                 const timestamp = Date.now();
                 const fileExt = file.name.split('.').pop() || 'dat'; 
                 const finalFileName = `${code}_${timestamp}.${fileExt}`;
                 const filePath = `${currentRecordId}/${finalFileName}`;
 
-                // 2. 清除該代號的舊檔 (保持資料夾整潔)
+                // 清除該代號的舊檔 (確保此服務當下只有一個 A, 一個 B...)
+                // 注意：如果想保留歷史，可能不該刪除？但目前需求是 "上傳" 覆蓋
                 await deleteFileByPrefix(currentRecordId, `${code}_`);
 
-                // 3. 上傳檔案 (使用 upsert 覆蓋)
                 const { error } = await supabaseClient.storage.from(BUCKET_NAME).upload(filePath, file, { upsert: true });
-
                 if (error) throw error;
 
-                // 4. 更新 UI 顯示 (傳入 originalName 只是為了前端顯示，不存入 DB)
                 updateItemUI(itemId, code, finalFileName, file.name, true);
 
             } catch (e) {
@@ -297,7 +342,6 @@
             }
         }
 
-        // 刪除邏輯
         async function handleItemFileDelete(itemId, code) {
             if(!confirm('確定要刪除此附件嗎？')) return;
             document.getElementById(`spinner-${itemId}`).style.display = 'block';
@@ -313,7 +357,6 @@
             }
         }
 
-        // 輔助函式：刪除特定前綴的檔案
         async function deleteFileByPrefix(recordId, prefix) {
             const { data: files } = await supabaseClient.storage.from(BUCKET_NAME).list(`${recordId}`);
             if (files && files.length > 0) {
@@ -325,7 +368,6 @@
             }
         }
 
-        // UI 更新函式
         function updateItemUI(itemId, code, fullFileName, originalName, hasFile) {
             const uploadBtn = document.getElementById(`btn-upload-${itemId}`);
             const btnGroup = document.getElementById(`btn-group-${itemId}`);
@@ -351,7 +393,7 @@
         }
 
         // ==========================================
-        // 一般邏輯 (搜尋、載入)
+        // 搜尋與選取邏輯 (含分流)
         // ==========================================
         async function searchRecords() {
             const year = document.getElementById('search-year').value.trim();
@@ -363,43 +405,100 @@
                 if (!profileData) throw new Error('無法識別使用者身分');
                 const { data: staffData } = await supabaseClient.from('medical_staff').select('id').eq('email', profileData.email).single();
                 if (!staffData) { container.innerHTML = '<div class="text-center text-muted py-5"><i class="fas fa-user-slash fa-3x mb-3"></i><p>尚未連結顧問身分。</p></div>'; return; }
+                
                 let query = supabaseClient.from('service_records').select(`id, visit_date, service_year, execution_items, workplaces!inner(id, companies!inner(name, tax_id))`).eq('consultant_id', staffData.id).order('visit_date', { ascending: false });
                 if (year) query = query.eq('service_year', year);
                 if (taxId) query = query.eq('workplaces.companies.tax_id', taxId);
+                
                 const { data, error } = await query;
                 if (error) throw error;
                 if (!data || data.length === 0) { container.innerHTML = '<div class="text-center text-muted py-5"><i class="fas fa-folder-open fa-3x mb-3"></i><p>查無符合條件的案件。</p></div>'; return; }
+                
                 container.innerHTML = data.map(record => {
-                    return `<div class="col-12"><div class="record-card p-3 rounded d-flex justify-content-between align-items-center" onclick="selectRecord('${record.id}')"><div><div class="fw-bold text-dark fs-5 mb-1">${record.workplaces.companies.name} <span class="badge bg-light text-muted fw-normal border ms-2">${record.workplaces.companies.tax_id}</span></div><div class="text-muted small"><i class="far fa-calendar-alt me-1"></i> ${record.visit_date || '預定日期未定'}</div></div><div class="text-end"><div class="small text-primary mt-1">選取此案 <i class="fas fa-chevron-right"></i></div></div></div></div>`;
+                    return `<div class="col-12"><div class="record-card p-3 rounded d-flex justify-content-between align-items-center" onclick="handleCardClick('${record.id}')"><div><div class="fw-bold text-dark fs-5 mb-1">${record.workplaces.companies.name} <span class="badge bg-light text-muted fw-normal border ms-2">${record.workplaces.companies.tax_id}</span></div><div class="text-muted small"><i class="far fa-calendar-alt me-1"></i> ${record.visit_date || '預定日期未定'}</div></div><div class="text-end"><div class="small text-primary mt-1">選取此案 <i class="fas fa-chevron-right"></i></div></div></div></div>`;
                 }).join('');
             } catch (err) { container.innerHTML = `<div class="alert alert-danger">錯誤: ${err.message}</div>`; }
         }
 
-        async function selectRecord(id) {
-            currentRecordId = id;
+        // 1. 處理點擊 (檢查是否有 pending)
+        async function handleCardClick(motherId) {
+            currentRecordId = motherId;
+            // 檢查 Staging 表是否有屬於此母案且 pending 的資料
+            const { data: pendingItems, error } = await supabaseClient
+                .from('service_record_staging')
+                .select('id, service_date, service_type')
+                .eq('origin_record_id', motherId)
+                .eq('status', 'pending')
+                .order('created_at', { ascending: false });
+
+            if (error) { console.error(error); return alert('檢查暫存資料失敗'); }
+
+            if (pendingItems && pendingItems.length > 0) {
+                // 有待審資料 -> 彈窗讓使用者選
+                showActionChoiceModal(pendingItems);
+            } else {
+                // 無待審資料 -> 直接進入新增模式
+                initStep2(null);
+            }
+        }
+
+        function showActionChoiceModal(items) {
+            const listGroup = document.getElementById('pending-list-group');
+            listGroup.innerHTML = items.map(item => `
+                <button type="button" class="list-group-item list-group-item-action d-flex justify-content-between align-items-center" onclick="initStep2('${item.id}')">
+                    <div>
+                        <div class="fw-bold text-primary">修改送審案件</div>
+                        <small class="text-muted">日期：${item.service_date} | 類型：${item.service_type || '未指定'}</small>
+                    </div>
+                    <i class="fas fa-edit text-secondary"></i>
+                </button>
+            `).join('');
             
-            // 重置表單狀態
+            // 綁定「新增」按鈕
+            const btnNew = document.getElementById('btn-create-new');
+            btnNew.onclick = () => {
+                bootstrap.Modal.getInstance(document.getElementById('actionChoiceModal')).hide();
+                initStep2(null); // null 代表新增
+            };
+
+            new bootstrap.Modal(document.getElementById('actionChoiceModal')).show();
+        }
+
+        // 2. 初始化 Step 2 (分辨 Insert 或 Edit)
+        async function initStep2(stagingId) {
+            // 如果是從 Modal 來的，先關閉 Modal
+            const modalEl = document.getElementById('actionChoiceModal');
+            const modal = bootstrap.Modal.getInstance(modalEl);
+            if (modal) modal.hide();
+
+            currentStagingId = stagingId; // 設定狀態 (null=新增, id=修改)
+
+            // 重置表單
             document.querySelectorAll('input[type="checkbox"]').forEach(cb => cb.checked = false);
             document.querySelectorAll('.item-actions').forEach(el => el.classList.remove('visible'));
-            checklistItems.forEach(item => updateItemUI(item.id, item.code, null, null, false));
-            
-            // 重置執行事項選單
             document.getElementById('service-type-select').value = "";
             toggleServiceTypeOther();
+            document.getElementById('service-remark').value = ""; // 清空備註
+            checklistItems.forEach(item => updateItemUI(item.id, item.code, null, null, false));
 
-            // 讀取母案資料
-            const { data } = await supabaseClient.from('service_records').select(`*, workplaces(companies(name))`).eq('id', id).single();
-            
-            document.getElementById('current-company-name').innerText = data.workplaces.companies.name;
-            document.getElementById('current-year-badge').innerText = (data.service_year || '') + ' 年度 (母案)';
-            
-            // 預帶母案的日期/時間
-            document.getElementById('execution-date').value = data.visit_date || ''; 
-            document.getElementById('start-time').value = data.start_time || '';
-            document.getElementById('end-time').value = data.end_time || '';
-            
-            // 檢查 Storage 是否有殘留檔案
-            const { data: files } = await supabaseClient.storage.from(BUCKET_NAME).list(`${id}`);
+            // 讀取母案資料 (公司名)
+            const { data: motherData } = await supabaseClient.from('service_records').select(`*, workplaces(companies(name))`).eq('id', currentRecordId).single();
+            document.getElementById('current-company-name').innerText = motherData.workplaces.companies.name;
+            document.getElementById('current-year-badge').innerText = (motherData.service_year || '') + ' 年度 (母案)';
+
+            // 如果是新增模式：預帶母案日期(或留空)
+            // 如果是編輯模式：載入 Staging 資料
+            if (currentStagingId) {
+                await loadStagingData(currentStagingId);
+            } else {
+                document.getElementById('execution-date').value = motherData.visit_date || ''; 
+            }
+
+            // 檢查 Storage (共用母案ID資料夾) - 顯示已上傳檔案
+            // 註：這會顯示該母案資料夾下"所有"檔案，技術上可能包含別次服務的檔案
+            // 但目前的設計是覆蓋檔名 (A_timestamp)，且每次上傳前不強制清空
+            // 為了讓使用者看到自己傳了什麼，這裡列出該資料夾下所有檔案
+            const { data: files } = await supabaseClient.storage.from(BUCKET_NAME).list(`${currentRecordId}`);
             if (files && files.length > 0) {
                 files.forEach(file => {
                     const parts = file.name.split('_');
@@ -417,9 +516,53 @@
                     }
                 });
             }
+
             document.getElementById('step1-content').style.display = 'none';
             document.getElementById('step2-content').style.display = 'block';
             updateStepIndicator(2);
+        }
+
+        async function loadStagingData(stagingId) {
+            const { data, error } = await supabaseClient.from('service_record_staging').select('*').eq('id', stagingId).single();
+            if(error) { alert('讀取暫存資料失敗'); return; }
+
+            // 回填欄位
+            document.getElementById('execution-date').value = data.visit_date || data.service_date || '';
+            document.getElementById('start-time').value = data.start_time || '';
+            document.getElementById('end-time').value = data.end_time || '';
+            
+            // 回填執行事項
+            const select = document.getElementById('service-type-select');
+            const otherInput = document.getElementById('service-type-other');
+            const savedType = data.service_type;
+            const options = Array.from(select.options).map(o => o.value);
+            
+            if (options.includes(savedType) && savedType !== 'other') {
+                select.value = savedType;
+                otherInput.style.display = 'none';
+            } else {
+                select.value = 'other';
+                otherInput.style.display = 'block';
+                otherInput.value = savedType || '';
+            }
+
+            // 回填 Checkbox 與 備註 (從 JSON 解析)
+            if (data.service_desc) {
+                try {
+                    const descObj = JSON.parse(data.service_desc);
+                    // 1. 回填勾選項目
+                    if (descObj.items && Array.isArray(descObj.items)) {
+                        descObj.items.forEach(itemId => {
+                            const cb = document.getElementById(`cb-${itemId}`);
+                            if(cb) { cb.checked = true; toggleItemAction(itemId); }
+                        });
+                    }
+                    // 2. 回填備註
+                    if (descObj.user_remark) {
+                        document.getElementById('service-remark').value = descObj.user_remark;
+                    }
+                } catch(e) { console.error('JSON parse error', e); }
+            }
         }
 
         function backToStep1() {
@@ -438,7 +581,7 @@
         }
 
         // ==========================================
-        // ★ 核心修正區：送出邏輯 (只寫 Staging，不改母案)
+        // 送出邏輯 (INSERT or UPDATE)
         // ==========================================
         async function submitRecord() {
             if (!currentRecordId) return;
@@ -446,12 +589,12 @@
             btn.disabled = true;
             btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> 處理中...';
             try {
-                // 1. 收集表單資料
                 const selectedItems = [];
                 document.querySelectorAll('input[name="service-item"]:checked').forEach(cb => { selectedItems.push(cb.value); });
                 const visitDate = document.getElementById('execution-date').value;
                 const startTime = document.getElementById('start-time').value;
                 const endTime = document.getElementById('end-time').value;
+                const remark = document.getElementById('service-remark').value.trim(); // 取得備註
                 
                 // 執行事項判斷
                 const serviceTypeSelect = document.getElementById('service-type-select');
@@ -466,7 +609,6 @@
                 if (selectedItems.length === 0) throw new Error("請至少勾選一項執行紀錄項目 (A~Q)。");
                 if (!visitDate) throw new Error("請填寫實際執行日期。");
 
-                // 2. 從 Storage 取得檔案清單
                 const { data: files } = await supabaseClient.storage.from(BUCKET_NAME).list(`${currentRecordId}`);
                 let attachments = [];
                 if(files) {
@@ -481,38 +623,45 @@
                 const { data: profile } = await supabaseClient.auth.getUser();
                 const userId = profile.user.id;
                 
-                // 3. 讀取母案基本資料
+                // 讀取母案基本資料
                 const { data: recordData } = await supabaseClient.from('service_records').select('workplace_id, consultant_id, service_year').eq('id', currentRecordId).single();
 
-                // 4. 構建 Payload
                 const payload = {
-                    origin_record_id: currentRecordId, // ★ 關鍵：連結母案
+                    origin_record_id: currentRecordId,
                     workplace_id: recordData.workplace_id,
                     submitter_id: userId,
                     consultant_id: recordData.consultant_id,
                     service_year: recordData.service_year,
                     
-                    service_date: visitDate, // 申請日期
-                    visit_date: visitDate,   // 實際執行日期
+                    service_date: visitDate, 
+                    visit_date: visitDate,   
                     start_time: startTime,
                     end_time: endTime,
                     
-                    service_type: serviceType, // 使用選單值
+                    service_type: serviceType, 
+                    // 將備註存入 JSON
                     service_desc: JSON.stringify({
                         items: selectedItems,
-                        note: '由顧問端上傳之執行紀錄'
+                        note: '由顧問端上傳之執行紀錄',
+                        user_remark: remark // 新增：使用者備註
                     }),
                     attachment_files: attachments,
-                    status: 'pending' 
+                    status: 'pending',
+                    updated_at: new Date()
                 };
 
-                // 5. 寫入 Staging
-                const { error } = await supabaseClient.from('service_record_staging').insert(payload);
+                let error;
+                if (currentStagingId) {
+                    // 更新現有暫存單
+                    ({ error } = await supabaseClient.from('service_record_staging').update(payload).eq('id', currentStagingId));
+                } else {
+                    // 新增暫存單
+                    ({ error } = await supabaseClient.from('service_record_staging').insert(payload));
+                }
+
                 if (error) throw error;
 
-                // ★ 移除：不再更新 service_records (母案保持唯讀/原樣)
-
-                alert('✅ 存檔成功！資料已送出待審核。');
+                alert(currentStagingId ? '✅ 修改成功！資料已更新。' : '✅ 存檔成功！資料已送出待審核。');
                 backToStep1();
 
             } catch (err) {
