@@ -959,12 +959,13 @@
             reader.readAsArrayBuffer(file);
         }
 
-        async function parseAndImportData(rows, type) {
+async function parseAndImportData(rows, type) {
             pendingImportType = type;
-            pendingImportData = [];
+            pendingImportData = []; // 清空待匯入陣列
             const previewArea = document.getElementById('import-preview-area');
-            let html = '<table class="table table-sm table-bordered"><thead><tr class="table-secondary">';
+            let html = '<table class="table table-sm table-bordered table-hover"><thead><tr class="table-secondary">';
 
+            // 開啟預覽視窗
             const modal = new bootstrap.Modal(document.getElementById('importModal'));
             modal.show();
 
@@ -973,27 +974,18 @@
                     html += '<th>統編</th><th>名稱</th><th>地址</th><th>聯絡人</th><th>狀態</th><th>開始日</th><th>結束日</th></tr></thead><tbody>';
                     rows.forEach(row => {
                         if(!row[0]) return; 
-                        const taxId = row[0]; 
-                        const name = row[1]; 
-                        const address = row[2];
-                        const contact = row[3]; 
-                        const phone = row[4];   
-                        const startDate = formatDate(row[5]); 
-                        const endDate = formatDate(row[6]);
+                        const taxId = row[0]; const name = row[1]; const address = row[2];
+                        const contact = row[3]; const phone = row[4];   
+                        const startDate = formatDate(row[5]); const endDate = formatDate(row[6]);
                         
                         let isActive = true;
                         if(endDate && endDate < new Date().toISOString().split('T')[0]) isActive = false;
 
                         pendingImportData.push({
-                            tax_id: String(taxId).trim(), 
-                            name: String(name).trim(),
-                            address: String(address || ''),
-                            contact_person: contact, 
-                            phone: String(phone || ''),
-                            contract_start_date: startDate, 
-                            contract_end_date: endDate,
-                            is_active: isActive, 
-                            created_by: sessionStorage.getItem('currentUserId')
+                            tax_id: String(taxId).trim(), name: String(name).trim(), address: String(address || ''),
+                            contact_person: contact, phone: String(phone || ''),
+                            contract_start_date: startDate, contract_end_date: endDate,
+                            is_active: isActive, created_by: sessionStorage.getItem('currentUserId')
                         });
                         html += `<tr><td>${taxId}</td><td>${name}</td><td>${address||''}</td><td>${contact||''}</td><td>${isActive?'Y':'N'}</td><td>${startDate||''}</td><td>${endDate||''}</td></tr>`;
                     });
@@ -1013,17 +1005,23 @@
                     });
 
                 } else if (type === 'record') {
-                    html += '<th>公司</th><th>顧問</th><th>日期</th><th>事項</th></tr></thead><tbody>';
+                    // ★ 修正重點：歷程匯入邏輯
+                    html += '<th>公司名稱</th><th>顧問姓名</th><th>服務日期</th><th>對應狀態</th></tr></thead><tbody>';
                     
-                    previewArea.innerHTML = '<div class="text-center p-3"><span class="spinner-border"></span> 正在建立名稱對照表...</div>';
+                    previewArea.innerHTML = '<div class="text-center p-3"><span class="spinner-border text-primary"></span> 正在核對公司與顧問資料庫...</div>';
                     
+                    // 1. 抓取所有公司 (含 Workplace ID) 與 顧問
                     const { data: allCompanies } = await supabaseClient.from('companies').select('id, name, workplaces(id)');
                     const { data: allStaff } = await supabaseClient.from('medical_staff').select('id, name');
 
+                    // 2. 建立對照表 (Map) - 移除空白並轉小寫以增加對應成功率
                     const compMap = {}; 
                     if(allCompanies) {
                         allCompanies.forEach(c => {
-                            if(c.workplaces && c.workplaces.length > 0) compMap[c.name.trim()] = c.workplaces[0].id;
+                            // 只要該公司有任一 workplace，就抓第1個當作匯入目標
+                            if(c.workplaces && c.workplaces.length > 0) {
+                                compMap[c.name.trim()] = c.workplaces[0].id;
+                            }
                         });
                     }
                     const staffMap = {};
@@ -1033,31 +1031,62 @@
                         });
                     }
 
+                    // 3. 逐行比對
                     rows.forEach(row => {
-                        if(!row[0]) return;
-                        const cName = String(row[0]).trim();
-                        const sName = String(row[1]).trim();
+                        if(!row[0]) return; // 跳過空行
+                        const cName = String(row[0]).trim(); // Excel 公司名
+                        const sName = String(row[1]).trim(); // Excel 顧問名
                         const date = formatDate(row[2]);
                         const items = row[3]; 
 
-                        const wpId = compMap[cName];
-                        const stId = staffMap[sName];
+                        const wpId = compMap[cName]; // 查找 ID
+                        const stId = staffMap[sName]; // 查找 ID
                         const year = date ? new Date(date).getFullYear() : null;
 
+                        // ★ 判定：公司有ID 且 顧問有ID 且 日期有效 -> 放入 pendingImportData
                         if(wpId && stId && date) {
                              pendingImportData.push({
-                                workplace_id: wpId, consultant_id: stId, visit_date: date,
-                                service_year: year, execution_items: items,
+                                workplace_id: wpId, 
+                                consultant_id: stId, 
+                                visit_date: date,
+                                service_year: year, 
+                                execution_items: items,
                                 created_by: sessionStorage.getItem('currentUserId')
                             });
-                            html += `<tr><td>${cName}</td><td>${sName}</td><td>${date}</td><td>${items||''}</td></tr>`;
+                            // 顯示綠色 OK
+                            html += `<tr class="table-success">
+                                <td>${cName}</td>
+                                <td>${sName}</td>
+                                <td>${date}</td>
+                                <td><span class="badge bg-success">可匯入</span></td>
+                            </tr>`;
                         } else {
-                            html += `<tr class="table-danger"><td>${cName}(${wpId?'OK':'無場所'})</td><td>${sName}(${stId?'OK':'無人'})</td><td colspan="2">對應失敗</td></tr>`;
+                            // 顯示紅色 錯誤原因
+                            let errorMsg = [];
+                            if(!wpId) errorMsg.push("公司未建立或無場所");
+                            if(!stId) errorMsg.push("無此顧問");
+                            if(!date) errorMsg.push("日期格式錯");
+                            
+                            html += `<tr class="table-danger">
+                                <td>${cName}</td>
+                                <td>${sName}</td>
+                                <td>${date || '-'}</td>
+                                <td><span class="badge bg-danger">${errorMsg.join(', ')}</span></td>
+                            </tr>`;
                         }
                     });
                 }
 
                 html += '</tbody></table>';
+                
+                // 顯示統計資訊
+                const validCount = pendingImportData.length;
+                const totalCount = rows.filter(r => r[0]).length;
+                html = `<div class="alert ${validCount > 0 ? 'alert-info' : 'alert-danger'} mb-2">
+                            <strong>預覽結果：</strong> 共讀取 ${totalCount} 筆，有效 <span class="text-success fw-bold">${validCount}</span> 筆，無效 <span class="text-danger fw-bold">${totalCount - validCount}</span> 筆。
+                            ${validCount === 0 ? '<br/>❌ 無有效資料可匯入，請檢查 Excel 名稱是否與系統一致。' : ''}
+                        </div>` + html;
+
                 previewArea.innerHTML = html;
 
             } catch (e) {
