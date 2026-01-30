@@ -316,7 +316,6 @@
                 type: 'doughnut',
                 data: {
                     labels: ['已核定', '待審核'],
-                    // 環形圖配色：綠色 (Check/Approved) vs 黃色 (Pending)
                     datasets: [{ data: [0, 0], backgroundColor: ['#198754', '#ffc107'], borderWidth: 0 }]
                 },
                 options: { cutout: '75%', plugins: { legend: { display: false } }, maintainAspectRatio: false }
@@ -328,13 +327,13 @@
             const tbody = document.getElementById('pendingTableBody');
             
             try {
-                // 1. 讀取正式庫
+                // 1. 讀取正式庫 (Service Records)
                 const { count: approvedCount, error: err1 } = await supabaseClient
                     .from('service_records')
                     .select('*', { count: 'exact', head: true })
                     .eq('service_year', year);
 
-                // 2. 讀取 Pending 資料，加入公司名稱關聯
+                // 2. 讀取 Pending 資料 (Staging)
                 const { data: stagingData, error: err2 } = await supabaseClient
                     .from('service_record_staging')
                     .select(`
@@ -366,7 +365,7 @@
                 rateChart.data.datasets[0].data = [approvedCount, pendingCount];
                 rateChart.update();
 
-                // 渲染列表
+                // 渲染列表 (包含 5 個按鈕)
                 tbody.innerHTML = filteredPending.map((p) => {
                     let descText = '-';
                     try {
@@ -419,14 +418,14 @@
             }
         }
 
-        // --- 修正版：開新分頁合併 PDF 預覽 (包含補漏機制) ---
+        // --- 預覽功能 (不含結案按鈕) ---
         async function openStagingPreview(id, btn) {
             const record = currentStagingData.find(r => r.id === id);
             if (!record) return;
             currentReviewId = id;
 
             const originalText = btn.innerHTML;
-            btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> 處理中...';
+            btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span>';
             btn.disabled = true;
 
             try {
@@ -446,7 +445,7 @@
                     }
                 } catch(e) {}
 
-                // ★ 關鍵修正：從 record.id (暫存單 ID) 抓取檔案，而非 Mother ID
+                // ★ 關鍵修正：讀取路徑使用 record.id (暫存單 ID)，確保與 index1 上傳路徑一致
                 const fileSourceId = record.id; 
                 
                 // 檔案抓取邏輯
@@ -462,7 +461,7 @@
                         if (!exists) {
                             files.push({
                                 name: sf.name,
-                                path: `${fileSourceId}/${sf.name}`, // ★ 路徑使用 record.id
+                                path: `${fileSourceId}/${sf.name}`, // 路徑使用 record.id
                                 type: sf.metadata?.mimetype || 'application/pdf'
                             });
                         }
@@ -475,9 +474,7 @@
                 const otherLinks = [];
 
                 for (const f of files) {
-                    // 如果路徑不包含 ID (舊資料)，補上；新資料都已有 ID
                     const fullPath = f.path.includes('/') ? f.path : `${fileSourceId}/${f.path}`;
-                    
                     const { data } = supabaseClient.storage.from('staging').getPublicUrl(fullPath);
                     if (data?.publicUrl) {
                         const isPdf = f.name.toLowerCase().endsWith('.pdf');
@@ -582,38 +579,32 @@
             document.getElementById('approve-target-id').value = id;
             document.getElementById('approve-type').value = type;
 
-            // 1. 自動帶出審查者資訊
             const userName = sessionStorage.getItem('currentUserName') || '系統管理員';
             document.getElementById('approver-name').innerText = userName;
-            
             const now = new Date();
-            const timeStr = now.toLocaleString('zh-TW', { hour12: false });
-            document.getElementById('approve-time').innerText = timeStr;
+            document.getElementById('approve-time').innerText = now.toLocaleString('zh-TW', { hour12: false });
 
-            // 2. 依據類型分流 UI
             const header = document.getElementById('approvalModalHeader');
             const title = document.getElementById('approvalModalTitle');
             const btn = document.getElementById('btn-confirm-approval');
             const comment = document.getElementById('approve-comment');
             const help = document.getElementById('comment-help');
 
-            comment.value = ''; // 重置
+            comment.value = '';
 
             if (type === 'special') {
-                header.className = 'modal-header text-white bg-warning'; // 黃色
+                header.className = 'modal-header text-white bg-warning';
                 title.innerHTML = '<i class="fas fa-exclamation-triangle me-2"></i>特案允許結案確認';
                 btn.className = 'btn fw-bold text-dark btn-warning';
                 btn.innerText = '確認特案結案';
-                
                 comment.placeholder = "請詳細填寫允許結案的特殊理由 (必填)...";
-                help.style.display = 'block'; // 顯示必填提示
+                help.style.display = 'block';
             } else {
-                header.className = 'modal-header text-white bg-success'; // 綠色
+                header.className = 'modal-header text-white bg-success';
                 title.innerHTML = '<i class="fas fa-check-circle me-2"></i>標準案件核定確認';
                 btn.className = 'btn fw-bold text-white btn-success';
                 btn.innerText = '確認核定結案';
-                
-                comment.value = '標準程序審核通過'; // 預設值
+                comment.value = '標準程序審核通過';
                 comment.placeholder = "審核備註 (選填)...";
                 help.style.display = 'none';
             }
@@ -622,7 +613,7 @@
         }
 
         // ===========================================
-        // 核心功能：執行最終核定 (證據保全)
+        // 核心功能：執行最終核定 (證據保全 + DB寫入)
         // ===========================================
         async function performFinalApproval() {
             const id = document.getElementById('approve-target-id').value;
@@ -630,14 +621,12 @@
             const comment = document.getElementById('approve-comment').value.trim();
             const btn = document.getElementById('btn-confirm-approval');
 
-            // 防呆
             if (type === 'special' && !comment) {
                 return alert('【特案結案】必須填寫審核意見，以利後續稽核！');
             }
 
             if (!confirm(`確定要執行「${type === 'special' ? '特案' : '標準'}」結案嗎？\n此動作將合併附件並寫入正式資料庫，無法復原。`)) return;
 
-            // UI Loading
             const originalBtnText = btn.innerText;
             btn.disabled = true;
             btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> 證據保全處理中...';
@@ -645,24 +634,22 @@
             try {
                 // 取得原始紀錄
                 const record = currentStagingData.find(r => r.id === id);
-                // ★ 關鍵修正：必須使用 record.id (暫存單 ID) 來抓取檔案，因為 index1 已經改用這個 ID 存檔
-                const fileSourceId = record.id; 
+                const fileSourceId = record.id; // ★ 使用暫存 ID
 
-                // 1. 再次抓取所有 PDF (為了合併證據)
+                // 1. 抓取檔案 (為了合併證據)
                 const { data: files, error: listError } = await supabaseClient.storage.from('staging').list(fileSourceId);
                 if (listError) throw listError;
 
                 const pdfUrls = [];
-                // 篩選 PDF
                 for (const f of files) {
                     if (f.name.toLowerCase().endsWith('.pdf')) {
                         const { data } = supabaseClient.storage.from('staging').getPublicUrl(`${fileSourceId}/${f.name}`);
                         pdfUrls.push(data.publicUrl);
                     }
                 }
-                pdfUrls.sort(); // 排序確保順序
+                pdfUrls.sort();
 
-                // 2. 合併 PDF (Evidence)
+                // 2. 合併 PDF
                 let finalPdfBlob = null;
                 if (pdfUrls.length > 0) {
                     const mergedPdf = await PDFDocument.create();
@@ -677,27 +664,20 @@
                     finalPdfBlob = new Blob([mergedBytes], { type: 'application/pdf' });
                 }
 
-                // 3. 上傳合併後的證據到 'service-records' (正式 Bucket)
-                // 取得原始資料以獲取年份與公司ID
+                // 3. 上傳到 'service-records' (正式 Bucket)
                 const year = record.service_year || new Date().getFullYear();
-                
-                // ★ 正式證據路徑：使用當下時間戳記防止檔名衝突
                 const timestamp = Date.now();
                 const targetPath = `${year}/${id}/Evidence_Final_${timestamp}.pdf`; 
 
                 if (finalPdfBlob) {
                     const { error: uploadError } = await supabaseClient.storage
-                        .from('service-records') // ★ 正式 Bucket
+                        .from('service-records')
                         .upload(targetPath, finalPdfBlob, { upsert: true });
                     
                     if (uploadError) throw new Error("證據檔案上傳失敗: " + uploadError.message);
-                } else {
-                    // ★ 提示：如果找不到 PDF，是否要繼續？這裡選擇繼續結案，但跳出警告
-                    // 因為可能只有圖片，沒有 PDF
-                    console.warn("警告：此案件無 PDF 證據檔案可供合併。");
                 }
 
-                // 4. 資料庫交易 (更新 Staging -> Insert Formal)
+                // 4. 資料庫交易 (★ 這是之前遺失的關鍵代碼)
                 // A. 更新 Staging 狀態
                 const { error: updateError } = await supabaseClient
                     .from('service_record_staging')
@@ -710,27 +690,25 @@
                     .eq('id', id);
                 if (updateError) throw updateError;
 
-                // B. 寫入 Service Records (正式表)
+                // B. 寫入 Service Records (使用 insert 新增資料，避免覆蓋)
                 const { error: insertError } = await supabaseClient
                     .from('service_records')
                     .insert({
-                        // ...對應欄位...
                         workplace_id: record.workplace_id,
                         visit_date: record.visit_date,
                         service_year: year,
                         consultant_id: record.consultant_id,
                         is_special_case: (type === 'special'),
                         audit_note: comment,
-                        // ★ 關鍵：連結回 Staging 的原始資料夾 (用來讀取圖片附件)
-                        attachment_folder_id: fileSourceId 
+                        attachment_folder_id: fileSourceId // 連結回 Staging ID
                     });
                 
-                if (insertError) console.error("Insert error (non-fatal):", insertError);
+                if (insertError) throw new Error("寫入正式資料庫失敗: " + insertError.message);
 
                 alert('✅ 結案成功！\n評鑑證據已封存至正式資料庫。');
                 
                 bootstrap.Modal.getInstance(document.getElementById('approvalModal')).hide();
-                refreshData(); // 刷新列表
+                refreshData(); 
 
             } catch (e) {
                 console.error(e);
