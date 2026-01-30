@@ -270,7 +270,7 @@
 
         // ★ 定義項目與自動命名代號 (A-Q)
         const checklistItems = [
-            { id: "main", code: "A", text: "勞工健康服務執行紀錄項目 (執行當日紀錄主檔)" },
+            { id: "main", code: "A", text: "勞工健康服務執行紀錄表 (執行當日紀錄主檔)" },
             { id: "9-1", code: "B", text: "9-1 勞工體格（健康）檢查結果之分析與評估、健康管理及資料保存。" },
             { id: "9-2", code: "C", text: "9-2 協助雇主選配勞工從事適當之工作。" },
             { id: "9-3", code: "D", text: "9-3 辦理健康檢查結果異常者之追蹤管理及健康指導。" },
@@ -286,7 +286,7 @@
             { id: "11-5", code: "N", text: "11-5 其他經中央主管機關指定公告者。" },
             { id: "12", code: "O", text: "12 訂定勞工健康服務計畫，據以執行，每年評估成效及檢討。" },
             { id: "13", code: "P", text: "13 訂定勞工健康管理方案，據以辦理，每年評估成效及檢討。" },
-            { id: "other", code: "Q", text: "其他附件 (Q)" }
+            { id: "other", code: "Q", text: "其他附件 (Q) - 不限格式" }
         ];
 
         document.addEventListener('DOMContentLoaded', () => {
@@ -310,7 +310,7 @@
                                style="font-size: 1.3em;"
                                onchange="toggleItemAction('${item.id}')">
                         <label class="form-check-label stretched-link pt-1" for="cb-${item.id}" style="cursor:pointer;">
-                            <span class="badge bg-light text-dark border me-2">${item.code}</span>
+                            <span class="badge bg-light text-dark border me-2 fw-bold" style="width: 25px;">${item.code}</span>
                             ${item.text}
                         </label>
                     </div>
@@ -359,7 +359,7 @@
             document.getElementById(`file-input-${itemId}`).click();
         }
 
-        // ★ 核心修改：使用 A-Q 代號命名 + 安全編碼解決 Invalid Key
+        // ★ 核心修改：安全編碼與自動命名
         async function handleItemFileUpload(itemId, code, input) {
             if (!input.files || !input.files[0]) return;
             const file = input.files[0];
@@ -369,23 +369,25 @@
             document.getElementById(`spinner-${itemId}`).style.display = 'block';
 
             try {
-                // 命名規則：[代號]__[URI編碼後的原檔名]
-                // 例如: B__%E4%B8%AD%E6%96%87.pdf
+                // 1. 將檔名進行 URI 編碼，解決中文/特殊字元 Invalid Key 問題
+                // 例如: "測試.pdf" -> "%E6%B8%AC%E8%A9%A6.pdf"
                 const safeFileName = encodeURIComponent(file.name);
+                
+                // 2. 組合 Key: [代號]__[編碼後檔名]
                 const uniquePrefix = `${code}__`; 
                 const filePath = `${currentRecordId}/${uniquePrefix}${safeFileName}`;
 
-                // 1. 先刪除該代號(Prefix)開頭的舊檔，確保對應關係
+                // 3. 刪除該代號的舊檔 (確保一項一檔)
                 await deleteFileByPrefix(currentRecordId, uniquePrefix);
 
-                // 2. 上傳新檔
+                // 4. 上傳
                 const { data, error } = await supabaseClient.storage
                     .from(BUCKET_NAME)
                     .upload(filePath, file, { upsert: true });
 
                 if (error) throw error;
 
-                // 3. 更新 UI
+                // 5. 更新 UI
                 updateItemUI(itemId, code, file.name, true);
 
             } catch (e) {
@@ -440,13 +442,13 @@
                 uploadBtn.style.display = 'none';
                 btnGroup.style.display = 'flex';
                 
-                // 預覽連結
+                // 產生預覽連結 (需使用編碼後的檔名)
                 const safeName = encodeURIComponent(fileName);
                 const { data } = supabaseClient.storage.from(BUCKET_NAME).getPublicUrl(`${currentRecordId}/${code}__${safeName}`);
                 
                 previewBtn.href = data.publicUrl;
                 
-                // 顯示：解碼後的檔名
+                // 顯示：檔名 (解碼後顯示)
                 const displayName = fileName;
                 const shortName = displayName.length > 15 ? displayName.substring(0, 12) + '...' : displayName;
                 fileInfo.innerHTML = `<span class="badge bg-success me-1">已存</span> <span class="text-muted">${shortName}</span>`;
@@ -558,11 +560,11 @@
                 });
             }
 
-            // 3. 檢查 Storage 檔案並更新按鈕狀態 (反向解析代號)
+            // 3. 檢查 Storage 檔案並更新按鈕狀態
             const { data: files } = await supabaseClient.storage.from(BUCKET_NAME).list(`${id}`);
             if (files && files.length > 0) {
                 files.forEach(file => {
-                    // 檔名格式：[Code]__[EncodedFileName]
+                    // 解析檔名 [Code]__[EncodedName]
                     const parts = file.name.split('__');
                     if (parts.length >= 2) {
                         const code = parts[0];
@@ -570,11 +572,10 @@
                         const targetItem = checklistItems.find(i => i.code === code);
                         
                         if (targetItem) {
-                            // 解碼原始檔名
+                            // 嘗試解碼顯示檔名
                             let realName = file.name.substring(code.length + 2); 
                             try { realName = decodeURIComponent(realName); } catch(e){}
                             
-                            // 即使沒勾選，若有檔案也強制顯示已上傳狀態
                             const cb = document.getElementById(`cb-${targetItem.id}`);
                             if(cb) {
                                 cb.checked = true;
@@ -616,13 +617,11 @@
             btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> 處理中...';
 
             try {
-                // 1. 收集勾選項目 ID
                 const selectedItems = [];
                 document.querySelectorAll('input[name="service-item"]:checked').forEach(cb => {
                     selectedItems.push(cb.value);
                 });
 
-                // 2. 收集日期與時間
                 const visitDate = document.getElementById('execution-date').value;
                 const startTime = document.getElementById('start-time').value;
                 const endTime = document.getElementById('end-time').value;
@@ -630,7 +629,6 @@
                 if (selectedItems.length === 0) throw new Error("請至少勾選一項執行紀錄項目。");
                 if (!visitDate) throw new Error("請填寫實際執行日期。");
 
-                // 3. 更新 DB
                 const itemsString = JSON.stringify(selectedItems);
                 const { error } = await supabaseClient
                     .from('service_records')
