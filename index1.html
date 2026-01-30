@@ -23,6 +23,7 @@
         display: none; /* Auth Guard */
     }
 
+    /* 強制全寬設定 */
     .container, .container-fluid {
         max-width: 100% !important;
         padding-left: 1.5rem !important;
@@ -235,7 +236,7 @@
 
                     <form id="execution-form">
                         <h6 class="fw-bold mb-3"><i class="fas fa-check-square me-2 text-primary"></i>(必要) 勞工健康服務執行紀錄項目</h6>
-                        <p class="text-muted small">請勾選本次服務所執行的項目，並直接上傳附件 (標準項目限 PDF，其他不限)。系統將依 A-Q 規則自動命名。</p>
+                        <p class="text-muted small">請勾選本次服務所執行的項目，並直接上傳附件。系統將依 A-Q 規則自動命名排序。</p>
 
                         <div class="list-group check-list-group mb-4" id="checkbox-list">
                             </div>
@@ -286,7 +287,7 @@
             { id: "11-5", code: "N", text: "11-5 其他經中央主管機關指定公告者。" },
             { id: "12", code: "O", text: "12 訂定勞工健康服務計畫，據以執行，每年評估成效及檢討。" },
             { id: "13", code: "P", text: "13 訂定勞工健康管理方案，據以辦理，每年評估成效及檢討。" },
-            { id: "other", code: "Q", text: "其他附件 (Q) - 不限格式" }
+            { id: "other", code: "Q", text: "其他附件 (不限格式，可上傳照片、影音、問卷等)" }
         ];
 
         document.addEventListener('DOMContentLoaded', () => {
@@ -359,36 +360,55 @@
             document.getElementById(`file-input-${itemId}`).click();
         }
 
-        // ★ 核心修改：安全編碼與自動命名
+        // ★ 核心修改：轉檔名 Logic (加入時間戳記與安全編碼)
         async function handleItemFileUpload(itemId, code, input) {
             if (!input.files || !input.files[0]) return;
             const file = input.files[0];
             
+            // 介面 loading 狀態
             document.getElementById(`btn-upload-${itemId}`).style.display = 'none';
             document.getElementById(`btn-group-${itemId}`).style.display = 'none';
             document.getElementById(`spinner-${itemId}`).style.display = 'block';
 
             try {
-                // 1. 將檔名進行 URI 編碼，解決中文/特殊字元 Invalid Key 問題
-                // 例如: "測試.pdf" -> "%E6%B8%AC%E8%A9%A6.pdf"
-                const safeFileName = encodeURIComponent(file.name);
+                // ==========================================
+                // ★ 轉檔名 LOGIC START
+                // ==========================================
                 
-                // 2. 組合 Key: [代號]__[編碼後檔名]
-                const uniquePrefix = `${code}__`; 
-                const filePath = `${currentRecordId}/${uniquePrefix}${safeFileName}`;
+                // 1. 取得副檔名 (例如 .pdf)
+                const fileExt = file.name.split('.').pop();
+                
+                // 2. 處理原始檔名 (移除副檔名 -> 進行 URL 編碼 -> 避免過長)
+                let originalName = file.name.substring(0, file.name.lastIndexOf('.'));
+                let safeName = encodeURIComponent(originalName); 
+                
+                // (選用) 如果檔名太長，截斷它以免超出系統限制
+                if(safeName.length > 50) safeName = safeName.substring(0, 50);
 
-                // 3. 刪除該代號的舊檔 (確保一項一檔)
-                await deleteFileByPrefix(currentRecordId, uniquePrefix);
+                // 3. 加入時間戳記 (防止快取與重複)
+                const timestamp = Date.now(); 
 
-                // 4. 上傳
+                // 4. 組合最終檔名： [代號]__[時間戳]__[編碼檔名].[副檔名]
+                // 例如: B__1706581234567__%E6%AA%A2%E6%9F%A5%E8%A1%A8.pdf
+                const finalFileName = `${code}__${timestamp}__${safeName}.${fileExt}`;
+                const filePath = `${currentRecordId}/${finalFileName}`;
+
+                // ==========================================
+                // ★ 轉檔名 LOGIC END
+                // ==========================================
+
+                // 1. 先刪除該代號的舊檔
+                await deleteFileByPrefix(currentRecordId, `${code}__`);
+
+                // 2. 上傳新檔
                 const { data, error } = await supabaseClient.storage
                     .from(BUCKET_NAME)
                     .upload(filePath, file, { upsert: true });
 
                 if (error) throw error;
 
-                // 5. 更新 UI
-                updateItemUI(itemId, code, file.name, true);
+                // 3. 更新 UI
+                updateItemUI(itemId, code, finalFileName, true);
 
             } catch (e) {
                 console.error(e);
@@ -407,8 +427,8 @@
             document.getElementById(`btn-group-${itemId}`).style.display = 'none';
 
             try {
-                const uniquePrefix = `${code}__`;
-                await deleteFileByPrefix(currentRecordId, uniquePrefix);
+                // 只要開頭符合代號就刪除
+                await deleteFileByPrefix(currentRecordId, `${code}__`);
                 updateItemUI(itemId, code, null, false); 
             } catch (e) {
                 alert('刪除失敗: ' + e.message);
@@ -432,26 +452,37 @@
             }
         }
 
-        function updateItemUI(itemId, code, fileName, hasFile) {
+        function updateItemUI(itemId, code, fullFileName, hasFile) {
             const uploadBtn = document.getElementById(`btn-upload-${itemId}`);
             const btnGroup = document.getElementById(`btn-group-${itemId}`);
             const previewBtn = document.getElementById(`btn-preview-${itemId}`);
             const fileInfo = document.getElementById(`file-info-${itemId}`);
             
-            if (hasFile && fileName) {
+            if (hasFile && fullFileName) {
                 uploadBtn.style.display = 'none';
                 btnGroup.style.display = 'flex';
                 
-                // 產生預覽連結 (需使用編碼後的檔名)
-                const safeName = encodeURIComponent(fileName);
-                const { data } = supabaseClient.storage.from(BUCKET_NAME).getPublicUrl(`${currentRecordId}/${code}__${safeName}`);
-                
+                // 取得公開連結 (直接用完整檔名)
+                const { data } = supabaseClient.storage.from(BUCKET_NAME).getPublicUrl(`${currentRecordId}/${fullFileName}`);
                 previewBtn.href = data.publicUrl;
                 
-                // 顯示：檔名 (解碼後顯示)
-                const displayName = fileName;
+                // ★ 解析顯示名稱 (從 B__123456__%E6%B8...pdf 還原成人類可讀文字)
+                let displayName = "已上傳檔案";
+                try {
+                    // 分割檔名：[0]Code, [1]Timestamp, [2]EncodedName
+                    const parts = fullFileName.split('__');
+                    if(parts.length >= 3) {
+                        // 取出最後一段並還原編碼
+                        let encodedNameWithExt = parts[2]; 
+                        displayName = decodeURIComponent(encodedNameWithExt);
+                    } else {
+                        // 舊格式相容
+                        displayName = fullFileName;
+                    }
+                } catch(e) { console.error(e); }
+
                 const shortName = displayName.length > 15 ? displayName.substring(0, 12) + '...' : displayName;
-                fileInfo.innerHTML = `<span class="badge bg-success me-1">已存</span> <span class="text-muted">${shortName}</span>`;
+                fileInfo.innerHTML = `<span class="badge bg-success me-1">已存</span> <span class="text-muted" title="${displayName}">${shortName}</span>`;
             } else {
                 uploadBtn.style.display = 'inline-block';
                 btnGroup.style.display = 'none';
@@ -564,23 +595,20 @@
             const { data: files } = await supabaseClient.storage.from(BUCKET_NAME).list(`${id}`);
             if (files && files.length > 0) {
                 files.forEach(file => {
-                    // 解析檔名 [Code]__[EncodedName]
+                    // 檔名格式：Code__Timestamp__EncodedName
                     const parts = file.name.split('__');
-                    if (parts.length >= 2) {
+                    if (parts.length >= 2) { 
                         const code = parts[0];
                         // 找到對應的 itemId
                         const targetItem = checklistItems.find(i => i.code === code);
                         
                         if (targetItem) {
-                            // 嘗試解碼顯示檔名
-                            let realName = file.name.substring(code.length + 2); 
-                            try { realName = decodeURIComponent(realName); } catch(e){}
-                            
                             const cb = document.getElementById(`cb-${targetItem.id}`);
                             if(cb) {
                                 cb.checked = true;
                                 toggleItemAction(targetItem.id);
-                                updateItemUI(targetItem.id, code, realName, true);
+                                // 直接傳入完整檔名給 UI 處理
+                                updateItemUI(targetItem.id, code, file.name, true);
                             }
                         }
                     }
@@ -617,11 +645,13 @@
             btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> 處理中...';
 
             try {
+                // 1. 收集勾選項目 ID
                 const selectedItems = [];
                 document.querySelectorAll('input[name="service-item"]:checked').forEach(cb => {
                     selectedItems.push(cb.value);
                 });
 
+                // 2. 收集日期與時間
                 const visitDate = document.getElementById('execution-date').value;
                 const startTime = document.getElementById('start-time').value;
                 const endTime = document.getElementById('end-time').value;
@@ -629,6 +659,7 @@
                 if (selectedItems.length === 0) throw new Error("請至少勾選一項執行紀錄項目。");
                 if (!visitDate) throw new Error("請填寫實際執行日期。");
 
+                // 3. 更新 DB
                 const itemsString = JSON.stringify(selectedItems);
                 const { error } = await supabaseClient
                     .from('service_records')
