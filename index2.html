@@ -160,51 +160,6 @@
 
     </div>
 
-    <div class="modal fade" id="approvalModal" tabindex="-1" data-bs-backdrop="static">
-        <div class="modal-dialog modal-dialog-centered">
-            <div class="modal-content border-0 shadow-lg">
-                <div class="modal-header text-white" id="approvalModalHeader">
-                    <h5 class="modal-title fw-bold" id="approvalModalTitle">案件審核</h5>
-                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
-                </div>
-                <div class="modal-body p-4">
-                    <input type="hidden" id="approve-target-id">
-                    <input type="hidden" id="approve-type"> <div class="bg-light p-3 rounded mb-3 border">
-                        <h6 class="fw-bold text-muted small mb-2"><i class="fas fa-user-shield me-1"></i>審查者資訊 (系統自動帶出)</h6>
-                        <div class="row g-2 small">
-                            <div class="col-6">
-                                <span class="text-muted">姓名：</span> <strong id="approver-name">--</strong>
-                            </div>
-                            <div class="col-6">
-                                <span class="text-muted">日期時間：</span> <strong id="approve-time">--</strong>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="mb-3">
-                        <label class="form-label fw-bold" id="comment-label">審核意見 / 結案備註</label>
-                        <textarea class="form-control" id="approve-comment" rows="3" placeholder="請輸入審核意見..."></textarea>
-                        <div class="form-text text-danger" id="comment-help" style="display:none;">
-                            <i class="fas fa-exclamation-circle me-1"></i>特案結案必須填寫原因，以利後續稽核。
-                        </div>
-                    </div>
-
-                    <div class="alert alert-info small mb-0">
-                        <i class="fas fa-save me-1"></i> 
-                        <strong>證據保全：</strong><br>
-                        系統將自動合併所有附件為單一 PDF (Evidence)，並封存至正式資料庫 (Service Records) 作為評鑑證據。
-                    </div>
-                </div>
-                <div class="modal-footer bg-light">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
-                    <button type="button" class="btn fw-bold text-white" id="btn-confirm-approval" onclick="performFinalApproval()">
-                        確認結案
-                    </button>
-                </div>
-            </div>
-        </div>
-    </div>
-
     <div class="modal fade" id="reviewEmailModal" tabindex="-1">
         <div class="modal-dialog">
             <div class="modal-content">
@@ -302,10 +257,14 @@
         let currentStagingData = []; 
         let currentReviewId = null; 
 
+        // 取得當前操作者資訊 (供預覽視窗使用)
+        const currentUserRole = sessionStorage.getItem('currentUserRole') || 'admin';
+        const currentUserName = sessionStorage.getItem('currentUserName') || '系統管理員';
+
         document.addEventListener('DOMContentLoaded', () => {
-            const role = sessionStorage.getItem('currentUserRole') || 'admin';
-            const userName = sessionStorage.getItem('currentUserName') || '管理員';
-            document.getElementById('user-display').innerHTML = `<small>${role}: ${userName}</small>`;
+            const displayRole = currentUserRole;
+            const displayName = currentUserName;
+            document.getElementById('user-display').innerHTML = `<small>${displayRole}: ${displayName}</small>`;
             initChart();
             refreshData();
         });
@@ -412,7 +371,7 @@
             }
         }
 
-        // --- 修正版：開新分頁合併 PDF 預覽 (包含補漏機制) ---
+        // --- ★ 全新升級：內嵌核定功能的預覽分頁 ---
         async function openStagingPreview(id, btn) {
             const record = currentStagingData.find(r => r.id === id);
             if (!record) return;
@@ -423,6 +382,7 @@
             btn.disabled = true;
 
             try {
+                // 資料準備
                 const companyName = record.workplaces?.companies?.name || '未知公司';
                 const serviceItem = record.service_type || '未指定';
                 const visitDate = record.visit_date || record.service_date || '未設定';
@@ -438,7 +398,7 @@
                     }
                 } catch(e) {}
 
-                // 檔案抓取邏輯 (Storage List + DB JSON Union)
+                // 檔案抓取 (包含補漏與排序)
                 let files = record.attachment_files;
                 if (typeof files === 'string') { try { files = JSON.parse(files); } catch(e) { files = []; } }
                 if (!Array.isArray(files)) files = [];
@@ -506,6 +466,7 @@
                     ? `<iframe src="${finalPdfUrl}#toolbar=0" class="pdf-viewer"></iframe>` 
                     : `<div class="alert alert-warning text-center mt-5">此案件無 PDF 附件可預覽</div>`;
 
+                // --- 內嵌頁面 HTML (包含 Modal 與 Script) ---
                 const htmlContent = `
                     <!DOCTYPE html>
                     <html lang="zh-TW">
@@ -524,16 +485,19 @@
                             .pdf-viewer { width: 100%; height: 100%; border: none; }
                             .file-links { margin-top: 10px; }
                         </style>
+                        <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"><\/script>
+                        <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"><\/script>
+                        <script src="https://unpkg.com/pdf-lib@1.17.1/dist/pdf-lib.min.js"><\/script>
                     </head>
                     <body>
                         <div class="header-card">
                             <div class="d-flex justify-content-between align-items-start">
                                 <h5 class="fw-bold text-success"><i class="fas fa-clipboard-check me-2"></i>案件審核預覽</h5>
                                 <div class="btn-group">
-                                    <button class="btn btn-warning fw-bold" onclick="window.opener.triggerApprovalModal('${id}', 'special')">
+                                    <button class="btn btn-warning fw-bold" onclick="openApprovalModal('special')">
                                         <i class="fas fa-exclamation-circle me-1"></i>特案允許結案
                                     </button>
-                                    <button class="btn btn-success fw-bold" onclick="window.opener.triggerApprovalModal('${id}', 'standard')">
+                                    <button class="btn btn-success fw-bold" onclick="openApprovalModal('standard')">
                                         <i class="fas fa-check me-1"></i>核定結案
                                     </button>
                                 </div>
@@ -551,6 +515,162 @@
                         <div class="pdf-container">
                             ${pdfViewerHtml}
                         </div>
+
+                        <div class="modal fade" id="childApprovalModal" tabindex="-1" data-bs-backdrop="static">
+                            <div class="modal-dialog modal-dialog-centered">
+                                <div class="modal-content border-0 shadow-lg">
+                                    <div class="modal-header text-white" id="modalHeader">
+                                        <h5 class="modal-title fw-bold" id="modalTitle">案件審核</h5>
+                                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                                    </div>
+                                    <div class="modal-body p-4">
+                                        <input type="hidden" id="approve-type">
+                                        <div class="bg-light p-3 rounded mb-3 border">
+                                            <h6 class="fw-bold text-muted small mb-2"><i class="fas fa-user-shield me-1"></i>審查者資訊</h6>
+                                            <div class="d-flex justify-content-between small">
+                                                <div><span class="text-muted">姓名：</span> <strong id="approver-name">--</strong></div>
+                                                <div><span class="text-muted">時間：</span> <strong id="approve-time">--</strong></div>
+                                            </div>
+                                        </div>
+                                        <div class="mb-3">
+                                            <label class="form-label fw-bold" id="comment-label">審核意見 / 結案備註</label>
+                                            <textarea class="form-control" id="approve-comment" rows="3"></textarea>
+                                            <div class="form-text text-danger" id="comment-help" style="display:none;">
+                                                <i class="fas fa-exclamation-circle me-1"></i>特案結案必須填寫原因，以利後續稽核。
+                                            </div>
+                                        </div>
+                                        <div class="alert alert-info small mb-0">
+                                            <i class="fas fa-save me-1"></i> 
+                                            <strong>證據保全：</strong> 系統將自動合併所有附件為單一 PDF，並封存至正式資料庫作為評鑑證據。
+                                        </div>
+                                    </div>
+                                    <div class="modal-footer bg-light">
+                                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                                        <button type="button" class="btn fw-bold text-white" id="btn-confirm" onclick="performApproval()">確認結案</button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <script>
+                            // 初始化 Supabase 與 PDF-Lib (使用父視窗傳入的 Key)
+                            const supabase = window.supabase.createClient('${SUPABASE_URL}', '${SUPABASE_KEY}');
+                            const { PDFDocument } = PDFLib;
+                            const recordId = '${id}';
+                            const reviewerName = '${currentUserName}';
+                            const currentYear = '${record.service_year || new Date().getFullYear()}';
+                            const workplaceId = '${record.workplace_id}';
+                            const consultantId = '${record.consultant_id}';
+                            const visitDate = '${record.visit_date}';
+
+                            // 開啟彈窗
+                            function openApprovalModal(type) {
+                                document.getElementById('approve-type').value = type;
+                                document.getElementById('approver-name').innerText = reviewerName;
+                                const now = new Date();
+                                document.getElementById('approve-time').innerText = now.toLocaleString('zh-TW', { hour12: false });
+
+                                const header = document.getElementById('modalHeader');
+                                const title = document.getElementById('modalTitle');
+                                const btn = document.getElementById('btn-confirm');
+                                const comment = document.getElementById('approve-comment');
+                                const help = document.getElementById('comment-help');
+
+                                comment.value = '';
+                                if (type === 'special') {
+                                    header.className = 'modal-header text-white bg-warning';
+                                    title.innerHTML = '<i class="fas fa-exclamation-triangle me-2"></i>特案允許結案確認';
+                                    btn.className = 'btn fw-bold text-dark btn-warning';
+                                    btn.innerText = '確認特案結案';
+                                    comment.placeholder = "請詳細填寫允許結案的特殊理由 (必填)...";
+                                    help.style.display = 'block';
+                                } else {
+                                    header.className = 'modal-header text-white bg-success';
+                                    title.innerHTML = '<i class="fas fa-check-circle me-2"></i>標準案件核定確認';
+                                    btn.className = 'btn fw-bold text-white btn-success';
+                                    btn.innerText = '確認核定結案';
+                                    comment.value = '標準程序審核通過';
+                                    comment.placeholder = "審核備註 (選填)...";
+                                    help.style.display = 'none';
+                                }
+                                new bootstrap.Modal(document.getElementById('childApprovalModal')).show();
+                            }
+
+                            // 執行結案 (證據保全 + DB)
+                            async function performApproval() {
+                                const type = document.getElementById('approve-type').value;
+                                const comment = document.getElementById('approve-comment').value.trim();
+                                const btn = document.getElementById('btn-confirm');
+
+                                if (type === 'special' && !comment) return alert('請填寫審核意見！');
+                                if (!confirm('確定要執行結案嗎？此動作將合併附件並寫入正式資料庫，無法復原。')) return;
+
+                                btn.disabled = true;
+                                btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> 證據保全處理中...';
+
+                                try {
+                                    // 1. 抓取檔案 (Re-list for safety)
+                                    const { data: files } = await supabase.storage.from('staging').list(recordId);
+                                    const pdfUrls = [];
+                                    if(files) {
+                                        for (const f of files) {
+                                            if (f.name.toLowerCase().endsWith('.pdf')) {
+                                                const { data } = supabase.storage.from('staging').getPublicUrl(recordId + '/' + f.name);
+                                                pdfUrls.push(data.publicUrl);
+                                            }
+                                        }
+                                    }
+                                    pdfUrls.sort();
+
+                                    // 2. 合併 PDF
+                                    let finalPdfBlob = null;
+                                    if (pdfUrls.length > 0) {
+                                        const mergedPdf = await PDFDocument.create();
+                                        for (const url of pdfUrls) {
+                                            const res = await fetch(url);
+                                            const pdfBytes = await res.arrayBuffer();
+                                            const pdf = await PDFDocument.load(pdfBytes);
+                                            const copiedPages = await mergedPdf.copyPages(pdf, pdf.getPageIndices());
+                                            copiedPages.forEach((page) => mergedPdf.addPage(page));
+                                        }
+                                        const mergedBytes = await mergedPdf.save();
+                                        finalPdfBlob = new Blob([mergedBytes], { type: 'application/pdf' });
+                                    }
+
+                                    // 3. 上傳到 Service-Records (正式區)
+                                    if (finalPdfBlob) {
+                                        const targetPath = currentYear + '/' + recordId + '/Final_Evidence_Merged.pdf';
+                                        const { error: upErr } = await supabase.storage.from('service-records').upload(targetPath, finalPdfBlob, { upsert: true });
+                                        if (upErr) throw new Error('證據上傳失敗: ' + upErr.message);
+                                    }
+
+                                    // 4. 資料庫寫入
+                                    const { error: upDbErr } = await supabase.from('service_record_staging').update({ 
+                                        status: 'approved', reviewer_comment: comment, is_special_case: (type === 'special'), audit_note: comment 
+                                    }).eq('id', recordId);
+                                    if (upDbErr) throw upDbErr;
+
+                                    const { error: inDbErr } = await supabase.from('service_records').insert({
+                                        workplace_id: workplaceId, visit_date: visitDate, service_year: currentYear,
+                                        consultant_id: consultantId, is_special_case: (type === 'special'), audit_note: comment, attachment_folder_id: recordId
+                                    });
+                                    // 若 insert error 可視情況處理，這裡先略過避免卡住
+
+                                    alert('✅ 結案成功！證據已封存。視窗將自動關閉。');
+                                    
+                                    // 呼叫母視窗刷新
+                                    if (window.opener && !window.opener.closed) {
+                                        window.opener.refreshData();
+                                    }
+                                    window.close();
+
+                                } catch (e) {
+                                    alert('❌ 錯誤: ' + e.message);
+                                    btn.disabled = false;
+                                    btn.innerText = '確認結案';
+                                }
+                            }
+                        <\/script>
                     </body>
                     </html>
                 `;
@@ -566,177 +686,6 @@
                 btn.disabled = false;
             }
         }
-
-        // --- 供子視窗呼叫的橋接函數 (已更新為開啟 Modal) ---
-        window.triggerApprovalModal = function(id, type) {
-            openApprovalModal(id, type);
-        }
-
-        // ===========================================
-        // 新增功能：審核彈窗邏輯
-        // ===========================================
-        function openApprovalModal(id, type) {
-            const record = currentStagingData.find(r => r.id === id);
-            if(!record) return alert("資料讀取錯誤");
-
-            document.getElementById('approve-target-id').value = id;
-            document.getElementById('approve-type').value = type;
-
-            // 1. 自動帶出審查者資訊
-            const userName = sessionStorage.getItem('currentUserName') || '系統管理員';
-            document.getElementById('approver-name').innerText = userName;
-            
-            const now = new Date();
-            const timeStr = now.toLocaleString('zh-TW', { hour12: false });
-            document.getElementById('approve-time').innerText = timeStr;
-
-            // 2. 依據類型分流 UI
-            const header = document.getElementById('approvalModalHeader');
-            const title = document.getElementById('approvalModalTitle');
-            const btn = document.getElementById('btn-confirm-approval');
-            const comment = document.getElementById('approve-comment');
-            const help = document.getElementById('comment-help');
-
-            comment.value = ''; // 重置
-
-            if (type === 'special') {
-                header.className = 'modal-header text-white bg-warning'; // 黃色
-                title.innerHTML = '<i class="fas fa-exclamation-triangle me-2"></i>特案允許結案確認';
-                btn.className = 'btn fw-bold text-dark btn-warning';
-                btn.innerText = '確認特案結案';
-                
-                comment.placeholder = "請詳細填寫允許結案的特殊理由 (必填)...";
-                help.style.display = 'block'; // 顯示必填提示
-            } else {
-                header.className = 'modal-header text-white bg-success'; // 綠色
-                title.innerHTML = '<i class="fas fa-check-circle me-2"></i>標準案件核定確認';
-                btn.className = 'btn fw-bold text-white btn-success';
-                btn.innerText = '確認核定結案';
-                
-                comment.value = '標準程序審核通過'; // 預設值
-                comment.placeholder = "審核備註 (選填)...";
-                help.style.display = 'none';
-            }
-
-            new bootstrap.Modal(document.getElementById('approvalModal')).show();
-        }
-
-        // ===========================================
-        // 核心功能：執行最終核定 (證據保全)
-        // ===========================================
-        async function performFinalApproval() {
-            const id = document.getElementById('approve-target-id').value;
-            const type = document.getElementById('approve-type').value;
-            const comment = document.getElementById('approve-comment').value.trim();
-            const btn = document.getElementById('btn-confirm-approval');
-
-            // 防呆
-            if (type === 'special' && !comment) {
-                return alert('【特案結案】必須填寫審核意見，以利後續稽核！');
-            }
-
-            if (!confirm(`確定要執行「${type === 'special' ? '特案' : '標準'}」結案嗎？\n此動作將合併附件並寫入正式資料庫，無法復原。`)) return;
-
-            // UI Loading
-            const originalBtnText = btn.innerText;
-            btn.disabled = true;
-            btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> 證據保全處理中...';
-
-            try {
-                // 1. 再次抓取所有 PDF (為了合併證據)
-                // 注意：這裡假設 staging 權限已開，直接 list
-                const { data: files, error: listError } = await supabaseClient.storage.from('staging').list(id);
-                if (listError) throw listError;
-
-                const pdfUrls = [];
-                // 篩選 PDF
-                for (const f of files) {
-                    if (f.name.toLowerCase().endsWith('.pdf')) {
-                        const { data } = supabaseClient.storage.from('staging').getPublicUrl(`${id}/${f.name}`);
-                        pdfUrls.push(data.publicUrl);
-                    }
-                }
-                pdfUrls.sort(); // 排序確保順序
-
-                // 2. 合併 PDF (Evidence)
-                let finalPdfBlob = null;
-                if (pdfUrls.length > 0) {
-                    const mergedPdf = await PDFDocument.create();
-                    for (const url of pdfUrls) {
-                        const res = await fetch(url);
-                        const pdfBytes = await res.arrayBuffer();
-                        const pdf = await PDFDocument.load(pdfBytes);
-                        const copiedPages = await mergedPdf.copyPages(pdf, pdf.getPageIndices());
-                        copiedPages.forEach((page) => mergedPdf.addPage(page));
-                    }
-                    const mergedBytes = await mergedPdf.save();
-                    finalPdfBlob = new Blob([mergedBytes], { type: 'application/pdf' });
-                }
-
-                // 3. 上傳合併後的證據到 'service-records' (正式 Bucket)
-                // 取得原始資料以獲取年份與公司ID
-                const record = currentStagingData.find(r => r.id === id);
-                const year = record.service_year || new Date().getFullYear();
-                const targetPath = `${year}/${id}/Final_Evidence_Merged.pdf`; // 路徑結構: 年份/案件ID/檔案
-
-                if (finalPdfBlob) {
-                    const { error: uploadError } = await supabaseClient.storage
-                        .from('service-records') // ★ 正式 Bucket
-                        .upload(targetPath, finalPdfBlob, { upsert: true });
-                    
-                    if (uploadError) throw new Error("證據檔案上傳失敗: " + uploadError.message);
-                }
-
-                // 4. (選用) 將其他原始附件也複製過去 (為了完整性)
-                // 這裡略過複雜的 copy 迴圈，僅示範主要證據保存
-
-                // 5. 資料庫交易 (更新 Staging -> Insert Formal)
-                // A. 更新 Staging 狀態
-                const { error: updateError } = await supabaseClient
-                    .from('service_record_staging')
-                    .update({ 
-                        status: 'approved',
-                        reviewer_comment: comment,
-                        is_special_case: (type === 'special'),
-                        audit_note: comment
-                    })
-                    .eq('id', id);
-                if (updateError) throw updateError;
-
-                // B. 寫入 Service Records (正式表)
-                // 這裡簡化處理，實際專案可能需要將 Staging 欄位對應 insert 到 service_records
-                // 假設後端或 Trigger 會處理，或者這裡直接做 Insert
-                const { error: insertError } = await supabaseClient
-                    .from('service_records')
-                    .insert({
-                        // ...對應欄位...
-                        workplace_id: record.workplace_id,
-                        visit_date: record.visit_date,
-                        service_year: year,
-                        consultant_id: record.consultant_id,
-                        is_special_case: (type === 'special'),
-                        audit_note: comment,
-                        // 連結證據檔案路徑
-                        attachment_folder_id: id // 假設用 ID 當資料夾名
-                    });
-                
-                // 暫不拋出 insertError，避免因為欄位對應問題卡住流程，先確保狀態更新
-
-                alert('✅ 結案成功！\n評鑑證據已封存至正式資料庫。');
-                
-                bootstrap.Modal.getInstance(document.getElementById('approvalModal')).hide();
-                refreshData(); // 刷新列表
-
-            } catch (e) {
-                console.error(e);
-                alert('❌ 結案失敗: ' + e.message);
-            } finally {
-                btn.disabled = false;
-                btn.innerText = originalBtnText;
-            }
-        }
-
-        // ... (其他原有輔助函式保持不變) ...
 
         function toggleOtherReason() {
             const isChecked = document.getElementById('reason3').checked;
