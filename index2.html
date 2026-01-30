@@ -316,6 +316,7 @@
                 type: 'doughnut',
                 data: {
                     labels: ['已核定', '待審核'],
+                    // 環形圖配色：綠色 (Check/Approved) vs 黃色 (Pending)
                     datasets: [{ data: [0, 0], backgroundColor: ['#198754', '#ffc107'], borderWidth: 0 }]
                 },
                 options: { cutout: '75%', plugins: { legend: { display: false } }, maintainAspectRatio: false }
@@ -445,10 +446,10 @@
                     }
                 } catch(e) {}
 
-                // ★ 關鍵修正：從 Mother ID (origin_record_id) 抓取檔案
-                const fileSourceId = record.origin_record_id || record.id; 
+                // ★ 關鍵修正：從 record.id (暫存單 ID) 抓取檔案，而非 Mother ID
+                const fileSourceId = record.id; 
                 
-                // 檔案抓取邏輯 (Storage List + DB JSON Union)
+                // 檔案抓取邏輯
                 let files = record.attachment_files;
                 if (typeof files === 'string') { try { files = JSON.parse(files); } catch(e) { files = []; } }
                 if (!Array.isArray(files)) files = [];
@@ -461,7 +462,7 @@
                         if (!exists) {
                             files.push({
                                 name: sf.name,
-                                path: `${fileSourceId}/${sf.name}`, // 使用正確的 Source ID
+                                path: `${fileSourceId}/${sf.name}`, // ★ 路徑使用 record.id
                                 type: sf.metadata?.mimetype || 'application/pdf'
                             });
                         }
@@ -474,7 +475,7 @@
                 const otherLinks = [];
 
                 for (const f of files) {
-                    // 如果路徑不包含 ID，補上 (針對補漏進來的檔案)
+                    // 如果路徑不包含 ID (舊資料)，補上；新資料都已有 ID
                     const fullPath = f.path.includes('/') ? f.path : `${fileSourceId}/${f.path}`;
                     
                     const { data } = supabaseClient.storage.from('staging').getPublicUrl(fullPath);
@@ -642,12 +643,12 @@
             btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> 證據保全處理中...';
 
             try {
-                // 取得原始紀錄以獲取 origin_record_id
+                // 取得原始紀錄
                 const record = currentStagingData.find(r => r.id === id);
-                const fileSourceId = record.origin_record_id || record.id; 
+                // ★ 關鍵修正：必須使用 record.id (暫存單 ID) 來抓取檔案，因為 index1 已經改用這個 ID 存檔
+                const fileSourceId = record.id; 
 
                 // 1. 再次抓取所有 PDF (為了合併證據)
-                // 注意：這裡使用修正後的 fileSourceId
                 const { data: files, error: listError } = await supabaseClient.storage.from('staging').list(fileSourceId);
                 if (listError) throw listError;
 
@@ -690,6 +691,10 @@
                         .upload(targetPath, finalPdfBlob, { upsert: true });
                     
                     if (uploadError) throw new Error("證據檔案上傳失敗: " + uploadError.message);
+                } else {
+                    // ★ 提示：如果找不到 PDF，是否要繼續？這裡選擇繼續結案，但跳出警告
+                    // 因為可能只有圖片，沒有 PDF
+                    console.warn("警告：此案件無 PDF 證據檔案可供合併。");
                 }
 
                 // 4. 資料庫交易 (更新 Staging -> Insert Formal)
@@ -716,8 +721,7 @@
                         consultant_id: record.consultant_id,
                         is_special_case: (type === 'special'),
                         audit_note: comment,
-                        // ★ 關鍵：這裡連結回 Staging 的原始資料夾 (或母案資料夾，視需求)
-                        // 若要讓 index3 能讀到原始附件，這裡必須存 fileSourceId
+                        // ★ 關鍵：連結回 Staging 的原始資料夾 (用來讀取圖片附件)
                         attachment_folder_id: fileSourceId 
                     });
                 
