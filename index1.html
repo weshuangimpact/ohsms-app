@@ -242,17 +242,15 @@
 
             try {
                 // 1. 產生強制檔名： [代號]_[時間戳].[副檔名]
-                // 範例： A_1706612345678.pdf
                 const timestamp = Date.now();
-                const fileExt = file.name.split('.').pop() || 'dat'; // 若無副檔名則預設 dat
+                const fileExt = file.name.split('.').pop() || 'dat'; 
                 const finalFileName = `${code}_${timestamp}.${fileExt}`;
                 const filePath = `${currentRecordId}/${finalFileName}`;
 
                 // 2. 清除該代號的舊檔 (保持資料夾整潔)
-                // 例如：上傳新的 A 之前，把舊的 A_xxx.pdf 刪掉
                 await deleteFileByPrefix(currentRecordId, `${code}_`);
 
-                // 3. 上傳檔案 (使用 upsert 覆蓋，雖然有時間戳不太會重複，但保險起見)
+                // 3. 上傳檔案 (使用 upsert 覆蓋)
                 const { error } = await supabaseClient.storage.from(BUCKET_NAME).upload(filePath, file, { upsert: true });
 
                 if (error) throw error;
@@ -266,7 +264,7 @@
                 updateItemUI(itemId, code, null, null, false);
             } finally {
                 document.getElementById(`spinner-${itemId}`).style.display = 'none';
-                input.value = ''; // 重置 input 以便重複選擇同檔
+                input.value = ''; 
             }
         }
 
@@ -288,10 +286,8 @@
 
         // 輔助函式：刪除特定前綴的檔案
         async function deleteFileByPrefix(recordId, prefix) {
-            // 列出該 recordId 資料夾下的所有檔案
             const { data: files } = await supabaseClient.storage.from(BUCKET_NAME).list(`${recordId}`);
             if (files && files.length > 0) {
-                // 篩選出符合前綴 (如 A_) 的檔案
                 const targetFiles = files.filter(f => f.name.startsWith(prefix));
                 if (targetFiles.length > 0) {
                     const pathsToRemove = targetFiles.map(f => `${recordId}/${f.name}`);
@@ -311,12 +307,9 @@
                 uploadBtn.style.display = 'none';
                 btnGroup.style.display = 'flex';
                 
-                // 取得公開連結
                 const { data } = supabaseClient.storage.from(BUCKET_NAME).getPublicUrl(`${currentRecordId}/${fullFileName}`);
                 previewBtn.href = data.publicUrl;
                 
-                // 顯示名稱邏輯：如果沒有 originalName (重整頁面後)，則顯示系統檔名
-                // 由於我們不再儲存原始檔名，重整後只能看到 A_123456.pdf，這符合您的需求
                 let displayName = originalName || fullFileName;
                 const shortName = displayName.length > 20 ? displayName.substring(0, 17) + '...' : displayName;
 
@@ -329,7 +322,7 @@
         }
 
         // ==========================================
-        // 一般邏輯 (搜尋、載入、送審) - 維持原樣
+        // 一般邏輯 (搜尋、載入)
         // ==========================================
         async function searchRecords() {
             const year = document.getElementById('search-year').value.trim();
@@ -348,8 +341,8 @@
                 if (error) throw error;
                 if (!data || data.length === 0) { container.innerHTML = '<div class="text-center text-muted py-5"><i class="fas fa-folder-open fa-3x mb-3"></i><p>查無符合條件的案件。</p></div>'; return; }
                 container.innerHTML = data.map(record => {
-                    let statusBadge = record.execution_items ? '<span class="badge bg-warning text-dark">處理中</span>' : '<span class="badge bg-secondary">未填寫</span>';
-                    return `<div class="col-12"><div class="record-card p-3 rounded d-flex justify-content-between align-items-center" onclick="selectRecord('${record.id}')"><div><div class="fw-bold text-dark fs-5 mb-1">${record.workplaces.companies.name} <span class="badge bg-light text-muted fw-normal border ms-2">${record.workplaces.companies.tax_id}</span></div><div class="text-muted small"><i class="far fa-calendar-alt me-1"></i> ${record.visit_date || '日期未定'}</div></div><div class="text-end">${statusBadge}<div class="small text-primary mt-1">點擊進入 <i class="fas fa-chevron-right"></i></div></div></div></div>`;
+                    // 母案列表狀態顯示：如果 execution_items 有值，代表曾經有填寫過(可能是舊系統或直接編輯)，但這裡我們主要顯示母案
+                    return `<div class="col-12"><div class="record-card p-3 rounded d-flex justify-content-between align-items-center" onclick="selectRecord('${record.id}')"><div><div class="fw-bold text-dark fs-5 mb-1">${record.workplaces.companies.name} <span class="badge bg-light text-muted fw-normal border ms-2">${record.workplaces.companies.tax_id}</span></div><div class="text-muted small"><i class="far fa-calendar-alt me-1"></i> ${record.visit_date || '預定日期未定'}</div></div><div class="text-end"><div class="small text-primary mt-1">選取此案 <i class="fas fa-chevron-right"></i></div></div></div></div>`;
                 }).join('');
             } catch (err) { container.innerHTML = `<div class="alert alert-danger">錯誤: ${err.message}</div>`; }
         }
@@ -359,25 +352,27 @@
             document.querySelectorAll('input[type="checkbox"]').forEach(cb => cb.checked = false);
             document.querySelectorAll('.item-actions').forEach(el => el.classList.remove('visible'));
             checklistItems.forEach(item => updateItemUI(item.id, item.code, null, null, false));
+            
+            // 讀取母案資料
             const { data } = await supabaseClient.from('service_records').select(`*, workplaces(companies(name))`).eq('id', id).single();
+            
             document.getElementById('current-company-name').innerText = data.workplaces.companies.name;
-            document.getElementById('current-year-badge').innerText = (data.service_year || '') + ' 年度';
+            document.getElementById('current-year-badge').innerText = (data.service_year || '') + ' 年度 (母案)';
+            
+            // 預帶母案的日期/時間，但允許顧問修改 (這會存到 Staging，不改母案)
             document.getElementById('execution-date').value = data.visit_date || ''; 
             document.getElementById('start-time').value = data.start_time || '';
             document.getElementById('end-time').value = data.end_time || '';
-            if (data.execution_items) {
-                const savedItems = typeof data.execution_items === 'string' ? JSON.parse(data.execution_items) : data.execution_items;
-                savedItems.forEach(itemId => {
-                    const cb = document.getElementById(`cb-${itemId}`);
-                    if(cb) { cb.checked = true; toggleItemAction(itemId); }
-                });
-            }
             
-            // 載入已上傳的檔案 (根據 A_ B_ C_ 前綴自動對應)
+            // 這裡不再從 service_records.execution_items 回填勾選狀態，
+            // 因為我們要產生的是「新的執行紀錄」。每次進來都是乾淨的表單。
+            // (除非您希望有草稿功能，那需要改讀取 staging 表，目前先保持每次新填)
+            
+            // 檢查 Storage 是否有殘留檔案 (可能上次上傳未送出)
+            // 這裡直接顯示該資料夾下的檔案
             const { data: files } = await supabaseClient.storage.from(BUCKET_NAME).list(`${id}`);
             if (files && files.length > 0) {
                 files.forEach(file => {
-                    // 解析檔名格式： Code_Timestamp.ext
                     const parts = file.name.split('_');
                     if (parts.length >= 2) { 
                         const code = parts[0];
@@ -413,13 +408,16 @@
             });
         }
 
+        // ==========================================
+        // ★ 核心修正區：送出邏輯 (只寫 Staging，不改母案)
+        // ==========================================
         async function submitRecord() {
             if (!currentRecordId) return;
             const btn = document.getElementById('btn-submit');
             btn.disabled = true;
             btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> 處理中...';
             try {
-                // 寫入 service_record_staging
+                // 1. 收集表單資料
                 const selectedItems = [];
                 document.querySelectorAll('input[name="service-item"]:checked').forEach(cb => { selectedItems.push(cb.value); });
                 const visitDate = document.getElementById('execution-date').value;
@@ -429,53 +427,51 @@
                 if (selectedItems.length === 0) throw new Error("請至少勾選一項執行紀錄項目。");
                 if (!visitDate) throw new Error("請填寫實際執行日期。");
 
-                // 從 Storage 取得所有檔案清單，構建 attachment_files JSON
+                // 2. 從 Storage 取得檔案清單
                 const { data: files } = await supabaseClient.storage.from(BUCKET_NAME).list(`${currentRecordId}`);
                 let attachments = [];
                 if(files) {
                     attachments = files.map(f => ({
-                        name: f.name, // 這裡會是 A_123456.pdf
+                        name: f.name,
                         path: `${currentRecordId}/${f.name}`,
                         size: f.metadata.size,
                         type: f.metadata.mimetype
                     }));
                 }
 
-                // 寫入 Staging (這是 Plan/Do 階段的核心)
                 const { data: profile } = await supabaseClient.auth.getUser();
                 const userId = profile.user.id;
                 
-                // 讀取該 service_record 關聯的 workplace_id 與 consultant_id
-                const { data: recordData } = await supabaseClient.from('service_records').select('workplace_id, consultant_id').eq('id', currentRecordId).single();
+                // 3. 讀取母案基本資料 (僅供參考或複製 ID)
+                const { data: recordData } = await supabaseClient.from('service_records').select('workplace_id, consultant_id, service_year').eq('id', currentRecordId).single();
 
+                // 4. 構建 Payload
                 const payload = {
+                    origin_record_id: currentRecordId, // ★ 關鍵：連結母案
                     workplace_id: recordData.workplace_id,
                     submitter_id: userId,
                     consultant_id: recordData.consultant_id,
-                    service_date: visitDate, // 申請日期/服務日期
-                    visit_date: visitDate,   // 實際訪視日期
+                    service_year: recordData.service_year,
+                    
+                    service_date: visitDate, // 申請日期
+                    visit_date: visitDate,   // 實際執行日期 (可與母案不同)
                     start_time: startTime,
                     end_time: endTime,
+                    
                     service_type: '定期臨場服務',
-                    // 將勾選項目存為 JSON 字串 (或您想直接存文字)
                     service_desc: JSON.stringify({
                         items: selectedItems,
                         note: '由顧問端上傳之執行紀錄'
                     }),
-                    attachment_files: attachments, // JSONB 格式
-                    status: 'pending' // 待審核
+                    attachment_files: attachments,
+                    status: 'pending' 
                 };
 
+                // 5. 寫入 Staging
                 const { error } = await supabaseClient.from('service_record_staging').insert(payload);
                 if (error) throw error;
 
-                // 同步更新 service_records 的執行項目 (作為備份或即時狀態)
-                await supabaseClient.from('service_records').update({
-                    execution_items: JSON.stringify(selectedItems),
-                    visit_date: visitDate,
-                    start_time: startTime || null, 
-                    end_time: endTime || null,
-                }).eq('id', currentRecordId);
+                // ★ 移除：不再更新 service_records (母案保持唯讀/原樣)
 
                 alert('✅ 存檔成功！資料已送出待審核。');
                 backToStep1();
