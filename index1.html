@@ -8,47 +8,16 @@
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     
 <style>
-    /* =========================================
-       1. 核心基礎與寬版設定
-       ========================================= */
-    :root { 
-        --primary-bg: #f4f6f9; 
-        --theme-color: #0d6efd; /* Plan Blue */
-        --theme-light: #e7f1ff; 
-    }
-
-    body {
-        background-color: var(--primary-bg);
-        font-family: 'Segoe UI', 'Microsoft JhengHei', sans-serif;
-        display: none; /* Auth Guard */
-    }
-
-    .container, .container-fluid {
-        max-width: 100% !important;
-        padding-left: 1.5rem !important;
-        padding-right: 1.5rem !important;
-    }
-
+    /* 核心基礎設定 (Plan Blue) */
+    :root { --primary-bg: #f4f6f9; --theme-color: #0d6efd; --theme-light: #e7f1ff; }
+    body { background-color: var(--primary-bg); font-family: 'Segoe UI', 'Microsoft JhengHei', sans-serif; display: none; }
+    .container, .container-fluid { max-width: 100% !important; padding-left: 1.5rem !important; padding-right: 1.5rem !important; }
     .card-body { padding: 0 !important; }
-
-    .d-flex.justify-content-between.align-items-center.mb-4 {
-        margin-bottom: 0.5rem !important;
-    }
-
-    .section-title { 
-        border-left: 5px solid var(--theme-color); 
-        padding-left: 15px; 
-        margin-bottom: 20px; 
-    }
+    .d-flex.justify-content-between.align-items-center.mb-4 { margin-bottom: 0.5rem !important; }
+    .section-title { border-left: 5px solid var(--theme-color); padding-left: 15px; margin-bottom: 20px; }
+    .card-header { background-color: white; border-bottom: 1px solid #f0f0f0; }
     
-    .card-header { 
-        background-color: white; 
-        border-bottom: 1px solid #f0f0f0; 
-    }
-    
-    /* =========================================
-       2. 功能元件 & 檔案操作 UI
-       ========================================= */
+    /* UI 元件 */
     .step-indicator { display: flex; justify-content: space-between; margin-bottom: 30px; position: relative; max-width: 600px; margin-left: auto; margin-right: auto;}
     .step-indicator::before { content: ''; position: absolute; top: 15px; left: 0; right: 0; height: 2px; background: #e0e0e0; z-index: 0; }
     .step-item { position: relative; z-index: 1; background: var(--primary-bg); padding: 0 10px; text-align: center; color: #999; font-weight: 600; }
@@ -60,56 +29,22 @@
     .record-card { cursor: pointer; border: 1px solid #eee; transition: all 0.2s; background: #fff;}
     .record-card:hover, .record-card.selected { border-color: var(--theme-color); background-color: var(--theme-light); }
 
-    /* Checkbox List Styling */
-    .check-list-group .list-group-item { 
-        border: 1px solid #eee; 
-        margin-bottom: 8px; 
-        border-radius: 6px !important; 
-        transition: background 0.2s; 
-        padding: 12px 15px;
-    }
+    .check-list-group .list-group-item { border: 1px solid #eee; margin-bottom: 8px; border-radius: 6px !important; transition: background 0.2s; padding: 12px 15px; }
     .check-list-group .list-group-item:hover { background-color: #f8f9fa; }
     .form-check-input:checked + .form-check-label { color: var(--theme-color); font-weight: bold; }
 
-    /* 操作工具列 */
-    .item-actions {
-        display: none; 
-        align-items: center;
-        gap: 8px;
-        margin-left: auto; 
-    }
+    .item-actions { display: none; align-items: center; gap: 8px; margin-left: auto; }
     .item-actions.visible { display: flex; }
 
-    /* PDCA 說明區塊 */
-    .instruction-box {
-        background-color: #fff;
-        border-left: 5px solid var(--theme-color);
-        padding: 20px 25px;
-        border-radius: 4px;
-        margin-bottom: 30px;
-        text-align: left;
-        box-shadow: 0 2px 5px rgba(0,0,0,0.05);
-        width: 100%;
-    }
-    .instruction-title {
-        color: #0a58ca;
-        font-weight: 700;
-        margin-bottom: 10px;
-    }
-    
-    .table th { font-weight: 600; color: #555; background-color: #f8f9fa; white-space: nowrap; }
-    .table td { vertical-align: middle; }
-
+    .instruction-box { background-color: #fff; border-left: 5px solid var(--theme-color); padding: 20px 25px; border-radius: 4px; margin-bottom: 30px; text-align: left; box-shadow: 0 2px 5px rgba(0,0,0,0.05); width: 100%; }
+    .instruction-title { color: #0a58ca; font-weight: 700; margin-bottom: 10px; }
 </style>
 
     <script>
         document.addEventListener('DOMContentLoaded', function() {
-            if (!sessionStorage.getItem('currentUserId')) {
-                window.location.href = 'index.html';
-            }
+            if (!sessionStorage.getItem('currentUserId')) { window.location.href = 'index.html'; }
             document.body.style.display = 'block';
-            const userName = sessionStorage.getItem('currentUserName') || '使用者';
-            document.getElementById('user-display').innerText = userName;
+            document.getElementById('user-display').innerText = sessionStorage.getItem('currentUserName') || '使用者';
         });
     </script>
 </head>
@@ -126,7 +61,6 @@
     </nav>
 
     <div class="container pb-5">
-        
         <div class="d-flex justify-content-between align-items-center mb-4">
             <div>
                 <h2 class="fw-bold text-dark"><i class="fas fa-file-arrow-up me-2 text-primary"></i>顧問資料上傳</h2>
@@ -135,29 +69,15 @@
         </div>
 
         <div class="card-body p-4 p-md-5">
-
             <div class="instruction-box">
-                <div class="instruction-title">
-                    <i class="fas fa-compass me-2"></i>PDCA 設計理念：Plan (計畫) —— 基準確立與歷史繼承
-                </div>
-                <p class="mb-0 text-dark" style="line-height: 1.6;">
-                    本模組貫徹「基準建檔」(Plan) 與「執行留痕」(Do) 之雙重核心，透過嚴謹的版本控制與補件機制，完整串聯從規劃到現場服務的數位證據鏈，確保資料具備不可否認性。
-                </p>
+                <div class="instruction-title"><i class="fas fa-compass me-2"></i>PDCA 設計理念：Plan (計畫) —— 基準確立與歷史繼承</div>
+                <p class="mb-0 text-dark" style="line-height: 1.6;">本模組貫徹「基準建檔」(Plan) 與「執行留痕」(Do) 之雙重核心，透過嚴謹的版本控制與補件機制，完整串聯從規劃到現場服務的數位證據鏈，確保資料具備不可否認性。</p>
             </div>
 
             <div class="step-indicator px-5">
-                <div class="step-item active" id="step1-indicator">
-                    <div class="step-circle">1</div>
-                    <div>選擇案件</div>
-                </div>
-                <div class="step-item" id="step2-indicator">
-                    <div class="step-circle">2</div>
-                    <div>執行紀錄與上傳</div>
-                </div>
-                <div class="step-item" id="step3-indicator">
-                    <div class="step-circle">3</div>
-                    <div>完成送審</div>
-                </div>
+                <div class="step-item active" id="step1-indicator"><div class="step-circle">1</div><div>選擇案件</div></div>
+                <div class="step-item" id="step2-indicator"><div class="step-circle">2</div><div>執行紀錄與上傳</div></div>
+                <div class="step-item" id="step3-indicator"><div class="step-circle">3</div><div>完成送審</div></div>
             </div>
 
             <hr class="my-4">
@@ -168,7 +88,6 @@
                         <div class="card h-100 p-4 border-0 shadow-sm">
                             <h5 class="section-title">搜尋條件</h5>
                             <p class="text-muted small mb-3">請輸入條件搜尋您名下的服務案件。</p>
-                            
                             <div class="mb-3">
                                 <label class="form-label fw-bold small">服務年份 (選填)</label>
                                 <input type="text" class="form-control" id="search-year" placeholder="例如：2026">
@@ -177,23 +96,16 @@
                                 <label class="form-label fw-bold small">公司統編 (選填)</label>
                                 <input type="text" class="form-control" id="search-tax-id" placeholder="請輸入 8 碼統編">
                             </div>
-                            
                             <div class="d-grid mt-4">
-                                <button class="btn btn-primary" onclick="searchRecords()">
-                                    <i class="fas fa-search me-2"></i>查詢案件
-                                </button>
+                                <button class="btn btn-primary" onclick="searchRecords()"><i class="fas fa-search me-2"></i>查詢案件</button>
                             </div>
                         </div>
                     </div>
-
                     <div class="col-lg-8">
                         <div class="card h-100 p-4 border-0 shadow-sm">
                             <h5 class="section-title">案件列表</h5>
                             <div id="records-container" class="row g-3" style="max-height: 500px; overflow-y: auto;">
-                                <div class="text-center text-muted py-5">
-                                    <i class="fas fa-search fa-3x mb-3 text-light"></i>
-                                    <p>請設定左側條件並點擊查詢</p>
-                                </div>
+                                <div class="text-center text-muted py-5"><i class="fas fa-search fa-3x mb-3 text-light"></i><p>請設定左側條件並點擊查詢</p></div>
                             </div>
                         </div>
                     </div>
@@ -204,9 +116,7 @@
                 <div class="card p-4 mb-4 border-0 shadow-sm">
                     <div class="d-flex justify-content-between align-items-center mb-3">
                         <h5 class="section-title mb-0">上傳服務執行紀錄</h5>
-                        <button class="btn btn-outline-secondary btn-sm" onclick="backToStep1()">
-                            <i class="fas fa-sync-alt me-1"></i> 重選案件
-                        </button>
+                        <button class="btn btn-outline-secondary btn-sm" onclick="backToStep1()"><i class="fas fa-sync-alt me-1"></i> 重選案件</button>
                     </div>
 
                     <div class="alert alert-light border-start border-4 border-primary mb-4 bg-light">
@@ -235,20 +145,14 @@
 
                     <form id="execution-form">
                         <h6 class="fw-bold mb-3"><i class="fas fa-check-square me-2 text-primary"></i>(必要) 勞工健康服務執行紀錄項目</h6>
-                        <p class="text-muted small">請勾選本次服務所執行的項目，並直接上傳附件 (系統自動支援中文檔名轉換)。</p>
-
-                        <div class="list-group check-list-group mb-4" id="checkbox-list">
-                            </div>
-
+                        <p class="text-muted small">請勾選本次服務所執行的項目，並直接上傳附件。系統將自動處理檔名以符合資料庫規範。</p>
+                        <div class="list-group check-list-group mb-4" id="checkbox-list"></div>
                         <div class="d-flex justify-content-end gap-2 pt-3 border-top mt-4">
-                            <button type="button" class="btn btn-primary px-4 fw-bold" id="btn-submit" onclick="submitRecord()">
-                                <i class="fas fa-save me-1"></i> 存檔送審
-                            </button>
+                            <button type="button" class="btn btn-primary px-4 fw-bold" id="btn-submit" onclick="submitRecord()"><i class="fas fa-save me-1"></i> 存檔送審</button>
                         </div>
                     </form>
                 </div>
             </div>
-
         </div>
     </div>
 
@@ -259,16 +163,10 @@
         const SUPABASE_URL = 'https://yhehfucgemxnfrdvpdhw.supabase.co';
         const SUPABASE_KEY = 'sb_publishable_52emtU-9l-SDxcJTWVTPTA_Yu6qEogh';
         const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-
-        // Bucket 名稱設定
         const BUCKET_NAME = 'staging'; 
-
-        // 狀態變數
         let currentRecordId = null;
         let currentUserId = sessionStorage.getItem('currentUserId'); 
-        let currentFilesMap = {}; 
 
-        // 項目清單資料
         const checklistItems = [
             { id: "main", code: "A", text: "勞工健康服務執行紀錄表 (執行當日紀錄主檔)" },
             { id: "9-1", code: "B", text: "9-1 勞工體格（健康）檢查結果之分析與評估、健康管理及資料保存。" },
@@ -286,60 +184,37 @@
             { id: "11-5", code: "N", text: "11-5 其他經中央主管機關指定公告者。" },
             { id: "12", code: "O", text: "12 訂定勞工健康服務計畫，據以執行，每年評估成效及檢討。" },
             { id: "13", code: "P", text: "13 訂定勞工健康管理方案，據以辦理，每年評估成效及檢討。" },
-            { id: "other", code: "Q", text: "其他附件 (不限格式，可上傳照片、影音、問卷等)" }
+            { id: "other", code: "Q", text: "其他附件 (Q)" }
         ];
 
-        document.addEventListener('DOMContentLoaded', () => {
-            renderChecklist();
-        });
+        document.addEventListener('DOMContentLoaded', () => { renderChecklist(); });
 
-        // 1. 初始化清單
         function renderChecklist() {
             const container = document.getElementById('checkbox-list');
             container.innerHTML = checklistItems.map(item => {
                 const acceptType = item.id === 'other' ? '*/*' : '.pdf';
                 const fileTypeMsg = item.id === 'other' ? '支援所有格式' : '限 PDF';
-
                 return `
                 <div class="list-group-item d-flex align-items-center justify-content-between p-3" id="item-row-${item.id}">
                     <div class="d-flex align-items-center gap-3" style="flex: 1;">
-                        <input class="form-check-input flex-shrink-0" type="checkbox" 
-                               name="service-item" value="${item.id}" 
-                               data-code="${item.code}"
-                               id="cb-${item.id}" 
-                               style="font-size: 1.3em;"
-                               onchange="toggleItemAction('${item.id}')">
+                        <input class="form-check-input flex-shrink-0" type="checkbox" name="service-item" value="${item.id}" data-code="${item.code}" id="cb-${item.id}" style="font-size: 1.3em;" onchange="toggleItemAction('${item.id}')">
                         <label class="form-check-label stretched-link pt-1" for="cb-${item.id}" style="cursor:pointer;">
                             <span class="badge bg-light text-dark border me-2 fw-bold" style="width: 25px;">${item.code}</span>
                             ${item.text}
                         </label>
                     </div>
-
                     <div class="item-actions" id="action-${item.id}">
-                        
                         <span class="me-2 small" id="file-info-${item.id}"></span>
                         <input type="file" id="file-input-${item.id}" hidden accept="${acceptType}" onchange="handleItemFileUpload('${item.id}', '${item.code}', this)">
-                        
                         <button type="button" class="btn btn-sm btn-outline-primary" id="btn-upload-${item.id}" onclick="triggerItemUpload('${item.id}')" style="position: relative; z-index: 2;">
                             <i class="fas fa-cloud-upload-alt me-1"></i> 上傳 <small class="ms-1 text-muted" style="font-size:0.7em;">(${fileTypeMsg})</small>
                         </button>
-
                         <div class="btn-group btn-group-sm" id="btn-group-${item.id}" style="display:none; position: relative; z-index: 2;">
-                            <a href="#" target="_blank" class="btn btn-outline-info" id="btn-preview-${item.id}" title="預覽">
-                                <i class="fas fa-eye"></i>
-                            </a>
-                            <button type="button" class="btn btn-outline-secondary" onclick="triggerItemUpload('${item.id}')" title="更換">
-                                <i class="fas fa-sync-alt"></i>
-                            </button>
-                            <button type="button" class="btn btn-outline-danger" onclick="handleItemFileDelete('${item.id}', '${item.code}')" title="刪除">
-                                <i class="fas fa-trash-alt"></i>
-                            </button>
+                            <a href="#" target="_blank" class="btn btn-outline-info" id="btn-preview-${item.id}" title="預覽"><i class="fas fa-eye"></i></a>
+                            <button type="button" class="btn btn-outline-secondary" onclick="triggerItemUpload('${item.id}')" title="更換"><i class="fas fa-sync-alt"></i></button>
+                            <button type="button" class="btn btn-outline-danger" onclick="handleItemFileDelete('${item.id}', '${item.code}')" title="刪除"><i class="fas fa-trash-alt"></i></button>
                         </div>
-                        
-                        <div id="spinner-${item.id}" style="display:none;" class="text-primary ms-2">
-                             <span class="spinner-border spinner-border-sm"></span>
-                        </div>
-
+                        <div id="spinner-${item.id}" style="display:none;" class="text-primary ms-2"><span class="spinner-border spinner-border-sm"></span></div>
                     </div>
                 </div>`;
             }).join('');
@@ -348,18 +223,12 @@
         function toggleItemAction(itemId) {
             const cb = document.getElementById(`cb-${itemId}`);
             const actionDiv = document.getElementById(`action-${itemId}`);
-            if (cb.checked) {
-                actionDiv.classList.add('visible');
-            } else {
-                actionDiv.classList.remove('visible');
-            }
+            if (cb.checked) actionDiv.classList.add('visible');
+            else actionDiv.classList.remove('visible');
         }
+        function triggerItemUpload(itemId) { document.getElementById(`file-input-${itemId}`).click(); }
 
-        function triggerItemUpload(itemId) {
-            document.getElementById(`file-input-${itemId}`).click();
-        }
-
-        // ★ 核心修改：解決 Invalid Key 與 中文檔名問題
+        // ★★★ 核心修正：自動降級命名機制 ★★★
         async function handleItemFileUpload(itemId, code, input) {
             if (!input.files || !input.files[0]) return;
             const file = input.files[0];
@@ -369,44 +238,41 @@
             document.getElementById(`spinner-${itemId}`).style.display = 'block';
 
             try {
-                // ==========================================
-                // ★ 轉檔名 LOGIC (防止 400 Invalid Key)
-                // ==========================================
-                
-                // 1. 取得副檔名
+                const timestamp = Date.now(); 
                 const fileExt = file.name.split('.').pop();
                 
-                // 2. 移除副檔名 -> 進行 URI 編碼 (轉成 %E4%B8%AD 格式，解決中文報錯)
-                let originalName = file.name.substring(0, file.name.lastIndexOf('.'));
-                let safeName = encodeURIComponent(originalName); 
-                if(safeName.length > 50) safeName = safeName.substring(0, 50); // 避免過長
+                // 優先嘗試：[代號]__[時間戳]__[編碼後檔名]
+                // 這樣可以保留原始中文檔名供顯示用
+                let safeName = encodeURIComponent(file.name.substring(0, file.name.lastIndexOf('.')));
+                if(safeName.length > 50) safeName = safeName.substring(0, 50);
+                
+                let finalFileName = `${code}__${timestamp}__${safeName}.${fileExt}`;
+                let filePath = `${currentRecordId}/${finalFileName}`;
 
-                // 3. 加入時間戳 (防止快取)
-                const timestamp = Date.now(); 
-
-                // 4. 組合最終檔名： [代號]__[時間戳]__[編碼檔名].[副檔名]
-                const finalFileName = `${code}__${timestamp}__${safeName}.${fileExt}`;
-                const filePath = `${currentRecordId}/${finalFileName}`;
-
-                // ==========================================
-
-                // 1. 先刪除舊檔
+                // 清除舊檔
                 await deleteFileByPrefix(currentRecordId, `${code}__`);
 
-                // 2. 上傳新檔
-                const { data, error } = await supabaseClient.storage
-                    .from(BUCKET_NAME)
-                    .upload(filePath, file, { upsert: true });
+                // 嘗試上傳
+                let { error } = await supabaseClient.storage.from(BUCKET_NAME).upload(filePath, file, { upsert: true });
 
-                if (error) throw error;
+                // ★ 若上傳失敗 (可能仍因編碼被拒)，自動降級為 [代號]__[時間戳]_File.[副檔名]
+                if (error && (error.statusCode === "400" || error.message.includes("Invalid key"))) {
+                    console.warn("標準編碼上傳失敗，嘗試降級為純英數檔名...");
+                    finalFileName = `${code}__${timestamp}__File.${fileExt}`;
+                    filePath = `${currentRecordId}/${finalFileName}`;
+                    
+                    const retry = await supabaseClient.storage.from(BUCKET_NAME).upload(filePath, file, { upsert: true });
+                    if (retry.error) throw retry.error;
+                } else if (error) {
+                    throw error;
+                }
 
-                // 3. 更新 UI
-                updateItemUI(itemId, code, finalFileName, true);
+                updateItemUI(itemId, code, finalFileName, file.name, true);
 
             } catch (e) {
                 console.error(e);
-                alert('上傳失敗: ' + (e.message || '請確認您已執行 SQL 設定權限'));
-                updateItemUI(itemId, code, null, false);
+                alert('上傳失敗: ' + e.message);
+                updateItemUI(itemId, code, null, null, false);
             } finally {
                 document.getElementById(`spinner-${itemId}`).style.display = 'none';
                 input.value = ''; 
@@ -415,13 +281,11 @@
 
         async function handleItemFileDelete(itemId, code) {
             if(!confirm('確定要刪除此附件嗎？')) return;
-
             document.getElementById(`spinner-${itemId}`).style.display = 'block';
             document.getElementById(`btn-group-${itemId}`).style.display = 'none';
-
             try {
                 await deleteFileByPrefix(currentRecordId, `${code}__`);
-                updateItemUI(itemId, code, null, false); 
+                updateItemUI(itemId, code, null, null, false); 
             } catch (e) {
                 alert('刪除失敗: ' + e.message);
                 document.getElementById(`btn-group-${itemId}`).style.display = 'flex'; 
@@ -431,10 +295,7 @@
         }
 
         async function deleteFileByPrefix(recordId, prefix) {
-            const { data: files } = await supabaseClient.storage
-                .from(BUCKET_NAME)
-                .list(`${recordId}`);
-            
+            const { data: files } = await supabaseClient.storage.from(BUCKET_NAME).list(`${recordId}`);
             if (files && files.length > 0) {
                 const targetFiles = files.filter(f => f.name.startsWith(prefix));
                 if (targetFiles.length > 0) {
@@ -444,7 +305,8 @@
             }
         }
 
-        function updateItemUI(itemId, code, fullFileName, hasFile) {
+        // 參數增加 realDisplayName 供降級時顯示用
+        function updateItemUI(itemId, code, fullFileName, originalName, hasFile) {
             const uploadBtn = document.getElementById(`btn-upload-${itemId}`);
             const btnGroup = document.getElementById(`btn-group-${itemId}`);
             const previewBtn = document.getElementById(`btn-preview-${itemId}`);
@@ -454,22 +316,21 @@
                 uploadBtn.style.display = 'none';
                 btnGroup.style.display = 'flex';
                 
-                // 取得公開連結 (直接用完整檔名)
                 const { data } = supabaseClient.storage.from(BUCKET_NAME).getPublicUrl(`${currentRecordId}/${fullFileName}`);
                 previewBtn.href = data.publicUrl;
                 
-                // ★ 解碼顯示名稱 (還原成人類可讀文字)
-                let displayName = "已上傳檔案";
-                try {
-                    // 格式：Code__Timestamp__EncodedName
-                    const parts = fullFileName.split('__');
-                    if(parts.length >= 3) {
-                        let encodedNameWithExt = parts[2]; 
-                        displayName = decodeURIComponent(encodedNameWithExt);
-                    } else {
-                        displayName = fullFileName; // 舊格式相容
-                    }
-                } catch(e) { console.error(e); }
+                let displayName = originalName || "已存檔案";
+                // 如果沒有傳入 originalName (例如從 reload 來的)，嘗試解析檔名
+                if (!originalName) {
+                    try {
+                        const parts = fullFileName.split('__');
+                        if(parts.length >= 3) {
+                            displayName = decodeURIComponent(parts[2]);
+                        } else {
+                            displayName = fullFileName;
+                        }
+                    } catch(e) { displayName = fullFileName; }
+                }
 
                 const shortName = displayName.length > 15 ? displayName.substring(0, 12) + '...' : displayName;
                 fileInfo.innerHTML = `<span class="badge bg-success me-1">已存</span> <span class="text-muted" title="${displayName}">${shortName}</span>`;
@@ -480,130 +341,65 @@
             }
         }
 
-        // =======================
-        // 查詢與載入邏輯
-        // =======================
         async function searchRecords() {
             const year = document.getElementById('search-year').value.trim();
             const taxId = document.getElementById('search-tax-id').value.trim();
             const container = document.getElementById('records-container');
-            
             container.innerHTML = '<div class="text-center py-5"><div class="spinner-border text-primary"></div><p class="mt-2">查詢中...</p></div>';
-
             try {
-                // 1. 身分轉換
                 const { data: profileData } = await supabaseClient.from('profiles').select('email').eq('id', currentUserId).single();
                 if (!profileData) throw new Error('無法識別使用者身分');
-
                 const { data: staffData } = await supabaseClient.from('medical_staff').select('id').eq('email', profileData.email).single();
-                if (!staffData) {
-                    container.innerHTML = '<div class="text-center text-muted py-5"><i class="fas fa-user-slash fa-3x mb-3"></i><p>尚未連結顧問身分。</p></div>';
-                    return;
-                }
-
-                // 2. 查詢案件
-                let query = supabaseClient
-                    .from('service_records')
-                    .select(`id, visit_date, service_year, execution_items, workplaces!inner(id, companies!inner(name, tax_id))`)
-                    .eq('consultant_id', staffData.id)
-                    .order('visit_date', { ascending: false });
-
+                if (!staffData) { container.innerHTML = '<div class="text-center text-muted py-5"><i class="fas fa-user-slash fa-3x mb-3"></i><p>尚未連結顧問身分。</p></div>'; return; }
+                let query = supabaseClient.from('service_records').select(`id, visit_date, service_year, execution_items, workplaces!inner(id, companies!inner(name, tax_id))`).eq('consultant_id', staffData.id).order('visit_date', { ascending: false });
                 if (year) query = query.eq('service_year', year);
                 if (taxId) query = query.eq('workplaces.companies.tax_id', taxId);
-
                 const { data, error } = await query;
                 if (error) throw error;
-
-                if (!data || data.length === 0) {
-                    container.innerHTML = '<div class="text-center text-muted py-5"><i class="fas fa-folder-open fa-3x mb-3"></i><p>查無符合條件的案件。</p></div>';
-                    return;
-                }
-
+                if (!data || data.length === 0) { container.innerHTML = '<div class="text-center text-muted py-5"><i class="fas fa-folder-open fa-3x mb-3"></i><p>查無符合條件的案件。</p></div>'; return; }
                 container.innerHTML = data.map(record => {
                     let statusBadge = record.execution_items ? '<span class="badge bg-warning text-dark">處理中</span>' : '<span class="badge bg-secondary">未填寫</span>';
-                    return `
-                    <div class="col-12">
-                        <div class="record-card p-3 rounded d-flex justify-content-between align-items-center" onclick="selectRecord('${record.id}')">
-                            <div>
-                                <div class="fw-bold text-dark fs-5 mb-1">
-                                    ${record.workplaces.companies.name} 
-                                    <span class="badge bg-light text-muted fw-normal border ms-2">${record.workplaces.companies.tax_id}</span>
-                                </div>
-                                <div class="text-muted small">
-                                    <i class="far fa-calendar-alt me-1"></i> ${record.visit_date || '日期未定'}
-                                </div>
-                            </div>
-                            <div class="text-end">
-                                ${statusBadge}
-                                <div class="small text-primary mt-1">點擊進入 <i class="fas fa-chevron-right"></i></div>
-                            </div>
-                        </div>
-                    </div>`;
+                    return `<div class="col-12"><div class="record-card p-3 rounded d-flex justify-content-between align-items-center" onclick="selectRecord('${record.id}')"><div><div class="fw-bold text-dark fs-5 mb-1">${record.workplaces.companies.name} <span class="badge bg-light text-muted fw-normal border ms-2">${record.workplaces.companies.tax_id}</span></div><div class="text-muted small"><i class="far fa-calendar-alt me-1"></i> ${record.visit_date || '日期未定'}</div></div><div class="text-end">${statusBadge}<div class="small text-primary mt-1">點擊進入 <i class="fas fa-chevron-right"></i></div></div></div></div>`;
                 }).join('');
-
-            } catch (err) {
-                 container.innerHTML = `<div class="alert alert-danger">錯誤: ${err.message}</div>`;
-            }
+            } catch (err) { container.innerHTML = `<div class="alert alert-danger">錯誤: ${err.message}</div>`; }
         }
 
         async function selectRecord(id) {
             currentRecordId = id;
-            
-            // 重置 UI
             document.querySelectorAll('input[type="checkbox"]').forEach(cb => cb.checked = false);
             document.querySelectorAll('.item-actions').forEach(el => el.classList.remove('visible'));
-            checklistItems.forEach(item => updateItemUI(item.id, item.code, null, false));
-
-            // 1. 載入案件資料
-            const { data } = await supabaseClient
-                .from('service_records')
-                .select(`*, workplaces(companies(name))`)
-                .eq('id', id)
-                .single();
-
+            checklistItems.forEach(item => updateItemUI(item.id, item.code, null, null, false));
+            const { data } = await supabaseClient.from('service_records').select(`*, workplaces(companies(name))`).eq('id', id).single();
             document.getElementById('current-company-name').innerText = data.workplaces.companies.name;
             document.getElementById('current-year-badge').innerText = (data.service_year || '') + ' 年度';
             document.getElementById('execution-date').value = data.visit_date || ''; 
-            
-            // 回填時間
             document.getElementById('start-time').value = data.start_time || '';
             document.getElementById('end-time').value = data.end_time || '';
-
-            // 2. 勾選已存項目
             if (data.execution_items) {
                 const savedItems = typeof data.execution_items === 'string' ? JSON.parse(data.execution_items) : data.execution_items;
                 savedItems.forEach(itemId => {
                     const cb = document.getElementById(`cb-${itemId}`);
-                    if(cb) {
-                        cb.checked = true;
-                        toggleItemAction(itemId);
-                    }
+                    if(cb) { cb.checked = true; toggleItemAction(itemId); }
                 });
             }
-
-            // 3. 檢查 Storage 檔案
             const { data: files } = await supabaseClient.storage.from(BUCKET_NAME).list(`${id}`);
             if (files && files.length > 0) {
                 files.forEach(file => {
-                    // 解析檔名
                     const parts = file.name.split('__');
                     if (parts.length >= 2) { 
                         const code = parts[0];
                         const targetItem = checklistItems.find(i => i.code === code);
-                        
                         if (targetItem) {
                             const cb = document.getElementById(`cb-${targetItem.id}`);
                             if(cb) {
                                 cb.checked = true;
                                 toggleItemAction(targetItem.id);
-                                // 直接傳入完整檔名給 UI 處理
-                                updateItemUI(targetItem.id, code, file.name, true);
+                                updateItemUI(targetItem.id, code, file.name, null, true);
                             }
                         }
                     }
                 });
             }
-
             document.getElementById('step1-content').style.display = 'none';
             document.getElementById('step2-content').style.display = 'block';
             updateStepIndicator(2);
@@ -629,37 +425,25 @@
             const btn = document.getElementById('btn-submit');
             btn.disabled = true;
             btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> 處理中...';
-
             try {
                 const selectedItems = [];
-                document.querySelectorAll('input[name="service-item"]:checked').forEach(cb => {
-                    selectedItems.push(cb.value);
-                });
-
+                document.querySelectorAll('input[name="service-item"]:checked').forEach(cb => { selectedItems.push(cb.value); });
                 const visitDate = document.getElementById('execution-date').value;
                 const startTime = document.getElementById('start-time').value;
                 const endTime = document.getElementById('end-time').value;
-
                 if (selectedItems.length === 0) throw new Error("請至少勾選一項執行紀錄項目。");
                 if (!visitDate) throw new Error("請填寫實際執行日期。");
-
                 const itemsString = JSON.stringify(selectedItems);
-                const { error } = await supabaseClient
-                    .from('service_records')
-                    .update({
-                        execution_items: itemsString,
-                        visit_date: visitDate,
-                        start_time: startTime || null, 
-                        end_time: endTime || null,
-                        updated_at: new Date()
-                    })
-                    .eq('id', currentRecordId);
-
+                const { error } = await supabaseClient.from('service_records').update({
+                    execution_items: itemsString,
+                    visit_date: visitDate,
+                    start_time: startTime || null, 
+                    end_time: endTime || null,
+                    updated_at: new Date()
+                }).eq('id', currentRecordId);
                 if (error) throw error;
-
                 alert('✅ 存檔成功！');
                 backToStep1();
-
             } catch (err) {
                 alert('❌ 錯誤：' + err.message);
                 btn.disabled = false;
