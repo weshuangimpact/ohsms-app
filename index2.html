@@ -9,15 +9,15 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     
     <style>
-        /* 核心配色 (Check Green) */
+        /* [保留原 UI 設定] */
         :root { 
             --primary-bg: #f4f6f9; 
-            --theme-color: #198754; 
+            --theme-color: #198754; /* Success Green */
         }
         
-        body { background-color: var(--primary-bg); font-family: 'Segoe UI', 'Microsoft JhengHei', sans-serif; display: none; /* 預設隱藏，待Auth通過後顯示 */ }
+        body { background-color: var(--primary-bg); font-family: 'Segoe UI', 'Microsoft JhengHei', sans-serif; display: none; /* 預設隱藏 */ }
         
-        /* 1. 字卡樣式 (Instruction Box) - 補回 */
+        /* 字卡樣式 */
         .instruction-box { 
             background-color: #fff; 
             border-left: 5px solid var(--theme-color); 
@@ -34,27 +34,24 @@
             font-size: 1.1rem;
         }
 
-        /* 2. KPI 卡片樣式 */
+        /* KPI 卡片樣式 */
         .kpi-card { border: 0; shadow: 0 2px 5px rgba(0,0,0,0.05); height: 100%; border-left: 4px solid transparent; background: #fff; border-radius: 8px; }
         .kpi-card.primary { border-left-color: #0d6efd; }
         .kpi-card.warning { border-left-color: #ffc107; }
         .kpi-card.success { border-left-color: #198754; }
         .kpi-card.danger { border-left-color: #dc3545; }
 
-        /* 表格優化 */
+        /* 表格與圖表 */
         .table-hover tbody tr:hover { background-color: rgba(25, 135, 84, 0.05); cursor: pointer; }
-        
-        /* 圓餅圖容器 */
         .chart-container { position: relative; height: 300px; width: 100%; }
     </style>
 
     <script>
         document.addEventListener('DOMContentLoaded', function() {
-            // Auth Guard
             if (!sessionStorage.getItem('currentUserId')) {
                 window.location.href = 'login.html';
             } else {
-                // ★ 關鍵修正：驗證通過後顯示畫面
+                // ★ 關鍵：顯示頁面
                 document.body.style.display = 'block';
             }
         });
@@ -207,12 +204,11 @@
         const SUPABASE_KEY = 'sb_publishable_52emtU-9l-SDxcJTWVTPTA_Yu6qEogh';
         const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
         
-        // 定義 Bucket
         const STAGING_BUCKET = 'staging';
         const RECORD_BUCKET = 'service-records';
 
         let pendingDataList = [];
-        let pieChartInstance = null;
+        let pieChartInstance = null; // 用來存 chart 實例，方便重繪
 
         document.addEventListener('DOMContentLoaded', () => {
             loadKPIs();
@@ -231,13 +227,13 @@
             const { count: pendingCount } = await supabaseClient.from('service_record_staging').select('*', { count: 'exact', head: true }).eq('status', 'pending');
             document.getElementById('kpi-pending').innerText = pendingCount || 0;
 
-            // 已結案 (假設 execution_items 不為空代表已執行)
+            // 已結案
             const { count: closedCount } = await supabaseClient.from('service_records').select('*', { count: 'exact', head: true }).not('execution_items', 'is', null);
             document.getElementById('kpi-closed').innerText = closedCount || 0;
         }
 
         // ==========================================
-        // 2. 載入待審列表 + 更新圓餅圖
+        // 2. 載入待審列表 + 圓餅圖
         // ==========================================
         async function loadPendingReviews() {
             const tbody = document.getElementById('review-table-body');
@@ -258,7 +254,7 @@
                 return;
             }
 
-            pendingDataList = data; // 存全域供預覽用
+            pendingDataList = data; // 存全域
 
             // 渲染圓餅圖
             renderPieChart(data);
@@ -288,7 +284,7 @@
         function renderPieChart(data) {
             const ctx = document.getElementById('reviewPieChart').getContext('2d');
             
-            // 統計 Service Type
+            // 統計
             const typeCounts = {};
             if(data) {
                 data.forEach(item => {
@@ -303,7 +299,7 @@
             if (pieChartInstance) { pieChartInstance.destroy(); }
 
             if (labels.length === 0) {
-                // 無資料顯示空圖
+                // 空資料
                 pieChartInstance = new Chart(ctx, {
                     type: 'doughnut',
                     data: {
@@ -321,9 +317,7 @@
                     labels: labels,
                     datasets: [{
                         data: counts,
-                        backgroundColor: [
-                            '#0d6efd', '#198754', '#ffc107', '#dc3545', '#0dcaf0', '#6610f2'
-                        ],
+                        backgroundColor: ['#0d6efd', '#198754', '#ffc107', '#dc3545', '#0dcaf0', '#6610f2'],
                         borderWidth: 1
                     }]
                 },
@@ -446,7 +440,7 @@
         }
 
         // ==========================================
-        // 4. 核定結案 (物理轉移邏輯)
+        // 4. 核定結案 (真實轉移邏輯)
         // ==========================================
         window.approveRecord = async function(type, stagingId, originId) {
             let auditNote = '標準審核通過';
@@ -468,9 +462,9 @@
                 if (stagingData.attachment_files && stagingData.attachment_files.length > 0) {
                     for (const file of stagingData.attachment_files) {
                         const oldPath = file.path; 
-                        const newPath = `${originId}/${file.name}`; 
+                        const newPath = `${originId}/${file.name}`; // 使用母案ID做資料夾
 
-                        // 下載 -> 上傳 -> 刪除舊檔
+                        // 下載 -> 上傳 -> 刪除
                         const { data: fileBlob, error: dlError } = await supabaseClient.storage.from(STAGING_BUCKET).download(oldPath);
                         if (dlError) throw new Error(`下載失敗 (${file.name}): ` + dlError.message);
 
@@ -481,12 +475,13 @@
                     }
                 }
 
-                // 3. 更新母案 (service_records)
+                // 3. 更新母案 (service_records) - 寫入正式紀錄
                 const { error: updateError } = await supabaseClient.from('service_records').update({
                     visit_date: stagingData.visit_date,
                     start_time: stagingData.start_time,
                     end_time: stagingData.end_time,
                     execution_items: stagingData.service_type, 
+                    // 將審核備註也寫入，假設 service_desc 欄位可用，或僅用 updated_at
                     updated_at: new Date()
                 }).eq('id', originId);
 
