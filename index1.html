@@ -9,12 +9,12 @@
     
 <style>
     /* =========================================
-       1. 核心基礎與寬版設定 (修正色調與版面)
+       1. 核心基礎與寬版設定
        ========================================= */
     :root { 
         --primary-bg: #f4f6f9; 
-        --theme-color: #0d6efd; /* Plan 藍色 (#0d6efd) */
-        --theme-light: #e7f1ff; /* 淺藍色背景 */
+        --theme-color: #0d6efd; /* Plan Blue */
+        --theme-light: #e7f1ff; 
     }
 
     body {
@@ -30,73 +30,26 @@
         padding-right: 1.5rem !important;
     }
 
-    /* 消除 wrapper 內距 */
-    .card-body {
-        padding: 0 !important;
-    }
+    .card-body { padding: 0 !important; }
 
-    /* 標題區域緊貼 */
     .d-flex.justify-content-between.align-items-center.mb-4 {
         margin-bottom: 0.5rem !important;
     }
 
-    /* 標題飾條 */
     .section-title { 
         border-left: 5px solid var(--theme-color); 
         padding-left: 15px; 
         margin-bottom: 20px; 
     }
     
-    /* 卡片與表格通用樣式 */
     .card-header { 
         background-color: white; 
         border-bottom: 1px solid #f0f0f0; 
     }
-    .table th { 
-        font-weight: 600; 
-        color: #555; 
-        background-color: #f8f9fa; 
-        white-space: nowrap;
-    }
-    .table td { 
-        vertical-align: middle; 
-    }
-
-    /* =========================================
-       2. Index1 專用：拖曳上傳區
-       ========================================= */
-    .upload-drop-zone {
-        border: 2px dashed #cbd5e1;
-        border-radius: 8px;
-        background-color: white;
-        padding: 40px 20px;
-        text-align: center;
-        transition: all 0.3s ease;
-        cursor: pointer;
-        position: relative;
-        height: 100%;
-        display: flex;
-        flex-direction: column;
-        justify-content: center;
-        align-items: center;
-    }
-    .upload-drop-zone:hover, .upload-drop-zone.dragover {
-        border-color: var(--theme-color);
-        background-color: var(--theme-light);
-        transform: translateY(-2px);
-        box-shadow: 0 4px 12px rgba(13, 110, 253, 0.15);
-    }
-    .upload-icon {
-        font-size: 3rem;
-        color: var(--theme-color);
-        margin-bottom: 15px;
-    }
-
-    /* =========================================
-       3. 功能元件
-       ========================================= */
     
-    /* 步驟指示器 */
+    /* =========================================
+       2. 功能元件 & 檔案操作 UI
+       ========================================= */
     .step-indicator { display: flex; justify-content: space-between; margin-bottom: 30px; position: relative; max-width: 600px; margin-left: auto; margin-right: auto;}
     .step-indicator::before { content: ''; position: absolute; top: 15px; left: 0; right: 0; height: 2px; background: #e0e0e0; z-index: 0; }
     .step-item { position: relative; z-index: 1; background: var(--primary-bg); padding: 0 10px; text-align: center; color: #999; font-weight: 600; }
@@ -109,31 +62,26 @@
     .record-card:hover, .record-card.selected { border-color: var(--theme-color); background-color: var(--theme-light); }
 
     /* Checkbox List Styling */
-    .check-list-group .list-group-item { border: 1px solid #eee; margin-bottom: 5px; border-radius: 6px !important; transition: background 0.2s; }
+    .check-list-group .list-group-item { 
+        border: 1px solid #eee; 
+        margin-bottom: 8px; 
+        border-radius: 6px !important; 
+        transition: background 0.2s; 
+        padding: 12px 15px;
+    }
     .check-list-group .list-group-item:hover { background-color: #f8f9fa; }
     .form-check-input:checked + .form-check-label { color: var(--theme-color); font-weight: bold; }
 
-    /* 隱藏式上傳按鈕 */
-    .btn-upload-action {
-        display: none;
-        cursor: pointer;
-        color: #6c757d;
-        font-size: 0.85rem;
-        margin-left: 10px;
-        padding: 2px 10px;
-        border: 1px solid #dee2e6;
-        border-radius: 15px;
-        background: #fff;
-        transition: all 0.2s;
+    /* 操作工具列 (Action Toolbar) */
+    .item-actions {
+        display: none; /* 預設隱藏，勾選後顯示 */
+        align-items: center;
+        gap: 8px;
+        margin-left: auto; /* 靠右對齊 */
     }
-    .btn-upload-action.visible { display: inline-block; }
-    .btn-upload-action.has-file {
-        color: #fff;
-        background-color: #198754;
-        border-color: #198754;
-    }
+    .item-actions.visible { display: flex; }
 
-    /* --- PDCA 說明區塊 --- */
+    /* PDCA 說明區塊 */
     .instruction-box {
         background-color: #fff;
         border-left: 5px solid var(--theme-color);
@@ -150,22 +98,26 @@
         margin-bottom: 10px;
     }
     
-    /* 其他輔助樣式 */
-    .check-list-item { padding: 5px 0; }
-    .check-list-item label { cursor: pointer; line-height: 1.5; font-size: 0.95rem; }
-    #fileInput { display: none; }
+    .table th { font-weight: 600; color: #555; background-color: #f8f9fa; white-space: nowrap; }
+    .table td { vertical-align: middle; }
     
+    /* 檔案連結樣式 */
+    .file-link {
+        text-decoration: none;
+        color: var(--theme-color);
+        font-weight: 600;
+        font-size: 0.9rem;
+    }
+    .file-link:hover { text-decoration: underline; }
+
 </style>
 
     <script>
-        // 權限檢查：未登入則導回登入頁
         document.addEventListener('DOMContentLoaded', function() {
             if (!sessionStorage.getItem('currentUserId')) {
                 window.location.href = 'index.html';
             }
             document.body.style.display = 'block';
-            
-            // 顯示使用者名稱
             const userName = sessionStorage.getItem('currentUserName') || '使用者';
             document.getElementById('user-display').innerText = userName;
         });
@@ -268,51 +220,29 @@
                     </div>
 
                     <div class="alert alert-light border-start border-4 border-primary mb-4 bg-light">
-                        <div class="d-flex align-items-center">
-                            <i class="fas fa-info-circle text-primary me-3 fa-lg"></i>
-                            <div>
-                                <strong>當前案件：</strong> <span id="current-company-name" class="fw-bold text-dark"></span>
-                                <span class="mx-2">|</span>
-                                <span class="text-muted">服務日期：</span> <span id="current-visit-date"></span>
+                        <div class="row align-items-center">
+                            <div class="col-md-7 mb-2 mb-md-0">
+                                <i class="fas fa-info-circle text-primary me-2 fa-lg"></i>
+                                <strong>當前案件：</strong> <span id="current-company-name" class="fw-bold text-dark me-2"></span>
+                                <span class="badge bg-secondary" id="current-year-badge"></span>
+                            </div>
+                            <div class="col-md-5">
+                                <div class="input-group input-group-sm">
+                                    <span class="input-group-text bg-primary text-white border-primary"><i class="far fa-calendar-check me-2"></i>實際執行日期</span>
+                                    <input type="date" class="form-control border-primary" id="execution-date">
+                                </div>
                             </div>
                         </div>
                     </div>
 
                     <form id="execution-form">
                         <h6 class="fw-bold mb-3"><i class="fas fa-check-square me-2 text-primary"></i>(必要) 勞工健康服務執行紀錄項目</h6>
-                        <p class="text-muted small">請勾選本次服務所執行的項目，並上傳對應的紀錄表與附件。</p>
+                        <p class="text-muted small">請勾選本次服務所執行的項目，並直接上傳附件 (標準項目限 PDF，其他不限)。</p>
 
                         <div class="list-group check-list-group mb-4" id="checkbox-list">
                             </div>
 
-                        <h6 class="fw-bold mb-3"><i class="fas fa-cloud-upload-alt me-2 text-primary"></i>附件上傳</h6>
-                        <div class="upload-drop-zone mb-3" onclick="document.getElementById('report-file').click()">
-                            <i class="fas fa-cloud-upload-alt upload-icon"></i>
-                            <h5 class="fw-bold">點擊或拖曳檔案至此</h5>
-                            <p class="text-muted small mb-0">支援格式：PDF, Word, 圖片 (單檔限制 10MB)</p>
-                            <input type="file" id="report-file" hidden accept=".pdf,.doc,.docx,.jpg,.png" onchange="handleFileSelect(this)">
-                        </div>
-                        
-                        <div id="file-status-display" class="mt-3 p-3 bg-light rounded border border-success text-success fw-bold" style="display:none;">
-                            <div class="d-flex justify-content-between align-items-center">
-                                <div>
-                                    <i class="fas fa-check-circle me-1"></i> 
-                                    <span id="file-status-label">已選取檔案：</span>
-                                    <span id="uploaded-filename" class="text-dark font-monospace ms-2"></span>
-                                </div>
-                                <span class="badge bg-success" id="cloud-badge" style="display:none">Staging</span>
-                            </div>
-                            <div class="small text-muted fw-normal mt-1 ms-4">(若需修改，請直接選擇新檔案上傳即可覆蓋)</div>
-                        </div>
-                        
-                        <div id="file-loading" class="mt-3 p-2 text-primary small" style="display:none;">
-                             <div class="spinner-border spinner-border-sm me-2"></div>正在檢查雲端檔案...
-                        </div>
-
                         <div class="d-flex justify-content-end gap-2 pt-3 border-top mt-4">
-                            <button type="button" class="btn btn-danger" id="btn-delete" onclick="deleteSubmission()" style="display:none;">
-                                <i class="fas fa-trash-alt me-1"></i> 刪除紀錄
-                            </button>
                             <button type="button" class="btn btn-primary px-4 fw-bold" id="btn-submit" onclick="submitRecord()">
                                 <i class="fas fa-save me-1"></i> 存檔送審
                             </button>
@@ -332,16 +262,13 @@
         const SUPABASE_KEY = 'sb_publishable_52emtU-9l-SDxcJTWVTPTA_Yu6qEogh';
         const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-        // ============================================
         // Bucket 名稱設定 (Files > Buckets > staging)
         const BUCKET_NAME = 'staging'; 
-        // ============================================
 
         // 狀態變數
         let currentRecordId = null;
-        let currentRecordData = null;
-        let currentCloudFile = null; 
-        const currentUserId = sessionStorage.getItem('currentUserId'); 
+        let currentUserId = sessionStorage.getItem('currentUserId'); 
+        let currentFilesMap = {}; // 儲存 ItemID -> FileObject 的對照
 
         // 項目清單資料
         const checklistItems = [
@@ -360,41 +287,184 @@
             { id: "11-5", text: "11-5 其他經中央主管機關指定公告者。" },
             { id: "12", text: "12 訂定勞工健康服務計畫，據以執行，每年評估成效及檢討。" },
             { id: "13", text: "13 訂定勞工健康管理方案，據以辦理，每年評估成效及檢討。" },
-            { id: "other", text: "其他附件" }
+            { id: "other", text: "其他附件 (不限格式，可上傳照片、影音、問卷等)" }
         ];
 
         document.addEventListener('DOMContentLoaded', () => {
             renderChecklist();
         });
 
+        // 1. 初始化清單：為每個項目建立 Checkbox 與 操作區
         function renderChecklist() {
             const container = document.getElementById('checkbox-list');
-            container.innerHTML = checklistItems.map(item => `
-                <label class="list-group-item d-flex gap-3 align-items-center">
-                    <input class="form-check-input flex-shrink-0" type="checkbox" name="service-item" value="${item.id}" style="font-size: 1.2em;">
-                    <span class="pt-1 form-check-label stretched-link">${item.text}</span>
-                    <span class="btn-upload-action" id="btn-${item.id}"><i class="fas fa-paperclip"></i> 上傳佐證</span>
-                </label>
-            `).join('');
+            container.innerHTML = checklistItems.map(item => {
+                // 判斷是否為「其他」項目以決定 accept 屬性
+                const acceptType = item.id === 'other' ? '*/*' : '.pdf';
+                const fileTypeMsg = item.id === 'other' ? '支援所有格式' : '限 PDF';
+
+                return `
+                <div class="list-group-item d-flex align-items-center justify-content-between p-3" id="item-row-${item.id}">
+                    <div class="d-flex align-items-center gap-3" style="flex: 1;">
+                        <input class="form-check-input flex-shrink-0" type="checkbox" 
+                               name="service-item" value="${item.id}" 
+                               id="cb-${item.id}" 
+                               style="font-size: 1.3em;"
+                               onchange="toggleItemAction('${item.id}')">
+                        <label class="form-check-label stretched-link pt-1" for="cb-${item.id}" style="cursor:pointer;">${item.text}</label>
+                    </div>
+
+                    <div class="item-actions" id="action-${item.id}">
+                        
+                        <span class="me-2 small" id="file-info-${item.id}"></span>
+
+                        <input type="file" id="file-input-${item.id}" hidden accept="${acceptType}" onchange="handleItemFileUpload('${item.id}', this)">
+                        
+                        <button type="button" class="btn btn-sm btn-outline-primary" id="btn-upload-${item.id}" onclick="triggerItemUpload('${item.id}')" style="position: relative; z-index: 2;">
+                            <i class="fas fa-cloud-upload-alt me-1"></i> 上傳附件 <small class="ms-1 text-muted" style="font-size:0.7em;">(${fileTypeMsg})</small>
+                        </button>
+
+                        <div class="btn-group btn-group-sm" id="btn-group-${item.id}" style="display:none; position: relative; z-index: 2;">
+                            <a href="#" target="_blank" class="btn btn-outline-info" id="btn-preview-${item.id}" title="預覽">
+                                <i class="fas fa-eye"></i> 預覽
+                            </a>
+                            <button type="button" class="btn btn-outline-secondary" onclick="triggerItemUpload('${item.id}')" title="更換">
+                                <i class="fas fa-sync-alt"></i> 更換
+                            </button>
+                            <button type="button" class="btn btn-outline-danger" onclick="handleItemFileDelete('${item.id}')" title="刪除">
+                                <i class="fas fa-trash-alt"></i> 刪除
+                            </button>
+                        </div>
+                        
+                        <div id="spinner-${item.id}" style="display:none;" class="text-primary ms-2">
+                             <span class="spinner-border spinner-border-sm"></span>
+                        </div>
+
+                    </div>
+                </div>`;
+            }).join('');
         }
-        
-        // 簡單的檔案選擇視覺回饋
-        function handleFileSelect(input) {
-            const fileNameSpan = document.getElementById('uploaded-filename');
-            const statusDiv = document.getElementById('file-status-display');
-            const label = document.getElementById('file-status-label');
-            const badge = document.getElementById('cloud-badge');
+
+        // 切換顯示操作區
+        function toggleItemAction(itemId) {
+            const cb = document.getElementById(`cb-${itemId}`);
+            const actionDiv = document.getElementById(`action-${itemId}`);
+            if (cb.checked) {
+                actionDiv.classList.add('visible');
+            } else {
+                actionDiv.classList.remove('visible');
+                // 若取消勾選，是否要自動刪除檔案？
+                // 這裡保留彈性：僅隱藏，使用者按下「存檔」時會更新狀態
+            }
+        }
+
+        // 觸發個別檔案上傳
+        function triggerItemUpload(itemId) {
+            document.getElementById(`file-input-${itemId}`).click();
+        }
+
+        // 處理個別檔案上傳 (即時上傳至 Staging)
+        async function handleItemFileUpload(itemId, input) {
+            if (!input.files || !input.files[0]) return;
+            const file = input.files[0];
             
-            if (input.files && input.files[0]) {
-                statusDiv.style.display = 'block';
-                label.innerText = '準備上傳：';
-                fileNameSpan.innerText = input.files[0].name;
-                badge.style.display = 'none';
+            // 顯示 Loading
+            document.getElementById(`btn-upload-${itemId}`).style.display = 'none';
+            document.getElementById(`btn-group-${itemId}`).style.display = 'none';
+            document.getElementById(`spinner-${itemId}`).style.display = 'block';
+
+            try {
+                // 命名規則：[ItemID]__[OriginalName] 以確保唯一性與辨識度
+                // 加上 Timestamp 避免快取問題
+                const uniquePrefix = `${itemId}__`; 
+                const filePath = `${currentRecordId}/${uniquePrefix}${file.name}`;
+
+                // 1. 先刪除該 ItemID 開頭的舊檔 (若有)
+                // (因為檔名可能不同，不能只靠 upsert，要先清乾淨)
+                await deleteFileByPrefix(currentRecordId, uniquePrefix);
+
+                // 2. 上傳新檔
+                const { data, error } = await supabaseClient.storage
+                    .from(BUCKET_NAME)
+                    .upload(filePath, file, { upsert: true });
+
+                if (error) throw error;
+
+                // 3. 更新 UI
+                updateItemUI(itemId, file.name, true);
+
+            } catch (e) {
+                alert('上傳失敗: ' + e.message);
+                // 還原 UI
+                updateItemUI(itemId, null, false);
+            } finally {
+                document.getElementById(`spinner-${itemId}`).style.display = 'none';
+                input.value = ''; // 重置 input
+            }
+        }
+
+        // 處理個別檔案刪除
+        async function handleItemFileDelete(itemId) {
+            if(!confirm('確定要刪除此附件嗎？')) return;
+
+            document.getElementById(`spinner-${itemId}`).style.display = 'block';
+            document.getElementById(`btn-group-${itemId}`).style.display = 'none';
+
+            try {
+                const uniquePrefix = `${itemId}__`;
+                await deleteFileByPrefix(currentRecordId, uniquePrefix);
+                updateItemUI(itemId, null, false); // 重置為未上傳狀態
+            } catch (e) {
+                alert('刪除失敗: ' + e.message);
+                document.getElementById(`btn-group-${itemId}`).style.display = 'flex'; // 還原
+            } finally {
+                document.getElementById(`spinner-${itemId}`).style.display = 'none';
+            }
+        }
+
+        // 輔助：刪除特定前綴的檔案
+        async function deleteFileByPrefix(recordId, prefix) {
+            const { data: files } = await supabaseClient.storage
+                .from(BUCKET_NAME)
+                .list(`${recordId}`);
+            
+            if (files && files.length > 0) {
+                const targetFiles = files.filter(f => f.name.startsWith(prefix));
+                if (targetFiles.length > 0) {
+                    const pathsToRemove = targetFiles.map(f => `${recordId}/${f.name}`);
+                    await supabaseClient.storage.from(BUCKET_NAME).remove(pathsToRemove);
+                }
+            }
+        }
+
+        // 輔助：更新單一項目的按鈕狀態
+        function updateItemUI(itemId, fileName, hasFile) {
+            const uploadBtn = document.getElementById(`btn-upload-${itemId}`);
+            const btnGroup = document.getElementById(`btn-group-${itemId}`);
+            const previewBtn = document.getElementById(`btn-preview-${itemId}`);
+            const fileInfo = document.getElementById(`file-info-${itemId}`);
+            
+            if (hasFile && fileName) {
+                uploadBtn.style.display = 'none';
+                btnGroup.style.display = 'flex';
+                
+                // 設定預覽連結
+                const { data } = supabaseClient.storage.from(BUCKET_NAME).getPublicUrl(`${currentRecordId}/${itemId}__${fileName}`);
+                // 這裡假設 Bucket 是 Public，若 Private 需用 createSignedUrl
+                
+                previewBtn.href = data.publicUrl;
+                
+                // 顯示檔名 (截斷過長檔名)
+                const shortName = fileName.length > 15 ? fileName.substring(0, 12) + '...' : fileName;
+                fileInfo.innerHTML = `<span class="badge bg-success me-1">已存</span> <span class="text-muted">${shortName}</span>`;
+            } else {
+                uploadBtn.style.display = 'inline-block';
+                btnGroup.style.display = 'none';
+                fileInfo.innerHTML = '';
             }
         }
 
         // =======================
-        // Step 1: 搜尋邏輯 (修正版：移除 status 查詢)
+        // 查詢與載入邏輯
         // =======================
         async function searchRecords() {
             const year = document.getElementById('search-year').value.trim();
@@ -404,54 +474,27 @@
             container.innerHTML = '<div class="text-center py-5"><div class="spinner-border text-primary"></div><p class="mt-2">查詢中...</p></div>';
 
             try {
-                // 1. 取得使用者 Email (從 profiles)
-                const { data: profileData, error: profileError } = await supabaseClient
-                    .from('profiles')
-                    .select('email')
-                    .eq('id', currentUserId)
-                    .single();
+                // 1. 身分轉換
+                const { data: profileData } = await supabaseClient.from('profiles').select('email').eq('id', currentUserId).single();
+                if (!profileData) throw new Error('無法識別使用者身分');
 
-                if (profileError || !profileData) {
-                    throw new Error('無法識別您的使用者身分 (Profile lookup failed)');
-                }
-
-                // 2. 透過 Email 取得 對應的 Consultant ID (從 medical_staff)
-                const { data: staffData, error: staffError } = await supabaseClient
-                    .from('medical_staff')
-                    .select('id')
-                    .eq('email', profileData.email)
-                    .single();
-
-                if (staffError || !staffData) {
-                    container.innerHTML = '<div class="text-center text-muted py-5"><i class="fas fa-user-slash fa-3x mb-3"></i><p>您的帳號尚未連結至顧問名單(Medical Staff)，無法查詢案件。</p></div>';
+                const { data: staffData } = await supabaseClient.from('medical_staff').select('id').eq('email', profileData.email).single();
+                if (!staffData) {
+                    container.innerHTML = '<div class="text-center text-muted py-5"><i class="fas fa-user-slash fa-3x mb-3"></i><p>尚未連結顧問身分。</p></div>';
                     return;
                 }
 
-                const consultantId = staffData.id;
-
-                // 3. 使用 consultantId 查詢 Service Records (★ 修正：移除 status)
+                // 2. 查詢案件
                 let query = supabaseClient
                     .from('service_records')
-                    .select(`
-                        id, visit_date, service_year, execution_items, 
-                        workplaces!inner (
-                            id,
-                            companies!inner ( name, tax_id )
-                        )
-                    `)
-                    .eq('consultant_id', consultantId)
+                    .select(`id, visit_date, service_year, execution_items, workplaces!inner(id, companies!inner(name, tax_id))`)
+                    .eq('consultant_id', staffData.id)
                     .order('visit_date', { ascending: false });
 
-                // 選填條件
-                if (year) {
-                    query = query.eq('service_year', year);
-                }
-                if (taxId) {
-                    query = query.eq('workplaces.companies.tax_id', taxId);
-                }
+                if (year) query = query.eq('service_year', year);
+                if (taxId) query = query.eq('workplaces.companies.tax_id', taxId);
 
                 const { data, error } = await query;
-
                 if (error) throw error;
 
                 if (!data || data.length === 0) {
@@ -459,11 +502,8 @@
                     return;
                 }
 
-                // 渲染列表
                 container.innerHTML = data.map(record => {
-                    let statusBadge = '<span class="badge bg-secondary">未填寫</span>';
-                    if (record.execution_items) statusBadge = '<span class="badge bg-warning text-dark">草稿/已上傳</span>'; 
-                    
+                    let statusBadge = record.execution_items ? '<span class="badge bg-warning text-dark">處理中</span>' : '<span class="badge bg-secondary">未填寫</span>';
                     return `
                     <div class="col-12">
                         <div class="record-card p-3 rounded d-flex justify-content-between align-items-center" onclick="selectRecord('${record.id}')">
@@ -485,91 +525,56 @@
                 }).join('');
 
             } catch (err) {
-                 console.error(err);
-                 container.innerHTML = `<div class="alert alert-danger">查詢發生錯誤: ${err.message}</div>`;
+                 container.innerHTML = `<div class="alert alert-danger">錯誤: ${err.message}</div>`;
             }
         }
 
-        // =======================
-        // Step 2: 進入填寫與上傳
-        // =======================
         async function selectRecord(id) {
             currentRecordId = id;
-            currentCloudFile = null; 
+            
+            // 重置 UI
+            document.querySelectorAll('input[type="checkbox"]').forEach(cb => cb.checked = false);
+            document.querySelectorAll('.item-actions').forEach(el => el.classList.remove('visible'));
+            checklistItems.forEach(item => updateItemUI(item.id, null, false));
 
-            // 1. 取得完整單筆資料
-            const { data, error } = await supabaseClient
+            // 1. 載入案件資料
+            const { data } = await supabaseClient
                 .from('service_records')
                 .select(`*, workplaces(companies(name))`)
                 .eq('id', id)
                 .single();
 
-            if (error) {
-                alert('讀取失敗'); 
-                return;
-            }
-            currentRecordData = data;
-
-            // 2. 更新 UI 資訊
             document.getElementById('current-company-name').innerText = data.workplaces.companies.name;
-            document.getElementById('current-visit-date').innerText = data.visit_date || '(未設定)';
-            
-            // 3. 回填 Checkbox 狀態
-            document.querySelectorAll('input[name="service-item"]').forEach(cb => cb.checked = false); 
+            document.getElementById('current-year-badge').innerText = (data.service_year || '') + ' 年度';
+            document.getElementById('execution-date').value = data.visit_date || ''; // 填入日期
+
+            // 2. 勾選已存項目
             if (data.execution_items) {
-                const savedItems = data.execution_items; 
-                checklistItems.forEach(item => {
-                    if (savedItems.includes(item.id)) {
-                        document.querySelector(`input[value="${item.id}"]`).checked = true;
+                const savedItems = typeof data.execution_items === 'string' ? JSON.parse(data.execution_items) : data.execution_items;
+                savedItems.forEach(itemId => {
+                    const cb = document.getElementById(`cb-${itemId}`);
+                    if(cb) {
+                        cb.checked = true;
+                        toggleItemAction(itemId);
                     }
                 });
             }
 
-            // 4. 真實檢查 Storage 檔案
-            const fileStatus = document.getElementById('file-status-display');
-            const fileLoading = document.getElementById('file-loading');
-            const fileNameSpan = document.getElementById('uploaded-filename');
-            const label = document.getElementById('file-status-label');
-            const badge = document.getElementById('cloud-badge');
-            const btnSubmit = document.getElementById('btn-submit');
-            const btnDelete = document.getElementById('btn-delete');
-
-            document.getElementById('report-file').value = ''; 
-            fileStatus.style.display = 'none';
-            fileLoading.style.display = 'block'; 
-
-            // 列出 staging bucket 中，該 record_id 資料夾下的檔案
-            const { data: files, error: storageError } = await supabaseClient.storage
-                .from(BUCKET_NAME)
-                .list(`${currentRecordId}`, {
-                    limit: 1,
-                    offset: 0,
-                    sortBy: { column: 'created_at', order: 'desc' },
-                });
-
-            fileLoading.style.display = 'none';
-
+            // 3. 檢查 Storage 檔案並更新按鈕狀態
+            const { data: files } = await supabaseClient.storage.from(BUCKET_NAME).list(`${id}`);
             if (files && files.length > 0) {
-                currentCloudFile = files[0];
-                fileStatus.style.display = 'block';
-                label.innerText = '雲端已存檔案：';
-                fileNameSpan.innerText = currentCloudFile.name;
-                badge.style.display = 'inline-block';
-            } 
-
-            // 5. 按鈕狀態邏輯
-            if (data.execution_items) {
-                // 修改模式
-                btnSubmit.innerHTML = '<i class="fas fa-save me-1"></i> 修改並儲存';
-                btnDelete.style.display = 'block';
-                btnDelete.disabled = false;
-            } else {
-                // 新案件
-                btnSubmit.innerHTML = '<i class="fas fa-save me-1"></i> 存檔送審';
-                btnDelete.style.display = 'none';
+                files.forEach(file => {
+                    // 檔名解析：ItemID__FileName
+                    const parts = file.name.split('__');
+                    if (parts.length >= 2) {
+                        const itemId = parts[0];
+                        const realName = file.name.substring(itemId.length + 2); // 移除前綴
+                        updateItemUI(itemId, realName, true);
+                    }
+                });
             }
 
-            // 切換視圖
+            // 切換步驟
             document.getElementById('step1-content').style.display = 'none';
             document.getElementById('step2-content').style.display = 'block';
             updateStepIndicator(2);
@@ -591,107 +596,47 @@
         }
 
         // =======================
-        // 核心功能：存檔與上傳 (真實版)
+        // 存檔送審
         // =======================
         async function submitRecord() {
             if (!currentRecordId) return;
-
             const btn = document.getElementById('btn-submit');
             btn.disabled = true;
             btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> 處理中...';
 
             try {
-                // 1. 檢查勾選
+                // 1. 收集勾選項目 ID
                 const selectedItems = [];
                 document.querySelectorAll('input[name="service-item"]:checked').forEach(cb => {
                     selectedItems.push(cb.value);
                 });
 
-                if (selectedItems.length === 0) {
-                    throw new Error("請至少勾選一項執行紀錄項目。");
-                }
+                // 2. 收集日期
+                const visitDate = document.getElementById('execution-date').value;
 
-                // 2. 真實上傳檔案 (若有選)
-                const fileInput = document.getElementById('report-file');
-                const file = fileInput.files[0];
+                if (selectedItems.length === 0) throw new Error("請至少勾選一項執行紀錄項目。");
+                if (!visitDate) throw new Error("請填寫實際執行日期。");
 
-                if (file) {
-                    // 路徑規則: [RecordID] / [FileName]
-                    const filePath = `${currentRecordId}/${file.name}`;
-                    
-                    const { data: uploadData, error: uploadError } = await supabaseClient.storage
-                        .from(BUCKET_NAME)
-                        .upload(filePath, file, {
-                            upsert: true // 允許覆蓋
-                        });
-
-                    if (uploadError) throw uploadError;
-
-                    // 若原本有舊檔且檔名不同，移除舊檔 (保留最新)
-                    if(currentCloudFile && currentCloudFile.name !== file.name) {
-                        await supabaseClient.storage
-                            .from(BUCKET_NAME)
-                            .remove([`${currentRecordId}/${currentCloudFile.name}`]);
-                    }
-                } 
-
-                // 3. 更新資料庫
+                // 3. 更新 DB
                 const itemsString = JSON.stringify(selectedItems);
-
-                const { error: dbError } = await supabaseClient
-                    .from('service_records')
-                    .update({
-                        execution_items: itemsString,
-                        updated_at: new Date()
-                    })
-                    .eq('id', currentRecordId);
-
-                if (dbError) throw dbError;
-
-                alert('✅ 存檔送審成功！');
-                backToStep1();
-
-            } catch (err) {
-                console.error(err);
-                alert('❌ 錯誤：' + (err.message || err.error_description || '未知錯誤'));
-                btn.disabled = false;
-                btn.innerHTML = '<i class="fas fa-save me-1"></i> 存檔送審';
-            }
-        }
-
-        async function deleteSubmission() {
-            if (!confirm('確定要刪除此筆紀錄與上傳的檔案嗎？(此動作將重置本案件狀態)')) return;
-
-            try {
-                // 1. 清空 DB 欄位
                 const { error } = await supabaseClient
                     .from('service_records')
                     .update({
-                        execution_items: null
+                        execution_items: itemsString,
+                        visit_date: visitDate,
+                        updated_at: new Date()
                     })
                     .eq('id', currentRecordId);
 
                 if (error) throw error;
 
-                // 2. 真實刪除 Storage 檔案
-                const { data: files } = await supabaseClient.storage
-                    .from(BUCKET_NAME)
-                    .list(`${currentRecordId}`);
-                
-                if (files && files.length > 0) {
-                    const filesToRemove = files.map(f => `${currentRecordId}/${f.name}`);
-                    const { error: removeError } = await supabaseClient.storage
-                        .from(BUCKET_NAME)
-                        .remove(filesToRemove);
-                    
-                    if(removeError) console.error('Storage 刪除失敗:', removeError);
-                }
-
-                alert('🗑️ 已刪除紀錄與檔案，案件已重置。');
+                alert('✅ 存檔成功！');
                 backToStep1();
 
             } catch (err) {
-                alert('刪除失敗: ' + err.message);
+                alert('❌ 錯誤：' + err.message);
+                btn.disabled = false;
+                btn.innerHTML = '<i class="fas fa-save me-1"></i> 存檔送審';
             }
         }
     </script>
