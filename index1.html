@@ -3,40 +3,210 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>填寫服務報告 | OHSMS</title>
+    <title>顧問資料上傳 (Plan/Do) | OHSMS</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
-    <style>
-        :root { --primary-bg: #f4f6f9; --theme-color: #4f46e5; }
-        body { background-color: var(--primary-bg); font-family: 'Segoe UI', 'Microsoft JhengHei', sans-serif; }
-        
-        .step-indicator { display: flex; justify-content: space-between; margin-bottom: 30px; position: relative; }
-        .step-indicator::before { content: ''; position: absolute; top: 15px; left: 0; right: 0; height: 2px; background: #e0e0e0; z-index: 0; }
-        .step-item { position: relative; z-index: 1; background: var(--primary-bg); padding: 0 10px; text-align: center; color: #999; font-weight: 600; }
-        .step-item.active { color: var(--theme-color); }
-        .step-circle { width: 32px; height: 32px; background: #e0e0e0; color: #fff; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 8px; font-weight: bold; transition: all 0.3s; }
-        .step-item.active .step-circle { background: var(--theme-color); box-shadow: 0 0 0 5px rgba(79, 70, 229, 0.2); }
-        .step-item.completed .step-circle { background: #10b981; }
+    
+<style>
+    /* =========================================
+       1. 核心基礎與寬版設定 (修正色調與版面)
+       ========================================= */
+    :root { 
+        --primary-bg: #f4f6f9; 
+        --theme-color: #0d6efd; /* [修正] 改為 Plan 藍色 (#0d6efd) */
+        --theme-light: #e7f1ff; /* [修正] 淺藍色背景 */
+    }
 
-        .card { border: none; box-shadow: 0 2px 15px rgba(0,0,0,0.05); border-radius: 12px; transition: transform 0.2s; }
-        .record-card { cursor: pointer; border: 1px solid #eee; }
-        .record-card:hover, .record-card.selected { border-color: var(--theme-color); background-color: #eef2ff; transform: translateY(-2px); }
-        .section-title { font-size: 1.1rem; font-weight: 700; color: #333; margin-bottom: 15px; padding-left: 10px; border-left: 4px solid var(--theme-color); }
-        
-        /* Checkbox List Styling */
-        .check-list-group .list-group-item { border: 1px solid #eee; margin-bottom: 5px; border-radius: 6px !important; transition: background 0.2s; }
-        .check-list-group .list-group-item:hover { background-color: #f8f9fa; }
-        .form-check-input:checked + .form-check-label { color: var(--theme-color); font-weight: bold; }
-        
-        .upload-area { border: 2px dashed #cbd5e1; border-radius: 8px; padding: 30px; text-align: center; background: #fff; transition: all 0.3s; }
-        .upload-area:hover { border-color: var(--theme-color); background: #fcfcff; }
-    </style>
+    body {
+        background-color: var(--primary-bg);
+        font-family: 'Segoe UI', 'Microsoft JhengHei', sans-serif;
+        display: none; /* Auth Guard */
+    }
+
+    /* [修正] 強制全寬設定：讓內容展開到最寬 */
+    .container, .container-fluid {
+        max-width: 100% !important;
+        padding-left: 1.5rem !important;
+        padding-right: 1.5rem !important;
+    }
+
+    /* [修正] 消除 wrapper 的內距，確保 Step 1 與 PDCA 貼齊邊緣 */
+    .card-body {
+        padding: 0 !important;
+    }
+
+    /* [修正] 標題區域：移除下方空隙，緊貼 PDCA 字卡 */
+    .d-flex.justify-content-between.align-items-center.mb-4 {
+        margin-bottom: 0.5rem !important; /* 將原本的 mb-4 (1.5rem) 縮小 */
+    }
+
+    /* 標題飾條 - 同步藍色 */
+    .section-title { 
+        border-left: 5px solid var(--theme-color); 
+        padding-left: 15px; 
+        margin-bottom: 20px; 
+    }
+    
+    /* 卡片與表格通用樣式 */
+    .card-header { 
+        background-color: white; 
+        border-bottom: 1px solid #f0f0f0; 
+    }
+    .table th { 
+        font-weight: 600; 
+        color: #555; 
+        background-color: #f8f9fa; 
+        white-space: nowrap;
+    }
+    .table td { 
+        vertical-align: middle; 
+    }
+
+    /* =========================================
+       2. Index1 專用：拖曳上傳區 (藍色系)
+       ========================================= */
+    .upload-drop-zone {
+        border: 2px dashed #cbd5e1;
+        border-radius: 8px;
+        background-color: white;
+        padding: 40px 20px;
+        text-align: center;
+        transition: all 0.3s ease;
+        cursor: pointer;
+        position: relative;
+        height: 100%;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+    }
+    .upload-drop-zone:hover, .upload-drop-zone.dragover {
+        border-color: var(--theme-color);
+        background-color: var(--theme-light);
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(13, 110, 253, 0.15); /* Blue Shadow */
+    }
+    .upload-icon {
+        font-size: 3rem;
+        color: var(--theme-color);
+        margin-bottom: 15px;
+    }
+
+    /* =========================================
+       3. 功能元件 (配色同步)
+       ========================================= */
+    
+    /* 操作模式卡片 */
+    .mode-card {
+        border: 2px solid #e9ecef; 
+        border-radius: 12px; 
+        padding: 20px; 
+        text-align: center; 
+        cursor: pointer; 
+        transition: all 0.2s;
+        height: 100%;
+        background: white;
+    }
+    .mode-card:hover { 
+        border-color: var(--theme-color); 
+        background-color: #f8f9fa; 
+        transform: translateY(-3px); 
+    }
+    .mode-card.active { 
+        border-color: var(--theme-color); 
+        background-color: var(--theme-light); 
+    }
+    .mode-icon { 
+        font-size: 2.5rem; 
+        margin-bottom: 10px; 
+        color: #6c757d; 
+    }
+    .mode-card.active .mode-icon { 
+        color: var(--theme-color); 
+    }
+
+    /* 步驟標題 */
+    .step-title { 
+        border-left: 4px solid var(--theme-color); 
+        padding-left: 10px; 
+        font-weight: bold; 
+        color: var(--theme-color); 
+        margin-bottom: 1rem; 
+    }
+
+    /* 步驟指示器 (配合新版面微調) */
+    .step-indicator { display: flex; justify-content: space-between; margin-bottom: 30px; position: relative; max-width: 600px; margin-left: auto; margin-right: auto;}
+    .step-indicator::before { content: ''; position: absolute; top: 15px; left: 0; right: 0; height: 2px; background: #e0e0e0; z-index: 0; }
+    .step-item { position: relative; z-index: 1; background: var(--primary-bg); padding: 0 10px; text-align: center; color: #999; font-weight: 600; }
+    .step-item.active { color: var(--theme-color); }
+    .step-circle { width: 32px; height: 32px; background: #e0e0e0; color: #fff; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 8px; font-weight: bold; transition: all 0.3s; }
+    .step-item.active .step-circle { background: var(--theme-color); box-shadow: 0 0 0 5px rgba(13, 110, 253, 0.2); }
+    .step-item.completed .step-circle { background: #198754; }
+
+    .record-card { cursor: pointer; border: 1px solid #eee; transition: all 0.2s; background: #fff;}
+    .record-card:hover, .record-card.selected { border-color: var(--theme-color); background-color: var(--theme-light); }
+
+    /* Checkbox List Styling */
+    .check-list-group .list-group-item { border: 1px solid #eee; margin-bottom: 5px; border-radius: 6px !important; transition: background 0.2s; }
+    .check-list-group .list-group-item:hover { background-color: #f8f9fa; }
+    .form-check-input:checked + .form-check-label { color: var(--theme-color); font-weight: bold; }
+
+    /* 隱藏式上傳按鈕 (Checklist Upload - 保留CSS類別以備未來擴充) */
+    .btn-upload-action {
+        display: none;
+        cursor: pointer;
+        color: #6c757d;
+        font-size: 0.85rem;
+        margin-left: 10px;
+        padding: 2px 10px;
+        border: 1px solid #dee2e6;
+        border-radius: 15px;
+        background: #fff;
+        transition: all 0.2s;
+    }
+    .btn-upload-action.visible { display: inline-block; }
+    .btn-upload-action.has-file {
+        color: #fff;
+        background-color: #198754; /* 上傳成功維持綠色 */
+        border-color: #198754;
+    }
+
+    /* --- PDCA 說明區塊 (藍色風格) --- */
+    .instruction-box {
+        background-color: #fff;
+        border-left: 5px solid var(--theme-color);
+        padding: 20px 25px;
+        border-radius: 4px;
+        margin-bottom: 30px;
+        text-align: left;
+        box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+        /* [修正] 確保 PDCA 字卡也撐開 */
+        width: 100%;
+    }
+    .instruction-title {
+        color: #0a58ca; /* 深藍色 (配合 Plan Blue 主題) */
+        font-weight: 700;
+        margin-bottom: 10px;
+    }
+    
+    /* 其他輔助樣式 */
+    .check-list-item { padding: 5px 0; }
+    .check-list-item label { cursor: pointer; line-height: 1.5; font-size: 0.95rem; }
+    #fileInput { display: none; }
+    
+</style>
+
     <script>
         // 權限檢查：未登入則導回登入頁
         document.addEventListener('DOMContentLoaded', function() {
             if (!sessionStorage.getItem('currentUserId')) {
                 window.location.href = 'index.html';
             }
+            document.body.style.display = 'block';
+            
+            // 顯示使用者名稱
+            const userName = sessionStorage.getItem('currentUserName') || '使用者';
+            document.getElementById('user-display').innerText = userName;
         });
     </script>
 </head>
@@ -44,9 +214,9 @@
 
     <nav class="navbar navbar-expand-lg navbar-dark bg-dark py-3 mb-4">
         <div class="container-fluid px-4">
-            <a class="navbar-brand fw-bold" href="dashboard.html"><i class="fas fa-shield-alt me-2"></i>OHSMS</a>
+            <a class="navbar-brand" href="dashboard.html"><i class="fas fa-shield-alt me-2"></i>OHSMS</a>
             <div class="d-flex align-items-center">
-                <span class="text-light small me-3">顧問作業系統</span>
+                <span class="text-light me-3" id="user-display"></span>
                 <a href="dashboard.html" class="btn btn-outline-light btn-sm"><i class="fas fa-arrow-left me-1"></i> 返回儀表板</a>
             </div>
         </div>
@@ -54,98 +224,122 @@
 
     <div class="container pb-5">
         
-        <div class="step-indicator px-5">
-            <div class="step-item active" id="step1-indicator">
-                <div class="step-circle">1</div>
-                <div>選擇案件</div>
-            </div>
-            <div class="step-item" id="step2-indicator">
-                <div class="step-circle">2</div>
-                <div>執行紀錄與上傳</div>
-            </div>
-            <div class="step-item" id="step3-indicator">
-                <div class="step-circle">3</div>
-                <div>完成送審</div>
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <div>
+                <h2 class="fw-bold text-dark"><i class="fas fa-file-arrow-up me-2 text-primary"></i>顧問資料上傳</h2>
+                <p class="text-muted mb-0">Plan & Do 階段：建立基準與服務歷程及完整執行紀錄</p>
             </div>
         </div>
 
-        <div id="step1-content">
-            <div class="row g-4">
-                <div class="col-lg-4">
-                    <div class="card h-100 p-4">
-                        <h5 class="section-title">搜尋條件</h5>
-                        <p class="text-muted small mb-3">請輸入條件搜尋您名下的服務案件。</p>
-                        
-                        <div class="mb-3">
-                            <label class="form-label fw-bold small">服務年份 (選填)</label>
-                            <input type="text" class="form-control" id="search-year" placeholder="例如：2026">
-                        </div>
-                        <div class="mb-3">
-                            <label class="form-label fw-bold small">公司統編 (選填)</label>
-                            <input type="text" class="form-control" id="search-tax-id" placeholder="請輸入 8 碼統編">
-                        </div>
-                        
-                        <div class="d-grid mt-4">
-                            <button class="btn btn-primary" onclick="searchRecords()">
-                                <i class="fas fa-search me-2"></i>查詢案件
-                            </button>
+        <div class="card-body p-4 p-md-5">
+
+            <div class="instruction-box">
+                <div class="instruction-title">
+                    <i class="fas fa-compass me-2"></i>PDCA 設計理念：Plan (計畫) —— 基準確立與歷史繼承
+                </div>
+                <p class="mb-0 text-dark" style="line-height: 1.6;">
+                    本模組貫徹「基準建檔」(Plan) 與「執行留痕」(Do) 之雙重核心，透過嚴謹的版本控制與補件機制，完整串聯從規劃到現場服務的數位證據鏈，確保資料具備不可否認性。
+                </p>
+            </div>
+
+            <div class="step-indicator px-5">
+                <div class="step-item active" id="step1-indicator">
+                    <div class="step-circle">1</div>
+                    <div>選擇案件</div>
+                </div>
+                <div class="step-item" id="step2-indicator">
+                    <div class="step-circle">2</div>
+                    <div>執行紀錄與上傳</div>
+                </div>
+                <div class="step-item" id="step3-indicator">
+                    <div class="step-circle">3</div>
+                    <div>完成送審</div>
+                </div>
+            </div>
+
+            <hr class="my-4">
+
+            <div id="step1-content">
+                <div class="row g-4">
+                    <div class="col-lg-4">
+                        <div class="card h-100 p-4 border-0 shadow-sm">
+                            <h5 class="section-title">搜尋條件</h5>
+                            <p class="text-muted small mb-3">請輸入條件搜尋您名下的服務案件。</p>
+                            
+                            <div class="mb-3">
+                                <label class="form-label fw-bold small">服務年份 (選填)</label>
+                                <input type="text" class="form-control" id="search-year" placeholder="例如：2026">
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label fw-bold small">公司統編 (選填)</label>
+                                <input type="text" class="form-control" id="search-tax-id" placeholder="請輸入 8 碼統編">
+                            </div>
+                            
+                            <div class="d-grid mt-4">
+                                <button class="btn btn-primary" onclick="searchRecords()">
+                                    <i class="fas fa-search me-2"></i>查詢案件
+                                </button>
+                            </div>
                         </div>
                     </div>
-                </div>
 
-                <div class="col-lg-8">
-                    <div class="card h-100 p-4">
-                        <h5 class="section-title">案件列表</h5>
-                        <div id="records-container" class="row g-3" style="max-height: 500px; overflow-y: auto;">
-                            <div class="text-center text-muted py-5">
-                                <i class="fas fa-search fa-3x mb-3 text-light"></i>
-                                <p>請設定左側條件並點擊查詢</p>
+                    <div class="col-lg-8">
+                        <div class="card h-100 p-4 border-0 shadow-sm">
+                            <h5 class="section-title">案件列表</h5>
+                            <div id="records-container" class="row g-3" style="max-height: 500px; overflow-y: auto;">
+                                <div class="text-center text-muted py-5">
+                                    <i class="fas fa-search fa-3x mb-3 text-light"></i>
+                                    <p>請設定左側條件並點擊查詢</p>
+                                </div>
                             </div>
                         </div>
                     </div>
                 </div>
             </div>
-        </div>
 
-        <div id="step2-content" style="display: none;">
-            <div class="card p-4 mb-4">
-                <div class="d-flex justify-content-between align-items-center mb-3">
-                    <h5 class="section-title mb-0">上傳服務執行紀錄</h5>
-                    <button class="btn btn-outline-secondary btn-sm" onclick="backToStep1()">
-                        <i class="fas fa-sync-alt me-1"></i> 重選案件
-                    </button>
-                </div>
+            <div id="step2-content" style="display: none;">
+                <div class="card p-4 mb-4 border-0 shadow-sm">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <h5 class="section-title mb-0">上傳服務執行紀錄</h5>
+                        <button class="btn btn-outline-secondary btn-sm" onclick="backToStep1()">
+                            <i class="fas fa-sync-alt me-1"></i> 重選案件
+                        </button>
+                    </div>
 
-                <div class="alert alert-light border-start border-4 border-info mb-4">
-                    <div class="d-flex align-items-center">
-                        <i class="fas fa-info-circle text-info me-3 fa-lg"></i>
-                        <div>
-                            <strong>當前案件：</strong> <span id="current-company-name" class="fw-bold text-dark"></span>
-                            <span class="mx-2">|</span>
-                            <span class="text-muted">服務日期：</span> <span id="current-visit-date"></span>
+                    <div class="alert alert-light border-start border-4 border-primary mb-4 bg-light">
+                        <div class="d-flex align-items-center">
+                            <i class="fas fa-info-circle text-primary me-3 fa-lg"></i>
+                            <div>
+                                <strong>當前案件：</strong> <span id="current-company-name" class="fw-bold text-dark"></span>
+                                <span class="mx-2">|</span>
+                                <span class="text-muted">服務日期：</span> <span id="current-visit-date"></span>
+                            </div>
                         </div>
                     </div>
-                </div>
 
-                <form id="execution-form">
-                    <h6 class="fw-bold mb-3"><i class="fas fa-check-square me-2 text-primary"></i>(必要) 勞工健康服務執行紀錄項目</h6>
-                    <p class="text-muted small">請勾選本次服務所執行的項目，並上傳對應的紀錄表與附件。</p>
+                    <form id="execution-form">
+                        <h6 class="fw-bold mb-3"><i class="fas fa-check-square me-2 text-primary"></i>(必要) 勞工健康服務執行紀錄項目</h6>
+                        <p class="text-muted small">請勾選本次服務所執行的項目，並上傳對應的紀錄表與附件。</p>
 
-                    <div class="list-group check-list-group mb-4" id="checkbox-list">
+                        <div class="list-group check-list-group mb-4" id="checkbox-list">
+                            </div>
+
+                        <h6 class="fw-bold mb-3"><i class="fas fa-cloud-upload-alt me-2 text-primary"></i>附件上傳</h6>
+                        <div class="upload-drop-zone mb-3" onclick="document.getElementById('report-file').click()">
+                            <i class="fas fa-cloud-upload-alt upload-icon"></i>
+                            <h5 class="fw-bold">點擊或拖曳檔案至此</h5>
+                            <p class="text-muted small mb-0">支援格式：PDF, Word, 圖片 (單檔限制 10MB)</p>
+                            <input type="file" id="report-file" hidden accept=".pdf,.doc,.docx,.jpg,.png" onchange="handleFileSelect(this)">
                         </div>
-
-                    <h6 class="fw-bold mb-3"><i class="fas fa-cloud-upload-alt me-2 text-primary"></i>附件上傳</h6>
-                    <div class="upload-area mb-3">
-                        <input type="file" class="form-control mb-2" id="report-file" accept=".pdf,.doc,.docx,.jpg,.png">
-                        <small class="text-muted d-block">支援格式：PDF, Word, 圖片 (單檔限制 10MB)</small>
                         
-                        <div id="file-status-display" class="mt-3 p-2 bg-light rounded border border-success text-success fw-bold" style="display:none;">
+                        <div id="file-status-display" class="mt-3 p-3 bg-light rounded border border-success text-success fw-bold" style="display:none;">
                             <div class="d-flex justify-content-between align-items-center">
                                 <div>
-                                    <i class="fas fa-check-circle me-1"></i> 雲端已存檔案：
-                                    <span id="uploaded-filename" class="text-dark font-monospace"></span>
+                                    <i class="fas fa-check-circle me-1"></i> 
+                                    <span id="file-status-label">已選取檔案：</span>
+                                    <span id="uploaded-filename" class="text-dark font-monospace ms-2"></span>
                                 </div>
-                                <span class="badge bg-success">已上傳</span>
+                                <span class="badge bg-success" id="cloud-badge" style="display:none">Staging</span>
                             </div>
                             <div class="small text-muted fw-normal mt-1 ms-4">(若需修改，請直接選擇新檔案上傳即可覆蓋)</div>
                         </div>
@@ -153,20 +347,20 @@
                         <div id="file-loading" class="mt-3 p-2 text-primary small" style="display:none;">
                              <div class="spinner-border spinner-border-sm me-2"></div>正在檢查雲端檔案...
                         </div>
-                    </div>
 
-                    <div class="d-flex justify-content-end gap-2 pt-3 border-top">
-                        <button type="button" class="btn btn-danger" id="btn-delete" onclick="deleteSubmission()" style="display:none;">
-                            <i class="fas fa-trash-alt me-1"></i> 刪除紀錄
-                        </button>
-                        <button type="button" class="btn btn-primary" id="btn-submit" onclick="submitRecord()">
-                            <i class="fas fa-save me-1"></i> 存檔送審
-                        </button>
-                    </div>
-                </form>
+                        <div class="d-flex justify-content-end gap-2 pt-3 border-top mt-4">
+                            <button type="button" class="btn btn-danger" id="btn-delete" onclick="deleteSubmission()" style="display:none;">
+                                <i class="fas fa-trash-alt me-1"></i> 刪除紀錄
+                            </button>
+                            <button type="button" class="btn btn-primary px-4 fw-bold" id="btn-submit" onclick="submitRecord()">
+                                <i class="fas fa-save me-1"></i> 存檔送審
+                            </button>
+                        </div>
+                    </form>
+                </div>
             </div>
-        </div>
 
+        </div>
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
@@ -209,7 +403,6 @@
         ];
 
         document.addEventListener('DOMContentLoaded', () => {
-            // ★ 移除自動填入年份 initYearSelect();
             renderChecklist();
         });
 
@@ -219,15 +412,30 @@
                 <label class="list-group-item d-flex gap-3 align-items-center">
                     <input class="form-check-input flex-shrink-0" type="checkbox" name="service-item" value="${item.id}" style="font-size: 1.2em;">
                     <span class="pt-1 form-check-label stretched-link">${item.text}</span>
+                    <span class="btn-upload-action" id="btn-${item.id}"><i class="fas fa-paperclip"></i> 上傳佐證</span>
                 </label>
             `).join('');
+        }
+        
+        // 簡單的檔案選擇視覺回饋
+        function handleFileSelect(input) {
+            const fileNameSpan = document.getElementById('uploaded-filename');
+            const statusDiv = document.getElementById('file-status-display');
+            const label = document.getElementById('file-status-label');
+            const badge = document.getElementById('cloud-badge');
+            
+            if (input.files && input.files[0]) {
+                statusDiv.style.display = 'block';
+                label.innerText = '準備上傳：';
+                fileNameSpan.innerText = input.files[0].name;
+                badge.style.display = 'none';
+            }
         }
 
         // =======================
         // Step 1: 搜尋邏輯
         // =======================
         async function searchRecords() {
-            // ★ 修改：允許年份為空
             const year = document.getElementById('search-year').value.trim();
             const taxId = document.getElementById('search-tax-id').value.trim();
             const container = document.getElementById('records-container');
@@ -246,7 +454,6 @@
                 .eq('consultant_id', currentUserId)
                 .order('visit_date', { ascending: false });
 
-            // ★ 修改：有填寫才加入篩選條件
             if (year) {
                 query = query.eq('service_year', year);
             }
@@ -330,6 +537,8 @@
             const fileStatus = document.getElementById('file-status-display');
             const fileLoading = document.getElementById('file-loading');
             const fileNameSpan = document.getElementById('uploaded-filename');
+            const label = document.getElementById('file-status-label');
+            const badge = document.getElementById('cloud-badge');
             const btnSubmit = document.getElementById('btn-submit');
             const btnDelete = document.getElementById('btn-delete');
 
@@ -351,7 +560,9 @@
             if (files && files.length > 0) {
                 currentCloudFile = files[0];
                 fileStatus.style.display = 'block';
+                label.innerText = '雲端已存檔案：';
                 fileNameSpan.innerText = currentCloudFile.name;
+                badge.style.display = 'inline-block';
             } 
 
             // 5. 按鈕狀態邏輯
