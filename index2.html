@@ -271,7 +271,6 @@
                 type: 'doughnut',
                 data: {
                     labels: ['已核定', '待審核'],
-                    // 環形圖配色：綠色 (Check/Approved) vs 黃色 (Pending)
                     datasets: [{ data: [0, 0], backgroundColor: ['#198754', '#ffc107'], borderWidth: 0 }]
                 },
                 options: { cutout: '75%', plugins: { legend: { display: false } }, maintainAspectRatio: false }
@@ -289,7 +288,7 @@
                     .select('*', { count: 'exact', head: true })
                     .eq('service_year', year);
 
-                // 2. 讀取 Pending 資料，加入公司名稱關聯
+                // 2. 讀取 Pending 資料
                 const { data: stagingData, error: err2 } = await supabaseClient
                     .from('service_record_staging')
                     .select(`
@@ -368,7 +367,7 @@
             }
         }
 
-        // --- 1. 新版：開新分頁合併 PDF 預覽 ---
+        // --- ★ 修正版：強制讀取 Storage 檔案列表，確保遺漏檔案被抓取 ---
         async function openStagingPreview(id, btn) {
             const record = currentStagingData.find(r => r.id === id);
             if (!record) return;
@@ -396,27 +395,42 @@
                     }
                 } catch(e) {}
 
-                // 處理附件 (PDF 合併 + 其他連結)
-                let files = record.attachment_files;
-                if (typeof files === 'string') { try { files = JSON.parse(files); } catch(e) { files = []; } }
-                if (!Array.isArray(files)) files = [];
-                
-                // 排序 (確保 A, B, C 順序)
-                files.sort((a, b) => (a.name || '').localeCompare(b.name || ''));
-
+                // --- 核心修正：直接向 Storage 請求真實檔案列表 (Fix 1) ---
                 const pdfUrls = [];
                 const otherLinks = [];
 
-                // 取得 Signed URL 並分類
-                for (const f of files) {
-                    if (!f.path) continue;
-                    const { data } = await supabaseClient.storage.from('staging').createSignedUrl(f.path, 3600); // 1小時有效
-                    if (data?.signedUrl) {
-                        const isPdf = f.name.toLowerCase().endsWith('.pdf');
-                        if (isPdf) {
-                            pdfUrls.push(data.signedUrl);
-                        } else {
-                            otherLinks.push({ name: f.name, url: data.signedUrl });
+                const { data: storageFiles, error: storageError } = await supabaseClient
+                    .storage
+                    .from('staging')
+                    .list(id, { // 使用 record ID 作為資料夾路徑
+                        limit: 100, 
+                        offset: 0, 
+                        sortBy: { column: 'name', order: 'asc' } 
+                    });
+
+                if (storageError) {
+                    console.error("Storage List Error:", storageError);
+                    alert("讀取附件列表失敗，請檢查網路或權限");
+                }
+
+                if (storageFiles && storageFiles.length > 0) {
+                    for (const f of storageFiles) {
+                        if (f.name === '.emptyFolderPlaceholder') continue;
+
+                        // 構建完整路徑：staging/{record_id}/{filename}
+                        const filePath = `${id}/${f.name}`;
+                        
+                        // 取得 Signed URL (確保能讀取)
+                        const { data } = await supabaseClient.storage.from('staging').createSignedUrl(filePath, 3600);
+                        
+                        if (data?.signedUrl) {
+                            // Fix 2: 嚴格區分 PDF 與其他檔案 (JPG, PNG 等)
+                            if (f.name.toLowerCase().endsWith('.pdf')) {
+                                pdfUrls.push(data.signedUrl);
+                            } else {
+                                // 收集非 PDF 檔案以建立超連結
+                                otherLinks.push({ name: f.name, url: data.signedUrl });
+                            }
                         }
                     }
                 }
@@ -444,9 +458,14 @@
                 const newWin = window.open('', '_blank');
                 if (!newWin) return alert('請允許開啟彈跳視窗');
 
-                const otherLinksHtml = otherLinks.map(l => 
-                    `<a href="${l.url}" target="_blank" class="btn btn-sm btn-outline-secondary me-2 mb-2"><i class="fas fa-paperclip"></i> ${l.name}</a>`
-                ).join('');
+                // 生成附件連結區塊 (Fix 2)
+                const otherLinksHtml = otherLinks.length > 0 
+                    ? otherLinks.map(l => 
+                        `<a href="${l.url}" target="_blank" class="btn btn-sm btn-outline-secondary me-2 mb-2">
+                            <i class="fas fa-paperclip me-1"></i> ${l.name}
+                        </a>`
+                    ).join('') 
+                    : '<span class="text-muted small">無其他附件</span>';
 
                 const pdfViewerHtml = finalPdfUrl 
                     ? `<iframe src="${finalPdfUrl}#toolbar=0" class="pdf-viewer"></iframe>` 
@@ -468,8 +487,7 @@
                             .note-box { background: #fff3cd; color: #664d03; padding: 10px; border-radius: 4px; font-size: 0.9rem; margin-top: 10px; border: 1px solid #ffecb5; }
                             .pdf-container { flex-grow: 1; background: white; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); overflow: hidden; display: flex; flex-direction: column; }
                             .pdf-viewer { width: 100%; height: 100%; border: none; }
-                            .action-bar { display: flex; justify-content: space-between; align-items: center; margin-top: 10px; border-top: 1px solid #eee; padding-top: 10px; }
-                            .file-links { margin-top: 10px; }
+                            .file-links-area { margin-top: 10px; padding-top: 10px; border-top: 1px dashed #dee2e6; }
                         </style>
                     </head>
                     <body>
@@ -493,7 +511,11 @@
                                 <div class="meta-item"><label>執行期間</label><div>${timeRange}</div></div>
                             </div>
                             ${ specialNote !== '無' ? `<div class="note-box"><strong><i class="fas fa-sticky-note me-1"></i>特殊事項備註 / 結案理由：</strong> ${specialNote}</div>` : '' }
-                            ${ otherLinks.length > 0 ? `<div class="file-links"><strong><i class="fas fa-paperclip me-1"></i>其他附件：</strong> ${otherLinksHtml}</div>` : ''}
+                            
+                            <div class="file-links-area">
+                                <strong class="d-block mb-2 text-secondary" style="font-size:0.9rem;"><i class="fas fa-paperclip me-1"></i>其他附件 (圖片/影音)：</strong>
+                                ${otherLinksHtml}
+                            </div>
                         </div>
                         <div class="pdf-container">
                             ${pdfViewerHtml}
