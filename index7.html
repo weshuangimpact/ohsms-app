@@ -785,7 +785,7 @@
                 
                 return `
                 <tr>
-                    <td class="font-monospace">${r.visit_date}</td>
+                    <td class="font-monospace">${r.visit_date || '<span class="text-muted">(未填)</span>'}</td>
                     <td class="fw-bold">${compName}</td>
                     <td>${staffName}</td>
                     <td class="small">${timeStr}</td>
@@ -959,7 +959,7 @@
             reader.readAsArrayBuffer(file);
         }
 
-async function parseAndImportData(rows, type) {
+        async function parseAndImportData(rows, type) {
             pendingImportType = type;
             pendingImportData = []; // 清空待匯入陣列
             const previewArea = document.getElementById('import-preview-area');
@@ -1005,7 +1005,7 @@ async function parseAndImportData(rows, type) {
                     });
 
                 } else if (type === 'record') {
-                    // ★ 修正重點：歷程匯入邏輯
+                    // ★ 修正重點：允許日期為空
                     html += '<th>公司名稱</th><th>顧問姓名</th><th>服務日期</th><th>對應狀態</th></tr></thead><tbody>';
                     
                     previewArea.innerHTML = '<div class="text-center p-3"><span class="spinner-border text-primary"></span> 正在核對公司與顧問資料庫...</div>';
@@ -1014,11 +1014,10 @@ async function parseAndImportData(rows, type) {
                     const { data: allCompanies } = await supabaseClient.from('companies').select('id, name, workplaces(id)');
                     const { data: allStaff } = await supabaseClient.from('medical_staff').select('id, name');
 
-                    // 2. 建立對照表 (Map) - 移除空白並轉小寫以增加對應成功率
+                    // 2. 建立對照表 (Map)
                     const compMap = {}; 
                     if(allCompanies) {
                         allCompanies.forEach(c => {
-                            // 只要該公司有任一 workplace，就抓第1個當作匯入目標
                             if(c.workplaces && c.workplaces.length > 0) {
                                 compMap[c.name.trim()] = c.workplaces[0].id;
                             }
@@ -1043,12 +1042,12 @@ async function parseAndImportData(rows, type) {
                         const stId = staffMap[sName]; // 查找 ID
                         const year = date ? new Date(date).getFullYear() : null;
 
-// ★ 修正後：只檢查公司與顧問ID，允許日期為空 (不擋匯入)
+                        // ★ 判定：公司有ID 且 顧問有ID 即可 (移除 && date)
                         if(wpId && stId) {
                              pendingImportData.push({
                                 workplace_id: wpId, 
                                 consultant_id: stId, 
-                                visit_date: date, // 沒填會是 null，資料庫若允許空值即可寫入
+                                visit_date: date, // 允許 null
                                 service_year: year, 
                                 execution_items: items,
                                 created_by: sessionStorage.getItem('currentUserId')
@@ -1065,7 +1064,6 @@ async function parseAndImportData(rows, type) {
                             let errorMsg = [];
                             if(!wpId) errorMsg.push("公司未建立或無場所");
                             if(!stId) errorMsg.push("無此顧問");
-                            // 已移除日期錯誤檢查
                             
                             html += `<tr class="table-danger">
                                 <td>${cName}</td>
@@ -1074,6 +1072,8 @@ async function parseAndImportData(rows, type) {
                                 <td><span class="badge bg-danger">${errorMsg.join(', ')}</span></td>
                             </tr>`;
                         }
+                    });
+                }
 
                 html += '</tbody></table>';
                 
