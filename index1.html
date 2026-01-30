@@ -72,12 +72,12 @@
     .check-list-group .list-group-item:hover { background-color: #f8f9fa; }
     .form-check-input:checked + .form-check-label { color: var(--theme-color); font-weight: bold; }
 
-    /* 操作工具列 (Action Toolbar) */
+    /* 操作工具列 */
     .item-actions {
-        display: none; /* 預設隱藏，勾選後顯示 */
+        display: none; 
         align-items: center;
         gap: 8px;
-        margin-left: auto; /* 靠右對齊 */
+        margin-left: auto; 
     }
     .item-actions.visible { display: flex; }
 
@@ -100,15 +100,6 @@
     
     .table th { font-weight: 600; color: #555; background-color: #f8f9fa; white-space: nowrap; }
     .table td { vertical-align: middle; }
-    
-    /* 檔案連結樣式 */
-    .file-link {
-        text-decoration: none;
-        color: var(--theme-color);
-        font-weight: 600;
-        font-size: 0.9rem;
-    }
-    .file-link:hover { text-decoration: underline; }
 
 </style>
 
@@ -220,16 +211,24 @@
                     </div>
 
                     <div class="alert alert-light border-start border-4 border-primary mb-4 bg-light">
-                        <div class="row align-items-center">
-                            <div class="col-md-7 mb-2 mb-md-0">
+                        <div class="row align-items-center gy-2">
+                            <div class="col-lg-5">
                                 <i class="fas fa-info-circle text-primary me-2 fa-lg"></i>
                                 <strong>當前案件：</strong> <span id="current-company-name" class="fw-bold text-dark me-2"></span>
                                 <span class="badge bg-secondary" id="current-year-badge"></span>
                             </div>
-                            <div class="col-md-5">
-                                <div class="input-group input-group-sm">
-                                    <span class="input-group-text bg-primary text-white border-primary"><i class="far fa-calendar-check me-2"></i>實際執行日期</span>
-                                    <input type="date" class="form-control border-primary" id="execution-date">
+                            <div class="col-lg-7">
+                                <div class="d-flex gap-2 flex-wrap justify-content-lg-end">
+                                    <div class="input-group input-group-sm" style="max-width: 200px;">
+                                        <span class="input-group-text bg-primary text-white border-primary"><i class="far fa-calendar-check me-2"></i>日期</span>
+                                        <input type="date" class="form-control border-primary" id="execution-date">
+                                    </div>
+                                    <div class="input-group input-group-sm" style="max-width: 320px;">
+                                        <span class="input-group-text bg-primary text-white border-primary"><i class="far fa-clock me-2"></i>時間</span>
+                                        <input type="time" class="form-control border-primary" id="start-time">
+                                        <span class="input-group-text border-primary">~</span>
+                                        <input type="time" class="form-control border-primary" id="end-time">
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -262,16 +261,17 @@
         const SUPABASE_KEY = 'sb_publishable_52emtU-9l-SDxcJTWVTPTA_Yu6qEogh';
         const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-        // Bucket 名稱設定 (Files > Buckets > staging)
+        // Bucket 名稱設定
         const BUCKET_NAME = 'staging'; 
 
         // 狀態變數
         let currentRecordId = null;
         let currentUserId = sessionStorage.getItem('currentUserId'); 
-        let currentFilesMap = {}; // 儲存 ItemID -> FileObject 的對照
+        let currentFilesMap = {}; 
 
-        // 項目清單資料
+        // 項目清單資料 (★ 新增最上方的紀錄表主檔)
         const checklistItems = [
+            { id: "main", text: "勞工健康服務執行紀錄表 (執行當日紀錄主檔)" },
             { id: "9-1", text: "9-1 勞工體格（健康）檢查結果之分析與評估、健康管理及資料保存。" },
             { id: "9-2", text: "9-2 協助雇主選配勞工從事適當之工作。" },
             { id: "9-3", text: "9-3 辦理健康檢查結果異常者之追蹤管理及健康指導。" },
@@ -298,7 +298,6 @@
         function renderChecklist() {
             const container = document.getElementById('checkbox-list');
             container.innerHTML = checklistItems.map(item => {
-                // 判斷是否為「其他」項目以決定 accept 屬性
                 const acceptType = item.id === 'other' ? '*/*' : '.pdf';
                 const fileTypeMsg = item.id === 'other' ? '支援所有格式' : '限 PDF';
 
@@ -344,7 +343,6 @@
             }).join('');
         }
 
-        // 切換顯示操作區
         function toggleItemAction(itemId) {
             const cb = document.getElementById(`cb-${itemId}`);
             const actionDiv = document.getElementById(`action-${itemId}`);
@@ -352,34 +350,30 @@
                 actionDiv.classList.add('visible');
             } else {
                 actionDiv.classList.remove('visible');
-                // 若取消勾選，是否要自動刪除檔案？
-                // 這裡保留彈性：僅隱藏，使用者按下「存檔」時會更新狀態
             }
         }
 
-        // 觸發個別檔案上傳
         function triggerItemUpload(itemId) {
             document.getElementById(`file-input-${itemId}`).click();
         }
 
-        // 處理個別檔案上傳 (即時上傳至 Staging)
+        // ★ 核心修改：解決 Invalid Key 問題
         async function handleItemFileUpload(itemId, input) {
             if (!input.files || !input.files[0]) return;
             const file = input.files[0];
             
-            // 顯示 Loading
             document.getElementById(`btn-upload-${itemId}`).style.display = 'none';
             document.getElementById(`btn-group-${itemId}`).style.display = 'none';
             document.getElementById(`spinner-${itemId}`).style.display = 'block';
 
             try {
-                // 命名規則：[ItemID]__[OriginalName] 以確保唯一性與辨識度
-                // 加上 Timestamp 避免快取問題
+                // ★ 修正重點：使用 encodeURIComponent 對檔名進行編碼
+                // 這樣包含中文、空格的檔名都會被轉為安全的 ASCII 字串
+                const safeFileName = encodeURIComponent(file.name);
                 const uniquePrefix = `${itemId}__`; 
-                const filePath = `${currentRecordId}/${uniquePrefix}${file.name}`;
+                const filePath = `${currentRecordId}/${uniquePrefix}${safeFileName}`;
 
-                // 1. 先刪除該 ItemID 開頭的舊檔 (若有)
-                // (因為檔名可能不同，不能只靠 upsert，要先清乾淨)
+                // 1. 先刪除舊檔
                 await deleteFileByPrefix(currentRecordId, uniquePrefix);
 
                 // 2. 上傳新檔
@@ -389,20 +383,19 @@
 
                 if (error) throw error;
 
-                // 3. 更新 UI
+                // 3. 更新 UI (傳入原始檔名以供顯示)
                 updateItemUI(itemId, file.name, true);
 
             } catch (e) {
+                console.error(e);
                 alert('上傳失敗: ' + e.message);
-                // 還原 UI
                 updateItemUI(itemId, null, false);
             } finally {
                 document.getElementById(`spinner-${itemId}`).style.display = 'none';
-                input.value = ''; // 重置 input
+                input.value = ''; 
             }
         }
 
-        // 處理個別檔案刪除
         async function handleItemFileDelete(itemId) {
             if(!confirm('確定要刪除此附件嗎？')) return;
 
@@ -412,22 +405,23 @@
             try {
                 const uniquePrefix = `${itemId}__`;
                 await deleteFileByPrefix(currentRecordId, uniquePrefix);
-                updateItemUI(itemId, null, false); // 重置為未上傳狀態
+                updateItemUI(itemId, null, false); 
             } catch (e) {
                 alert('刪除失敗: ' + e.message);
-                document.getElementById(`btn-group-${itemId}`).style.display = 'flex'; // 還原
+                document.getElementById(`btn-group-${itemId}`).style.display = 'flex'; 
             } finally {
                 document.getElementById(`spinner-${itemId}`).style.display = 'none';
             }
         }
 
-        // 輔助：刪除特定前綴的檔案
         async function deleteFileByPrefix(recordId, prefix) {
             const { data: files } = await supabaseClient.storage
                 .from(BUCKET_NAME)
                 .list(`${recordId}`);
             
             if (files && files.length > 0) {
+                // 注意：Storage list 出來的 name 是解碼過的，還是原始的，需視 Supabase 版本而定
+                // 但通常我們比對前綴即可
                 const targetFiles = files.filter(f => f.name.startsWith(prefix));
                 if (targetFiles.length > 0) {
                     const pathsToRemove = targetFiles.map(f => `${recordId}/${f.name}`);
@@ -436,7 +430,6 @@
             }
         }
 
-        // 輔助：更新單一項目的按鈕狀態
         function updateItemUI(itemId, fileName, hasFile) {
             const uploadBtn = document.getElementById(`btn-upload-${itemId}`);
             const btnGroup = document.getElementById(`btn-group-${itemId}`);
@@ -447,14 +440,16 @@
                 uploadBtn.style.display = 'none';
                 btnGroup.style.display = 'flex';
                 
-                // 設定預覽連結
-                const { data } = supabaseClient.storage.from(BUCKET_NAME).getPublicUrl(`${currentRecordId}/${itemId}__${fileName}`);
-                // 這裡假設 Bucket 是 Public，若 Private 需用 createSignedUrl
+                // ★ 預覽連結生成：需使用 encodeURIComponent 後的檔名
+                const safeName = encodeURIComponent(fileName);
+                const { data } = supabaseClient.storage.from(BUCKET_NAME).getPublicUrl(`${currentRecordId}/${itemId}__${safeName}`);
                 
                 previewBtn.href = data.publicUrl;
                 
-                // 顯示檔名 (截斷過長檔名)
-                const shortName = fileName.length > 15 ? fileName.substring(0, 12) + '...' : fileName;
+                // 顯示：解碼後的檔名，方便使用者閱讀
+                // const displayName = decodeURIComponent(safeName); // 若 fileName 已經是原始字串則不需 decode
+                const displayName = fileName;
+                const shortName = displayName.length > 15 ? displayName.substring(0, 12) + '...' : displayName;
                 fileInfo.innerHTML = `<span class="badge bg-success me-1">已存</span> <span class="text-muted">${shortName}</span>`;
             } else {
                 uploadBtn.style.display = 'inline-block';
@@ -546,7 +541,11 @@
 
             document.getElementById('current-company-name').innerText = data.workplaces.companies.name;
             document.getElementById('current-year-badge').innerText = (data.service_year || '') + ' 年度';
-            document.getElementById('execution-date').value = data.visit_date || ''; // 填入日期
+            document.getElementById('execution-date').value = data.visit_date || ''; 
+            
+            // ★ 回填時間
+            document.getElementById('start-time').value = data.start_time || '';
+            document.getElementById('end-time').value = data.end_time || '';
 
             // 2. 勾選已存項目
             if (data.execution_items) {
@@ -564,17 +563,18 @@
             const { data: files } = await supabaseClient.storage.from(BUCKET_NAME).list(`${id}`);
             if (files && files.length > 0) {
                 files.forEach(file => {
-                    // 檔名解析：ItemID__FileName
                     const parts = file.name.split('__');
                     if (parts.length >= 2) {
                         const itemId = parts[0];
-                        const realName = file.name.substring(itemId.length + 2); // 移除前綴
+                        // 嘗試 decode 檔名，若非 URI 編碼則保持原樣
+                        let realName = file.name.substring(itemId.length + 2); 
+                        try { realName = decodeURIComponent(realName); } catch(e){}
+                        
                         updateItemUI(itemId, realName, true);
                     }
                 });
             }
 
-            // 切換步驟
             document.getElementById('step1-content').style.display = 'none';
             document.getElementById('step2-content').style.display = 'block';
             updateStepIndicator(2);
@@ -611,8 +611,10 @@
                     selectedItems.push(cb.value);
                 });
 
-                // 2. 收集日期
+                // 2. 收集日期與時間
                 const visitDate = document.getElementById('execution-date').value;
+                const startTime = document.getElementById('start-time').value;
+                const endTime = document.getElementById('end-time').value;
 
                 if (selectedItems.length === 0) throw new Error("請至少勾選一項執行紀錄項目。");
                 if (!visitDate) throw new Error("請填寫實際執行日期。");
@@ -624,6 +626,8 @@
                     .update({
                         execution_items: itemsString,
                         visit_date: visitDate,
+                        start_time: startTime || null, // 若空則存 null
+                        end_time: endTime || null,
                         updated_at: new Date()
                     })
                     .eq('id', currentRecordId);
