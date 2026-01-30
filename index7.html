@@ -22,7 +22,7 @@
         .import-area { border: 2px dashed #cbd5e1; border-radius: 8px; padding: 20px; text-align: center; background: #fff; transition: all 0.3s; cursor: pointer; }
         .import-area:hover { border-color: var(--theme-color); background: #eef2ff; }
 
-        /* 新增：Instruction Box 樣式 (同步 Index 1) */
+        /* Instruction Box 樣式 (同步 Index 1) */
         .instruction-box { 
             background-color: #fff; 
             border-left: 5px solid var(--theme-color); 
@@ -242,12 +242,11 @@
                                                 <th>建立日期</th>
                                                 <th>客戶公司</th>
                                                 <th>負責顧問</th>
-                                                <th>預定執行事項</th>
                                                 <th class="text-end">操作</th>
                                             </tr>
                                         </thead>
                                         <tbody id="recordTableBody">
-                                            <tr><td colspan="5" class="text-center py-4">載入中...</td></tr>
+                                            <tr><td colspan="4" class="text-center py-4">載入中...</td></tr>
                                         </tbody>
                                     </table>
                                 </div>
@@ -447,19 +446,8 @@
                                 <option value="">載入中...</option>
                             </select>
                         </div>
-
-                        <div class="mb-3">
-                            <label class="form-label fw-bold small">執行事項 (Service Type) *</label>
-                            <select class="form-select" id="record-item-select" onchange="toggleOtherItem()">
-                                <option value="勞工身心健康管理">勞工身心健康管理</option>
-                                <option value="職業病預防">職業病預防</option>
-                                <option value="臨場健康服務">臨場健康服務</option>
-                                <option value="健康促進規劃">健康促進規劃</option>
-                                <option value="other">其他 (可填寫)</option>
-                            </select>
-                            <input type="text" class="form-control mt-2" id="record-item-other" style="display:none;" placeholder="請輸入其他事項">
-                        </div>
-                    </form>
+                        
+                        </form>
                 </div>
                 <div class="modal-footer justify-content-between">
                     <button type="button" class="btn btn-danger" id="btn-delete-record" onclick="deleteRecord()" style="display:none;">
@@ -739,16 +727,16 @@
         }
         
         // ==========================================
-        // 3. 服務執行歷程 (母案) 邏輯 - 改版
+        // 3. 服務執行歷程 (母案) 邏輯 - 簡化版
         // ==========================================
         async function loadRecords() {
             const tbody = document.getElementById('recordTableBody');
             const search = document.getElementById('search-record').value.trim();
-            tbody.innerHTML = '<tr><td colspan="5" class="text-center py-4"><div class="spinner-border spinner-border-sm text-warning"></div></td></tr>';
+            tbody.innerHTML = '<tr><td colspan="4" class="text-center py-4"><div class="spinner-border spinner-border-sm text-warning"></div></td></tr>';
 
             let query = supabaseClient.from('service_records')
                 .select(`
-                    id, visit_date, execution_items, service_year,
+                    id, visit_date, service_year,
                     workplaces (
                         id, companies ( name )
                     ),
@@ -759,7 +747,7 @@
             const { data, error } = await query;
 
             if(error) {
-                tbody.innerHTML = `<tr><td colspan="5" class="text-center text-danger">載入失敗: ${error.message}</td></tr>`;
+                tbody.innerHTML = `<tr><td colspan="4" class="text-center text-danger">載入失敗: ${error.message}</td></tr>`;
                 return;
             }
             
@@ -776,15 +764,14 @@
             document.getElementById('stat-record-count').innerText = filteredData.length;
 
             if(filteredData.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="5" class="text-center text-muted py-4">尚無資料</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="4" class="text-center text-muted py-4">尚無資料</td></tr>';
                 return;
             }
 
             tbody.innerHTML = filteredData.map(r => {
                 const compName = r.workplaces?.companies?.name || '<span class="text-muted">未知公司</span>';
                 const staffName = r.medical_staff?.name || '<span class="text-muted">未知顧問</span>';
-                const items = r.execution_items || '-';
-                // 顯示日期仍使用 visit_date，但這通常是建立日或計畫日
+                // 顯示日期仍使用 visit_date，但這通常是建立日
                 const displayDate = r.visit_date || '-';
                 
                 return `
@@ -792,7 +779,6 @@
                     <td class="font-monospace">${displayDate}</td>
                     <td class="fw-bold">${compName}</td>
                     <td>${staffName}</td>
-                    <td class="small text-truncate" style="max-width:200px;">${items}</td>
                     <td class="text-end">
                         <button class="btn btn-sm btn-outline-primary" onclick="editRecord('${r.id}')"><i class="fas fa-edit"></i></button>
                     </td>
@@ -808,10 +794,6 @@
             document.getElementById('recordModalTitle').innerText = '新增服務母案 (計畫)';
             document.getElementById('btn-delete-record').style.display = 'none'; 
             
-            // 重置 select 為預設
-            document.getElementById('record-item-select').value = "勞工身心健康管理";
-            toggleOtherItem();
-
             new bootstrap.Modal(document.getElementById('recordModal')).show();
         }
 
@@ -845,36 +827,9 @@
 
             document.getElementById('record-consultant').value = data.consultant_id;
             
-            // 處理 Execution Item 回填
-            const dbItem = data.execution_items || '';
-            const selectEl = document.getElementById('record-item-select');
-            const otherEl = document.getElementById('record-item-other');
-            
-            // 檢查是否在預設選項中
-            const options = Array.from(selectEl.options).map(o => o.value);
-            if (options.includes(dbItem) && dbItem !== 'other') {
-                selectEl.value = dbItem;
-                otherEl.value = '';
-            } else {
-                selectEl.value = 'other';
-                otherEl.value = dbItem;
-            }
-            toggleOtherItem();
-
             document.getElementById('recordModalTitle').innerText = '編輯服務母案';
             document.getElementById('btn-delete-record').style.display = 'block'; 
             new bootstrap.Modal(document.getElementById('recordModal')).show();
-        }
-
-        // 新增/隱藏 其他事項輸入框
-        function toggleOtherItem() {
-            const select = document.getElementById('record-item-select');
-            const otherInput = document.getElementById('record-item-other');
-            if(select.value === 'other') {
-                otherInput.style.display = 'block';
-            } else {
-                otherInput.style.display = 'none';
-            }
         }
 
         async function saveRecord() {
@@ -882,13 +837,6 @@
             const companyId = document.getElementById('record-company').value;
             const consultantId = document.getElementById('record-consultant').value;
             
-            // 處理事項內容
-            let items = document.getElementById('record-item-select').value;
-            if(items === 'other') {
-                items = document.getElementById('record-item-other').value.trim();
-                if(!items) return alert('請填寫其他事項內容');
-            }
-
             if(!companyId || !consultantId) return alert('公司與顧問為必填');
 
             const { data: wpData, error: wpError } = await supabaseClient.from('workplaces').select('id').eq('company_id', companyId).limit(1);
@@ -908,9 +856,9 @@
                 visit_date: visitDate, // 自動帶入
                 service_year: year,
                 consultant_id: consultantId,
-                start_time: null, // 母案不需填
-                end_time: null,   // 母案不需填
-                execution_items: items,
+                start_time: null, 
+                end_time: null,
+                execution_items: null, // 母案不指定，由 Index 1 執行
                 updated_by: sessionStorage.getItem('currentUserId')
             };
 
@@ -965,8 +913,9 @@
                 csvContent += "姓名,身分角色(醫師/護理人員/顧問),職務型態(全職/兼職),電話,Email,入職日期(YYYY-MM-DD)\n";
                 csvContent += "李小美,護理人員,全職,0987654321,nurse@test.com,2024-05-20";
             } else if (type === 'record') {
-                csvContent += "公司名稱,顧問姓名,執行事項\n";
-                csvContent += "範例公司,王顧問,噪音檢測";
+                // 簡化：只需公司與顧問
+                csvContent += "公司名稱,顧問姓名\n";
+                csvContent += "範例公司,王顧問";
             }
             const encodedUri = encodeURI(csvContent);
             const link = document.createElement("a");
@@ -1041,7 +990,8 @@
                     });
 
                 } else if (type === 'record') {
-                    html += '<th>公司名稱</th><th>顧問姓名</th><th>執行事項</th><th>對應狀態</th></tr></thead><tbody>';
+                    // 簡化：僅檢查前兩欄
+                    html += '<th>公司名稱</th><th>顧問姓名</th><th>對應狀態</th></tr></thead><tbody>';
                     
                     previewArea.innerHTML = '<div class="text-center p-3"><span class="spinner-border text-primary"></span> 正在核對公司與顧問資料庫...</div>';
                     
@@ -1067,8 +1017,7 @@
                         if(!row[0]) return; 
                         const cName = String(row[0]).trim(); 
                         const sName = String(row[1]).trim(); 
-                        const items = row[2]; 
-
+                        
                         const wpId = compMap[cName];
                         const stId = staffMap[sName];
                         
@@ -1083,13 +1032,12 @@
                                 consultant_id: stId, 
                                 visit_date: date,
                                 service_year: year, 
-                                execution_items: items,
+                                execution_items: null, // 匯入不填
                                 created_by: sessionStorage.getItem('currentUserId')
                             });
                             html += `<tr class="table-success">
                                 <td>${cName}</td>
                                 <td>${sName}</td>
-                                <td>${items || '-'}</td>
                                 <td><span class="badge bg-success">可匯入</span></td>
                             </tr>`;
                         } else {
@@ -1100,7 +1048,6 @@
                             html += `<tr class="table-danger">
                                 <td>${cName}</td>
                                 <td>${sName}</td>
-                                <td>${items || '-'}</td>
                                 <td><span class="badge bg-danger">${errorMsg.join(', ')}</span></td>
                             </tr>`;
                         }
