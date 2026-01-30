@@ -121,19 +121,35 @@
 
                     <div class="alert alert-light border-start border-4 border-primary mb-4 bg-light">
                         <div class="row align-items-center gy-2">
-                            <div class="col-lg-5">
+                            <div class="col-lg-4">
                                 <i class="fas fa-info-circle text-primary me-2 fa-lg"></i>
                                 <strong>當前案件：</strong> <span id="current-company-name" class="fw-bold text-dark me-2"></span>
                                 <span class="badge bg-secondary" id="current-year-badge"></span>
                             </div>
-                            <div class="col-lg-7">
+                            
+                            <div class="col-lg-4">
+                                <div class="input-group input-group-sm">
+                                    <span class="input-group-text bg-white text-primary border-primary fw-bold"><i class="fas fa-list-ul me-2"></i>事項</span>
+                                    <select class="form-select border-primary" id="service-type-select" onchange="toggleServiceTypeOther()">
+                                        <option value="" disabled selected>請選擇執行事項...</option>
+                                        <option value="勞工身心健康管理">勞工身心健康管理</option>
+                                        <option value="職業病預防">職業病預防</option>
+                                        <option value="臨場健康服務">臨場健康服務</option>
+                                        <option value="健康促進規劃">健康促進規劃</option>
+                                        <option value="other">其他 (可填寫)</option>
+                                    </select>
+                                </div>
+                                <input type="text" class="form-control form-control-sm mt-1 border-primary" id="service-type-other" style="display:none;" placeholder="請輸入其他事項">
+                            </div>
+
+                            <div class="col-lg-4">
                                 <div class="d-flex gap-2 flex-wrap justify-content-lg-end">
-                                    <div class="input-group input-group-sm" style="max-width: 200px;">
-                                        <span class="input-group-text bg-primary text-white border-primary"><i class="far fa-calendar-check me-2"></i>日期</span>
+                                    <div class="input-group input-group-sm" style="max-width: 160px;">
+                                        <span class="input-group-text bg-primary text-white border-primary"><i class="far fa-calendar-check"></i></span>
                                         <input type="date" class="form-control border-primary" id="execution-date">
                                     </div>
-                                    <div class="input-group input-group-sm" style="max-width: 320px;">
-                                        <span class="input-group-text bg-primary text-white border-primary"><i class="far fa-clock me-2"></i>時間</span>
+                                    <div class="input-group input-group-sm" style="max-width: 200px;">
+                                        <span class="input-group-text bg-primary text-white border-primary"><i class="far fa-clock"></i></span>
                                         <input type="time" class="form-control border-primary" id="start-time">
                                         <span class="input-group-text border-primary">~</span>
                                         <input type="time" class="form-control border-primary" id="end-time">
@@ -227,6 +243,19 @@
             else actionDiv.classList.remove('visible');
         }
         function triggerItemUpload(itemId) { document.getElementById(`file-input-${itemId}`).click(); }
+
+        // 切換顯示「其他」輸入框
+        function toggleServiceTypeOther() {
+            const select = document.getElementById('service-type-select');
+            const otherInput = document.getElementById('service-type-other');
+            if(select.value === 'other') {
+                otherInput.style.display = 'block';
+                otherInput.focus();
+            } else {
+                otherInput.style.display = 'none';
+                otherInput.value = '';
+            }
+        }
 
         // ==========================================
         // ★ 核心修正區：強制重命名 Logic (A-Q + Timestamp)
@@ -341,7 +370,6 @@
                 if (error) throw error;
                 if (!data || data.length === 0) { container.innerHTML = '<div class="text-center text-muted py-5"><i class="fas fa-folder-open fa-3x mb-3"></i><p>查無符合條件的案件。</p></div>'; return; }
                 container.innerHTML = data.map(record => {
-                    // 母案列表狀態顯示：如果 execution_items 有值，代表曾經有填寫過(可能是舊系統或直接編輯)，但這裡我們主要顯示母案
                     return `<div class="col-12"><div class="record-card p-3 rounded d-flex justify-content-between align-items-center" onclick="selectRecord('${record.id}')"><div><div class="fw-bold text-dark fs-5 mb-1">${record.workplaces.companies.name} <span class="badge bg-light text-muted fw-normal border ms-2">${record.workplaces.companies.tax_id}</span></div><div class="text-muted small"><i class="far fa-calendar-alt me-1"></i> ${record.visit_date || '預定日期未定'}</div></div><div class="text-end"><div class="small text-primary mt-1">選取此案 <i class="fas fa-chevron-right"></i></div></div></div></div>`;
                 }).join('');
             } catch (err) { container.innerHTML = `<div class="alert alert-danger">錯誤: ${err.message}</div>`; }
@@ -349,27 +377,28 @@
 
         async function selectRecord(id) {
             currentRecordId = id;
+            
+            // 重置表單狀態
             document.querySelectorAll('input[type="checkbox"]').forEach(cb => cb.checked = false);
             document.querySelectorAll('.item-actions').forEach(el => el.classList.remove('visible'));
             checklistItems.forEach(item => updateItemUI(item.id, item.code, null, null, false));
             
+            // 重置執行事項選單
+            document.getElementById('service-type-select').value = "";
+            toggleServiceTypeOther();
+
             // 讀取母案資料
             const { data } = await supabaseClient.from('service_records').select(`*, workplaces(companies(name))`).eq('id', id).single();
             
             document.getElementById('current-company-name').innerText = data.workplaces.companies.name;
             document.getElementById('current-year-badge').innerText = (data.service_year || '') + ' 年度 (母案)';
             
-            // 預帶母案的日期/時間，但允許顧問修改 (這會存到 Staging，不改母案)
+            // 預帶母案的日期/時間
             document.getElementById('execution-date').value = data.visit_date || ''; 
             document.getElementById('start-time').value = data.start_time || '';
             document.getElementById('end-time').value = data.end_time || '';
             
-            // 這裡不再從 service_records.execution_items 回填勾選狀態，
-            // 因為我們要產生的是「新的執行紀錄」。每次進來都是乾淨的表單。
-            // (除非您希望有草稿功能，那需要改讀取 staging 表，目前先保持每次新填)
-            
-            // 檢查 Storage 是否有殘留檔案 (可能上次上傳未送出)
-            // 這裡直接顯示該資料夾下的檔案
+            // 檢查 Storage 是否有殘留檔案
             const { data: files } = await supabaseClient.storage.from(BUCKET_NAME).list(`${id}`);
             if (files && files.length > 0) {
                 files.forEach(file => {
@@ -424,7 +453,17 @@
                 const startTime = document.getElementById('start-time').value;
                 const endTime = document.getElementById('end-time').value;
                 
-                if (selectedItems.length === 0) throw new Error("請至少勾選一項執行紀錄項目。");
+                // 執行事項判斷
+                const serviceTypeSelect = document.getElementById('service-type-select');
+                let serviceType = serviceTypeSelect.value;
+                if (!serviceType) throw new Error("請選擇【執行事項】。");
+                if (serviceType === 'other') {
+                    const otherVal = document.getElementById('service-type-other').value.trim();
+                    if (!otherVal) throw new Error("選擇「其他」時，請輸入具體事項內容。");
+                    serviceType = otherVal;
+                }
+
+                if (selectedItems.length === 0) throw new Error("請至少勾選一項執行紀錄項目 (A~Q)。");
                 if (!visitDate) throw new Error("請填寫實際執行日期。");
 
                 // 2. 從 Storage 取得檔案清單
@@ -442,7 +481,7 @@
                 const { data: profile } = await supabaseClient.auth.getUser();
                 const userId = profile.user.id;
                 
-                // 3. 讀取母案基本資料 (僅供參考或複製 ID)
+                // 3. 讀取母案基本資料
                 const { data: recordData } = await supabaseClient.from('service_records').select('workplace_id, consultant_id, service_year').eq('id', currentRecordId).single();
 
                 // 4. 構建 Payload
@@ -454,11 +493,11 @@
                     service_year: recordData.service_year,
                     
                     service_date: visitDate, // 申請日期
-                    visit_date: visitDate,   // 實際執行日期 (可與母案不同)
+                    visit_date: visitDate,   // 實際執行日期
                     start_time: startTime,
                     end_time: endTime,
                     
-                    service_type: '定期臨場服務',
+                    service_type: serviceType, // 使用選單值
                     service_desc: JSON.stringify({
                         items: selectedItems,
                         note: '由顧問端上傳之執行紀錄'
