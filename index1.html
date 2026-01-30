@@ -13,8 +13,8 @@
        ========================================= */
     :root { 
         --primary-bg: #f4f6f9; 
-        --theme-color: #0d6efd; /* [修正] 改為 Plan 藍色 (#0d6efd) */
-        --theme-light: #e7f1ff; /* [修正] 淺藍色背景 */
+        --theme-color: #0d6efd; /* Plan 藍色 (#0d6efd) */
+        --theme-light: #e7f1ff; /* 淺藍色背景 */
     }
 
     body {
@@ -23,24 +23,24 @@
         display: none; /* Auth Guard */
     }
 
-    /* [修正] 強制全寬設定：讓內容展開到最寬 */
+    /* 強制全寬設定 */
     .container, .container-fluid {
         max-width: 100% !important;
         padding-left: 1.5rem !important;
         padding-right: 1.5rem !important;
     }
 
-    /* [修正] 消除 wrapper 的內距，確保 Step 1 與 PDCA 貼齊邊緣 */
+    /* 消除 wrapper 內距 */
     .card-body {
         padding: 0 !important;
     }
 
-    /* [修正] 標題區域：移除下方空隙，緊貼 PDCA 字卡 */
+    /* 標題區域緊貼 */
     .d-flex.justify-content-between.align-items-center.mb-4 {
-        margin-bottom: 0.5rem !important; /* 將原本的 mb-4 (1.5rem) 縮小 */
+        margin-bottom: 0.5rem !important;
     }
 
-    /* 標題飾條 - 同步藍色 */
+    /* 標題飾條 */
     .section-title { 
         border-left: 5px solid var(--theme-color); 
         padding-left: 15px; 
@@ -63,7 +63,7 @@
     }
 
     /* =========================================
-       2. Index1 專用：拖曳上傳區 (藍色系)
+       2. Index1 專用：拖曳上傳區
        ========================================= */
     .upload-drop-zone {
         border: 2px dashed #cbd5e1;
@@ -84,7 +84,7 @@
         border-color: var(--theme-color);
         background-color: var(--theme-light);
         transform: translateY(-2px);
-        box-shadow: 0 4px 12px rgba(13, 110, 253, 0.15); /* Blue Shadow */
+        box-shadow: 0 4px 12px rgba(13, 110, 253, 0.15);
     }
     .upload-icon {
         font-size: 3rem;
@@ -93,48 +93,10 @@
     }
 
     /* =========================================
-       3. 功能元件 (配色同步)
+       3. 功能元件
        ========================================= */
     
-    /* 操作模式卡片 */
-    .mode-card {
-        border: 2px solid #e9ecef; 
-        border-radius: 12px; 
-        padding: 20px; 
-        text-align: center; 
-        cursor: pointer; 
-        transition: all 0.2s;
-        height: 100%;
-        background: white;
-    }
-    .mode-card:hover { 
-        border-color: var(--theme-color); 
-        background-color: #f8f9fa; 
-        transform: translateY(-3px); 
-    }
-    .mode-card.active { 
-        border-color: var(--theme-color); 
-        background-color: var(--theme-light); 
-    }
-    .mode-icon { 
-        font-size: 2.5rem; 
-        margin-bottom: 10px; 
-        color: #6c757d; 
-    }
-    .mode-card.active .mode-icon { 
-        color: var(--theme-color); 
-    }
-
-    /* 步驟標題 */
-    .step-title { 
-        border-left: 4px solid var(--theme-color); 
-        padding-left: 10px; 
-        font-weight: bold; 
-        color: var(--theme-color); 
-        margin-bottom: 1rem; 
-    }
-
-    /* 步驟指示器 (配合新版面微調) */
+    /* 步驟指示器 */
     .step-indicator { display: flex; justify-content: space-between; margin-bottom: 30px; position: relative; max-width: 600px; margin-left: auto; margin-right: auto;}
     .step-indicator::before { content: ''; position: absolute; top: 15px; left: 0; right: 0; height: 2px; background: #e0e0e0; z-index: 0; }
     .step-item { position: relative; z-index: 1; background: var(--primary-bg); padding: 0 10px; text-align: center; color: #999; font-weight: 600; }
@@ -151,7 +113,7 @@
     .check-list-group .list-group-item:hover { background-color: #f8f9fa; }
     .form-check-input:checked + .form-check-label { color: var(--theme-color); font-weight: bold; }
 
-    /* 隱藏式上傳按鈕 (Checklist Upload - 保留CSS類別以備未來擴充) */
+    /* 隱藏式上傳按鈕 */
     .btn-upload-action {
         display: none;
         cursor: pointer;
@@ -167,11 +129,11 @@
     .btn-upload-action.visible { display: inline-block; }
     .btn-upload-action.has-file {
         color: #fff;
-        background-color: #198754; /* 上傳成功維持綠色 */
+        background-color: #198754;
         border-color: #198754;
     }
 
-    /* --- PDCA 說明區塊 (藍色風格) --- */
+    /* --- PDCA 說明區塊 --- */
     .instruction-box {
         background-color: #fff;
         border-left: 5px solid var(--theme-color);
@@ -180,11 +142,10 @@
         margin-bottom: 30px;
         text-align: left;
         box-shadow: 0 2px 5px rgba(0,0,0,0.05);
-        /* [修正] 確保 PDCA 字卡也撐開 */
         width: 100%;
     }
     .instruction-title {
-        color: #0a58ca; /* 深藍色 (配合 Plan Blue 主題) */
+        color: #0a58ca;
         font-weight: 700;
         margin-bottom: 10px;
     }
@@ -433,7 +394,7 @@
         }
 
         // =======================
-        // Step 1: 搜尋邏輯
+        // Step 1: 搜尋邏輯 (修正版)
         // =======================
         async function searchRecords() {
             const year = document.getElementById('search-year').value.trim();
@@ -442,60 +403,92 @@
             
             container.innerHTML = '<div class="text-center py-5"><div class="spinner-border text-primary"></div><p class="mt-2">查詢中...</p></div>';
 
-            let query = supabaseClient
-                .from('service_records')
-                .select(`
-                    id, visit_date, service_year, execution_items, status,
-                    workplaces!inner (
-                        id,
-                        companies!inner ( name, tax_id )
-                    )
-                `)
-                .eq('consultant_id', currentUserId)
-                .order('visit_date', { ascending: false });
+            try {
+                // ★ 1. 取得使用者 Email (從 profiles)
+                const { data: profileData, error: profileError } = await supabaseClient
+                    .from('profiles')
+                    .select('email')
+                    .eq('id', currentUserId)
+                    .single();
 
-            if (year) {
-                query = query.eq('service_year', year);
-            }
-            if (taxId) {
-                query = query.eq('workplaces.companies.tax_id', taxId);
-            }
+                if (profileError || !profileData) {
+                    throw new Error('無法識別您的使用者身分 (Profile lookup failed)');
+                }
 
-            const { data, error } = await query;
+                // ★ 2. 透過 Email 取得 對應的 Consultant ID (從 medical_staff)
+                // 這是解決「撈不到資料」的關鍵：將登入身分轉換為顧問名單身分
+                const { data: staffData, error: staffError } = await supabaseClient
+                    .from('medical_staff')
+                    .select('id')
+                    .eq('email', profileData.email)
+                    .single();
 
-            if (error) {
-                container.innerHTML = `<div class="alert alert-danger">查詢失敗: ${error.message}</div>`;
-                return;
-            }
+                if (staffError || !staffData) {
+                    container.innerHTML = '<div class="text-center text-muted py-5"><i class="fas fa-user-slash fa-3x mb-3"></i><p>您的帳號尚未連結至顧問名單(Medical Staff)，無法查詢案件。</p></div>';
+                    return;
+                }
 
-            if (!data || data.length === 0) {
-                container.innerHTML = '<div class="text-center text-muted py-5"><i class="fas fa-folder-open fa-3x mb-3"></i><p>查無符合條件的案件。</p></div>';
-                return;
-            }
+                const consultantId = staffData.id;
 
-            container.innerHTML = data.map(record => {
-                let statusBadge = '<span class="badge bg-secondary">未填寫</span>';
-                if (record.execution_items) statusBadge = '<span class="badge bg-warning text-dark">草稿/已上傳</span>'; 
-                
-                return `
-                <div class="col-12">
-                    <div class="record-card p-3 rounded d-flex justify-content-between align-items-center" onclick="selectRecord('${record.id}')">
-                        <div>
-                            <div class="fw-bold text-dark fs-5 mb-1">
-                                ${record.workplaces.companies.name} 
-                                <span class="badge bg-light text-muted fw-normal border ms-2">${record.workplaces.companies.tax_id}</span>
+                // ★ 3. 使用 consultantId 查詢 Service Records
+                let query = supabaseClient
+                    .from('service_records')
+                    .select(`
+                        id, visit_date, service_year, execution_items, status,
+                        workplaces!inner (
+                            id,
+                            companies!inner ( name, tax_id )
+                        )
+                    `)
+                    .eq('consultant_id', consultantId) // 使用轉換後的 ID
+                    .order('visit_date', { ascending: false });
+
+                // 選填條件
+                if (year) {
+                    query = query.eq('service_year', year);
+                }
+                if (taxId) {
+                    query = query.eq('workplaces.companies.tax_id', taxId);
+                }
+
+                const { data, error } = await query;
+
+                if (error) throw error;
+
+                if (!data || data.length === 0) {
+                    container.innerHTML = '<div class="text-center text-muted py-5"><i class="fas fa-folder-open fa-3x mb-3"></i><p>查無符合條件的案件。</p></div>';
+                    return;
+                }
+
+                // 渲染列表
+                container.innerHTML = data.map(record => {
+                    let statusBadge = '<span class="badge bg-secondary">未填寫</span>';
+                    if (record.execution_items) statusBadge = '<span class="badge bg-warning text-dark">草稿/已上傳</span>'; 
+                    
+                    return `
+                    <div class="col-12">
+                        <div class="record-card p-3 rounded d-flex justify-content-between align-items-center" onclick="selectRecord('${record.id}')">
+                            <div>
+                                <div class="fw-bold text-dark fs-5 mb-1">
+                                    ${record.workplaces.companies.name} 
+                                    <span class="badge bg-light text-muted fw-normal border ms-2">${record.workplaces.companies.tax_id}</span>
+                                </div>
+                                <div class="text-muted small">
+                                    <i class="far fa-calendar-alt me-1"></i> ${record.visit_date || '日期未定'}
+                                </div>
                             </div>
-                            <div class="text-muted small">
-                                <i class="far fa-calendar-alt me-1"></i> ${record.visit_date || '日期未定'}
+                            <div class="text-end">
+                                ${statusBadge}
+                                <div class="small text-primary mt-1">點擊進入 <i class="fas fa-chevron-right"></i></div>
                             </div>
                         </div>
-                        <div class="text-end">
-                            ${statusBadge}
-                            <div class="small text-primary mt-1">點擊進入 <i class="fas fa-chevron-right"></i></div>
-                        </div>
-                    </div>
-                </div>`;
-            }).join('');
+                    </div>`;
+                }).join('');
+
+            } catch (err) {
+                 console.error(err);
+                 container.innerHTML = `<div class="alert alert-danger">查詢發生錯誤: ${err.message}</div>`;
+            }
         }
 
         // =======================
