@@ -271,6 +271,7 @@
                 type: 'doughnut',
                 data: {
                     labels: ['已核定', '待審核'],
+                    // 環形圖配色：綠色 (Check/Approved) vs 黃色 (Pending)
                     datasets: [{ data: [0, 0], backgroundColor: ['#198754', '#ffc107'], borderWidth: 0 }]
                 },
                 options: { cutout: '75%', plugins: { legend: { display: false } }, maintainAspectRatio: false }
@@ -288,7 +289,7 @@
                     .select('*', { count: 'exact', head: true })
                     .eq('service_year', year);
 
-                // 2. 讀取 Pending 資料
+                // 2. 讀取 Pending 資料，加入公司名稱關聯
                 const { data: stagingData, error: err2 } = await supabaseClient
                     .from('service_record_staging')
                     .select(`
@@ -367,18 +368,18 @@
             }
         }
 
-        // --- ★ 雙重保險修正版：同時抓取 Storage 列表 與 JSON 紀錄，確保不漏檔 ---
+        // --- 修正版：開新分頁合併 PDF 預覽 (包含補漏機制) ---
         async function openStagingPreview(id, btn) {
             const record = currentStagingData.find(r => r.id === id);
             if (!record) return;
             currentReviewId = id;
 
             const originalText = btn.innerHTML;
-            btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> 掃描中...';
+            btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> 處理中...';
             btn.disabled = true;
 
             try {
-                // 基本資料準備
+                // 資料準備
                 const companyName = record.workplaces?.companies?.name || '未知公司';
                 const serviceItem = record.service_type || '未指定';
                 const visitDate = record.visit_date || record.service_date || '未設定';
@@ -395,52 +396,50 @@
                     }
                 } catch(e) {}
 
-                // ============================================
-                // 核心修正：雙重來源檔案清單 (Union Set)
-                // ============================================
-                const fileMap = new Map(); // 使用 Map 依據檔名去重
-
-                // 來源 1：資料庫紀錄 (JSON)
-                try {
-                    let jsonFiles = record.attachment_files;
-                    if (typeof jsonFiles === 'string') jsonFiles = JSON.parse(jsonFiles);
-                    if (Array.isArray(jsonFiles)) {
-                        jsonFiles.forEach(f => {
-                            if (f && f.name) fileMap.set(f.name, f.name); // 暫存檔名
-                        });
-                    }
-                } catch(e) { console.warn("JSON Parse Error", e); }
-
-                // 來源 2：Storage 實體掃描 (解決幽靈檔案問題)
-                const { data: storageFiles } = await supabaseClient.storage.from('staging').list(id);
+                // 1. 取得資料庫中的檔案列表
+                let files = record.attachment_files;
+                if (typeof files === 'string') { try { files = JSON.parse(files); } catch(e) { files = []; } }
+                if (!Array.isArray(files)) files = [];
+                
+                // --- ★ 關鍵修正：去 Storage 掃描有沒有漏掉的檔案 (如 A檔) 並補進去 ---
+                const { data: storageFiles } = await supabaseClient.storage.from('staging').list(record.id);
                 if (storageFiles && storageFiles.length > 0) {
-                    storageFiles.forEach(f => {
-                        if (f.name !== '.emptyFolderPlaceholder') {
-                            fileMap.set(f.name, f.name);
+                    storageFiles.forEach(sf => {
+                        if (sf.name === '.emptyFolderPlaceholder') return;
+                        // 檢查是否已存在於 JSON 列表
+                        const exists = files.some(jsonFile => jsonFile.name === sf.name);
+                        // 若 JSON 裡沒有，手動補上
+                        if (!exists) {
+                            files.push({
+                                name: sf.name,
+                                path: `${record.id}/${sf.name}`, // 建構路徑
+                                type: sf.metadata?.mimetype || 'application/pdf' // 預設型態
+                            });
                         }
                     });
                 }
+                // -----------------------------------------------------------------
 
-                // 將 Map 轉為處理列表
-                const allFiles = Array.from(fileMap.values());
-                allFiles.sort(); // 確保 A, B, C 順序
-
-                console.log("最終合併檔案列表:", allFiles); // 除錯用
+                // 排序 (確保 A, B, C 順序)
+                files.sort((a, b) => (a.name || '').localeCompare(b.name || ''));
 
                 const pdfUrls = [];
                 const otherLinks = [];
 
-                // 統一取得 Public URL (比 Signed URL 更穩定且無過期問題)
-                for (const fileName of allFiles) {
-                    const filePath = `${id}/${fileName}`;
-                    const { data } = supabaseClient.storage.from('staging').getPublicUrl(filePath);
+                // 取得 Signed URL 並分類
+                for (const f of files) {
+                    // 如果是補上來的檔案，f.path 已經在上面建構好了
+                    if (!f.path) continue;
                     
-                    if (data?.publicUrl) {
-                        const url = data.publicUrl;
-                        if (fileName.toLowerCase().endsWith('.pdf')) {
-                            pdfUrls.push(url);
+                    const { data } = await supabaseClient.storage.from('staging').createSignedUrl(f.path, 3600); // 1小時有效
+                    
+                    if (data?.signedUrl) {
+                        const isPdf = f.name.toLowerCase().endsWith('.pdf');
+                        if (isPdf) {
+                            pdfUrls.push(data.signedUrl);
                         } else {
-                            otherLinks.push({ name: fileName, url: url });
+                            // 非 PDF (如 JPG, PNG) 放入 otherLinks
+                            otherLinks.push({ name: f.name, url: data.signedUrl });
                         }
                     }
                 }
@@ -451,44 +450,31 @@
                     const mergedPdf = await PDFDocument.create();
                     for (const url of pdfUrls) {
                         try {
-                            const res = await fetch(url);
-                            if (!res.ok) throw new Error(`Fetch failed: ${res.status}`);
-                            const existingPdfBytes = await res.arrayBuffer();
+                            const existingPdfBytes = await fetch(url).then(res => res.arrayBuffer());
                             const pdf = await PDFDocument.load(existingPdfBytes);
                             const copiedPages = await mergedPdf.copyPages(pdf, pdf.getPageIndices());
                             copiedPages.forEach((page) => mergedPdf.addPage(page));
                         } catch (err) {
-                            console.error(`PDF Merge Error (${url}):`, err);
+                            console.error("PDF Merge Error", err);
                         }
                     }
-                    // 只要有成功合併頁面就顯示
-                    if (mergedPdf.getPageCount() > 0) {
-                        const pdfBytes = await mergedPdf.save();
-                        const blob = new Blob([pdfBytes], { type: 'application/pdf' });
-                        finalPdfUrl = URL.createObjectURL(blob);
-                    }
+                    const pdfBytes = await mergedPdf.save();
+                    const blob = new Blob([pdfBytes], { type: 'application/pdf' });
+                    finalPdfUrl = URL.createObjectURL(blob);
                 }
 
                 // 構建新視窗 HTML
                 const newWin = window.open('', '_blank');
-                if (!newWin) return alert('請允許開啟彈跳視窗以進行預覽');
+                if (!newWin) return alert('請允許開啟彈跳視窗');
 
-                // 生成附件連結區塊 (針對非 PDF)
-                const otherLinksHtml = otherLinks.length > 0 
-                    ? otherLinks.map(l => 
-                        `<a href="${l.url}" target="_blank" class="btn btn-sm btn-outline-secondary me-2 mb-2">
-                            <i class="fas fa-paperclip me-1"></i> ${l.name}
-                        </a>`
-                    ).join('') 
-                    : '<span class="text-muted small">無其他附件</span>';
+                // 產生其他附件超連結 (JPG/PNG...)
+                const otherLinksHtml = otherLinks.map(l => 
+                    `<a href="${l.url}" target="_blank" class="btn btn-sm btn-outline-secondary me-2 mb-2"><i class="fas fa-paperclip"></i> ${l.name}</a>`
+                ).join('');
 
                 const pdfViewerHtml = finalPdfUrl 
                     ? `<iframe src="${finalPdfUrl}#toolbar=0" class="pdf-viewer"></iframe>` 
-                    : `<div class="d-flex align-items-center justify-content-center h-100 flex-column text-muted">
-                         <i class="fas fa-file-pdf fa-3x mb-3"></i>
-                         <h5>此案件無 PDF 附件可預覽</h5>
-                         <p class="small">系統已掃描 Storage 與資料庫紀錄，未發現 .pdf 檔案。</p>
-                       </div>`;
+                    : `<div class="alert alert-warning text-center mt-5">此案件無 PDF 附件可預覽</div>`;
 
                 const htmlContent = `
                     <!DOCTYPE html>
@@ -506,7 +492,8 @@
                             .note-box { background: #fff3cd; color: #664d03; padding: 10px; border-radius: 4px; font-size: 0.9rem; margin-top: 10px; border: 1px solid #ffecb5; }
                             .pdf-container { flex-grow: 1; background: white; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); overflow: hidden; display: flex; flex-direction: column; }
                             .pdf-viewer { width: 100%; height: 100%; border: none; }
-                            .file-links-area { margin-top: 10px; padding-top: 10px; border-top: 1px dashed #dee2e6; }
+                            .action-bar { display: flex; justify-content: space-between; align-items: center; margin-top: 10px; border-top: 1px solid #eee; padding-top: 10px; }
+                            .file-links { margin-top: 10px; }
                         </style>
                     </head>
                     <body>
@@ -530,11 +517,7 @@
                                 <div class="meta-item"><label>執行期間</label><div>${timeRange}</div></div>
                             </div>
                             ${ specialNote !== '無' ? `<div class="note-box"><strong><i class="fas fa-sticky-note me-1"></i>特殊事項備註 / 結案理由：</strong> ${specialNote}</div>` : '' }
-                            
-                            <div class="file-links-area">
-                                <strong class="d-block mb-2 text-secondary" style="font-size:0.9rem;"><i class="fas fa-paperclip me-1"></i>其他附件 (圖片/影音)：</strong>
-                                ${otherLinksHtml}
-                            </div>
+                            ${ otherLinks.length > 0 ? `<div class="file-links"><strong><i class="fas fa-paperclip me-1"></i>其他附件：</strong> ${otherLinksHtml}</div>` : ''}
                         </div>
                         <div class="pdf-container">
                             ${pdfViewerHtml}
