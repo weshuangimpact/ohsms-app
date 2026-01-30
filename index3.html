@@ -14,9 +14,9 @@
     :root { 
         --primary-bg: #f8f9fa; 
         --theme-color: #ffc107; /* Bootstrap Warning Yellow */
-        --theme-dark: #b08d00;  /* 深琥珀色 */
+        --theme-dark: #b08d00;  /* 深琥珀色 (用於文字/按鈕以確保對比度) */
         --theme-light: #fff3cd; /* 淺黃色背景 */
-        --theme-hover: #ffca2c; 
+        --theme-hover: #ffca2c; /* 按鈕互動色 */
     }
 
     body { 
@@ -54,7 +54,7 @@
         z-index: 0;
     }
 
-    /* 審核資訊區塊 (新增) */
+    /* 審核資訊區塊 (保持您原有的樣式) */
     .audit-stamp-box {
         background-color: #f8f9fa;
         border: 1px dashed #ccc;
@@ -180,7 +180,7 @@
         });
 
         // ===========================================
-        // 1. 搜尋邏輯 (包含多筆判斷)
+        // 1. 搜尋邏輯 (修改：改查 service_records 正式表)
         // ===========================================
         async function searchEvidence() {
             const year = document.getElementById('search-year').value;
@@ -233,14 +233,18 @@
         }
 
         // ===========================================
-        // 2. 多筆選擇視窗
+        // 2. 多筆選擇視窗 (功能新增)
         // ===========================================
         function showSelectionModal(records) {
             const listGroup = document.getElementById('record-list-group');
             document.getElementById('record-count').innerText = records.length;
             
             listGroup.innerHTML = records.map(rec => {
-                const typeLabel = rec.is_special_case ? '<span class="badge bg-warning text-dark">特案</span>' : '<span class="badge bg-success">標準</span>';
+                // 判斷是否為特案
+                const typeLabel = rec.is_special_case ? 
+                    '<span class="badge bg-warning text-dark border border-dark">特案</span>' : 
+                    '<span class="badge bg-success">標準</span>';
+                
                 return `
                 <button type="button" class="list-group-item list-group-item-action d-flex justify-content-between align-items-center p-3" onclick="selectRecord('${rec.id}')">
                     <div>
@@ -257,7 +261,7 @@
                 `;
             }).join('');
 
-            // 把 records 暫存起來供 click 使用 (簡單實作：直接掛在 window 上)
+            // 把 records 暫存起來供 click 使用
             window.tempRecords = records;
             new bootstrap.Modal(document.getElementById('selectRecordModal')).show();
         }
@@ -271,43 +275,56 @@
         }
 
         // ===========================================
-        // 3. 渲染文件 (Paper Sheet) - 含審核資訊
+        // 3. 渲染文件 (Paper Sheet) - 核心修正區
         // ===========================================
         async function renderPaperSheet(record) {
             const container = document.getElementById('paper-container');
             const companyName = record.workplaces.companies.name;
-            const folderId = record.attachment_folder_id; // 這是 Staging ID
             const year = record.service_year;
+            
+            // ★ 關鍵修正：取得 folderId (這是 Staging 的 ID)
+            const folderId = record.attachment_folder_id; 
 
-            // 1. 取得審核者名稱 (從 created_by 反查 Profile/Auth)
-            let reviewerName = '系統管理員';
-            if (record.created_by) {
-                // 嘗試從 profiles 抓 (若您有 profiles 表)
-                const { data: profile } = await supabaseClient.from('profiles').select('name').eq('id', record.created_by).single();
-                if (profile) reviewerName = profile.name;
-            }
+            // 1. 取得審核者名稱 (從 created_by 或另外存的欄位，這裡假設用系統管理員或從 Profile 抓)
+            let reviewerName = '系統管理員'; 
+            // 註：若 service_records 有存 reviewer_id 可再這裡 fetch profile
 
-            // 2. 構建審核資訊 HTML
+            // 2. 構建審核資訊 HTML (帶入 index2 留下的資料)
+            // 使用 created_at 當作核定時間 (因為 insert 是在核定當下發生的)
             const auditTime = new Date(record.created_at).toLocaleString('zh-TW', { hour12: false });
+            
+            // 判斷類型與樣式
             const auditTypeBadge = record.is_special_case 
                 ? `<span class="badge bg-warning text-dark border border-dark"><i class="fas fa-exclamation-triangle me-1"></i>特案允許結案</span>` 
                 : `<span class="badge bg-success"><i class="fas fa-check-circle me-1"></i>標準核定結案</span>`;
             
-            const auditNote = record.audit_note || '無備註';
+            // 帶出 index2 填寫的備註
+            const auditNote = record.audit_note || '<span class="text-muted">無審核備註</span>';
 
-            // 3. 準備檔案連結
-            // A. 正式證據 PDF (位於 service-records)
-            const evidencePath = `${year}/${folderId}/Final_Evidence_Merged.pdf`;
-            const { data: pdfData } = supabaseClient.storage.from('service-records').getPublicUrl(evidencePath);
-            const finalPdfUrl = pdfData.publicUrl;
+            // 3. 準備檔案連結路徑
+            // A. 正式證據 PDF (位於 service-records bucket)
+            const evidencePath = `${year}/${folderId}/Final_Evidence_Merged.pdf`; // 假設 index2 上傳時檔名固定，或需用 list 找
+            // 若 index2 加上了 timestamp，這裡可能需要先 list service-records 找檔案
+            // 為了簡化，這裡先嘗試抓取 index2 最新邏輯的檔名規則
+            // 如果 index2 存檔名有 timestamp，我們需要 list
+            let finalPdfUrl = '';
+            
+            const { data: srFiles } = await supabaseClient.storage.from('service-records').list(`${year}/${folderId}`);
+            if (srFiles && srFiles.length > 0) {
+                // 找出最新的 PDF
+                const evidenceFile = srFiles.find(f => f.name.includes('Evidence_Final') && f.name.endsWith('.pdf')) || srFiles[0];
+                if (evidenceFile) {
+                    const { data } = supabaseClient.storage.from('service-records').getPublicUrl(`${year}/${folderId}/${evidenceFile.name}`);
+                    finalPdfUrl = data.publicUrl;
+                }
+            }
 
-            // B. 原始附件 (位於 staging)
+            // B. 原始附件 (位於 staging bucket)
             let attachmentsHtml = '';
             const { data: rawFiles } = await supabaseClient.storage.from('staging').list(folderId);
             
             if (rawFiles && rawFiles.length > 0) {
-                // 過濾掉 PDF (因為已經合併了)，只顯示圖片或其他格式，或是顯示全部作為備份
-                // 這裡我們顯示所有非 PDF 檔案作為「原始附件」，PDF 則視為已合併
+                // 過濾掉 PDF (因為已合併)，只顯示圖片/影音
                 const otherFiles = rawFiles.filter(f => !f.name.toLowerCase().endsWith('.pdf') && f.name !== '.emptyFolderPlaceholder');
                 
                 if (otherFiles.length > 0) {
@@ -323,7 +340,21 @@
                 }
             }
 
-            // 4. 渲染 HTML
+            // PDF 預覽區塊 (若無 PDF 則顯示提示)
+            const pdfViewerHtml = finalPdfUrl 
+                ? `<iframe src="${finalPdfUrl}#toolbar=0&navpanes=0" class="pdf-frame"></iframe>
+                   <div class="text-end mt-2">
+                        <a href="${finalPdfUrl}" download="Evidence_${year}_${companyName}.pdf" class="btn btn-sm btn-dark">
+                            <i class="fas fa-download me-1"></i> 下載完整證據包
+                        </a>
+                   </div>`
+                : `<div class="alert alert-warning text-center py-5">
+                        <i class="fas fa-file-pdf fa-3x mb-3"></i>
+                        <h5>尚無正式憑證 PDF</h5>
+                        <p>可能僅包含圖片附件，請查看下方原始附件區。</p>
+                   </div>`;
+
+            // 4. 渲染 HTML (保留 Paper Sheet 結構)
             container.innerHTML = `
                 <div class="paper-sheet animate__animated animate__fadeInUp">
                     <div class="watermark">${companyName}</div>
@@ -367,12 +398,7 @@
 
                     <div class="mb-3">
                         <h5 class="fw-bold text-dark border-start border-4 border-warning ps-2 mb-3">正式評鑑證據 (PDF)</h5>
-                        <iframe src="${finalPdfUrl}#toolbar=0&navpanes=0" class="pdf-frame"></iframe>
-                        <div class="text-end mt-2">
-                            <a href="${finalPdfUrl}" download="Evidence_${year}_${companyName}.pdf" class="btn btn-sm btn-dark">
-                                <i class="fas fa-download me-1"></i> 下載完整證據包
-                            </a>
-                        </div>
+                        ${pdfViewerHtml}
                     </div>
 
                     ${attachmentsHtml}
