@@ -6,6 +6,7 @@
     <title>評鑑支援 AI 智慧助理 | OHSMS</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css"/>
     
 <style>
     /* =========================================
@@ -25,11 +26,71 @@
         color: #333; 
     }
     
-    /* 標題飾條 */
-    .section-title { border-left: 5px solid var(--theme-color); padding-left: 15px; margin-bottom: 20px; }
+    /* =========================================
+       2. 全頁寬版設定 (Full Width)
+       ========================================= */
+    .container, .container-fluid {
+        max-width: 100% !important;
+        padding-left: 2rem;
+        padding-right: 2rem;
+    }
+
+    /* 覆寫原本 index3 的限制，讓內容區塊也全寬 */
+    .main-content { 
+        max-width: 100% !important; 
+        margin: 2rem auto; 
+    }
 
     /* =========================================
-       2. 擬真文件 (Paper Sheet) 風格
+       3. 元件樣式 (黃色系)
+       ========================================= */
+
+    /* PDCA 說明區塊 (黃色風格) */
+    .instruction-box {
+        background-color: #fff; 
+        border-left: 5px solid var(--theme-color);
+        padding: 20px 25px;
+        border-radius: 4px;
+        margin-bottom: 30px;
+        text-align: left;
+        box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+    }
+    .instruction-title { 
+        color: var(--theme-dark); /* 深琥珀色 */
+        font-weight: 700; 
+        margin-bottom: 10px; 
+    }
+
+    /* 搜尋區 */
+    .search-box-wrapper {
+        background: #fff; 
+        border: 1px solid #dfe1e5; 
+        border-radius: 50px;
+        padding: 15px 30px; 
+        box-shadow: 0 4px 12px rgba(32,33,36,.15);
+        display: flex; align-items: center;
+        transition: box-shadow 0.3s;
+        max-width: 800px; /* 搜尋框維持適當寬度 */
+        margin: 0 auto;
+    }
+    .search-box-wrapper:hover, .search-box-wrapper:focus-within {
+        box-shadow: 0 6px 16px rgba(255, 193, 7, 0.25); /* 黃色光暈 */
+        border-color: var(--theme-color);
+    }
+    .search-input { border: none; outline: none; width: 100%; font-size: 1.2rem; margin-left: 15px; color: #555; }
+    
+    .btn-search { 
+        background: none; 
+        border: none; 
+        color: var(--theme-dark); /* 深黃色按鈕 */
+        font-weight: bold; 
+        font-size: 1.1rem; 
+        transition: color 0.2s;
+    }
+    .btn-search:hover { color: #d35400; }
+
+    /* =========================================
+       4. 擬真文件 (Paper Sheet) 風格
        ========================================= */
     .paper-sheet {
         background: white;
@@ -39,6 +100,7 @@
         position: relative;
         overflow: hidden; /* 確保浮水印不溢出 */
         border-radius: 4px;
+        margin-top: 30px;
     }
 
     /* 浮水印 (Watermark) */
@@ -54,7 +116,7 @@
         z-index: 0;
     }
 
-    /* 審核資訊區塊 (保持您原有的樣式) */
+    /* 審核資訊區塊 */
     .audit-stamp-box {
         background-color: #f8f9fa;
         border: 1px dashed #ccc;
@@ -76,24 +138,13 @@
         font-size: 0.85rem;
     }
 
-    /* 附件列表樣式 */
-    .attachment-item {
-        display: flex;
-        align-items: center;
-        padding: 10px;
-        border-bottom: 1px solid #eee;
-        transition: background 0.2s;
-    }
-    .attachment-item:hover { background-color: #fafafa; }
-    .attachment-icon { width: 40px; text-align: center; color: #6c757d; font-size: 1.2rem; }
-    
     /* PDF 預覽框 */
     .pdf-frame {
         width: 100%;
         height: 800px;
         border: 1px solid #dee2e6;
         border-radius: 4px;
-        background-color: #525659; /* PDF Viewer Background */
+        background-color: #525659;
     }
 </style>
 </head>
@@ -110,39 +161,31 @@
     </nav>
 
     <div class="container pb-5">
-        <div class="section-title">
-            <h4 class="fw-bold text-dark mb-0">歷史紀錄調閱 (Evaluation)</h4>
-            <small class="text-muted">調閱已核定之正式服務紀錄與佐證資料</small>
+        
+        <div class="instruction-box">
+            <div class="instruction-title"><i class="fas fa-search me-2"></i>Evaluation (評鑑) —— 歷史調閱與證據呈現</div>
+            <p class="mb-0 text-dark" style="line-height: 1.6;">
+                本模組專為評鑑需求設計，提供直觀的「數位證據調閱」功能。
+                透過區塊鏈式不可竄改的技術架構，所有經由 Plan (顧問上傳) 與 Check (管理員核定) 之資料，皆會被封存於此，並產生具備浮水印的正式憑證。
+            </p>
         </div>
 
-        <div class="card border-0 shadow-sm mb-4">
-            <div class="card-body p-4">
-                <div class="row g-3 align-items-end">
-                    <div class="col-md-3">
-                        <label class="form-label fw-bold">年度</label>
-                        <select class="form-select" id="search-year">
-                            <option value="2026">2026</option>
-                            <option value="2025" selected>2025</option>
-                            <option value="2024">2024</option>
-                        </select>
-                    </div>
-                    <div class="col-md-4">
-                        <label class="form-label fw-bold">公司名稱或統編</label>
-                        <input type="text" class="form-control" id="search-keyword" placeholder="輸入關鍵字...">
-                    </div>
-                    <div class="col-md-3">
-                        <button class="btn btn-warning text-dark fw-bold w-100" onclick="searchEvidence()">
-                            <i class="fas fa-search me-2"></i> 調閱紀錄
-                        </button>
-                    </div>
-                </div>
-            </div>
+        <div class="search-box-wrapper mb-5">
+            <select class="form-select border-0 bg-transparent w-auto fw-bold text-muted" id="search-year" style="cursor: pointer;">
+                <option value="2026">2026</option>
+                <option value="2025" selected>2025</option>
+                <option value="2024">2024</option>
+            </select>
+            <div style="width: 1px; height: 24px; background: #ddd; margin: 0 15px;"></div>
+            <i class="fas fa-search text-muted"></i>
+            <input type="text" class="search-input" id="search-keyword" placeholder="請輸入 公司名稱 或 統一編號...">
+            <button class="btn-search" onclick="searchEvidence()">Go</button>
         </div>
 
         <div id="paper-container">
             <div class="text-center text-muted py-5">
-                <i class="fas fa-archive fa-3x mb-3 text-secondary opacity-25"></i>
-                <p>請輸入條件進行調閱</p>
+                <i class="fas fa-robot fa-3x mb-3 text-secondary opacity-25"></i>
+                <p>我是您的 AI 評鑑助理，請輸入關鍵字開始調閱。</p>
             </div>
         </div>
     </div>
@@ -180,7 +223,7 @@
         });
 
         // ===========================================
-        // 1. 搜尋邏輯 (修改：改查 service_records 正式表)
+        // 1. 搜尋邏輯 (查詢 Service Records)
         // ===========================================
         async function searchEvidence() {
             const year = document.getElementById('search-year').value;
@@ -192,7 +235,7 @@
             container.innerHTML = '<div class="text-center py-5"><div class="spinner-border text-warning"></div><p class="mt-2 text-muted">正在自加密儲存庫調閱...</p></div>';
 
             try {
-                // 關聯查詢：Service Records -> Workplaces -> Companies
+                // 關聯查詢
                 let query = supabaseClient
                     .from('service_records')
                     .select(`
@@ -204,7 +247,6 @@
                     .eq('service_year', year)
                     .order('visit_date', { ascending: false });
 
-                // 判斷是統編還是名稱
                 if (/^\d{8}$/.test(keyword)) {
                     query = query.eq('workplaces.companies.tax_id', keyword);
                 } else {
@@ -219,7 +261,7 @@
                     return;
                 }
 
-                // ★ 分流：單筆直接顯示，多筆跳 Modal
+                // 分流：單筆 vs 多筆
                 if (data.length === 1) {
                     renderPaperSheet(data[0]);
                 } else {
@@ -233,14 +275,13 @@
         }
 
         // ===========================================
-        // 2. 多筆選擇視窗 (功能新增)
+        // 2. 多筆選擇視窗
         // ===========================================
         function showSelectionModal(records) {
             const listGroup = document.getElementById('record-list-group');
             document.getElementById('record-count').innerText = records.length;
             
             listGroup.innerHTML = records.map(rec => {
-                // 判斷是否為特案
                 const typeLabel = rec.is_special_case ? 
                     '<span class="badge bg-warning text-dark border border-dark">特案</span>' : 
                     '<span class="badge bg-success">標準</span>';
@@ -261,7 +302,6 @@
                 `;
             }).join('');
 
-            // 把 records 暫存起來供 click 使用
             window.tempRecords = records;
             new bootstrap.Modal(document.getElementById('selectRecordModal')).show();
         }
@@ -275,43 +315,30 @@
         }
 
         // ===========================================
-        // 3. 渲染文件 (Paper Sheet) - 核心修正區
+        // 3. 渲染 Paper Sheet (Paper UI + Data Binding)
         // ===========================================
         async function renderPaperSheet(record) {
             const container = document.getElementById('paper-container');
             const companyName = record.workplaces.companies.name;
             const year = record.service_year;
-            
-            // ★ 關鍵修正：取得 folderId (這是 Staging 的 ID)
             const folderId = record.attachment_folder_id; 
 
-            // 1. 取得審核者名稱 (從 created_by 或另外存的欄位，這裡假設用系統管理員或從 Profile 抓)
+            // 1. 取得審核者名稱 (簡化)
             let reviewerName = '系統管理員'; 
-            // 註：若 service_records 有存 reviewer_id 可再這裡 fetch profile
 
-            // 2. 構建審核資訊 HTML (帶入 index2 留下的資料)
-            // 使用 created_at 當作核定時間 (因為 insert 是在核定當下發生的)
+            // 2. 審核資訊
             const auditTime = new Date(record.created_at).toLocaleString('zh-TW', { hour12: false });
-            
-            // 判斷類型與樣式
             const auditTypeBadge = record.is_special_case 
                 ? `<span class="badge bg-warning text-dark border border-dark"><i class="fas fa-exclamation-triangle me-1"></i>特案允許結案</span>` 
                 : `<span class="badge bg-success"><i class="fas fa-check-circle me-1"></i>標準核定結案</span>`;
-            
-            // 帶出 index2 填寫的備註
             const auditNote = record.audit_note || '<span class="text-muted">無審核備註</span>';
 
-            // 3. 準備檔案連結路徑
-            // A. 正式證據 PDF (位於 service-records bucket)
-            const evidencePath = `${year}/${folderId}/Final_Evidence_Merged.pdf`; // 假設 index2 上傳時檔名固定，或需用 list 找
-            // 若 index2 加上了 timestamp，這裡可能需要先 list service-records 找檔案
-            // 為了簡化，這裡先嘗試抓取 index2 最新邏輯的檔名規則
-            // 如果 index2 存檔名有 timestamp，我們需要 list
+            // 3. 檔案連結
+            // A. 正式 PDF
             let finalPdfUrl = '';
-            
+            // 因為檔名可能有 timestamp，需先 list 尋找
             const { data: srFiles } = await supabaseClient.storage.from('service-records').list(`${year}/${folderId}`);
             if (srFiles && srFiles.length > 0) {
-                // 找出最新的 PDF
                 const evidenceFile = srFiles.find(f => f.name.includes('Evidence_Final') && f.name.endsWith('.pdf')) || srFiles[0];
                 if (evidenceFile) {
                     const { data } = supabaseClient.storage.from('service-records').getPublicUrl(`${year}/${folderId}/${evidenceFile.name}`);
@@ -319,14 +346,11 @@
                 }
             }
 
-            // B. 原始附件 (位於 staging bucket)
+            // B. 原始附件 (來自 Staging)
             let attachmentsHtml = '';
             const { data: rawFiles } = await supabaseClient.storage.from('staging').list(folderId);
-            
             if (rawFiles && rawFiles.length > 0) {
-                // 過濾掉 PDF (因為已合併)，只顯示圖片/影音
                 const otherFiles = rawFiles.filter(f => !f.name.toLowerCase().endsWith('.pdf') && f.name !== '.emptyFolderPlaceholder');
-                
                 if (otherFiles.length > 0) {
                     const links = await Promise.all(otherFiles.map(async f => {
                         const { data } = supabaseClient.storage.from('staging').getPublicUrl(`${folderId}/${f.name}`);
@@ -340,7 +364,6 @@
                 }
             }
 
-            // PDF 預覽區塊 (若無 PDF 則顯示提示)
             const pdfViewerHtml = finalPdfUrl 
                 ? `<iframe src="${finalPdfUrl}#toolbar=0&navpanes=0" class="pdf-frame"></iframe>
                    <div class="text-end mt-2">
@@ -351,10 +374,10 @@
                 : `<div class="alert alert-warning text-center py-5">
                         <i class="fas fa-file-pdf fa-3x mb-3"></i>
                         <h5>尚無正式憑證 PDF</h5>
-                        <p>可能僅包含圖片附件，請查看下方原始附件區。</p>
+                        <p>請確認該案件是否已完成結案程序。</p>
                    </div>`;
 
-            // 4. 渲染 HTML (保留 Paper Sheet 結構)
+            // 4. 渲染 Paper HTML
             container.innerHTML = `
                 <div class="paper-sheet animate__animated animate__fadeInUp">
                     <div class="watermark">${companyName}</div>
