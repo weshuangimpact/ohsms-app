@@ -394,7 +394,7 @@
         }
 
         // =======================
-        // Step 1: 搜尋邏輯 (修正版)
+        // Step 1: 搜尋邏輯 (修正版：移除 status 查詢)
         // =======================
         async function searchRecords() {
             const year = document.getElementById('search-year').value.trim();
@@ -404,7 +404,7 @@
             container.innerHTML = '<div class="text-center py-5"><div class="spinner-border text-primary"></div><p class="mt-2">查詢中...</p></div>';
 
             try {
-                // ★ 1. 取得使用者 Email (從 profiles)
+                // 1. 取得使用者 Email (從 profiles)
                 const { data: profileData, error: profileError } = await supabaseClient
                     .from('profiles')
                     .select('email')
@@ -415,8 +415,7 @@
                     throw new Error('無法識別您的使用者身分 (Profile lookup failed)');
                 }
 
-                // ★ 2. 透過 Email 取得 對應的 Consultant ID (從 medical_staff)
-                // 這是解決「撈不到資料」的關鍵：將登入身分轉換為顧問名單身分
+                // 2. 透過 Email 取得 對應的 Consultant ID (從 medical_staff)
                 const { data: staffData, error: staffError } = await supabaseClient
                     .from('medical_staff')
                     .select('id')
@@ -430,17 +429,17 @@
 
                 const consultantId = staffData.id;
 
-                // ★ 3. 使用 consultantId 查詢 Service Records
+                // 3. 使用 consultantId 查詢 Service Records (★ 修正：移除 status)
                 let query = supabaseClient
                     .from('service_records')
                     .select(`
-                        id, visit_date, service_year, execution_items, status,
+                        id, visit_date, service_year, execution_items, 
                         workplaces!inner (
                             id,
                             companies!inner ( name, tax_id )
                         )
                     `)
-                    .eq('consultant_id', consultantId) // 使用轉換後的 ID
+                    .eq('consultant_id', consultantId)
                     .order('visit_date', { ascending: false });
 
                 // 選填條件
