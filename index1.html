@@ -23,7 +23,6 @@
         display: none; /* Auth Guard */
     }
 
-    /* 強制全寬設定 */
     .container, .container-fluid {
         max-width: 100% !important;
         padding-left: 1.5rem !important;
@@ -236,7 +235,7 @@
 
                     <form id="execution-form">
                         <h6 class="fw-bold mb-3"><i class="fas fa-check-square me-2 text-primary"></i>(必要) 勞工健康服務執行紀錄項目</h6>
-                        <p class="text-muted small">請勾選本次服務所執行的項目，並直接上傳附件 (標準項目限 PDF，其他不限)。</p>
+                        <p class="text-muted small">請勾選本次服務所執行的項目，並直接上傳附件 (標準項目限 PDF，其他不限)。系統將依 A-Q 規則自動命名。</p>
 
                         <div class="list-group check-list-group mb-4" id="checkbox-list">
                             </div>
@@ -269,32 +268,32 @@
         let currentUserId = sessionStorage.getItem('currentUserId'); 
         let currentFilesMap = {}; 
 
-        // 項目清單資料 (★ 新增最上方的紀錄表主檔)
+        // ★ 定義項目與自動命名代號 (A-Q)
         const checklistItems = [
-            { id: "main", text: "勞工健康服務執行紀錄表 (執行當日紀錄主檔)" },
-            { id: "9-1", text: "9-1 勞工體格（健康）檢查結果之分析與評估、健康管理及資料保存。" },
-            { id: "9-2", text: "9-2 協助雇主選配勞工從事適當之工作。" },
-            { id: "9-3", text: "9-3 辦理健康檢查結果異常者之追蹤管理及健康指導。" },
-            { id: "9-4", text: "9-4 辦理未滿十八歲勞工、有母性健康危害之虞之勞工、職業傷病勞工與職業健康相關高風險勞工之評估及個案管理。" },
-            { id: "9-5", text: "9-5 職業衛生或職業健康之相關研究報告及傷害、疾病紀錄之保存。" },
-            { id: "9-6", text: "9-6 勞工之健康教育、衛生指導、身心健康保護、健康促進等措施之策劃及實施。" },
-            { id: "9-7", text: "9-7 工作相關傷病之預防、健康諮詢與急救及緊急處置。" },
-            { id: "9-8", text: "9-8 定期向雇主報告及勞工健康服務之建議。" },
-            { id: "11-1", text: "11-1 辨識與評估工作場所環境、作業及組織內部影響勞工身心健康之危害因子，並提出改善措施之建議。" },
-            { id: "11-2", text: "11-2 提出作業環境安全衛生設施改善規劃之建議。" },
-            { id: "11-3", text: "11-3 調查勞工健康情形與作業之關連性，並採取必要之預防及健康促進措施。" },
-            { id: "11-4", text: "11-4 提供復工勞工之職能評估、職務再設計或調整之諮詢及建議。" },
-            { id: "11-5", text: "11-5 其他經中央主管機關指定公告者。" },
-            { id: "12", text: "12 訂定勞工健康服務計畫，據以執行，每年評估成效及檢討。" },
-            { id: "13", text: "13 訂定勞工健康管理方案，據以辦理，每年評估成效及檢討。" },
-            { id: "other", text: "其他附件 (不限格式，可上傳照片、影音、問卷等)" }
+            { id: "main", code: "A", text: "勞工健康服務執行紀錄項目 (執行當日紀錄主檔)" },
+            { id: "9-1", code: "B", text: "9-1 勞工體格（健康）檢查結果之分析與評估、健康管理及資料保存。" },
+            { id: "9-2", code: "C", text: "9-2 協助雇主選配勞工從事適當之工作。" },
+            { id: "9-3", code: "D", text: "9-3 辦理健康檢查結果異常者之追蹤管理及健康指導。" },
+            { id: "9-4", code: "E", text: "9-4 辦理未滿十八歲勞工、有母性健康危害之虞之勞工、職業傷病勞工與職業健康相關高風險勞工之評估及個案管理。" },
+            { id: "9-5", code: "F", text: "9-5 職業衛生或職業健康之相關研究報告及傷害、疾病紀錄之保存。" },
+            { id: "9-6", code: "G", text: "9-6 勞工之健康教育、衛生指導、身心健康保護、健康促進等措施之策劃及實施。" },
+            { id: "9-7", code: "H", text: "9-7 工作相關傷病之預防、健康諮詢與急救及緊急處置。" },
+            { id: "9-8", code: "I", text: "9-8 定期向雇主報告及勞工健康服務之建議。" },
+            { id: "11-1", code: "J", text: "11-1 辨識與評估工作場所環境、作業及組織內部影響勞工身心健康之危害因子，並提出改善措施之建議。" },
+            { id: "11-2", code: "K", text: "11-2 提出作業環境安全衛生設施改善規劃之建議。" },
+            { id: "11-3", code: "L", text: "11-3 調查勞工健康情形與作業之關連性，並採取必要之預防及健康促進措施。" },
+            { id: "11-4", code: "M", text: "11-4 提供復工勞工之職能評估、職務再設計或調整之諮詢及建議。" },
+            { id: "11-5", code: "N", text: "11-5 其他經中央主管機關指定公告者。" },
+            { id: "12", code: "O", text: "12 訂定勞工健康服務計畫，據以執行，每年評估成效及檢討。" },
+            { id: "13", code: "P", text: "13 訂定勞工健康管理方案，據以辦理，每年評估成效及檢討。" },
+            { id: "other", code: "Q", text: "其他附件 (Q)" }
         ];
 
         document.addEventListener('DOMContentLoaded', () => {
             renderChecklist();
         });
 
-        // 1. 初始化清單：為每個項目建立 Checkbox 與 操作區
+        // 1. 初始化清單
         function renderChecklist() {
             const container = document.getElementById('checkbox-list');
             container.innerHTML = checklistItems.map(item => {
@@ -306,31 +305,34 @@
                     <div class="d-flex align-items-center gap-3" style="flex: 1;">
                         <input class="form-check-input flex-shrink-0" type="checkbox" 
                                name="service-item" value="${item.id}" 
+                               data-code="${item.code}"
                                id="cb-${item.id}" 
                                style="font-size: 1.3em;"
                                onchange="toggleItemAction('${item.id}')">
-                        <label class="form-check-label stretched-link pt-1" for="cb-${item.id}" style="cursor:pointer;">${item.text}</label>
+                        <label class="form-check-label stretched-link pt-1" for="cb-${item.id}" style="cursor:pointer;">
+                            <span class="badge bg-light text-dark border me-2">${item.code}</span>
+                            ${item.text}
+                        </label>
                     </div>
 
                     <div class="item-actions" id="action-${item.id}">
                         
                         <span class="me-2 small" id="file-info-${item.id}"></span>
-
-                        <input type="file" id="file-input-${item.id}" hidden accept="${acceptType}" onchange="handleItemFileUpload('${item.id}', this)">
+                        <input type="file" id="file-input-${item.id}" hidden accept="${acceptType}" onchange="handleItemFileUpload('${item.id}', '${item.code}', this)">
                         
                         <button type="button" class="btn btn-sm btn-outline-primary" id="btn-upload-${item.id}" onclick="triggerItemUpload('${item.id}')" style="position: relative; z-index: 2;">
-                            <i class="fas fa-cloud-upload-alt me-1"></i> 上傳附件 <small class="ms-1 text-muted" style="font-size:0.7em;">(${fileTypeMsg})</small>
+                            <i class="fas fa-cloud-upload-alt me-1"></i> 上傳 <small class="ms-1 text-muted" style="font-size:0.7em;">(${fileTypeMsg})</small>
                         </button>
 
                         <div class="btn-group btn-group-sm" id="btn-group-${item.id}" style="display:none; position: relative; z-index: 2;">
                             <a href="#" target="_blank" class="btn btn-outline-info" id="btn-preview-${item.id}" title="預覽">
-                                <i class="fas fa-eye"></i> 預覽
+                                <i class="fas fa-eye"></i>
                             </a>
                             <button type="button" class="btn btn-outline-secondary" onclick="triggerItemUpload('${item.id}')" title="更換">
-                                <i class="fas fa-sync-alt"></i> 更換
+                                <i class="fas fa-sync-alt"></i>
                             </button>
-                            <button type="button" class="btn btn-outline-danger" onclick="handleItemFileDelete('${item.id}')" title="刪除">
-                                <i class="fas fa-trash-alt"></i> 刪除
+                            <button type="button" class="btn btn-outline-danger" onclick="handleItemFileDelete('${item.id}', '${item.code}')" title="刪除">
+                                <i class="fas fa-trash-alt"></i>
                             </button>
                         </div>
                         
@@ -357,8 +359,8 @@
             document.getElementById(`file-input-${itemId}`).click();
         }
 
-        // ★ 核心修改：解決 Invalid Key 問題
-        async function handleItemFileUpload(itemId, input) {
+        // ★ 核心修改：使用 A-Q 代號命名 + 安全編碼解決 Invalid Key
+        async function handleItemFileUpload(itemId, code, input) {
             if (!input.files || !input.files[0]) return;
             const file = input.files[0];
             
@@ -367,13 +369,13 @@
             document.getElementById(`spinner-${itemId}`).style.display = 'block';
 
             try {
-                // ★ 修正重點：使用 encodeURIComponent 對檔名進行編碼
-                // 這樣包含中文、空格的檔名都會被轉為安全的 ASCII 字串
+                // 命名規則：[代號]__[URI編碼後的原檔名]
+                // 例如: B__%E4%B8%AD%E6%96%87.pdf
                 const safeFileName = encodeURIComponent(file.name);
-                const uniquePrefix = `${itemId}__`; 
+                const uniquePrefix = `${code}__`; 
                 const filePath = `${currentRecordId}/${uniquePrefix}${safeFileName}`;
 
-                // 1. 先刪除舊檔
+                // 1. 先刪除該代號(Prefix)開頭的舊檔，確保對應關係
                 await deleteFileByPrefix(currentRecordId, uniquePrefix);
 
                 // 2. 上傳新檔
@@ -383,29 +385,29 @@
 
                 if (error) throw error;
 
-                // 3. 更新 UI (傳入原始檔名以供顯示)
-                updateItemUI(itemId, file.name, true);
+                // 3. 更新 UI
+                updateItemUI(itemId, code, file.name, true);
 
             } catch (e) {
                 console.error(e);
                 alert('上傳失敗: ' + e.message);
-                updateItemUI(itemId, null, false);
+                updateItemUI(itemId, code, null, false);
             } finally {
                 document.getElementById(`spinner-${itemId}`).style.display = 'none';
                 input.value = ''; 
             }
         }
 
-        async function handleItemFileDelete(itemId) {
+        async function handleItemFileDelete(itemId, code) {
             if(!confirm('確定要刪除此附件嗎？')) return;
 
             document.getElementById(`spinner-${itemId}`).style.display = 'block';
             document.getElementById(`btn-group-${itemId}`).style.display = 'none';
 
             try {
-                const uniquePrefix = `${itemId}__`;
+                const uniquePrefix = `${code}__`;
                 await deleteFileByPrefix(currentRecordId, uniquePrefix);
-                updateItemUI(itemId, null, false); 
+                updateItemUI(itemId, code, null, false); 
             } catch (e) {
                 alert('刪除失敗: ' + e.message);
                 document.getElementById(`btn-group-${itemId}`).style.display = 'flex'; 
@@ -420,8 +422,6 @@
                 .list(`${recordId}`);
             
             if (files && files.length > 0) {
-                // 注意：Storage list 出來的 name 是解碼過的，還是原始的，需視 Supabase 版本而定
-                // 但通常我們比對前綴即可
                 const targetFiles = files.filter(f => f.name.startsWith(prefix));
                 if (targetFiles.length > 0) {
                     const pathsToRemove = targetFiles.map(f => `${recordId}/${f.name}`);
@@ -430,7 +430,7 @@
             }
         }
 
-        function updateItemUI(itemId, fileName, hasFile) {
+        function updateItemUI(itemId, code, fileName, hasFile) {
             const uploadBtn = document.getElementById(`btn-upload-${itemId}`);
             const btnGroup = document.getElementById(`btn-group-${itemId}`);
             const previewBtn = document.getElementById(`btn-preview-${itemId}`);
@@ -440,14 +440,13 @@
                 uploadBtn.style.display = 'none';
                 btnGroup.style.display = 'flex';
                 
-                // ★ 預覽連結生成：需使用 encodeURIComponent 後的檔名
+                // 預覽連結
                 const safeName = encodeURIComponent(fileName);
-                const { data } = supabaseClient.storage.from(BUCKET_NAME).getPublicUrl(`${currentRecordId}/${itemId}__${safeName}`);
+                const { data } = supabaseClient.storage.from(BUCKET_NAME).getPublicUrl(`${currentRecordId}/${code}__${safeName}`);
                 
                 previewBtn.href = data.publicUrl;
                 
-                // 顯示：解碼後的檔名，方便使用者閱讀
-                // const displayName = decodeURIComponent(safeName); // 若 fileName 已經是原始字串則不需 decode
+                // 顯示：解碼後的檔名
                 const displayName = fileName;
                 const shortName = displayName.length > 15 ? displayName.substring(0, 12) + '...' : displayName;
                 fileInfo.innerHTML = `<span class="badge bg-success me-1">已存</span> <span class="text-muted">${shortName}</span>`;
@@ -530,7 +529,7 @@
             // 重置 UI
             document.querySelectorAll('input[type="checkbox"]').forEach(cb => cb.checked = false);
             document.querySelectorAll('.item-actions').forEach(el => el.classList.remove('visible'));
-            checklistItems.forEach(item => updateItemUI(item.id, null, false));
+            checklistItems.forEach(item => updateItemUI(item.id, item.code, null, false));
 
             // 1. 載入案件資料
             const { data } = await supabaseClient
@@ -543,11 +542,11 @@
             document.getElementById('current-year-badge').innerText = (data.service_year || '') + ' 年度';
             document.getElementById('execution-date').value = data.visit_date || ''; 
             
-            // ★ 回填時間
+            // 回填時間
             document.getElementById('start-time').value = data.start_time || '';
             document.getElementById('end-time').value = data.end_time || '';
 
-            // 2. 勾選已存項目
+            // 2. 勾選已存項目 (Legacy Support)
             if (data.execution_items) {
                 const savedItems = typeof data.execution_items === 'string' ? JSON.parse(data.execution_items) : data.execution_items;
                 savedItems.forEach(itemId => {
@@ -559,18 +558,30 @@
                 });
             }
 
-            // 3. 檢查 Storage 檔案並更新按鈕狀態
+            // 3. 檢查 Storage 檔案並更新按鈕狀態 (反向解析代號)
             const { data: files } = await supabaseClient.storage.from(BUCKET_NAME).list(`${id}`);
             if (files && files.length > 0) {
                 files.forEach(file => {
+                    // 檔名格式：[Code]__[EncodedFileName]
                     const parts = file.name.split('__');
                     if (parts.length >= 2) {
-                        const itemId = parts[0];
-                        // 嘗試 decode 檔名，若非 URI 編碼則保持原樣
-                        let realName = file.name.substring(itemId.length + 2); 
-                        try { realName = decodeURIComponent(realName); } catch(e){}
+                        const code = parts[0];
+                        // 找到對應的 itemId
+                        const targetItem = checklistItems.find(i => i.code === code);
                         
-                        updateItemUI(itemId, realName, true);
+                        if (targetItem) {
+                            // 解碼原始檔名
+                            let realName = file.name.substring(code.length + 2); 
+                            try { realName = decodeURIComponent(realName); } catch(e){}
+                            
+                            // 即使沒勾選，若有檔案也強制顯示已上傳狀態
+                            const cb = document.getElementById(`cb-${targetItem.id}`);
+                            if(cb) {
+                                cb.checked = true;
+                                toggleItemAction(targetItem.id);
+                                updateItemUI(targetItem.id, code, realName, true);
+                            }
+                        }
                     }
                 });
             }
@@ -626,7 +637,7 @@
                     .update({
                         execution_items: itemsString,
                         visit_date: visitDate,
-                        start_time: startTime || null, // 若空則存 null
+                        start_time: startTime || null, 
                         end_time: endTime || null,
                         updated_at: new Date()
                     })
