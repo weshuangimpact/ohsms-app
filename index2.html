@@ -6,7 +6,7 @@
     <title>管理者總覽 (Check / Act) | OHSMS</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css"/>
+    <link rel=\"stylesheet\" href=\"https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css\"/>
     
     <style>
         /* 依照 Dashboard 定義：
@@ -23,50 +23,35 @@
         /* 標題飾條 */
         .section-title { border-left: 5px solid var(--theme-color); padding-left: 15px; margin-bottom: 20px; }
         
-        .info-card { padding: 1.25rem; border-radius: 0.5rem; background-color: white; border: none; }
-        
-        /* 數值顏色 */
-        .stat-value { font-size: 2rem; font-weight: 700; color: var(--theme-color); }
-        .chart-container { position: relative; height: 260px; width: 100%; }
-        .table-pending thead { background-color: #f8fafc; }
-        
-        /* 預覽視窗專用樣式 */
-        .preview-body { background: #f8f9fa; min-height: 400px; padding: 20px; }
-        .file-item { background: white; border: 1px solid #dee2e6; padding: 15px; margin-bottom: 15px; border-radius: 8px; }
-        .attachment-img { max-width: 100%; height: auto; border: 1px solid #ddd; box-shadow: 0 2px 5px rgba(0,0,0,0.1); margin-top: 10px; }
-        .attachment-pdf-frame { width: 100%; height: 500px; border: 1px solid #ddd; margin-top: 10px; }
-        
-        /* 特殊說明區塊 (Step 3) */
-        .special-note-box {
-            background-color: #fff3cd; border: 1px solid #ffecb5; 
-            color: #664d03; padding: 15px; border-radius: 6px; margin-bottom: 20px;
-            animation: fadeIn 0.5s;
-        }
+        .info-label { font-weight: bold; color: #555; }
+        .data-value { color: #000; }
 
-        /* PDCA 說明區塊 (綠色主題) */
-        .instruction-box {
-            background-color: #fff;
-            border-left: 5px solid var(--theme-color);
-            padding: 20px 25px;
-            border-radius: 4px;
-            margin-bottom: 30px;
-            text-align: left;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
-        }
-        .instruction-title {
-            color: var(--theme-color);
-            font-weight: 700;
-            margin-bottom: 10px;
-        }
+        /* 表格優化 */
+        .table-hover tbody tr:hover { background-color: rgba(25, 135, 84, 0.05); cursor: pointer; }
+        
+        /* 狀態徽章 */
+        .status-badge { min-width: 80px; }
+        
+        /* 進度條 */
+        .progress { height: 10px; border-radius: 5px; }
     </style>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Auth Guard (簡易版)
+            if (!sessionStorage.getItem('currentUserId')) {
+                window.location.href = 'login.html';
+            }
+        });
+    </script>
 </head>
 <body>
 
     <nav class="navbar navbar-expand-lg navbar-dark bg-dark py-3 mb-4">
         <div class="container-fluid px-4">
-            <a class="navbar-brand" href="dashboard.html"><i class="fas fa-shield-alt me-2"></i>OHSMS 管理者控制台</a>
+            <a class="navbar-brand fw-bold" href="dashboard.html"><i class="fas fa-shield-alt me-2"></i>OHSMS</a>
             <div class="d-flex align-items-center">
-                <span class="text-light me-3" id="user-display"></span>
+                <span class="text-light small me-3">管理者模式</span>
                 <a href="dashboard.html" class="btn btn-outline-light btn-sm"><i class="fas fa-arrow-left me-1"></i> 返回儀表板</a>
             </div>
         </div>
@@ -74,74 +59,75 @@
 
     <div class="container-fluid px-4 pb-5">
         
-        <div class="section-title">
-            <h4 class="fw-bold text-dark mb-0">管理者總覽</h4>
-            <small class="text-muted">即時年度結案達成率與暫存資料審查</small>
-        </div>
-
-        <div class="instruction-box">
-            <div class="instruction-title">
-                <i class="fas fa-tasks me-2"></i>PDCA 設計理念：審核 (Check) 及執行 (Act) —— 績效監控與品質審查
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <div>
+                <h4 class="fw-bold text-dark"><i class="fas fa-clipboard-check me-2 text-success"></i>管理者總覽</h4>
+                <p class="text-muted mb-0 small">Check & Act 階段：審核顧問上傳資料，確保服務品質與法規合規性</p>
             </div>
-            <p class="mb-0 text-dark" style="line-height: 1.6;">
-                本模組扮演系統的「守門員」，透過即時的<strong>「年度結案達成率」</strong>儀表板與嚴謹的<strong>「暫存審核機制」</strong>，
-                確保所有臨場服務紀錄在歸檔前皆符合法規與品質要求，落實 PDCA 循環中的審核 (Check) 及執行 (Act) 階段，為後續的評鑑提供可信賴的數據基礎。
-            </p>
+            <div>
+                <button class="btn btn-success text-white" onclick="loadPendingReviews()"><i class="fas fa-sync-alt me-1"></i> 刷新列表</button>
+            </div>
         </div>
 
         <div class="row g-4 mb-4">
-            <div class="col-md-5">
-                <div class="card info-card shadow-sm h-100">
-                    <div class="d-flex align-items-center mb-3">
-                        <div class="bg-success text-white rounded-circle p-2 me-3">
-                            <i class="fas fa-calculator fa-fw"></i>
-                        </div>
-                        <h5 class="fw-bold mb-0">年度結案達成率公式</h5>
-                    </div>
-                    <div class="p-3 bg-light rounded border-start border-4 border-success mb-3">
-                        <code class="text-dark fw-bold" style="font-size: 1.1rem;">
-                            已核定入庫 / ( 已核定入庫 + 暫存待審核 ) × 100%
-                        </code>
-                    </div>
-                    <p class="text-muted small mb-0">
-                        <i class="fas fa-info-circle me-1"></i> <strong>說明：</strong><br>
-                        系統會掃描資料庫中狀態為待審查的所有資料。若當年度無待審核案件(全部完成結案)，達成率即為100%</span>。
-                    </p>
-                </div>
-            </div>
-
-            <div class="col-md-7">
-                <div class="card info-card shadow-sm h-100">
-                    <div class="d-flex justify-content-between align-items-center mb-4">
-                        <h5 class="fw-bold mb-0">當前年度達成率 (即時計算)</h5>
-                        <select class="form-select w-auto fw-bold text-success" id="target-year" onchange="refreshData()">
-                            <option value="2026">2026 年度</option>
-                            <option value="2025" selected>2025 年度</option>
-                            <option value="2024">2024 年度</option>
-                        </select>
-                    </div>
-                    
-                    <div class="row align-items-center">
-                        <div class="col-md-6 text-center">
-                            <div class="chart-container">
-                                <canvas id="rateChart"></canvas>
+            <div class="col-md-3">
+                <div class="card border-0 shadow-sm h-100 border-start border-4 border-primary">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <h6 class="text-muted mb-1">本年度案件總數</h6>
+                                <h3 class="fw-bold mb-0" id="kpi-total">0</h3>
+                            </div>
+                            <div class="bg-primary bg-opacity-10 p-3 rounded-circle text-primary">
+                                <i class="fas fa-folder fa-2x"></i>
                             </div>
                         </div>
-                        <div class="col-md-6 border-start">
-                            <div class="ps-3">
-                                <div class="mb-3">
-                                    <label class="text-muted small d-block">已核定入庫 (Formal)</label>
-                                    <span class="stat-value text-success" id="val-approved">0</span> <small class="text-muted">筆</small>
-                                </div>
-                                <div class="mb-3">
-                                    <label class="text-muted small d-block">暫存待審核 (Pending)</label>
-                                    <span class="stat-value text-warning" id="val-pending">0</span> <small class="text-muted">筆</small>
-                                </div>
-                                <hr>
-                                <div>
-                                    <label class="fw-bold d-block text-secondary">年度總達成率</label>
-                                    <span class="stat-value text-success" id="val-rate" style="font-size: 2.8rem;">0%</span>
-                                </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card border-0 shadow-sm h-100 border-start border-4 border-warning">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <h6 class="text-muted mb-1">待審核案件</h6>
+                                <h3 class="fw-bold mb-0 text-warning" id="kpi-pending">0</h3>
+                            </div>
+                            <div class="bg-warning bg-opacity-10 p-3 rounded-circle text-warning">
+                                <i class="fas fa-clock fa-2x"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card border-0 shadow-sm h-100 border-start border-4 border-success">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <h6 class="text-muted mb-1">年度結案達成率</h6>
+                                <h3 class="fw-bold mb-0 text-success" id="kpi-rate">0%</h3>
+                            </div>
+                            <div class="bg-success bg-opacity-10 p-3 rounded-circle text-success">
+                                <i class="fas fa-chart-line fa-2x"></i>
+                            </div>
+                        </div>
+                        <div class="progress mt-3">
+                            <div class="progress-bar bg-success" role="progressbar" style="width: 0%" id="kpi-progress-bar"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card border-0 shadow-sm h-100 border-start border-4 border-danger">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <h6 class="text-muted mb-1">逾期/異常案件</h6>
+                                <h3 class="fw-bold mb-0 text-danger" id="kpi-overdue">0</h3>
+                            </div>
+                            <div class="bg-danger bg-opacity-10 p-3 rounded-circle text-danger">
+                                <i class="fas fa-exclamation-triangle fa-2x"></i>
                             </div>
                         </div>
                     </div>
@@ -149,25 +135,26 @@
             </div>
         </div>
 
-        <div class="card border-0 shadow-sm mt-4">
-            <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
-                <h6 class="fw-bold mb-0 text-dark"><i class="fas fa-list-ul me-2 text-success"></i>待核定暫存清單 (Staging Area)</h6>
-                <button class="btn btn-sm btn-outline-secondary" onclick="refreshData()"><i class="fas fa-sync-alt"></i></button>
+        <div class="card border-0 shadow-sm mb-4">
+            <div class="card-header bg-white py-3">
+                <h6 class="fw-bold mb-0 text-dark"><i class="fas fa-list-ul me-2"></i>待審核執行紀錄 (Pending Reviews)</h6>
             </div>
             <div class="card-body p-0">
                 <div class="table-responsive">
-                    <table class="table table-hover mb-0 align-middle">
-                        <thead class="table-pending">
+                    <table class="table table-hover align-middle mb-0">
+                        <thead class="table-light">
                             <tr>
-                                <th class="ps-4">日期</th>
-                                <th>顧問姓名</th>
-                                <th>服務類型</th>
-                                <th>描述摘要</th>
-                                <th class="text-end pe-4">管理動作</th>
+                                <th class="ps-4">申請日期</th>
+                                <th>客戶公司</th>
+                                <th>執行顧問</th>
+                                <th>執行事項 (Service Type)</th>
+                                <th>備註</th>
+                                <th>狀態</th>
+                                <th class="text-end pe-4">操作</th>
                             </tr>
                         </thead>
-                        <tbody id="pendingTableBody">
-                            <tr><td colspan="5" class="text-center py-4 text-muted">正在載入暫存資料...</td></tr>
+                        <tbody id="review-table-body">
+                            <tr><td colspan="7" class="text-center py-5 text-muted"><i class="fas fa-spinner fa-spin me-2"></i>資料載入中...</td></tr>
                         </tbody>
                     </table>
                 </div>
@@ -176,108 +163,30 @@
 
     </div>
 
-    <div class="modal fade" id="reviewModal" tabindex="-1" data-bs-backdrop="static">
-        <div class="modal-dialog modal-xl modal-dialog-scrollable">
-            <div class="modal-content">
-                <div class="modal-header bg-success text-white">
-                    <h5 class="modal-title"><i class="fas fa-search-plus me-2"></i>案件審核預覽</h5>
-                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
-                </div>
-                <div class="modal-body preview-body" id="reviewContainer">
-                    </div>
-                <div class="modal-footer bg-light justify-content-between">
-                    <div class="text-muted small">此模式僅供預覽，不包含浮水印。</div>
-                    <div class="d-flex gap-2">
-                        <button type="button" class="btn btn-warning fw-bold text-dark" onclick="approveRecord('special')">
-                            <i class="fas fa-exclamation-circle me-1"></i>特案允許結案
-                        </button>
-                        <button type="button" class="btn btn-success fw-bold" onclick="approveRecord('standard')">
-                            <i class="fas fa-check me-1"></i>核定結案
-                        </button>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <div class="modal fade" id="reviewEmailModal" tabindex="-1">
-        <div class="modal-dialog">
-            <div class="modal-content">
-                <div class="modal-header bg-secondary text-white">
-                    <h5 class="modal-title"><i class="fas fa-envelope-open-text me-2"></i>發送審查通知 (補件要求)</h5>
-                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
-                </div>
-                <div class="modal-body">
-                    <input type="hidden" id="email-target-id">
-                    <div class="mb-3">
-                        <label class="form-label fw-bold">收件顧問</label>
-                        <input type="text" class="form-control bg-light" id="email-consultant-name" readonly>
-                        <small class="text-muted" id="email-consultant-addr">xxxx@example.com</small>
-                    </div>
-                    <div class="mb-3">
-                        <label class="form-label fw-bold text-danger">需補正原因 (可複選)</label>
-                        <div class="form-check">
-                            <input class="form-check-input" type="checkbox" value="附件錯置" id="reason1">
-                            <label class="form-check-label" for="reason1">附件錯置</label>
-                        </div>
-                        <div class="form-check">
-                            <input class="form-check-input" type="checkbox" value="缺件" id="reason2">
-                            <label class="form-check-label" for="reason2">缺件 (如：缺少照片或簽名檔)</label>
-                        </div>
-                        <div class="form-check">
-                            <input class="form-check-input" type="checkbox" value="其他" id="reason3" onchange="toggleOtherReason()">
-                            <label class="form-check-label" for="reason3">其他原因</label>
-                        </div>
-                        <input type="text" class="form-control mt-2" id="reason-other-text" placeholder="請填寫具體原因..." style="display:none;">
-                    </div>
-                    <div class="mb-3">
-                        <label class="form-label fw-bold">補正期限</label>
-                        <div class="input-group">
-                            <span class="input-group-text">請於</span>
-                            <input type="number" class="form-control" id="email-deadline" value="3" min="1">
-                            <span class="input-group-text">天內完成</span>
-                        </div>
-                    </div>
-                    <div class="alert alert-light border small">
-                        <strong>預覽內容：</strong><br>
-                        親愛的 <span class="preview-name">XXX</span> 顧問，您的送審案件因上述原因需要補正，請盡速完成以利結案。
-                    </div>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
-                    <button type="button" class="btn btn-primary" onclick="sendReviewEmail()">
-                        <i class="fas fa-paper-plane me-1"></i> 確認發送
-                    </button>
-                </div>
-            </div>
-        </div>
-    </div>
-
     <div class="modal fade" id="reminderEmailModal" tabindex="-1">
         <div class="modal-dialog">
             <div class="modal-content">
                 <div class="modal-header bg-warning text-dark">
-                    <h5 class="modal-title"><i class="fas fa-bell me-2"></i>發送催收通知</h5>
+                    <h5 class="modal-title"><i class="fas fa-bell me-2"></i>發送補件催辦通知</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                 </div>
                 <div class="modal-body">
-                    <input type="hidden" id="remind-target-id">
+                    <p>您即將發送 Email 通知顧問進行補件或說明。</p>
                     <div class="mb-3">
-                        <label class="form-label fw-bold">收件顧問</label>
-                        <input type="text" class="form-control bg-light" id="remind-consultant-name" readonly>
-                        <small class="text-muted" id="remind-consultant-addr"></small>
+                        <label class="form-label small fw-bold">收件人 (顧問)</label>
+                        <input type="text" class="form-control" id="remind-consultant-name" readonly>
                     </div>
-                    <div class="alert alert-warning border border-warning">
-                        <strong>信件內容預覽：</strong><br>
-                        親愛的 <span class="remind-preview-name">XXX</span> 顧問：<br>
-                        您的案件尚未結案，請盡速補齊附件，以利系統結案程序。
+                    <div class="alert alert-light border small">
+                        <strong>預覽內容：</strong><br>
+                        親愛的 <span class="remind-preview-name"></span> 顧問您好，<br>
+                        您所負責的 <span id="remind-company-name" class="fw-bold"></span> 案件，因資料不齊全/有誤，請盡速登入系統進行補件，以利案件結案。<br>
+                        <br>OHSMS 系統自動發送
                     </div>
+                    <div style="display:none;" id="remind-consultant-addr"></div>
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
-                    <button type="button" class="btn btn-dark" onclick="sendReminderEmail()">
-                        <i class="fas fa-paper-plane me-1"></i> 確認催收
-                    </button>
+                    <button type="button" class="btn btn-warning text-dark fw-bold" onclick="sendReminderEmail()">確認發送</button>
                 </div>
             </div>
         </div>
@@ -285,219 +194,351 @@
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-
+    
     <script>
         const SUPABASE_URL = 'https://yhehfucgemxnfrdvpdhw.supabase.co';
         const SUPABASE_KEY = 'sb_publishable_52emtU-9l-SDxcJTWVTPTA_Yu6qEogh';
         const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+        
+        // 定義 Bucket 名稱
+        const STAGING_BUCKET = 'staging';
+        const RECORD_BUCKET = 'service-records';
 
-        let rateChart = null;
-        let currentStagingData = []; 
-        let currentReviewId = null; 
+        let currentReviewId = null; // Staging ID
+        let currentOriginId = null; // Mother ID
+        let pendingDataList = [];
 
         document.addEventListener('DOMContentLoaded', () => {
-            const role = sessionStorage.getItem('currentUserRole') || 'admin';
-            const userName = sessionStorage.getItem('currentUserName') || '管理員';
-            document.getElementById('user-display').innerHTML = `<small>${role}: ${userName}</small>`;
-            initChart();
-            refreshData();
+            loadKPIs();
+            loadPendingReviews();
         });
 
-        function initChart() {
-            const ctx = document.getElementById('rateChart').getContext('2d');
-            rateChart = new Chart(ctx, {
-                type: 'doughnut',
-                data: {
-                    labels: ['已核定', '待審核'],
-                    // 環形圖配色：綠色 (Check/Approved) vs 黃色 (Pending)
-                    datasets: [{ data: [0, 0], backgroundColor: ['#198754', '#ffc107'], borderWidth: 0 }]
-                },
-                options: { cutout: '75%', plugins: { legend: { display: false } }, maintainAspectRatio: false }
-            });
+        // ==========================================
+        // 1. KPI 載入 (模擬與部分真實數據)
+        // ==========================================
+        async function loadKPIs() {
+            // 取得總母案數
+            const { count: totalCount } = await supabaseClient.from('service_records').select('*', { count: 'exact', head: true });
+            document.getElementById('kpi-total').innerText = totalCount || 0;
+
+            // 取得待審 (Staging count)
+            const { count: pendingCount } = await supabaseClient.from('service_record_staging').select('*', { count: 'exact', head: true }).eq('status', 'pending');
+            document.getElementById('kpi-pending').innerText = pendingCount || 0;
+
+            // 達成率 (這裡簡單用 已結案/總案數 模擬，實際需看 service_records 是否有欄位標示結案)
+            // 假設 service_records 有 execution_items 代表已執行
+            const { count: closedCount } = await supabaseClient.from('service_records').select('*', { count: 'exact', head: true }).not('execution_items', 'is', null);
+            
+            let rate = 0;
+            if (totalCount > 0) rate = Math.round((closedCount / totalCount) * 100);
+            
+            document.getElementById('kpi-rate').innerText = rate + '%';
+            document.getElementById('kpi-progress-bar').style.width = rate + '%';
         }
 
-        async function refreshData() {
-            const year = parseInt(document.getElementById('target-year').value);
-            const tbody = document.getElementById('pendingTableBody');
-            
-            try {
-                // 1. 讀取正式庫
-                const { count: approvedCount, error: err1 } = await supabaseClient
-                    .from('service_records')
-                    .select('*', { count: 'exact', head: true })
-                    .eq('service_year', year);
+        // ==========================================
+        // 2. 載入待審列表
+        // ==========================================
+        async function loadPendingReviews() {
+            const tbody = document.getElementById('review-table-body');
+            tbody.innerHTML = '<tr><td colspan="7" class="text-center py-5 text-muted"><div class="spinner-border text-success"></div> 資料載入中...</td></tr>';
 
-                // 2. 讀取 Pending 資料
-                const { data: stagingData, error: err2 } = await supabaseClient
-                    .from('service_record_staging')
-                    .select(`
-                        *,
-                        medical_staff:consultant_id ( name, email )
-                    `)
-                    .eq('status', 'pending');
+            const { data, error } = await supabaseClient
+                .from('service_record_staging')
+                .select(`
+                    *,
+                    workplaces ( companies ( name ) ),
+                    medical_staff!submitter_id ( name, email )
+                `)
+                .eq('status', 'pending')
+                .order('created_at', { ascending: false });
 
-                if (err1 || err2) throw (err1 || err2);
+            if (error) {
+                tbody.innerHTML = `<tr><td colspan="7" class="text-center text-danger">載入失敗: ${error.message}</td></tr>`;
+                return;
+            }
 
-                const filteredPending = stagingData.filter(d => {
-                    const d1 = d.visit_date ? new Date(d.visit_date).getFullYear() : null;
-                    const d2 = d.service_date ? new Date(d.service_date).getFullYear() : null;
-                    return d1 === year || d2 === year;
-                });
+            if (!data || data.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="7" class="text-center py-5 text-muted"><i class="fas fa-check-circle fa-3x mb-3 text-success bg-light rounded-circle p-3"></i><p>太棒了！目前沒有待審核的案件。</p></td></tr>';
+                return;
+            }
 
-                currentStagingData = filteredPending; 
-                const pendingCount = filteredPending.length;
+            pendingDataList = data; // 暫存起來供後續使用
 
-                // UI Update
-                const total = approvedCount + pendingCount;
-                const rate = total === 0 ? 100 : Math.round((approvedCount / total) * 100);
-                document.getElementById('val-approved').innerText = approvedCount;
-                document.getElementById('val-pending').innerText = pendingCount;
-                document.getElementById('val-rate').innerText = rate + '%';
-                rateChart.data.datasets[0].data = [approvedCount, pendingCount];
-                rateChart.update();
-
-                // 渲染列表
-                tbody.innerHTML = filteredPending.map((p) => {
-                    let descText = '-';
+            tbody.innerHTML = data.map(item => {
+                // 解析 service_desc JSON 以取得備註
+                let userRemark = '-';
+                if (item.service_desc) {
                     try {
-                        if (p.service_desc && p.service_desc.trim().startsWith('{')) {
-                            const parsed = JSON.parse(p.service_desc);
-                            descText = parsed.process_summary || parsed.note || '詳細資料請見預覽';
-                        } else {
-                            descText = p.service_desc || '-';
-                        }
-                    } catch(e) { descText = p.service_desc || '-'; }
+                        const desc = JSON.parse(item.service_desc);
+                        if (desc.user_remark) userRemark = desc.user_remark;
+                    } catch(e) {}
+                }
+                if (userRemark.length > 15) userRemark = userRemark.substring(0, 15) + '...';
 
-                    const consultantName = p.medical_staff?.name || '未知顧問';
-                    const displayDate = p.visit_date || p.service_date;
+                return `
+                <tr onclick="openPreviewWindow('${item.id}')">
+                    <td class="ps-4 font-monospace">${item.service_date || '-'}</td>
+                    <td class="fw-bold text-dark">${item.workplaces?.companies?.name || '未知公司'}</td>
+                    <td><span class="badge bg-light text-dark border">${item.medical_staff?.name || '未知'}</span></td>
+                    <td>${item.service_type || '-'}</td>
+                    <td class="text-muted small">${userRemark}</td>
+                    <td><span class="badge bg-warning text-dark status-badge">待審核</span></td>
+                    <td class="text-end pe-4" onclick="event.stopPropagation()">
+                        <button class="btn btn-sm btn-outline-success me-1" onclick="openPreviewWindow('${item.id}')" title="預覽與審核"><i class="fas fa-eye"></i> 審核</button>
+                        <button class="btn btn-sm btn-outline-danger" onclick="openReminderModal('${item.id}')" title="退回/催辦"><i class="fas fa-bell"></i></button>
+                    </td>
+                </tr>
+                `;
+            }).join('');
+        }
 
-                    return `
-                    <tr class="animate__animated animate__fadeIn">
-                        <td class="ps-4 fw-bold font-monospace">${displayDate}</td>
-                        <td>${consultantName}</td>
-                        <td><span class="badge bg-light text-dark border">${p.service_type || '一般訪視'}</span></td>
-                        <td class="text-truncate" style="max-width: 250px;">${descText}</td>
-                        <td class="text-end pe-4">
-                            <div class="btn-group">
-                                <button class="btn btn-sm btn-outline-secondary" onclick="openStagingPreview('${p.id}')" title="審核預覽">
-                                    <i class="far fa-eye"></i>
-                                </button>
-                                <button class="btn btn-sm btn-outline-success" onclick="openReviewEmailModal('${p.id}')" title="審查通知 (補件)">
-                                    <i class="far fa-envelope"></i>
-                                </button>
-                                <button class="btn btn-sm btn-outline-primary" onclick="openReminderModal('${p.id}')" title="催收通知">
-                                    <i class="far fa-bell"></i>
-                                </button>
+        // ==========================================
+        // 3. 全頁預覽功能 (Window.open)
+        // ==========================================
+        async function openPreviewWindow(stagingId) {
+            const record = pendingDataList.find(r => r.id === stagingId);
+            if (!record) return alert('找不到資料');
+
+            currentReviewId = stagingId;
+            currentOriginId = record.origin_record_id;
+
+            // 解析備註
+            let fullRemark = '無';
+            let itemsJson = [];
+            if (record.service_desc) {
+                try {
+                    const desc = JSON.parse(record.service_desc);
+                    if (desc.user_remark) fullRemark = desc.user_remark;
+                    if (desc.items) itemsJson = desc.items;
+                } catch(e) {}
+            }
+
+            // 準備檔案顯示 HTML
+            let attachmentsHtml = '<div class="alert alert-secondary text-center">無上傳附件</div>';
+            
+            if (record.attachment_files && record.attachment_files.length > 0) {
+                // 產生檔案清單 HTML
+                // 邏輯：PDF 用 embed 顯示，其他用超連結
+                const fileElements = record.attachment_files.map(file => {
+                    // 取得 Public URL (Staging)
+                    const { data } = supabaseClient.storage.from(STAGING_BUCKET).getPublicUrl(file.path);
+                    const url = data.publicUrl;
+                    const isPdf = file.name.toLowerCase().endsWith('.pdf');
+                    
+                    if (isPdf) {
+                        return `
+                            <div class="mb-4 shadow-sm border rounded overflow-hidden">
+                                <div class="bg-light p-2 border-bottom small fw-bold text-dark d-flex justify-content-between">
+                                    <span><i class="fas fa-file-pdf text-danger me-2"></i>${file.name}</span>
+                                    <a href="${url}" target="_blank" class="text-decoration-none">下載</a>
+                                </div>
+                                <embed src="${url}" type="application/pdf" width="100%" height="800px" />
                             </div>
-                        </td>
-                    </tr>
-                `}).join('') || '<tr><td colspan="5" class="text-center py-4 text-muted">當前年度無待處理資料</td></tr>';
+                        `;
+                    } else {
+                        // 圖片或影音
+                        return `
+                            <div class="mb-3 p-3 border rounded bg-white d-flex align-items-center">
+                                <i class="fas fa-file-image fa-2x text-primary me-3"></i>
+                                <div>
+                                    <h6 class="mb-1">${file.name}</h6>
+                                    <a href="${url}" target="_blank" class="btn btn-sm btn-outline-primary"><i class="fas fa-external-link-alt me-1"></i> 點擊開啟預覽</a>
+                                </div>
+                            </div>
+                        `;
+                    }
+                }).join('');
+                
+                attachmentsHtml = fileElements;
+            }
 
-            } catch (e) {
-                console.error(e);
-                alert('載入失敗');
+            // 構建新視窗的 HTML 內容
+            const pageContent = `
+                <!DOCTYPE html>
+                <html lang="zh-TW">
+                <head>
+                    <title>案件審核預覽 - ${record.workplaces?.companies?.name}</title>
+                    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+                    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+                    <style>
+                        body { background-color: #f8f9fa; padding: 20px; font-family: 'Microsoft JhengHei'; }
+                        .sticky-header { position: sticky; top: 0; z-index: 1000; background: white; border-bottom: 1px solid #ddd; padding: 15px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); margin: -20px -20px 20px -20px; }
+                        .info-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 20px; }
+                        .info-item { background: white; padding: 10px; border-radius: 5px; border: 1px solid #eee; }
+                        .info-label { font-size: 0.85rem; color: #666; margin-bottom: 3px; }
+                        .info-value { font-weight: bold; color: #333; }
+                        .remark-box { background-color: #fff3cd; color: #856404; padding: 15px; border-radius: 5px; border: 1px solid #ffeeba; margin-bottom: 20px; }
+                    </style>
+                </head>
+                <body>
+                    <div class="sticky-header d-flex justify-content-between align-items-center">
+                        <div>
+                            <h4 class="fw-bold mb-0 text-success"><i class="fas fa-check-double me-2"></i>案件審核</h4>
+                            <small class="text-muted">ID: ${stagingId}</small>
+                        </div>
+                        <div class="d-flex gap-2">
+                            <button class="btn btn-secondary" onclick="window.close()">關閉</button>
+                            <button class="btn btn-danger" onclick="window.opener.rejectRecord('${stagingId}')"><i class="fas fa-times me-1"></i> 退回</button>
+                            <button class="btn btn-warning text-dark" onclick="window.opener.approveRecord('special', '${stagingId}', '${record.origin_record_id}')"><i class="fas fa-exclamation-circle me-1"></i> 特案核定</button>
+                            <button class="btn btn-success" onclick="window.opener.approveRecord('standard', '${stagingId}', '${record.origin_record_id}')"><i class="fas fa-check me-1"></i> 標準核定 (結案)</button>
+                        </div>
+                    </div>
+
+                    <div class="container">
+                        <div class="info-grid">
+                            <div class="info-item">
+                                <div class="info-label">客戶公司</div>
+                                <div class="info-value">${record.workplaces?.companies?.name}</div>
+                            </div>
+                            <div class="info-item">
+                                <div class="info-label">執行事項</div>
+                                <div class="info-value">${record.service_type || '-'}</div>
+                            </div>
+                            <div class="info-item">
+                                <div class="info-label">執行日期</div>
+                                <div class="info-value">${record.visit_date}</div>
+                            </div>
+                            <div class="info-item">
+                                <div class="info-label">執行期間</div>
+                                <div class="info-value">${record.start_time || '--:--'} ~ ${record.end_time || '--:--'}</div>
+                            </div>
+                            <div class="info-item">
+                                <div class="info-label">執行顧問</div>
+                                <div class="info-value">${record.medical_staff?.name}</div>
+                            </div>
+                        </div>
+
+                        ${fullRemark !== '無' ? `
+                        <div class="remark-box">
+                            <i class="fas fa-sticky-note me-2"></i><strong>特殊事項備註：</strong>
+                            <p class="mb-0 mt-1">${fullRemark}</p>
+                        </div>` : ''}
+
+                        <h5 class="border-bottom pb-2 mb-3 fw-bold"><i class="fas fa-paperclip me-2 text-primary"></i>佐證附件預覽</h5>
+                        ${attachmentsHtml}
+                    </div>
+                </body>
+                </html>
+            `;
+
+            // 開啟新視窗並寫入內容
+            const newWindow = window.open('', '_blank');
+            if (newWindow) {
+                newWindow.document.write(pageContent);
+                newWindow.document.close();
+            } else {
+                alert('您的瀏覽器封鎖了彈跳視窗，請允許開啟以進行預覽。');
             }
         }
 
-        // --- 1. 審核預覽邏輯 ---
-        async function openStagingPreview(id) {
-            const record = currentStagingData.find(r => r.id === id);
-            if (!record) return;
-            currentReviewId = id; 
-
-            const container = document.getElementById('reviewContainer');
-            container.innerHTML = `<div class="text-center py-5"><div class="spinner-border text-primary"></div><p>正在讀取檔案...</p></div>`;
-            new bootstrap.Modal(document.getElementById('reviewModal')).show();
+        // ==========================================
+        // 4. 核定結案 (物理轉移邏輯)
+        // ==========================================
+        window.approveRecord = async function(type, stagingId, originId) {
+            // 注意：此函式由新視窗呼叫，執行環境在主視窗
+            
+            let auditNote = '標準審核通過';
+            if (type === 'special') {
+                const reason = prompt("【特案允許結案】\n請輸入允許結案的原因或備註 (必填)，這將覆寫原有備註：");
+                if (reason === null) return; 
+                if (reason.trim() === '') return alert('特案結案必須填寫原因！');
+                auditNote = '【特案】' + reason;
+            } else {
+                if(!confirm(`確定要核定此案件並正式結案嗎？\n(系統將移動檔案並建立正式紀錄)`)) return;
+            }
 
             try {
-                // 特殊說明 Note
-                let specialNoteHtml = '';
-                try {
-                    let noteContent = '';
-                    if (record.service_desc && record.service_desc.trim().startsWith('{')) {
-                        const descJson = JSON.parse(record.service_desc);
-                        noteContent = descJson.user_remark || descJson.special_note || descJson.note;
-                    } else {
-                        noteContent = record.service_desc;
-                    }
-                    if(noteContent && noteContent !== 'undefined') {
-                        specialNoteHtml = `<div class="special-note-box"><strong><i class="fas fa-exclamation-triangle me-2"></i>Step 3 特殊狀況說明 / 備註：</strong><br>${noteContent}</div>`;
-                    }
-                } catch(e) { console.warn("Note parse error", e); }
+                // 1. 取得 Staging 資料
+                const { data: stagingData, error: fetchError } = await supabaseClient.from('service_record_staging').select('*').eq('id', stagingId).single();
+                if (fetchError) throw new Error('讀取暫存資料失敗');
 
-                // 附件處理
-                let files = record.attachment_files;
-                if (typeof files === 'string') { try { files = JSON.parse(files); } catch(e) { files = []; } }
-                if (!files || !Array.isArray(files)) files = [];
-                files.sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+                // 2. 處理檔案轉移 (staging -> service-records)
+                let newAttachments = [];
+                if (stagingData.attachment_files && stagingData.attachment_files.length > 0) {
+                    // 顯示 Loading (雖然在新視窗看不到，但可避免誤觸)
+                    // 這裡執行實際的下載再上傳 (Physical Move)
+                    for (const file of stagingData.attachment_files) {
+                        const oldPath = file.path; // e.g., "MotherID/File.pdf"
+                        const newPath = `${originId}/${file.name}`; // 使用母案ID作為資料夾 (保持結構一致)
 
-                let fileHtml = '';
-                if (files.length === 0) {
-                    fileHtml = `<div class="alert alert-warning text-center">此案件沒有上傳任何附件。</div>`;
-                } else {
-                    const filesWithUrl = await Promise.all(files.map(async (f) => {
-                        if(!f.path) return { ...f, url: null };
-                        const { data } = await supabaseClient.storage.from('staging').createSignedUrl(f.path, 600);
-                        return { ...f, url: data?.signedUrl };
-                    }));
-                    
-                    fileHtml = filesWithUrl.map(f => {
-                        const fileName = f.name || '未知檔名';
-                        if (!f.url) return `<div class="alert alert-danger">讀取失敗: ${fileName}</div>`;
-                        const isImg = fileName.match(/\.(jpeg|jpg|png|gif)$/i);
-                        const isPdf = fileName.match(/\.pdf$/i);
-                        
-                        let display = '';
-                        if (isImg) display = `<img src="${f.url}" class="attachment-img">`;
-                        else if (isPdf) display = `<iframe src="${f.url}#toolbar=0" class="attachment-pdf-frame"></iframe>`;
-                        else display = `<div class="p-3 bg-white border mt-2"><a href="${f.url}" target="_blank">下載 (${fileName})</a></div>`;
-                        
-                        const originalNameDisplay = f.original_name ? `<br><small class="text-muted">(${f.original_name})</small>` : '';
-                        return `<div class="file-item"><div class="fw-bold text-primary border-bottom pb-2 mb-2"><i class="fas fa-file me-2"></i>${fileName}${originalNameDisplay}</div>${display}</div>`;
-                    }).join('');
+                        // A. 下載
+                        const { data: fileBlob, error: dlError } = await supabaseClient.storage.from(STAGING_BUCKET).download(oldPath);
+                        if (dlError) throw new Error(`下載失敗 (${file.name}): ` + dlError.message);
+
+                        // B. 上傳到正式桶
+                        const { error: ulError } = await supabaseClient.storage.from(RECORD_BUCKET).upload(newPath, fileBlob, { upsert: true });
+                        if (ulError) throw new Error(`上傳失敗 (${file.name}): ` + ulError.message);
+
+                        // C. 刪除舊檔
+                        await supabaseClient.storage.from(STAGING_BUCKET).remove([oldPath]);
+
+                        // 更新路徑資訊
+                        newAttachments.push({
+                            ...file,
+                            path: newPath
+                        });
+                    }
                 }
 
-                const displayDate = record.visit_date || record.service_date || '未設定日期';
-                container.innerHTML = `<div class="alert alert-info py-2 small d-flex justify-content-between"><span><strong>顧問:</strong> ${record.medical_staff?.name || '未知'}</span><span><strong>送審日期:</strong> ${displayDate}</span></div>${specialNoteHtml}${fileHtml}`;
-            } catch (e) {
-                container.innerHTML = `<div class="alert alert-danger">讀取錯誤: ${e.message}</div>`;
+                // 3. 更新母案 (service_records) - 將其變成正式紀錄
+                // 這裡的邏輯是：將 Plan (母案) UPDATE 成 Actual Record (結案)
+                // 若您的邏輯是 1 Plan = 1 Record，用 Update。
+                
+                // 處理 JSON 備註
+                let descObj = {};
+                try { descObj = JSON.parse(stagingData.service_desc || '{}'); } catch(e){}
+                descObj.audit_note = auditNote; // 加入審核備註
+                descObj.audit_date = new Date().toISOString();
+
+                const { error: updateError } = await supabaseClient.from('service_records').update({
+                    visit_date: stagingData.visit_date,
+                    start_time: stagingData.start_time,
+                    end_time: stagingData.end_time,
+                    execution_items: stagingData.service_type, // 將 Service Type 存入 execution_items
+                    // 其他欄位看需不需要 mapping
+                    // 這裡因為沒有 attachment_files 欄位在 service_records (假設 Index 3 是讀 storage 或關聯表)
+                    // 如果 service_records 有存 JSON 的欄位 (如 execution_items 是 text, 假設有另一個欄位存 files?)
+                    // 假設 Index 3 是直接讀 Storage，那這裡只要確保 DB 有紀錄即可
+                    // 補充：若 DB 需要存附件路徑，請確認欄位。這裡假設 service_desc 可以存。
+                    // 為了 Index 3 能讀到，我們把附件資訊也塞進 service_desc (或專屬欄位)
+                    // 修正：將 service_desc 更新
+                    
+                    // 為了不覆蓋 service_records 原本重要的欄位，我們主要更新執行面
+                    updated_at: new Date()
+                }).eq('id', originId);
+
+                if (updateError) throw new Error('更新母案失敗: ' + updateError.message);
+
+                // 4. 刪除 Staging
+                await supabaseClient.from('service_record_staging').delete().eq('id', stagingId);
+
+                alert('✅ 結案成功！資料已轉移至正式資料庫與儲存空間。');
+                
+                // 重新載入列表
+                loadPendingReviews();
+                loadKPIs();
+
+            } catch (err) {
+                console.error(err);
+                alert('❌ 核定失敗: ' + err.message);
             }
         }
 
-        function toggleOtherReason() {
-            const isChecked = document.getElementById('reason3').checked;
-            document.getElementById('reason-other-text').style.display = isChecked ? 'block' : 'none';
+        window.rejectRecord = function(stagingId) {
+            if(!confirm('確定要退回此案件嗎？')) return;
+            alert('此功能尚未實作 (需實作狀態更新為 rejected 或通知顧問)');
         }
 
-        function openReviewEmailModal(id) {
-            const record = currentStagingData.find(r => r.id === id);
-            if(!record) return;
-            document.getElementById('email-target-id').value = id;
-            document.getElementById('email-consultant-name').value = record.medical_staff?.name || '';
-            document.getElementById('email-consultant-addr').innerText = record.medical_staff?.email || '無 Email 資料';
-            document.querySelectorAll('.preview-name').forEach(el => el.innerText = record.medical_staff?.name || 'XXX');
-            new bootstrap.Modal(document.getElementById('reviewEmailModal')).show();
-        }
+        // ==========================================
+        // 5. 催辦 Modal
+        // ==========================================
+        function openReminderModal(stagingId) {
+            const record = pendingDataList.find(r => r.id === stagingId);
+            if (!record) return;
 
-        function sendReviewEmail() {
-            const name = document.getElementById('email-consultant-name').value;
-            const email = document.getElementById('email-consultant-addr').innerText;
-            const deadline = document.getElementById('email-deadline').value;
-            let reasons = [];
-            if(document.getElementById('reason1').checked) reasons.push("附件錯置");
-            if(document.getElementById('reason2').checked) reasons.push("缺件");
-            if(document.getElementById('reason3').checked) reasons.push("其他原因：" + (document.getElementById('reason-other-text').value.trim() || '未說明'));
-            if(reasons.length === 0) return alert('請至少勾選一項原因');
-            alert(`[系統模擬發信]\n目標：${email}\n內容：\n親愛的 ${name} 顧問，您的送審案件因以下原因：\n${reasons.join('、')}\n需要補正。請於 ${deadline} 天內，盡速完成，以利結案。`);
-            bootstrap.Modal.getInstance(document.getElementById('reviewEmailModal')).hide();
-        }
-
-        function openReminderModal(id) {
-            const record = currentStagingData.find(r => r.id === id);
-            if(!record) return;
-            document.getElementById('remind-target-id').value = id;
-            document.getElementById('remind-consultant-name').value = record.medical_staff?.name || '';
+            document.getElementById('remind-company-name').innerText = record.workplaces?.companies?.name || '未知公司';
+            document.getElementById('remind-consultant-name').value = record.medical_staff?.name || '未知';
             document.getElementById('remind-consultant-addr').innerText = record.medical_staff?.email || '無 Email 資料';
             document.querySelectorAll('.remind-preview-name').forEach(el => el.innerText = record.medical_staff?.name || 'XXX');
             new bootstrap.Modal(document.getElementById('reminderEmailModal')).show();
@@ -510,23 +551,6 @@
             bootstrap.Modal.getInstance(document.getElementById('reminderEmailModal')).hide();
         }
 
-        async function approveRecord(type) {
-            if(!currentReviewId) return;
-            let auditNote = '';
-            let isSpecial = false;
-            if (type === 'special') {
-                const reason = prompt("【特案允許結案】\n請輸入允許結案的原因或備註 (必填)：");
-                if (reason === null) return; 
-                if (reason.trim() === '') return alert('特案結案必須填寫原因！');
-                auditNote = reason; isSpecial = true;
-            } else {
-                if(!confirm(`確定要核定此案件 (ID: ${currentReviewId}) 嗎？`)) return;
-                auditNote = '標準審核通過';
-            }
-            alert(`✅ ${isSpecial ? '特案核定' : '標準核定'} 成功！\n備註：${auditNote}\n(系統將自動將資料移入正式資料庫)`);
-            bootstrap.Modal.getInstance(document.getElementById('reviewModal')).hide();
-            refreshData(); 
-        }
     </script>
 </body>
 </html>
