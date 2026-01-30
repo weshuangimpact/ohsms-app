@@ -77,9 +77,8 @@
                         <p class="text-muted small mb-3">請輸入條件搜尋您名下的服務案件。</p>
                         
                         <div class="mb-3">
-                            <label class="form-label fw-bold small">服務年份</label>
-                            <select class="form-select" id="search-year">
-                                </select>
+                            <label class="form-label fw-bold small">服務年份 (選填)</label>
+                            <input type="text" class="form-control" id="search-year" placeholder="例如：2026">
                         </div>
                         <div class="mb-3">
                             <label class="form-label fw-bold small">公司統編 (選填)</label>
@@ -139,8 +138,20 @@
                     <div class="upload-area mb-3">
                         <input type="file" class="form-control mb-2" id="report-file" accept=".pdf,.doc,.docx,.jpg,.png">
                         <small class="text-muted d-block">支援格式：PDF, Word, 圖片 (單檔限制 10MB)</small>
-                        <div id="file-status-display" class="mt-2 text-success fw-bold" style="display:none;">
-                            <i class="fas fa-check-circle me-1"></i> 已上傳檔案：<span id="uploaded-filename"></span>
+                        
+                        <div id="file-status-display" class="mt-3 p-2 bg-light rounded border border-success text-success fw-bold" style="display:none;">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div>
+                                    <i class="fas fa-check-circle me-1"></i> 雲端已存檔案：
+                                    <span id="uploaded-filename" class="text-dark font-monospace"></span>
+                                </div>
+                                <span class="badge bg-success">已上傳</span>
+                            </div>
+                            <div class="small text-muted fw-normal mt-1 ms-4">(若需修改，請直接選擇新檔案上傳即可覆蓋)</div>
+                        </div>
+                        
+                        <div id="file-loading" class="mt-3 p-2 text-primary small" style="display:none;">
+                             <div class="spinner-border spinner-border-sm me-2"></div>正在檢查雲端檔案...
                         </div>
                     </div>
 
@@ -166,10 +177,16 @@
         const SUPABASE_KEY = 'sb_publishable_52emtU-9l-SDxcJTWVTPTA_Yu6qEogh';
         const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
+        // ============================================
+        // Bucket 名稱設定 (Files > Buckets > staging)
+        const BUCKET_NAME = 'staging'; 
+        // ============================================
+
         // 狀態變數
         let currentRecordId = null;
         let currentRecordData = null;
-        const currentUserId = sessionStorage.getItem('currentUserId'); // 登入者ID (Consultant ID)
+        let currentCloudFile = null; 
+        const currentUserId = sessionStorage.getItem('currentUserId'); 
 
         // 項目清單資料
         const checklistItems = [
@@ -192,25 +209,10 @@
         ];
 
         document.addEventListener('DOMContentLoaded', () => {
-            initYearSelect();
+            // ★ 移除自動填入年份 initYearSelect();
             renderChecklist();
         });
 
-        // 初始化年份下拉選單
-        function initYearSelect() {
-            const select = document.getElementById('search-year');
-            const currentYear = new Date().getFullYear();
-            // 提供前後3年的選項
-            for (let i = currentYear + 1; i >= currentYear - 3; i--) {
-                const option = document.createElement('option');
-                option.value = i;
-                option.text = i + ' 年';
-                if(i === currentYear) option.selected = true;
-                select.appendChild(option);
-            }
-        }
-
-        // 渲染 Checkbox 清單
         function renderChecklist() {
             const container = document.getElementById('checkbox-list');
             container.innerHTML = checklistItems.map(item => `
@@ -225,17 +227,13 @@
         // Step 1: 搜尋邏輯
         // =======================
         async function searchRecords() {
-            const year = document.getElementById('search-year').value;
+            // ★ 修改：允許年份為空
+            const year = document.getElementById('search-year').value.trim();
             const taxId = document.getElementById('search-tax-id').value.trim();
             const container = document.getElementById('records-container');
             
             container.innerHTML = '<div class="text-center py-5"><div class="spinner-border text-primary"></div><p class="mt-2">查詢中...</p></div>';
 
-            // 查詢邏輯：
-            // 1. 從 service_records 找資料
-            // 2. 必須是目前登入者的 consultant_id
-            // 3. 透過 workplaces -> companies 關聯篩選統編
-            
             let query = supabaseClient
                 .from('service_records')
                 .select(`
@@ -245,12 +243,14 @@
                         companies!inner ( name, tax_id )
                     )
                 `)
-                .eq('consultant_id', currentUserId) // ★ 關鍵：只看自己的案件
-                .eq('service_year', year)
+                .eq('consultant_id', currentUserId)
                 .order('visit_date', { ascending: false });
 
+            // ★ 修改：有填寫才加入篩選條件
+            if (year) {
+                query = query.eq('service_year', year);
+            }
             if (taxId) {
-                // Supabase 關聯過濾語法
                 query = query.eq('workplaces.companies.tax_id', taxId);
             }
 
@@ -266,14 +266,10 @@
                 return;
             }
 
-            // 渲染列表
             container.innerHTML = data.map(record => {
-                // 狀態顯示
                 let statusBadge = '<span class="badge bg-secondary">未填寫</span>';
                 if (record.execution_items) statusBadge = '<span class="badge bg-warning text-dark">草稿/已上傳</span>'; 
-                // 若後端有審核欄位 status (假設)
-                if (record.status === 'approved') statusBadge = '<span class="badge bg-success">已審核</span>';
-
+                
                 return `
                 <div class="col-12">
                     <div class="record-card p-3 rounded d-flex justify-content-between align-items-center" onclick="selectRecord('${record.id}')">
@@ -300,7 +296,8 @@
         // =======================
         async function selectRecord(id) {
             currentRecordId = id;
-            
+            currentCloudFile = null; 
+
             // 1. 取得完整單筆資料
             const { data, error } = await supabaseClient
                 .from('service_records')
@@ -318,12 +315,9 @@
             document.getElementById('current-company-name').innerText = data.workplaces.companies.name;
             document.getElementById('current-visit-date').innerText = data.visit_date || '(未設定)';
             
-            // 3. 回填 Checkbox 狀態 (如果之前有存過)
-            document.querySelectorAll('input[name="service-item"]').forEach(cb => cb.checked = false); // 重置
-            
+            // 3. 回填 Checkbox 狀態
+            document.querySelectorAll('input[name="service-item"]').forEach(cb => cb.checked = false); 
             if (data.execution_items) {
-                // 假設資料庫存的是 JSON 字串或是逗號分隔字串
-                // 這裡簡單處理：如果是字串包含 ID 就勾選
                 const savedItems = data.execution_items; 
                 checklistItems.forEach(item => {
                     if (savedItems.includes(item.id)) {
@@ -332,39 +326,44 @@
                 });
             }
 
-            // 4. 按鈕狀態邏輯
+            // 4. 真實檢查 Storage 檔案
+            const fileStatus = document.getElementById('file-status-display');
+            const fileLoading = document.getElementById('file-loading');
+            const fileNameSpan = document.getElementById('uploaded-filename');
             const btnSubmit = document.getElementById('btn-submit');
             const btnDelete = document.getElementById('btn-delete');
-            const fileStatus = document.getElementById('file-status-display');
-            const fileNameSpan = document.getElementById('uploaded-filename');
 
-            // 重置檔案輸入
             document.getElementById('report-file').value = ''; 
+            fileStatus.style.display = 'none';
+            fileLoading.style.display = 'block'; 
 
+            // 列出 staging bucket 中，該 record_id 資料夾下的檔案
+            const { data: files, error: storageError } = await supabaseClient.storage
+                .from(BUCKET_NAME)
+                .list(`${currentRecordId}`, {
+                    limit: 1,
+                    offset: 0,
+                    sortBy: { column: 'created_at', order: 'desc' },
+                });
+
+            fileLoading.style.display = 'none';
+
+            if (files && files.length > 0) {
+                currentCloudFile = files[0];
+                fileStatus.style.display = 'block';
+                fileNameSpan.innerText = currentCloudFile.name;
+            } 
+
+            // 5. 按鈕狀態邏輯
             if (data.execution_items) {
-                // 已經有資料 -> 修改模式
+                // 修改模式
                 btnSubmit.innerHTML = '<i class="fas fa-save me-1"></i> 修改並儲存';
                 btnDelete.style.display = 'block';
-                
-                // 若有上傳過檔案 (這裡假設 execution_items 內含檔案資訊或有獨立欄位，暫以 UI 模擬)
-                fileStatus.style.display = 'block';
-                fileNameSpan.innerText = '(已存在舊檔，上傳新檔將覆蓋)';
-                
-                // 若已審核通過則不能刪除 (假設欄位)
-                if(data.status === 'approved') {
-                    btnDelete.disabled = true;
-                    btnSubmit.disabled = true;
-                    btnSubmit.innerText = '案件已審核鎖定';
-                    fileStatus.innerHTML = '<i class="fas fa-lock me-1"></i> 已審核歸檔';
-                } else {
-                    btnDelete.disabled = false;
-                    btnSubmit.disabled = false;
-                }
+                btnDelete.disabled = false;
             } else {
                 // 新案件
                 btnSubmit.innerHTML = '<i class="fas fa-save me-1"></i> 存檔送審';
                 btnDelete.style.display = 'none';
-                fileStatus.style.display = 'none';
             }
 
             // 切換視圖
@@ -377,7 +376,7 @@
             document.getElementById('step2-content').style.display = 'none';
             document.getElementById('step1-content').style.display = 'block';
             updateStepIndicator(1);
-            searchRecords(); // 重新整理列表
+            searchRecords(); 
         }
 
         function updateStepIndicator(step) {
@@ -389,7 +388,7 @@
         }
 
         // =======================
-        // 核心功能：存檔與上傳
+        // 核心功能：存檔與上傳 (真實版)
         // =======================
         async function submitRecord() {
             if (!currentRecordId) return;
@@ -399,7 +398,7 @@
             btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> 處理中...';
 
             try {
-                // 1. 收集勾選項目
+                // 1. 檢查勾選
                 const selectedItems = [];
                 document.querySelectorAll('input[name="service-item"]:checked').forEach(cb => {
                     selectedItems.push(cb.value);
@@ -409,33 +408,31 @@
                     throw new Error("請至少勾選一項執行紀錄項目。");
                 }
 
-                // 2. 處理檔案上傳 (若有選擇檔案)
+                // 2. 真實上傳檔案 (若有選)
                 const fileInput = document.getElementById('report-file');
                 const file = fileInput.files[0];
-                let fileUrl = null; // 實際專案可存 URL
 
                 if (file) {
-                    // 定義路徑：staging/紀錄ID/檔名
-                    // 注意：需確保 Supabase Storage 有建立 'service_documents' bucket
-                    const filePath = `staging/${currentRecordId}/${file.name}`;
+                    // 路徑規則: [RecordID] / [FileName]
+                    const filePath = `${currentRecordId}/${file.name}`;
                     
                     const { data: uploadData, error: uploadError } = await supabaseClient.storage
-                        .from('service_documents') // 假設的 Bucket 名稱
+                        .from(BUCKET_NAME)
                         .upload(filePath, file, {
-                            upsert: true // 允許覆寫
+                            upsert: true // 允許覆蓋
                         });
 
-                    if (uploadError) {
-                        // 若 Bucket 不存在，先僅提示但不中斷資料庫更新 (為演示用)
-                        console.warn('上傳 Storage 失敗 (可能 Bucket 未建立):', uploadError);
-                    } else {
-                        console.log('上傳成功:', uploadData);
+                    if (uploadError) throw uploadError;
+
+                    // 若原本有舊檔且檔名不同，移除舊檔 (保留最新)
+                    if(currentCloudFile && currentCloudFile.name !== file.name) {
+                        await supabaseClient.storage
+                            .from(BUCKET_NAME)
+                            .remove([`${currentRecordId}/${currentCloudFile.name}`]);
                     }
-                }
+                } 
 
                 // 3. 更新資料庫
-                // 將勾選的項目轉為字串存入 execution_items
-                // 這裡簡單用 JSON stringify 或 join，視後端定義
                 const itemsString = JSON.stringify(selectedItems);
 
                 const { error: dbError } = await supabaseClient
@@ -443,7 +440,6 @@
                     .update({
                         execution_items: itemsString,
                         updated_at: new Date()
-                        // status: 'submitted' // 可依需求更新狀態
                     })
                     .eq('id', currentRecordId);
 
@@ -453,7 +449,8 @@
                 backToStep1();
 
             } catch (err) {
-                alert('❌ 錯誤：' + err.message);
+                console.error(err);
+                alert('❌ 錯誤：' + (err.message || err.error_description || '未知錯誤'));
                 btn.disabled = false;
                 btn.innerHTML = '<i class="fas fa-save me-1"></i> 存檔送審';
             }
@@ -463,28 +460,37 @@
             if (!confirm('確定要刪除此筆紀錄與上傳的檔案嗎？(此動作將重置本案件狀態)')) return;
 
             try {
-                // 1. 清空 execution_items 視為刪除填寫內容
+                // 1. 清空 DB 欄位
                 const { error } = await supabaseClient
                     .from('service_records')
                     .update({
                         execution_items: null
-                        // file_url: null 
                     })
                     .eq('id', currentRecordId);
 
                 if (error) throw error;
 
-                // 2. (選用) 刪除 Storage 檔案 - 需配合後端邏輯
-                // const { error: storageError } = await supabaseClient.storage.from('service_documents').remove([`staging/${currentRecordId}/...`]);
+                // 2. 真實刪除 Storage 檔案
+                const { data: files } = await supabaseClient.storage
+                    .from(BUCKET_NAME)
+                    .list(`${currentRecordId}`);
+                
+                if (files && files.length > 0) {
+                    const filesToRemove = files.map(f => `${currentRecordId}/${f.name}`);
+                    const { error: removeError } = await supabaseClient.storage
+                        .from(BUCKET_NAME)
+                        .remove(filesToRemove);
+                    
+                    if(removeError) console.error('Storage 刪除失敗:', removeError);
+                }
 
-                alert('已刪除紀錄，案件已重置。');
+                alert('🗑️ 已刪除紀錄與檔案，案件已重置。');
                 backToStep1();
 
             } catch (err) {
                 alert('刪除失敗: ' + err.message);
             }
         }
-
     </script>
 </body>
 </html>
