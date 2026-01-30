@@ -367,18 +367,18 @@
             }
         }
 
-        // --- ★ 修正版：強制讀取 Storage 檔案列表，確保遺漏檔案被抓取 ---
+        // --- ★ 雙重保險修正版：同時抓取 Storage 列表 與 JSON 紀錄，確保不漏檔 ---
         async function openStagingPreview(id, btn) {
             const record = currentStagingData.find(r => r.id === id);
             if (!record) return;
             currentReviewId = id;
 
             const originalText = btn.innerHTML;
-            btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> 處理中...';
+            btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> 掃描中...';
             btn.disabled = true;
 
             try {
-                // 資料準備
+                // 基本資料準備
                 const companyName = record.workplaces?.companies?.name || '未知公司';
                 const serviceItem = record.service_type || '未指定';
                 const visitDate = record.visit_date || record.service_date || '未設定';
@@ -395,42 +395,52 @@
                     }
                 } catch(e) {}
 
-                // --- 核心修正：直接向 Storage 請求真實檔案列表 (Fix 1) ---
+                // ============================================
+                // 核心修正：雙重來源檔案清單 (Union Set)
+                // ============================================
+                const fileMap = new Map(); // 使用 Map 依據檔名去重
+
+                // 來源 1：資料庫紀錄 (JSON)
+                try {
+                    let jsonFiles = record.attachment_files;
+                    if (typeof jsonFiles === 'string') jsonFiles = JSON.parse(jsonFiles);
+                    if (Array.isArray(jsonFiles)) {
+                        jsonFiles.forEach(f => {
+                            if (f && f.name) fileMap.set(f.name, f.name); // 暫存檔名
+                        });
+                    }
+                } catch(e) { console.warn("JSON Parse Error", e); }
+
+                // 來源 2：Storage 實體掃描 (解決幽靈檔案問題)
+                const { data: storageFiles } = await supabaseClient.storage.from('staging').list(id);
+                if (storageFiles && storageFiles.length > 0) {
+                    storageFiles.forEach(f => {
+                        if (f.name !== '.emptyFolderPlaceholder') {
+                            fileMap.set(f.name, f.name);
+                        }
+                    });
+                }
+
+                // 將 Map 轉為處理列表
+                const allFiles = Array.from(fileMap.values());
+                allFiles.sort(); // 確保 A, B, C 順序
+
+                console.log("最終合併檔案列表:", allFiles); // 除錯用
+
                 const pdfUrls = [];
                 const otherLinks = [];
 
-                const { data: storageFiles, error: storageError } = await supabaseClient
-                    .storage
-                    .from('staging')
-                    .list(id, { // 使用 record ID 作為資料夾路徑
-                        limit: 100, 
-                        offset: 0, 
-                        sortBy: { column: 'name', order: 'asc' } 
-                    });
-
-                if (storageError) {
-                    console.error("Storage List Error:", storageError);
-                    alert("讀取附件列表失敗，請檢查網路或權限");
-                }
-
-                if (storageFiles && storageFiles.length > 0) {
-                    for (const f of storageFiles) {
-                        if (f.name === '.emptyFolderPlaceholder') continue;
-
-                        // 構建完整路徑：staging/{record_id}/{filename}
-                        const filePath = `${id}/${f.name}`;
-                        
-                        // 取得 Signed URL (確保能讀取)
-                        const { data } = await supabaseClient.storage.from('staging').createSignedUrl(filePath, 3600);
-                        
-                        if (data?.signedUrl) {
-                            // Fix 2: 嚴格區分 PDF 與其他檔案 (JPG, PNG 等)
-                            if (f.name.toLowerCase().endsWith('.pdf')) {
-                                pdfUrls.push(data.signedUrl);
-                            } else {
-                                // 收集非 PDF 檔案以建立超連結
-                                otherLinks.push({ name: f.name, url: data.signedUrl });
-                            }
+                // 統一取得 Public URL (比 Signed URL 更穩定且無過期問題)
+                for (const fileName of allFiles) {
+                    const filePath = `${id}/${fileName}`;
+                    const { data } = supabaseClient.storage.from('staging').getPublicUrl(filePath);
+                    
+                    if (data?.publicUrl) {
+                        const url = data.publicUrl;
+                        if (fileName.toLowerCase().endsWith('.pdf')) {
+                            pdfUrls.push(url);
+                        } else {
+                            otherLinks.push({ name: fileName, url: url });
                         }
                     }
                 }
@@ -441,24 +451,29 @@
                     const mergedPdf = await PDFDocument.create();
                     for (const url of pdfUrls) {
                         try {
-                            const existingPdfBytes = await fetch(url).then(res => res.arrayBuffer());
+                            const res = await fetch(url);
+                            if (!res.ok) throw new Error(`Fetch failed: ${res.status}`);
+                            const existingPdfBytes = await res.arrayBuffer();
                             const pdf = await PDFDocument.load(existingPdfBytes);
                             const copiedPages = await mergedPdf.copyPages(pdf, pdf.getPageIndices());
                             copiedPages.forEach((page) => mergedPdf.addPage(page));
                         } catch (err) {
-                            console.error("PDF Merge Error", err);
+                            console.error(`PDF Merge Error (${url}):`, err);
                         }
                     }
-                    const pdfBytes = await mergedPdf.save();
-                    const blob = new Blob([pdfBytes], { type: 'application/pdf' });
-                    finalPdfUrl = URL.createObjectURL(blob);
+                    // 只要有成功合併頁面就顯示
+                    if (mergedPdf.getPageCount() > 0) {
+                        const pdfBytes = await mergedPdf.save();
+                        const blob = new Blob([pdfBytes], { type: 'application/pdf' });
+                        finalPdfUrl = URL.createObjectURL(blob);
+                    }
                 }
 
                 // 構建新視窗 HTML
                 const newWin = window.open('', '_blank');
-                if (!newWin) return alert('請允許開啟彈跳視窗');
+                if (!newWin) return alert('請允許開啟彈跳視窗以進行預覽');
 
-                // 生成附件連結區塊 (Fix 2)
+                // 生成附件連結區塊 (針對非 PDF)
                 const otherLinksHtml = otherLinks.length > 0 
                     ? otherLinks.map(l => 
                         `<a href="${l.url}" target="_blank" class="btn btn-sm btn-outline-secondary me-2 mb-2">
@@ -469,7 +484,11 @@
 
                 const pdfViewerHtml = finalPdfUrl 
                     ? `<iframe src="${finalPdfUrl}#toolbar=0" class="pdf-viewer"></iframe>` 
-                    : `<div class="alert alert-warning text-center mt-5">此案件無 PDF 附件可預覽</div>`;
+                    : `<div class="d-flex align-items-center justify-content-center h-100 flex-column text-muted">
+                         <i class="fas fa-file-pdf fa-3x mb-3"></i>
+                         <h5>此案件無 PDF 附件可預覽</h5>
+                         <p class="small">系統已掃描 Storage 與資料庫紀錄，未發現 .pdf 檔案。</p>
+                       </div>`;
 
                 const htmlContent = `
                     <!DOCTYPE html>
