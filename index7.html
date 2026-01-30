@@ -21,6 +21,24 @@
         .nav-pills .nav-link.active { background-color: var(--theme-color); color: white; }
         .import-area { border: 2px dashed #cbd5e1; border-radius: 8px; padding: 20px; text-align: center; background: #fff; transition: all 0.3s; cursor: pointer; }
         .import-area:hover { border-color: var(--theme-color); background: #eef2ff; }
+
+        /* 新增：Instruction Box 樣式 (同步 Index 1) */
+        .instruction-box { 
+            background-color: #fff; 
+            border-left: 5px solid var(--theme-color); 
+            padding: 20px 25px; 
+            border-radius: 4px; 
+            margin-bottom: 30px; 
+            text-align: left; 
+            box-shadow: 0 2px 5px rgba(0,0,0,0.05); 
+            width: 100%; 
+        }
+        .instruction-title { 
+            color: var(--theme-color); 
+            font-weight: 700; 
+            margin-bottom: 10px; 
+            font-size: 1.1rem;
+        }
     </style>
 
     <script>
@@ -51,12 +69,16 @@
         
         <div class="d-flex justify-content-between align-items-center mb-4">
             <div>
-                <h4 class="fw-bold text-dark"><i class="fas fa-database me-2 text-primary"></i>基本資料建立</h4>
-                <p class="text-muted mb-0 small">
-                    <span class="badge bg-primary bg-opacity-10 text-primary me-2">5W1H 設計精神</span>
-                    透過系統化連結 <strong>顧問(Who)</strong>、<strong>時間(When)</strong>、<strong>場所(Where)</strong> 與 <strong>事項(What)</strong>，確保服務歷程具備 <strong>完整可追溯性(How)</strong> 與 <strong>法規依據(Why)</strong>。
-                </p>
+                <h2 class="fw-bold text-dark"><i class="fas fa-database me-2" style="color: var(--theme-color);"></i>基本資料建立</h2>
+                <p class="text-muted mb-0">Data Mgmt 階段：系統基礎資料維護與批次管理</p>
             </div>
+        </div>
+
+        <div class="instruction-box">
+            <div class="instruction-title"><i class="fas fa-cubes me-2"></i>5W1H 設計理念：Data (資料) —— 結構化與關聯性</div>
+            <p class="mb-0 text-dark" style="line-height: 1.6;">
+                透過系統化連結 <strong>顧問 (Who)</strong>、<strong>時間 (When)</strong>、<strong>場所 (Where)</strong> 與 <strong>事項 (What)</strong>，確保服務歷程具備 <strong>完整可追溯性 (How)</strong> 與 <strong>法規依據 (Why)</strong>。此模組為所有服務紀錄的基礎，確保資料的一致性與正確性。
+            </p>
         </div>
 
         <ul class="nav nav-pills mb-4" id="pills-tab" role="tablist">
