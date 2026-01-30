@@ -7,12 +7,9 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css"/>
+    <script src="https://unpkg.com/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
     
     <style>
-        /* 依照 Dashboard 定義：
-           .card-check { border-left-color: #198754; } 
-           主色調設定為 #198754 (Green)
-        */
         :root { 
             --primary-bg: #f4f6f9; 
             --theme-color: #198754; /* Success Green */
@@ -30,19 +27,6 @@
         .chart-container { position: relative; height: 260px; width: 100%; }
         .table-pending thead { background-color: #f8fafc; }
         
-        /* 預覽視窗專用樣式 */
-        .preview-body { background: #f8f9fa; min-height: 400px; padding: 20px; }
-        .file-item { background: white; border: 1px solid #dee2e6; padding: 15px; margin-bottom: 15px; border-radius: 8px; }
-        .attachment-img { max-width: 100%; height: auto; border: 1px solid #ddd; box-shadow: 0 2px 5px rgba(0,0,0,0.1); margin-top: 10px; }
-        .attachment-pdf-frame { width: 100%; height: 500px; border: 1px solid #ddd; margin-top: 10px; }
-        
-        /* 特殊說明區塊 (Step 3) */
-        .special-note-box {
-            background-color: #fff3cd; border: 1px solid #ffecb5; 
-            color: #664d03; padding: 15px; border-radius: 6px; margin-bottom: 20px;
-            animation: fadeIn 0.5s;
-        }
-
         /* PDCA 說明區塊 (綠色主題) */
         .instruction-box {
             background-color: #fff;
@@ -160,7 +144,7 @@
                         <thead class="table-pending">
                             <tr>
                                 <th class="ps-4">日期</th>
-                                <th>顧問姓名</th>
+                                <th>公司/顧問</th>
                                 <th>服務類型</th>
                                 <th>描述摘要</th>
                                 <th class="text-end pe-4">管理動作</th>
@@ -174,30 +158,6 @@
             </div>
         </div>
 
-    </div>
-
-    <div class="modal fade" id="reviewModal" tabindex="-1" data-bs-backdrop="static">
-        <div class="modal-dialog modal-xl modal-dialog-scrollable">
-            <div class="modal-content">
-                <div class="modal-header bg-success text-white">
-                    <h5 class="modal-title"><i class="fas fa-search-plus me-2"></i>案件審核預覽</h5>
-                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
-                </div>
-                <div class="modal-body preview-body" id="reviewContainer">
-                    </div>
-                <div class="modal-footer bg-light justify-content-between">
-                    <div class="text-muted small">此模式僅供預覽，不包含浮水印。</div>
-                    <div class="d-flex gap-2">
-                        <button type="button" class="btn btn-warning fw-bold text-dark" onclick="approveRecord('special')">
-                            <i class="fas fa-exclamation-circle me-1"></i>特案允許結案
-                        </button>
-                        <button type="button" class="btn btn-success fw-bold" onclick="approveRecord('standard')">
-                            <i class="fas fa-check me-1"></i>核定結案
-                        </button>
-                    </div>
-                </div>
-            </div>
-        </div>
     </div>
 
     <div class="modal fade" id="reviewEmailModal" tabindex="-1">
@@ -291,6 +251,7 @@
         const SUPABASE_URL = 'https://yhehfucgemxnfrdvpdhw.supabase.co';
         const SUPABASE_KEY = 'sb_publishable_52emtU-9l-SDxcJTWVTPTA_Yu6qEogh';
         const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+        const { PDFDocument } = PDFLib;
 
         let rateChart = null;
         let currentStagingData = []; 
@@ -328,12 +289,15 @@
                     .select('*', { count: 'exact', head: true })
                     .eq('service_year', year);
 
-                // 2. 讀取 Pending 資料
+                // 2. 讀取 Pending 資料，加入公司名稱關聯
                 const { data: stagingData, error: err2 } = await supabaseClient
                     .from('service_record_staging')
                     .select(`
                         *,
-                        medical_staff:consultant_id ( name, email )
+                        medical_staff:consultant_id ( name, email ),
+                        workplaces (
+                            companies ( name )
+                        )
                     `)
                     .eq('status', 'pending');
 
@@ -370,23 +334,27 @@
                     } catch(e) { descText = p.service_desc || '-'; }
 
                     const consultantName = p.medical_staff?.name || '未知顧問';
+                    const companyName = p.workplaces?.companies?.name || '未知公司';
                     const displayDate = p.visit_date || p.service_date;
 
                     return `
                     <tr class="animate__animated animate__fadeIn">
                         <td class="ps-4 fw-bold font-monospace">${displayDate}</td>
-                        <td>${consultantName}</td>
+                        <td>
+                            <div class="fw-bold">${companyName}</div>
+                            <small class="text-muted">${consultantName}</small>
+                        </td>
                         <td><span class="badge bg-light text-dark border">${p.service_type || '一般訪視'}</span></td>
                         <td class="text-truncate" style="max-width: 250px;">${descText}</td>
                         <td class="text-end pe-4">
                             <div class="btn-group">
-                                <button class="btn btn-sm btn-outline-secondary" onclick="openStagingPreview('${p.id}')" title="審核預覽">
-                                    <i class="far fa-eye"></i>
+                                <button class="btn btn-sm btn-primary fw-bold" onclick="openStagingPreview('${p.id}', this)" title="開新分頁預覽">
+                                    <i class="far fa-eye me-1"></i> 預覽審核
                                 </button>
                                 <button class="btn btn-sm btn-outline-success" onclick="openReviewEmailModal('${p.id}')" title="審查通知 (補件)">
                                     <i class="far fa-envelope"></i>
                                 </button>
-                                <button class="btn btn-sm btn-outline-primary" onclick="openReminderModal('${p.id}')" title="催收通知">
+                                <button class="btn btn-sm btn-outline-danger" onclick="openReminderModal('${p.id}')" title="催收通知">
                                     <i class="far fa-bell"></i>
                                 </button>
                             </div>
@@ -400,69 +368,156 @@
             }
         }
 
-        // --- 1. 審核預覽邏輯 ---
-        async function openStagingPreview(id) {
+        // --- 1. 新版：開新分頁合併 PDF 預覽 ---
+        async function openStagingPreview(id, btn) {
             const record = currentStagingData.find(r => r.id === id);
             if (!record) return;
-            currentReviewId = id; 
+            currentReviewId = id;
 
-            const container = document.getElementById('reviewContainer');
-            container.innerHTML = `<div class="text-center py-5"><div class="spinner-border text-primary"></div><p>正在讀取檔案...</p></div>`;
-            new bootstrap.Modal(document.getElementById('reviewModal')).show();
+            const originalText = btn.innerHTML;
+            btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> 處理中...';
+            btn.disabled = true;
 
             try {
-                // 特殊說明 Note
-                let specialNoteHtml = '';
+                // 資料準備
+                const companyName = record.workplaces?.companies?.name || '未知公司';
+                const serviceItem = record.service_type || '未指定';
+                const visitDate = record.visit_date || record.service_date || '未設定';
+                const timeRange = (record.start_time && record.end_time) ? `${record.start_time} ~ ${record.end_time}` : '未記錄';
+                
+                // 解析備註
+                let specialNote = '無';
                 try {
-                    let noteContent = '';
                     if (record.service_desc && record.service_desc.trim().startsWith('{')) {
-                        const descJson = JSON.parse(record.service_desc);
-                        noteContent = descJson.user_remark || descJson.special_note || descJson.note;
+                        const json = JSON.parse(record.service_desc);
+                        specialNote = json.user_remark || json.special_note || json.note || '無';
                     } else {
-                        noteContent = record.service_desc;
+                        specialNote = record.service_desc || '無';
                     }
-                    if(noteContent && noteContent !== 'undefined') {
-                        specialNoteHtml = `<div class="special-note-box"><strong><i class="fas fa-exclamation-triangle me-2"></i>Step 3 特殊狀況說明 / 備註：</strong><br>${noteContent}</div>`;
-                    }
-                } catch(e) { console.warn("Note parse error", e); }
+                } catch(e) {}
 
-                // 附件處理
+                // 處理附件 (PDF 合併 + 其他連結)
                 let files = record.attachment_files;
                 if (typeof files === 'string') { try { files = JSON.parse(files); } catch(e) { files = []; } }
-                if (!files || !Array.isArray(files)) files = [];
+                if (!Array.isArray(files)) files = [];
+                
+                // 排序 (確保 A, B, C 順序)
                 files.sort((a, b) => (a.name || '').localeCompare(b.name || ''));
 
-                let fileHtml = '';
-                if (files.length === 0) {
-                    fileHtml = `<div class="alert alert-warning text-center">此案件沒有上傳任何附件。</div>`;
-                } else {
-                    const filesWithUrl = await Promise.all(files.map(async (f) => {
-                        if(!f.path) return { ...f, url: null };
-                        const { data } = await supabaseClient.storage.from('staging').createSignedUrl(f.path, 600);
-                        return { ...f, url: data?.signedUrl };
-                    }));
-                    
-                    fileHtml = filesWithUrl.map(f => {
-                        const fileName = f.name || '未知檔名';
-                        if (!f.url) return `<div class="alert alert-danger">讀取失敗: ${fileName}</div>`;
-                        const isImg = fileName.match(/\.(jpeg|jpg|png|gif)$/i);
-                        const isPdf = fileName.match(/\.pdf$/i);
-                        
-                        let display = '';
-                        if (isImg) display = `<img src="${f.url}" class="attachment-img">`;
-                        else if (isPdf) display = `<iframe src="${f.url}#toolbar=0" class="attachment-pdf-frame"></iframe>`;
-                        else display = `<div class="p-3 bg-white border mt-2"><a href="${f.url}" target="_blank">下載 (${fileName})</a></div>`;
-                        
-                        const originalNameDisplay = f.original_name ? `<br><small class="text-muted">(${f.original_name})</small>` : '';
-                        return `<div class="file-item"><div class="fw-bold text-primary border-bottom pb-2 mb-2"><i class="fas fa-file me-2"></i>${fileName}${originalNameDisplay}</div>${display}</div>`;
-                    }).join('');
+                const pdfUrls = [];
+                const otherLinks = [];
+
+                // 取得 Signed URL 並分類
+                for (const f of files) {
+                    if (!f.path) continue;
+                    const { data } = await supabaseClient.storage.from('staging').createSignedUrl(f.path, 3600); // 1小時有效
+                    if (data?.signedUrl) {
+                        const isPdf = f.name.toLowerCase().endsWith('.pdf');
+                        if (isPdf) {
+                            pdfUrls.push(data.signedUrl);
+                        } else {
+                            otherLinks.push({ name: f.name, url: data.signedUrl });
+                        }
+                    }
                 }
 
-                const displayDate = record.visit_date || record.service_date || '未設定日期';
-                container.innerHTML = `<div class="alert alert-info py-2 small d-flex justify-content-between"><span><strong>顧問:</strong> ${record.medical_staff?.name || '未知'}</span><span><strong>送審日期:</strong> ${displayDate}</span></div>${specialNoteHtml}${fileHtml}`;
-            } catch (e) {
-                container.innerHTML = `<div class="alert alert-danger">讀取錯誤: ${e.message}</div>`;
+                // 開始合併 PDF
+                let finalPdfUrl = '';
+                if (pdfUrls.length > 0) {
+                    const mergedPdf = await PDFDocument.create();
+                    for (const url of pdfUrls) {
+                        try {
+                            const existingPdfBytes = await fetch(url).then(res => res.arrayBuffer());
+                            const pdf = await PDFDocument.load(existingPdfBytes);
+                            const copiedPages = await mergedPdf.copyPages(pdf, pdf.getPageIndices());
+                            copiedPages.forEach((page) => mergedPdf.addPage(page));
+                        } catch (err) {
+                            console.error("PDF Merge Error", err);
+                        }
+                    }
+                    const pdfBytes = await mergedPdf.save();
+                    const blob = new Blob([pdfBytes], { type: 'application/pdf' });
+                    finalPdfUrl = URL.createObjectURL(blob);
+                }
+
+                // 構建新視窗 HTML
+                const newWin = window.open('', '_blank');
+                if (!newWin) return alert('請允許開啟彈跳視窗');
+
+                const otherLinksHtml = otherLinks.map(l => 
+                    `<a href="${l.url}" target="_blank" class="btn btn-sm btn-outline-secondary me-2 mb-2"><i class="fas fa-paperclip"></i> ${l.name}</a>`
+                ).join('');
+
+                const pdfViewerHtml = finalPdfUrl 
+                    ? `<iframe src="${finalPdfUrl}#toolbar=0" class="pdf-viewer"></iframe>` 
+                    : `<div class="alert alert-warning text-center mt-5">此案件無 PDF 附件可預覽</div>`;
+
+                const htmlContent = `
+                    <!DOCTYPE html>
+                    <html lang="zh-TW">
+                    <head>
+                        <title>案件審核: ${companyName}</title>
+                        <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+                        <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+                        <style>
+                            body { background: #f0f2f5; padding: 20px; height: 100vh; display: flex; flex-direction: column; }
+                            .header-card { background: white; padding: 15px 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); margin-bottom: 15px; flex-shrink: 0; }
+                            .meta-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 15px; margin-bottom: 10px; }
+                            .meta-item label { font-size: 0.85rem; color: #6c757d; font-weight: bold; display: block; }
+                            .meta-item div { font-weight: 500; color: #212529; }
+                            .note-box { background: #fff3cd; color: #664d03; padding: 10px; border-radius: 4px; font-size: 0.9rem; margin-top: 10px; border: 1px solid #ffecb5; }
+                            .pdf-container { flex-grow: 1; background: white; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); overflow: hidden; display: flex; flex-direction: column; }
+                            .pdf-viewer { width: 100%; height: 100%; border: none; }
+                            .action-bar { display: flex; justify-content: space-between; align-items: center; margin-top: 10px; border-top: 1px solid #eee; padding-top: 10px; }
+                            .file-links { margin-top: 10px; }
+                        </style>
+                    </head>
+                    <body>
+                        <div class="header-card">
+                            <div class="d-flex justify-content-between align-items-start">
+                                <h5 class="fw-bold text-success"><i class="fas fa-clipboard-check me-2"></i>案件審核預覽</h5>
+                                <div class="btn-group">
+                                    <button class="btn btn-warning fw-bold" onclick="window.opener.approveRecordFromChild('${id}', 'special')">
+                                        <i class="fas fa-exclamation-circle me-1"></i>特案允許結案
+                                    </button>
+                                    <button class="btn btn-success fw-bold" onclick="window.opener.approveRecordFromChild('${id}', 'standard')">
+                                        <i class="fas fa-check me-1"></i>核定結案
+                                    </button>
+                                </div>
+                            </div>
+                            <hr class="my-2">
+                            <div class="meta-grid">
+                                <div class="meta-item"><label>當前案件 (公司)</label><div>${companyName}</div></div>
+                                <div class="meta-item"><label>執行事項</label><div>${serviceItem}</div></div>
+                                <div class="meta-item"><label>執行日期</label><div>${visitDate}</div></div>
+                                <div class="meta-item"><label>執行期間</label><div>${timeRange}</div></div>
+                            </div>
+                            ${ specialNote !== '無' ? `<div class="note-box"><strong><i class="fas fa-sticky-note me-1"></i>特殊事項備註 / 結案理由：</strong> ${specialNote}</div>` : '' }
+                            ${ otherLinks.length > 0 ? `<div class="file-links"><strong><i class="fas fa-paperclip me-1"></i>其他附件：</strong> ${otherLinksHtml}</div>` : ''}
+                        </div>
+                        <div class="pdf-container">
+                            ${pdfViewerHtml}
+                        </div>
+                    </body>
+                    </html>
+                `;
+
+                newWin.document.write(htmlContent);
+                newWin.document.close();
+
+            } catch (err) {
+                console.error(err);
+                alert('預覽產生失敗: ' + err.message);
+            } finally {
+                btn.innerHTML = originalText;
+                btn.disabled = false;
             }
+        }
+
+        // --- 供子視窗呼叫的橋接函數 ---
+        window.approveRecordFromChild = function(id, type) {
+            currentReviewId = id;
+            approveRecord(type);
         }
 
         function toggleOtherReason() {
@@ -514,6 +569,7 @@
             if(!currentReviewId) return;
             let auditNote = '';
             let isSpecial = false;
+            
             if (type === 'special') {
                 const reason = prompt("【特案允許結案】\n請輸入允許結案的原因或備註 (必填)：");
                 if (reason === null) return; 
@@ -523,8 +579,11 @@
                 if(!confirm(`確定要核定此案件 (ID: ${currentReviewId}) 嗎？`)) return;
                 auditNote = '標準審核通過';
             }
+            
+            // 這裡未來需要串接後端 API 執行正式移轉
             alert(`✅ ${isSpecial ? '特案核定' : '標準核定'} 成功！\n備註：${auditNote}\n(系統將自動將資料移入正式資料庫)`);
-            bootstrap.Modal.getInstance(document.getElementById('reviewModal')).hide();
+            
+            // 若從子視窗呼叫，這裡會刷新母視窗列表
             refreshData(); 
         }
     </script>
