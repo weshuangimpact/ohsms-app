@@ -147,7 +147,7 @@
                                 <th>公司/顧問</th>
                                 <th>服務類型</th>
                                 <th>描述摘要</th>
-                                <th class="text-end pe-4">管理動作</th>
+                                <th class="text-end pe-4">管理動作 (Actions)</th>
                             </tr>
                         </thead>
                         <tbody id="pendingTableBody">
@@ -170,7 +170,7 @@
                 <div class="modal-body p-4">
                     <input type="hidden" id="approve-target-id">
                     <input type="hidden" id="approve-type"> <div class="bg-light p-3 rounded mb-3 border">
-                        <h6 class="fw-bold text-muted small mb-2"><i class="fas fa-user-shield me-1"></i>審查者資訊 (系統自動帶出)</h6>
+                        <h6 class="fw-bold text-muted small mb-2"><i class="fas fa-user-shield me-1"></i>審查者資訊</h6>
                         <div class="row g-2 small">
                             <div class="col-6">
                                 <span class="text-muted">姓名：</span> <strong id="approver-name">--</strong>
@@ -316,7 +316,6 @@
                 type: 'doughnut',
                 data: {
                     labels: ['已核定', '待審核'],
-                    // 環形圖配色：綠色 (Check/Approved) vs 黃色 (Pending)
                     datasets: [{ data: [0, 0], backgroundColor: ['#198754', '#ffc107'], borderWidth: 0 }]
                 },
                 options: { cutout: '75%', plugins: { legend: { display: false } }, maintainAspectRatio: false }
@@ -419,14 +418,14 @@
             }
         }
 
-        // --- 修正版：開新分頁合併 PDF 預覽 (包含補漏機制，不含按鈕) ---
+        // --- 修正版：開新分頁合併 PDF 預覽 (包含補漏機制) ---
         async function openStagingPreview(id, btn) {
             const record = currentStagingData.find(r => r.id === id);
             if (!record) return;
             currentReviewId = id;
 
             const originalText = btn.innerHTML;
-            btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span>';
+            btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> 處理中...';
             btn.disabled = true;
 
             try {
@@ -446,12 +445,15 @@
                     }
                 } catch(e) {}
 
+                // ★ 關鍵修正：從 Mother ID (origin_record_id) 抓取檔案
+                const fileSourceId = record.origin_record_id || record.id; 
+                
                 // 檔案抓取邏輯 (Storage List + DB JSON Union)
                 let files = record.attachment_files;
                 if (typeof files === 'string') { try { files = JSON.parse(files); } catch(e) { files = []; } }
                 if (!Array.isArray(files)) files = [];
                 
-                const { data: storageFiles } = await supabaseClient.storage.from('staging').list(record.id);
+                const { data: storageFiles } = await supabaseClient.storage.from('staging').list(fileSourceId);
                 if (storageFiles && storageFiles.length > 0) {
                     storageFiles.forEach(sf => {
                         if (sf.name === '.emptyFolderPlaceholder') return;
@@ -459,7 +461,7 @@
                         if (!exists) {
                             files.push({
                                 name: sf.name,
-                                path: `${record.id}/${sf.name}`,
+                                path: `${fileSourceId}/${sf.name}`, // 使用正確的 Source ID
                                 type: sf.metadata?.mimetype || 'application/pdf'
                             });
                         }
@@ -472,8 +474,10 @@
                 const otherLinks = [];
 
                 for (const f of files) {
-                    if (!f.path) continue;
-                    const { data } = supabaseClient.storage.from('staging').getPublicUrl(f.path);
+                    // 如果路徑不包含 ID，補上 (針對補漏進來的檔案)
+                    const fullPath = f.path.includes('/') ? f.path : `${fileSourceId}/${f.path}`;
+                    
+                    const { data } = supabaseClient.storage.from('staging').getPublicUrl(fullPath);
                     if (data?.publicUrl) {
                         const isPdf = f.name.toLowerCase().endsWith('.pdf');
                         if (isPdf) {
@@ -638,16 +642,20 @@
             btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> 證據保全處理中...';
 
             try {
+                // 取得原始紀錄以獲取 origin_record_id
+                const record = currentStagingData.find(r => r.id === id);
+                const fileSourceId = record.origin_record_id || record.id; 
+
                 // 1. 再次抓取所有 PDF (為了合併證據)
-                // 注意：這裡假設 staging 權限已開，直接 list
-                const { data: files, error: listError } = await supabaseClient.storage.from('staging').list(id);
+                // 注意：這裡使用修正後的 fileSourceId
+                const { data: files, error: listError } = await supabaseClient.storage.from('staging').list(fileSourceId);
                 if (listError) throw listError;
 
                 const pdfUrls = [];
                 // 篩選 PDF
                 for (const f of files) {
                     if (f.name.toLowerCase().endsWith('.pdf')) {
-                        const { data } = supabaseClient.storage.from('staging').getPublicUrl(`${id}/${f.name}`);
+                        const { data } = supabaseClient.storage.from('staging').getPublicUrl(`${fileSourceId}/${f.name}`);
                         pdfUrls.push(data.publicUrl);
                     }
                 }
@@ -670,9 +678,11 @@
 
                 // 3. 上傳合併後的證據到 'service-records' (正式 Bucket)
                 // 取得原始資料以獲取年份與公司ID
-                const record = currentStagingData.find(r => r.id === id);
                 const year = record.service_year || new Date().getFullYear();
-                const targetPath = `${year}/${id}/Final_Evidence_Merged.pdf`; // 路徑結構: 年份/案件ID/檔案
+                
+                // ★ 正式證據路徑：使用當下時間戳記防止檔名衝突
+                const timestamp = Date.now();
+                const targetPath = `${year}/${id}/Evidence_Final_${timestamp}.pdf`; 
 
                 if (finalPdfBlob) {
                     const { error: uploadError } = await supabaseClient.storage
@@ -696,7 +706,6 @@
                 if (updateError) throw updateError;
 
                 // B. 寫入 Service Records (正式表)
-                // 這裡簡化處理，實際專案可能需要將 Staging 欄位對應 insert 到 service_records
                 const { error: insertError } = await supabaseClient
                     .from('service_records')
                     .insert({
@@ -707,10 +716,12 @@
                         consultant_id: record.consultant_id,
                         is_special_case: (type === 'special'),
                         audit_note: comment,
-                        attachment_folder_id: id // 連結證據檔案路徑
+                        // ★ 關鍵：這裡連結回 Staging 的原始資料夾 (或母案資料夾，視需求)
+                        // 若要讓 index3 能讀到原始附件，這裡必須存 fileSourceId
+                        attachment_folder_id: fileSourceId 
                     });
                 
-                // 暫不拋出 insertError，避免因為欄位對應問題卡住流程，先確保狀態更新
+                if (insertError) console.error("Insert error (non-fatal):", insertError);
 
                 alert('✅ 結案成功！\n評鑑證據已封存至正式資料庫。');
                 
