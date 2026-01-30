@@ -42,7 +42,7 @@
 
     <script>
         document.addEventListener('DOMContentLoaded', function() {
-            if (!sessionStorage.getItem('currentUserId')) { window.location.href = 'index.html'; }
+            if (!sessionStorage.getItem('currentUserId')) { window.location.href = 'login.html'; }
             document.body.style.display = 'block';
             document.getElementById('user-display').innerText = sessionStorage.getItem('currentUserName') || '使用者';
         });
@@ -228,45 +228,36 @@
         }
         function triggerItemUpload(itemId) { document.getElementById(`file-input-${itemId}`).click(); }
 
-        // ★★★ 核心修正：自動降級命名機制 ★★★
+        // ==========================================
+        // ★ 核心修正區：強制重命名 Logic (A-Q + Timestamp)
+        // ==========================================
         async function handleItemFileUpload(itemId, code, input) {
             if (!input.files || !input.files[0]) return;
             const file = input.files[0];
             
+            // UI 狀態切換
             document.getElementById(`btn-upload-${itemId}`).style.display = 'none';
             document.getElementById(`btn-group-${itemId}`).style.display = 'none';
             document.getElementById(`spinner-${itemId}`).style.display = 'block';
 
             try {
-                const timestamp = Date.now(); 
-                const fileExt = file.name.split('.').pop();
-                
-                // 優先嘗試：[代號]__[時間戳]__[編碼後檔名]
-                // 這樣可以保留原始中文檔名供顯示用
-                let safeName = encodeURIComponent(file.name.substring(0, file.name.lastIndexOf('.')));
-                if(safeName.length > 50) safeName = safeName.substring(0, 50);
-                
-                let finalFileName = `${code}__${timestamp}__${safeName}.${fileExt}`;
-                let filePath = `${currentRecordId}/${finalFileName}`;
+                // 1. 產生強制檔名： [代號]_[時間戳].[副檔名]
+                // 範例： A_1706612345678.pdf
+                const timestamp = Date.now();
+                const fileExt = file.name.split('.').pop() || 'dat'; // 若無副檔名則預設 dat
+                const finalFileName = `${code}_${timestamp}.${fileExt}`;
+                const filePath = `${currentRecordId}/${finalFileName}`;
 
-                // 清除舊檔
-                await deleteFileByPrefix(currentRecordId, `${code}__`);
+                // 2. 清除該代號的舊檔 (保持資料夾整潔)
+                // 例如：上傳新的 A 之前，把舊的 A_xxx.pdf 刪掉
+                await deleteFileByPrefix(currentRecordId, `${code}_`);
 
-                // 嘗試上傳
-                let { error } = await supabaseClient.storage.from(BUCKET_NAME).upload(filePath, file, { upsert: true });
+                // 3. 上傳檔案 (使用 upsert 覆蓋，雖然有時間戳不太會重複，但保險起見)
+                const { error } = await supabaseClient.storage.from(BUCKET_NAME).upload(filePath, file, { upsert: true });
 
-                // ★ 若上傳失敗 (可能仍因編碼被拒)，自動降級為 [代號]__[時間戳]_File.[副檔名]
-                if (error && (error.statusCode === "400" || error.message.includes("Invalid key"))) {
-                    console.warn("標準編碼上傳失敗，嘗試降級為純英數檔名...");
-                    finalFileName = `${code}__${timestamp}__File.${fileExt}`;
-                    filePath = `${currentRecordId}/${finalFileName}`;
-                    
-                    const retry = await supabaseClient.storage.from(BUCKET_NAME).upload(filePath, file, { upsert: true });
-                    if (retry.error) throw retry.error;
-                } else if (error) {
-                    throw error;
-                }
+                if (error) throw error;
 
+                // 4. 更新 UI 顯示 (傳入 originalName 只是為了前端顯示，不存入 DB)
                 updateItemUI(itemId, code, finalFileName, file.name, true);
 
             } catch (e) {
@@ -275,16 +266,17 @@
                 updateItemUI(itemId, code, null, null, false);
             } finally {
                 document.getElementById(`spinner-${itemId}`).style.display = 'none';
-                input.value = ''; 
+                input.value = ''; // 重置 input 以便重複選擇同檔
             }
         }
 
+        // 刪除邏輯
         async function handleItemFileDelete(itemId, code) {
             if(!confirm('確定要刪除此附件嗎？')) return;
             document.getElementById(`spinner-${itemId}`).style.display = 'block';
             document.getElementById(`btn-group-${itemId}`).style.display = 'none';
             try {
-                await deleteFileByPrefix(currentRecordId, `${code}__`);
+                await deleteFileByPrefix(currentRecordId, `${code}_`);
                 updateItemUI(itemId, code, null, null, false); 
             } catch (e) {
                 alert('刪除失敗: ' + e.message);
@@ -294,9 +286,12 @@
             }
         }
 
+        // 輔助函式：刪除特定前綴的檔案
         async function deleteFileByPrefix(recordId, prefix) {
+            // 列出該 recordId 資料夾下的所有檔案
             const { data: files } = await supabaseClient.storage.from(BUCKET_NAME).list(`${recordId}`);
             if (files && files.length > 0) {
+                // 篩選出符合前綴 (如 A_) 的檔案
                 const targetFiles = files.filter(f => f.name.startsWith(prefix));
                 if (targetFiles.length > 0) {
                     const pathsToRemove = targetFiles.map(f => `${recordId}/${f.name}`);
@@ -305,7 +300,7 @@
             }
         }
 
-        // 參數增加 realDisplayName 供降級時顯示用
+        // UI 更新函式
         function updateItemUI(itemId, code, fullFileName, originalName, hasFile) {
             const uploadBtn = document.getElementById(`btn-upload-${itemId}`);
             const btnGroup = document.getElementById(`btn-group-${itemId}`);
@@ -316,24 +311,16 @@
                 uploadBtn.style.display = 'none';
                 btnGroup.style.display = 'flex';
                 
+                // 取得公開連結
                 const { data } = supabaseClient.storage.from(BUCKET_NAME).getPublicUrl(`${currentRecordId}/${fullFileName}`);
                 previewBtn.href = data.publicUrl;
                 
-                let displayName = originalName || "已存檔案";
-                // 如果沒有傳入 originalName (例如從 reload 來的)，嘗試解析檔名
-                if (!originalName) {
-                    try {
-                        const parts = fullFileName.split('__');
-                        if(parts.length >= 3) {
-                            displayName = decodeURIComponent(parts[2]);
-                        } else {
-                            displayName = fullFileName;
-                        }
-                    } catch(e) { displayName = fullFileName; }
-                }
+                // 顯示名稱邏輯：如果沒有 originalName (重整頁面後)，則顯示系統檔名
+                // 由於我們不再儲存原始檔名，重整後只能看到 A_123456.pdf，這符合您的需求
+                let displayName = originalName || fullFileName;
+                const shortName = displayName.length > 20 ? displayName.substring(0, 17) + '...' : displayName;
 
-                const shortName = displayName.length > 15 ? displayName.substring(0, 12) + '...' : displayName;
-                fileInfo.innerHTML = `<span class="badge bg-success me-1">已存</span> <span class="text-muted" title="${displayName}">${shortName}</span>`;
+                fileInfo.innerHTML = `<span class="badge bg-success me-1">已存</span> <span class="text-muted font-monospace small" title="${displayName}">${shortName}</span>`;
             } else {
                 uploadBtn.style.display = 'inline-block';
                 btnGroup.style.display = 'none';
@@ -341,6 +328,9 @@
             }
         }
 
+        // ==========================================
+        // 一般邏輯 (搜尋、載入、送審) - 維持原樣
+        // ==========================================
         async function searchRecords() {
             const year = document.getElementById('search-year').value.trim();
             const taxId = document.getElementById('search-tax-id').value.trim();
@@ -382,10 +372,13 @@
                     if(cb) { cb.checked = true; toggleItemAction(itemId); }
                 });
             }
+            
+            // 載入已上傳的檔案 (根據 A_ B_ C_ 前綴自動對應)
             const { data: files } = await supabaseClient.storage.from(BUCKET_NAME).list(`${id}`);
             if (files && files.length > 0) {
                 files.forEach(file => {
-                    const parts = file.name.split('__');
+                    // 解析檔名格式： Code_Timestamp.ext
+                    const parts = file.name.split('_');
                     if (parts.length >= 2) { 
                         const code = parts[0];
                         const targetItem = checklistItems.find(i => i.code === code);
@@ -426,26 +419,71 @@
             btn.disabled = true;
             btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> 處理中...';
             try {
+                // 寫入 service_record_staging
                 const selectedItems = [];
                 document.querySelectorAll('input[name="service-item"]:checked').forEach(cb => { selectedItems.push(cb.value); });
                 const visitDate = document.getElementById('execution-date').value;
                 const startTime = document.getElementById('start-time').value;
                 const endTime = document.getElementById('end-time').value;
+                
                 if (selectedItems.length === 0) throw new Error("請至少勾選一項執行紀錄項目。");
                 if (!visitDate) throw new Error("請填寫實際執行日期。");
-                const itemsString = JSON.stringify(selectedItems);
-                const { error } = await supabaseClient.from('service_records').update({
-                    execution_items: itemsString,
+
+                // 從 Storage 取得所有檔案清單，構建 attachment_files JSON
+                const { data: files } = await supabaseClient.storage.from(BUCKET_NAME).list(`${currentRecordId}`);
+                let attachments = [];
+                if(files) {
+                    attachments = files.map(f => ({
+                        name: f.name, // 這裡會是 A_123456.pdf
+                        path: `${currentRecordId}/${f.name}`,
+                        size: f.metadata.size,
+                        type: f.metadata.mimetype
+                    }));
+                }
+
+                // 寫入 Staging (這是 Plan/Do 階段的核心)
+                const { data: profile } = await supabaseClient.auth.getUser();
+                const userId = profile.user.id;
+                
+                // 讀取該 service_record 關聯的 workplace_id 與 consultant_id
+                const { data: recordData } = await supabaseClient.from('service_records').select('workplace_id, consultant_id').eq('id', currentRecordId).single();
+
+                const payload = {
+                    workplace_id: recordData.workplace_id,
+                    submitter_id: userId,
+                    consultant_id: recordData.consultant_id,
+                    service_date: visitDate, // 申請日期/服務日期
+                    visit_date: visitDate,   // 實際訪視日期
+                    start_time: startTime,
+                    end_time: endTime,
+                    service_type: '定期臨場服務',
+                    // 將勾選項目存為 JSON 字串 (或您想直接存文字)
+                    service_desc: JSON.stringify({
+                        items: selectedItems,
+                        note: '由顧問端上傳之執行紀錄'
+                    }),
+                    attachment_files: attachments, // JSONB 格式
+                    status: 'pending' // 待審核
+                };
+
+                const { error } = await supabaseClient.from('service_record_staging').insert(payload);
+                if (error) throw error;
+
+                // 同步更新 service_records 的執行項目 (作為備份或即時狀態)
+                await supabaseClient.from('service_records').update({
+                    execution_items: JSON.stringify(selectedItems),
                     visit_date: visitDate,
                     start_time: startTime || null, 
                     end_time: endTime || null,
-                    updated_at: new Date()
                 }).eq('id', currentRecordId);
-                if (error) throw error;
-                alert('✅ 存檔成功！');
+
+                alert('✅ 存檔成功！資料已送出待審核。');
                 backToStep1();
+
             } catch (err) {
                 alert('❌ 錯誤：' + err.message);
+                console.error(err);
+            } finally {
                 btn.disabled = false;
                 btn.innerHTML = '<i class="fas fa-save me-1"></i> 存檔送審';
             }
