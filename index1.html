@@ -311,20 +311,11 @@
             document.getElementById(`spinner-${itemId}`).style.display = 'block';
 
             try {
-                // 如果是編輯模式 (Staging)，檔案存在 staging id 下；如果是新增模式，暫時還沒有 staging id
-                // 這裡簡化邏輯：我們一律使用 currentRecordId (母案ID) 作為資料夾
-                // 這樣不管是哪個 Staging，都共用同一個母案的資料夾結構，這在邏輯上是通的 (同一個案子的歷史)
-                // 或是：每個 Staging 應該有獨立資料夾？
-                // 考量目前邏輯：`submitRecord` 會讀取 `list(currentRecordId)`。
-                // 所以：檔案必須放在 `currentRecordId` (母案ID) 資料夾下。
-                
                 const timestamp = Date.now();
                 const fileExt = file.name.split('.').pop() || 'dat'; 
                 const finalFileName = `${code}_${timestamp}.${fileExt}`;
                 const filePath = `${currentRecordId}/${finalFileName}`;
 
-                // 清除該代號的舊檔 (確保此服務當下只有一個 A, 一個 B...)
-                // 注意：如果想保留歷史，可能不該刪除？但目前需求是 "上傳" 覆蓋
                 await deleteFileByPrefix(currentRecordId, `${code}_`);
 
                 const { error } = await supabaseClient.storage.from(BUCKET_NAME).upload(filePath, file, { upsert: true });
@@ -465,6 +456,7 @@
         }
 
         // 2. 初始化 Step 2 (分辨 Insert 或 Edit)
+        // 修正：若 stagingId 為 null (新增模式)，強制清空所有欄位，且不載入舊檔案
         async function initStep2(stagingId) {
             // 如果是從 Modal 來的，先關閉 Modal
             const modalEl = document.getElementById('actionChoiceModal');
@@ -473,49 +465,52 @@
 
             currentStagingId = stagingId; // 設定狀態 (null=新增, id=修改)
 
-            // 重置表單
+            // 重置表單 (強制清空)
             document.querySelectorAll('input[type="checkbox"]').forEach(cb => cb.checked = false);
             document.querySelectorAll('.item-actions').forEach(el => el.classList.remove('visible'));
             document.getElementById('service-type-select').value = "";
             toggleServiceTypeOther();
-            document.getElementById('service-remark').value = ""; // 清空備註
+            document.getElementById('service-remark').value = ""; 
+            
+            // 關鍵：清空日期時間，不預帶
+            document.getElementById('execution-date').value = "";
+            document.getElementById('start-time').value = "";
+            document.getElementById('end-time').value = "";
+
+            // 重置檔案 UI
             checklistItems.forEach(item => updateItemUI(item.id, item.code, null, null, false));
 
-            // 讀取母案資料 (公司名)
+            // 讀取母案資料 (僅用於顯示公司名與年度)
             const { data: motherData } = await supabaseClient.from('service_records').select(`*, workplaces(companies(name))`).eq('id', currentRecordId).single();
             document.getElementById('current-company-name').innerText = motherData.workplaces.companies.name;
             document.getElementById('current-year-badge').innerText = (motherData.service_year || '') + ' 年度 (母案)';
 
-            // 如果是新增模式：預帶母案日期(或留空)
-            // 如果是編輯模式：載入 Staging 資料
+            // 如果是編輯模式 (Staging)，才載入舊資料與檔案
             if (currentStagingId) {
                 await loadStagingData(currentStagingId);
-            } else {
-                document.getElementById('execution-date').value = motherData.visit_date || ''; 
-            }
-
-            // 檢查 Storage (共用母案ID資料夾) - 顯示已上傳檔案
-            // 註：這會顯示該母案資料夾下"所有"檔案，技術上可能包含別次服務的檔案
-            // 但目前的設計是覆蓋檔名 (A_timestamp)，且每次上傳前不強制清空
-            // 為了讓使用者看到自己傳了什麼，這裡列出該資料夾下所有檔案
-            const { data: files } = await supabaseClient.storage.from(BUCKET_NAME).list(`${currentRecordId}`);
-            if (files && files.length > 0) {
-                files.forEach(file => {
-                    const parts = file.name.split('_');
-                    if (parts.length >= 2) { 
-                        const code = parts[0];
-                        const targetItem = checklistItems.find(i => i.code === code);
-                        if (targetItem) {
-                            const cb = document.getElementById(`cb-${targetItem.id}`);
-                            if(cb) {
-                                cb.checked = true;
-                                toggleItemAction(targetItem.id);
-                                updateItemUI(targetItem.id, code, file.name, null, true);
+                
+                // 僅在編輯模式下，才列出該資料夾的檔案
+                // (注意：因為資料夾是共用的，若此時列出可能會看到別筆的檔案，但邏輯上新增模式更應保持空白)
+                const { data: files } = await supabaseClient.storage.from(BUCKET_NAME).list(`${currentRecordId}`);
+                if (files && files.length > 0) {
+                    files.forEach(file => {
+                        const parts = file.name.split('_');
+                        if (parts.length >= 2) { 
+                            const code = parts[0];
+                            const targetItem = checklistItems.find(i => i.code === code);
+                            if (targetItem) {
+                                const cb = document.getElementById(`cb-${targetItem.id}`);
+                                if(cb) {
+                                    cb.checked = true;
+                                    toggleItemAction(targetItem.id);
+                                    updateItemUI(targetItem.id, code, file.name, null, true);
+                                }
                             }
                         }
-                    }
-                });
-            }
+                    });
+                }
+            } 
+            // 如果是新增模式 (else)，保持所有欄位與檔案列表為空 (不執行 loadStagingData 也不執行 storage.list)
 
             document.getElementById('step1-content').style.display = 'none';
             document.getElementById('step2-content').style.display = 'block';
