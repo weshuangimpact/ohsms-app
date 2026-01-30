@@ -1043,12 +1043,12 @@ async function parseAndImportData(rows, type) {
                         const stId = staffMap[sName]; // 查找 ID
                         const year = date ? new Date(date).getFullYear() : null;
 
-                        // ★ 判定：公司有ID 且 顧問有ID 且 日期有效 -> 放入 pendingImportData
-                        if(wpId && stId && date) {
+// ★ 修正後：只檢查公司與顧問ID，允許日期為空 (不擋匯入)
+                        if(wpId && stId) {
                              pendingImportData.push({
                                 workplace_id: wpId, 
                                 consultant_id: stId, 
-                                visit_date: date,
+                                visit_date: date, // 沒填會是 null，資料庫若允許空值即可寫入
                                 service_year: year, 
                                 execution_items: items,
                                 created_by: sessionStorage.getItem('currentUserId')
@@ -1057,7 +1057,7 @@ async function parseAndImportData(rows, type) {
                             html += `<tr class="table-success">
                                 <td>${cName}</td>
                                 <td>${sName}</td>
-                                <td>${date}</td>
+                                <td>${date || '<span class="text-muted small">(未填)</span>'}</td>
                                 <td><span class="badge bg-success">可匯入</span></td>
                             </tr>`;
                         } else {
@@ -1065,7 +1065,7 @@ async function parseAndImportData(rows, type) {
                             let errorMsg = [];
                             if(!wpId) errorMsg.push("公司未建立或無場所");
                             if(!stId) errorMsg.push("無此顧問");
-                            if(!date) errorMsg.push("日期格式錯");
+                            // 已移除日期錯誤檢查
                             
                             html += `<tr class="table-danger">
                                 <td>${cName}</td>
@@ -1074,8 +1074,6 @@ async function parseAndImportData(rows, type) {
                                 <td><span class="badge bg-danger">${errorMsg.join(', ')}</span></td>
                             </tr>`;
                         }
-                    });
-                }
 
                 html += '</tbody></table>';
                 
