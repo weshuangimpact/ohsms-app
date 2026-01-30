@@ -6,7 +6,6 @@
     <title>評鑑支援 AI 智慧助理 | OHSMS</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css"/>
     
 <style>
     /* =========================================
@@ -45,6 +44,28 @@
        3. 元件樣式 (黃色系)
        ========================================= */
 
+    /* --- 導覽列樣式 (維持暗色系，也可視需求改黃色) --- */
+    .navbar { background-color: #202124 !important; height: 65px; }
+    .navbar-brand { font-weight: 600; font-size: 1.25rem; letter-spacing: 0.5px; }
+    .user-greeting { color: #e8eaed; font-size: 0.95rem; font-weight: 500; }
+    .btn-back-dashboard {
+        border: 1px solid rgba(255,255,255,0.8);
+        color: #fff;
+        background: transparent;
+        padding: 5px 15px;
+        border-radius: 4px;
+        font-size: 0.9rem;
+        transition: all 0.3s;
+        text-decoration: none;
+        display: inline-flex;
+        align-items: center;
+    }
+    .btn-back-dashboard:hover {
+        background: rgba(255,255,255,0.1);
+        color: #fff;
+        border-color: #fff;
+    }
+
     /* PDCA 說明區塊 (黃色風格) */
     .instruction-box {
         background-color: #fff; 
@@ -59,6 +80,18 @@
         color: var(--theme-dark); /* 深琥珀色 */
         font-weight: 700; 
         margin-bottom: 10px; 
+    }
+
+    /* 機器人圖示 (黃色風格) */
+    .robot-wrapper {
+        width: 100px; height: 100px;
+        background-color: var(--theme-light); /* 淺黃底 */
+        color: var(--theme-dark);             /* 深黃圖示 */
+        border-radius: 50%;
+        display: flex; align-items: center; justify-content: center;
+        font-size: 3rem;
+        margin: 0 auto 20px auto;
+        border: 2px solid rgba(255, 193, 7, 0.2);
     }
 
     /* 搜尋區 */
@@ -88,121 +121,131 @@
         transition: color 0.2s;
     }
     .btn-search:hover { color: #d35400; }
+    
+    /* 結果卡片 */
+    .result-card {
+        background: #fff; 
+        border: 1px solid #e0e0e0; 
+        border-radius: 8px; 
+        padding: 20px;
+        margin-bottom: 15px; 
+        cursor: pointer; 
+        transition: all 0.2s;
+        border-left: 4px solid transparent;
+    }
+    .result-card:hover { 
+        transform: translateY(-3px); 
+        box-shadow: 0 4px 15px rgba(0,0,0,0.1); 
+        border-left-color: var(--theme-color); /* Hover 時顯示黃色飾條 */
+    }
+    .result-title { color: #333; font-size: 1.25rem; font-weight: 600; margin-bottom: 5px; }
+    
+    /* 年份標籤 (黃色風格) */
+    .tag-year { 
+        background: var(--theme-light); 
+        color: var(--theme-dark); 
+        padding: 2px 8px; 
+        border-radius: 4px; 
+        font-weight: bold; 
+        font-size: 0.85rem; 
+    }
 
-    /* =========================================
-       4. 擬真文件 (Paper Sheet) 風格
-       ========================================= */
+    /* 預覽與附件樣式 */
+    .preview-modal-body {
+        background: #525659; padding: 30px; height: 80vh; overflow-y: auto;
+        display: flex; flex-direction: column; align-items: center; user-select: none;
+    }
     .paper-sheet {
-        background: white;
-        box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
-        padding: 40px;
-        min-height: 800px;
-        position: relative;
-        overflow: hidden; /* 確保浮水印不溢出 */
-        border-radius: 4px;
-        margin-top: 30px;
+        background: white; width: 100%; max-width: 1000px; min-height: 1000px;
+        padding: 50px; margin-bottom: 20px; box-shadow: 0 0 15px rgba(0,0,0,0.5); position: relative;
     }
-
-    /* 浮水印 (Watermark) */
+    .attachment-item { border: 1px solid #eee; padding: 10px; margin-bottom: 15px; text-align: center; }
+    .attachment-img { max-width: 100%; height: auto; border: 1px solid #ddd; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+    .attachment-pdf-frame { width: 100%; height: 600px; border: 1px solid #ddd; }
     .watermark {
-        position: absolute;
-        top: 50%; left: 50%;
-        transform: translate(-50%, -50%) rotate(-30deg);
-        font-size: 8rem;
-        color: rgba(0, 0, 0, 0.03);
-        font-weight: bold;
-        pointer-events: none;
-        white-space: nowrap;
-        z-index: 0;
+        position: absolute; top: 40%; left: 50%; transform: translate(-50%, -50%) rotate(-45deg);
+        font-size: 5rem; color: rgba(0,0,0,0.05); border: 5px solid rgba(0,0,0,0.05);
+        padding: 20px; pointer-events: none; z-index: 10; white-space: nowrap;
     }
-
-    /* 審核資訊區塊 */
-    .audit-stamp-box {
-        background-color: #f8f9fa;
-        border: 1px dashed #ccc;
-        border-radius: 8px;
-        padding: 15px;
-        margin-bottom: 20px;
-        position: relative;
-    }
-    .audit-badge {
-        position: absolute;
-        top: -10px;
-        right: 15px;
-        background: white;
-        padding: 0 10px;
-        font-weight: bold;
-        color: var(--theme-dark);
-        border: 1px solid #ccc;
-        border-radius: 20px;
-        font-size: 0.85rem;
-    }
-
-    /* PDF 預覽框 */
-    .pdf-frame {
-        width: 100%;
-        height: 800px;
-        border: 1px solid #dee2e6;
-        border-radius: 4px;
-        background-color: #525659;
+    .file-header-badge {
+        font-size: 0.9rem; padding: 8px 12px; border-radius: 4px; 
+        background: #f8f9fa; border: 1px solid #dee2e6; color: #495057; display: inline-block; margin-bottom: 10px;
     }
 </style>
+    
 </head>
 <body>
 
-    <nav class="navbar navbar-expand-lg navbar-dark bg-dark py-3 mb-4">
-        <div class="container-fluid px-4">
-            <a class="navbar-brand" href="dashboard.html"><i class="fas fa-shield-alt me-2"></i>OHSMS 評鑑支援系統</a>
+    <nav class="navbar navbar-expand-lg navbar-dark px-4">
+        <div class="container-fluid d-flex justify-content-between align-items-center p-0">
+            <a class="navbar-brand d-flex align-items-center" href="#">
+                <i class="fas fa-shield-alt me-2"></i>
+                OHSMS 職安管理系統
+            </a>
+
             <div class="d-flex align-items-center">
-                <span class="text-light me-3" id="user-display"></span>
-                <a href="dashboard.html" class="btn btn-outline-light btn-sm"><i class="fas fa-arrow-left me-1"></i> 返回儀表板</a>
+                <span class="user-greeting me-4">Hi ! 系統管理員</span>
+                <a href="dashboard.html" class="btn-back-dashboard">
+                    <i class="fas fa-arrow-left me-2"></i>返回儀表板
+                </a>
             </div>
         </div>
     </nav>
 
-    <div class="container pb-5">
+    <div class="container main-content">
         
-        <div class="instruction-box">
-            <div class="instruction-title"><i class="fas fa-search me-2"></i>Evaluation (評鑑) —— 歷史調閱與證據呈現</div>
-            <p class="mb-0 text-dark" style="line-height: 1.6;">
-                本模組專為評鑑需求設計，提供直觀的「數位證據調閱」功能。
-                透過區塊鏈式不可竄改的技術架構，所有經由 Plan (顧問上傳) 與 Check (管理員核定) 之資料，皆會被封存於此，並產生具備浮水印的正式憑證。
-            </p>
+        <div class="mb-4">
+            <h2 class="fw-bold text-dark mb-1">評鑑支援 AI 智慧助理</h2>
+            <p class="text-secondary">Evaluation 階段：智慧稽核與佐證調閱</p>
         </div>
 
-        <div class="search-box-wrapper mb-5">
-            <select class="form-select border-0 bg-transparent w-auto fw-bold text-muted" id="search-year" style="cursor: pointer;">
-                <option value="2026">2026</option>
-                <option value="2025" selected>2025</option>
-                <option value="2024">2024</option>
-            </select>
-            <div style="width: 1px; height: 24px; background: #ddd; margin: 0 15px;"></div>
-            <i class="fas fa-search text-muted"></i>
-            <input type="text" class="search-input" id="search-keyword" placeholder="請輸入 公司名稱 或 統一編號...">
-            <button class="btn-search" onclick="searchEvidence()">Go</button>
+<div class="instruction-box">
+    <div class="instruction-title">
+        <i class="fas fa-clipboard-check me-2"></i>PDCA+E 設計理念：Evaluation (評鑑) —— 智慧稽核與全貌驗證
+    </div>
+    <p class="mb-0 text-dark" style="line-height: 1.6;">
+        建立獨立於常態循環之外的客觀驗證機制，透過 NLP 語意引擎即時穿透歷史數據，將零散的執行紀錄轉化為具備法律效力的合規佐證，實現「隨時可受稽核」的數位治理高度。
+    </p>
+</div>
+
+        <div class="text-center mt-5">
+            <div class="robot-wrapper">
+                <i class="fas fa-robot"></i>
+            </div>
+            <h3 class="fw-bold mb-3">評鑑資料查詢助手</h3>
+            <p class="text-muted mb-4">請輸入關鍵字，查詢歷史服務紀錄與當時負責顧問。</p>
+
+            <div class="search-box-wrapper mx-auto" style="max-width: 700px;">
+                <i class="fas fa-search text-muted fs-5"></i>
+                <input type="text" id="searchInput" class="search-input" placeholder="輸入公司、年份或顧問姓名 (例如：2022 甲顧問)..." autofocus>
+                <button class="btn-search" onclick="executeSearch()">搜尋</button>
+            </div>
         </div>
 
-        <div id="paper-container">
-            <div class="text-center text-muted py-5">
-                <i class="fas fa-robot fa-3x mb-3 text-secondary opacity-25"></i>
-                <p>我是您的 AI 評鑑助理，請輸入關鍵字開始調閱。</p>
+        <div class="row justify-content-center mt-4">
+            <div class="col-lg-10">
+                <div id="loading" class="text-center my-5" style="display:none;">
+                    <div class="spinner-border text-primary"></div><br><span class="text-muted">AI 正在檢索歷史卷宗...</span>
+                </div>
+                <div id="resultsArea"></div>
             </div>
         </div>
     </div>
 
-    <div class="modal fade" id="selectRecordModal" tabindex="-1">
-        <div class="modal-dialog modal-dialog-centered">
+    <div class="modal fade" id="previewModal" tabindex="-1" data-bs-backdrop="static">
+        <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
             <div class="modal-content">
-                <div class="modal-header bg-warning">
-                    <h5 class="modal-title fw-bold text-dark"><i class="fas fa-list-ul me-2"></i>請選擇要調閱的紀錄</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                <div class="modal-header bg-dark text-white">
+                    <h5 class="modal-title"><i class="fas fa-file-contract me-2"></i>原始佐證調閱</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
                 </div>
-                <div class="modal-body p-0">
-                    <div class="list-group list-group-flush" id="record-list-group">
-                        </div>
+                <div class="modal-body p-0" oncontextmenu="return false;">
+                    <div class="preview-modal-body" id="previewContainer">
+                    </div>
                 </div>
                 <div class="modal-footer bg-light">
-                    <small class="text-muted ms-auto">共找到 <span id="record-count">0</span> 筆資料</small>
+                    <small class="text-danger fw-bold me-auto"><i class="fas fa-lock me-1"></i>系統浮水印保護中，禁止下載與截圖</small>
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">關閉</button>
                 </div>
             </div>
         </div>
@@ -213,224 +256,216 @@
     
     <script>
         const SUPABASE_URL = 'https://yhehfucgemxnfrdvpdhw.supabase.co';
-        const SUPABASE_KEY = 'sb_publishable_52emtU-9l-SDxcJTWVTPTA_Yu6qEogh';
+        const SUPABASE_KEY = 'sb_publishable_52emtU-9l-SDxcJTWVTPTA_Yu6qEogh'; 
         const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-        document.addEventListener('DOMContentLoaded', () => {
-            const role = sessionStorage.getItem('currentUserRole') || 'User';
-            const name = sessionStorage.getItem('currentUserName') || 'Guest';
-            document.getElementById('user-display').innerText = `${role}: ${name}`;
-        });
+        // A~Q 對照表 (用於顯示友善名稱)
+        const FILE_NAME_MAP = {
+            'A': '勞工健康服務執行紀錄表 (核心)',
+            'B': '9-1 健檢分析與評估',
+            'C': '9-2 選配工',
+            'D': '9-3 健檢追蹤管理',
+            'E': '9-4 母性/未滿18',
+            'F': '9-5 職衛紀錄保存',
+            'G': '9-6 衛教指導',
+            'H': '9-7 急救處置',
+            'I': '9-8 雇主報告',
+            'J': '11-1 危害辨識',
+            'K': '11-2 改善建議',
+            'L': '11-3 關連調查',
+            'M': '11-4 復工評估',
+            'N': '11-5 其他指定',
+            'O': '12 服務計畫',
+            'P': '13 管理方案',
+            'Q': 'Other 其他附件'
+        };
 
-        // ===========================================
-        // 1. 搜尋邏輯 (查詢 Service Records)
-        // ===========================================
-        async function searchEvidence() {
-            const year = document.getElementById('search-year').value;
-            const keyword = document.getElementById('search-keyword').value.trim();
-            const container = document.getElementById('paper-container');
+        document.getElementById('searchInput').addEventListener('keyup', (e) => { if(e.key === 'Enter') executeSearch(); });
 
-            if (!keyword) return alert('請輸入公司名稱或統編');
-
-            container.innerHTML = '<div class="text-center py-5"><div class="spinner-border text-warning"></div><p class="mt-2 text-muted">正在自加密儲存庫調閱...</p></div>';
+        // 搜尋功能
+        async function executeSearch() {
+            const query = document.getElementById('searchInput').value.trim();
+            const container = document.getElementById('resultsArea');
+            const loader = document.getElementById('loading');
+            
+            if(!query) return;
+            
+            container.innerHTML = '';
+            loader.style.display = 'block';
 
             try {
-                // 關聯查詢
-                let query = supabaseClient
+                // 查詢 service_records 並關聯 workplaces 與 medical_staff
+                const { data, error } = await supabaseClient
                     .from('service_records')
                     .select(`
-                        *,
-                        workplaces!inner (
-                            companies!inner ( name, tax_id )
+                        *, 
+                        medical_staff (name), 
+                        workplaces (
+                            department_name, 
+                            companies(name, tax_id)
                         )
                     `)
-                    .eq('service_year', year)
-                    .order('visit_date', { ascending: false });
+                    .order('visit_date', { ascending: false })
+                    .limit(50);
 
-                if (/^\d{8}$/.test(keyword)) {
-                    query = query.eq('workplaces.companies.tax_id', keyword);
-                } else {
-                    query = query.ilike('workplaces.companies.name', `%${keyword}%`);
-                }
+                if(error) throw error;
 
-                const { data, error } = await query;
-                if (error) throw error;
+                // 前端關鍵字過濾
+                const filtered = data.filter(r => {
+                    const historicalConsultantName = r.medical_staff?.name || '';
+                    const companyName = r.workplaces?.companies?.name || '';
+                    const searchTarget = `${companyName} ${r.service_year} ${historicalConsultantName} ${r.raw_data}`.toLowerCase();
+                    return searchTarget.includes(query.toLowerCase());
+                });
 
-                if (!data || data.length === 0) {
-                    container.innerHTML = `<div class="text-center text-muted py-5"><i class="fas fa-times-circle fa-3x mb-3"></i><p>查無 ${year} 年度符合「${keyword}」的正式紀錄。</p></div>`;
+                loader.style.display = 'none';
+                
+                if(filtered.length === 0) {
+                    container.innerHTML = `<div class="text-center text-muted mt-4">查無資料</div>`;
                     return;
                 }
 
-                // 分流：單筆 vs 多筆
-                if (data.length === 1) {
-                    renderPaperSheet(data[0]);
-                } else {
-                    showSelectionModal(data);
-                }
+                // 渲染結果卡片
+                container.innerHTML = filtered.map(rec => {
+                    const company = rec.workplaces?.companies?.name || '未知公司';
+                    const date = rec.visit_date || 'N/A';
+                    
+                    let displayConsultant = '未知顧問';
+                    if (rec.medical_staff && rec.medical_staff.name) {
+                        displayConsultant = rec.medical_staff.name; 
+                    } else {
+                        try { 
+                            const parsed = JSON.parse(rec.raw_data);
+                            if(parsed && parsed.consultant_name) displayConsultant = parsed.consultant_name;
+                        } catch(e){}
+                    }
+
+                    const dataStr = encodeURIComponent(JSON.stringify(rec));
+                    const compStr = encodeURIComponent(company);
+                    const consultStr = encodeURIComponent(displayConsultant);
+
+                    return `
+                        <div class="result-card" onclick="openFullPreview('${rec.id}', '${compStr}', '${dataStr}', '${consultStr}')">
+                            <div class="d-flex justify-content-between">
+                                <div>
+                                    <span class="tag-year me-2">${rec.service_year}</span>
+                                    <span class="text-muted small">${date}</span>
+                                    <h4 class="result-title mt-1">${company}</h4>
+                                </div>
+                                <div class="text-end">
+                                    <span class="badge bg-secondary">${displayConsultant}</span>
+                                </div>
+                            </div>
+                            <p class="text-muted mt-2 mb-0 text-truncate">點擊查看原始佐證檔案</p>
+                        </div>
+                    `;
+                }).join('');
 
             } catch (err) {
+                loader.style.display = 'none';
                 console.error(err);
-                container.innerHTML = `<div class="alert alert-danger">系統錯誤: ${err.message}</div>`;
+                container.innerHTML = `<div class="alert alert-warning">資料讀取錯誤或連線異常</div>`;
             }
         }
 
-        // ===========================================
-        // 2. 多筆選擇視窗
-        // ===========================================
-        function showSelectionModal(records) {
-            const listGroup = document.getElementById('record-list-group');
-            document.getElementById('record-count').innerText = records.length;
+        // 開啟完整預覽 (修正版：直接調閱檔案，強制 A~Q 排序)
+        async function openFullPreview(recordId, compNameEncoded, dataEncoded, consultNameEncoded) {
+            const companyName = decodeURIComponent(compNameEncoded);
+            const recordData = JSON.parse(decodeURIComponent(dataEncoded));
             
-            listGroup.innerHTML = records.map(rec => {
-                const typeLabel = rec.is_special_case ? 
-                    '<span class="badge bg-warning text-dark border border-dark">特案</span>' : 
-                    '<span class="badge bg-success">標準</span>';
+            const container = document.getElementById('previewContainer');
+            
+            // 顯示 Loading
+            container.innerHTML = `<div class="text-white text-center mt-5"><div class="spinner-border"></div><p>正在連線至雲端硬碟調閱卷宗...</p></div>`;
+            new bootstrap.Modal(document.getElementById('previewModal')).show();
+
+            try {
+                // 直接讀取 storage/documents 中的資料夾
+                // 假設路徑結構為: service_records/年份/RecordID/
+                const storagePath = `service_records/${recordData.service_year}/${recordId}/`;
+                const { data: fileList } = await supabaseClient.storage.from('documents').list(storagePath);
+
+                // ★ 關鍵修正：強制依檔名排序 (A.pdf, B.pdf...)
+                if (fileList) {
+                    fileList.sort((a, b) => a.name.localeCompare(b.name));
+                }
+
+                let attachmentsHtml = '';
                 
-                return `
-                <button type="button" class="list-group-item list-group-item-action d-flex justify-content-between align-items-center p-3" onclick="selectRecord('${rec.id}')">
-                    <div>
-                        <div class="fw-bold">${rec.workplaces.companies.name}</div>
-                        <div class="small text-muted">
-                            <i class="far fa-calendar-alt me-1"></i> 訪視日期：${rec.visit_date}
-                        </div>
-                    </div>
-                    <div class="text-end">
-                        ${typeLabel}
-                        <div class="small text-muted mt-1"><i class="fas fa-chevron-right"></i></div>
-                    </div>
-                </button>
-                `;
-            }).join('');
-
-            window.tempRecords = records;
-            new bootstrap.Modal(document.getElementById('selectRecordModal')).show();
-        }
-
-        function selectRecord(id) {
-            const record = window.tempRecords.find(r => r.id === id);
-            if (record) {
-                renderPaperSheet(record);
-                bootstrap.Modal.getInstance(document.getElementById('selectRecordModal')).hide();
-            }
-        }
-
-        // ===========================================
-        // 3. 渲染 Paper Sheet (Paper UI + Data Binding)
-        // ===========================================
-        async function renderPaperSheet(record) {
-            const container = document.getElementById('paper-container');
-            const companyName = record.workplaces.companies.name;
-            const year = record.service_year;
-            const folderId = record.attachment_folder_id; 
-
-            // 1. 取得審核者名稱 (簡化)
-            let reviewerName = '系統管理員'; 
-
-            // 2. 審核資訊
-            const auditTime = new Date(record.created_at).toLocaleString('zh-TW', { hour12: false });
-            const auditTypeBadge = record.is_special_case 
-                ? `<span class="badge bg-warning text-dark border border-dark"><i class="fas fa-exclamation-triangle me-1"></i>特案允許結案</span>` 
-                : `<span class="badge bg-success"><i class="fas fa-check-circle me-1"></i>標準核定結案</span>`;
-            const auditNote = record.audit_note || '<span class="text-muted">無審核備註</span>';
-
-            // 3. 檔案連結
-            // A. 正式 PDF
-            let finalPdfUrl = '';
-            // 因為檔名可能有 timestamp，需先 list 尋找
-            const { data: srFiles } = await supabaseClient.storage.from('service-records').list(`${year}/${folderId}`);
-            if (srFiles && srFiles.length > 0) {
-                const evidenceFile = srFiles.find(f => f.name.includes('Evidence_Final') && f.name.endsWith('.pdf')) || srFiles[0];
-                if (evidenceFile) {
-                    const { data } = supabaseClient.storage.from('service-records').getPublicUrl(`${year}/${folderId}/${evidenceFile.name}`);
-                    finalPdfUrl = data.publicUrl;
-                }
-            }
-
-            // B. 原始附件 (來自 Staging)
-            let attachmentsHtml = '';
-            const { data: rawFiles } = await supabaseClient.storage.from('staging').list(folderId);
-            if (rawFiles && rawFiles.length > 0) {
-                const otherFiles = rawFiles.filter(f => !f.name.toLowerCase().endsWith('.pdf') && f.name !== '.emptyFolderPlaceholder');
-                if (otherFiles.length > 0) {
-                    const links = await Promise.all(otherFiles.map(async f => {
-                        const { data } = supabaseClient.storage.from('staging').getPublicUrl(`${folderId}/${f.name}`);
-                        return `
-                            <a href="${data.publicUrl}" target="_blank" class="btn btn-outline-secondary btn-sm mb-2 me-2">
-                                <i class="fas fa-paperclip me-1"></i> ${f.name}
-                            </a>
-                        `;
+                if (fileList && fileList.length > 0) {
+                    // 產生 Signed URL (10分鐘有效)
+                    const filesWithUrl = await Promise.all(fileList.map(async (f) => {
+                        const { data } = await supabaseClient.storage.from('documents').createSignedUrl(`${storagePath}${f.name}`, 600);
+                        return { name: f.name, url: data?.signedUrl };
                     }));
-                    attachmentsHtml = `<div class="mt-3 p-3 bg-light rounded border"><h6 class="small fw-bold text-muted mb-2">原始附件 (圖片/影音)：</h6>${links.join('')}</div>`;
+
+                    // 渲染檔案列表 (PDF 用 iframe, 圖片用 img)
+                    attachmentsHtml = filesWithUrl.map(f => {
+                        if(!f.url) return '';
+                        
+                        // 解析檔名與代碼
+                        const code = f.name.split('.')[0]; // A, B, C...
+                        const displayName = FILE_NAME_MAP[code] ? `${code}. ${FILE_NAME_MAP[code]}` : f.name;
+
+                        const isImg = f.name.match(/\.(jpeg|jpg|png|gif)$/i);
+                        const isPdf = f.name.match(/\.pdf$/i);
+                        let content = '';
+
+                        if (isImg) {
+                            content = `<img src="${f.url}" class="attachment-img" alt="${f.name}">`;
+                        } else if (isPdf) {
+                            content = `<iframe src="${f.url}#toolbar=0" class="attachment-pdf-frame"></iframe>`;
+                        } else {
+                            // 其他檔案格式
+                            content = `<div class="p-5 bg-light border text-muted">
+                                <i class="fas fa-file-alt fa-3x mb-3"></i><br>
+                                此格式 (${f.name.split('.').pop()}) 不支援線上預覽<br>
+                                <a href="${f.url}" target="_blank" class="btn btn-outline-primary btn-sm mt-3">嘗試在新視窗開啟</a>
+                            </div>`;
+                        }
+
+                        return `
+                        <div class="attachment-item">
+                            <div class="file-header-badge"><i class="fas fa-file me-2"></i>${displayName}</div>
+                            ${content}
+                        </div>`;
+                    }).join('');
+                } else {
+                    attachmentsHtml = `
+                    <div class="alert alert-warning text-center p-5">
+                        <i class="fas fa-folder-open fa-3x mb-3"></i><br>
+                        <h5>查無檔案</h5>
+                        <p>雲端資料庫中找不到本案件的佐證附件。</p>
+                        <small class="text-muted">路徑: ${storagePath}</small>
+                    </div>`;
                 }
+
+                // 渲染單一 Paper Sheet (只包含浮水印與檔案)
+                container.innerHTML = `
+                    <div class="paper-sheet">
+                        <div class="watermark">${companyName} 原始資料</div>
+                        
+                        <div class="border-bottom pb-3 mb-4">
+                            <h4 class="fw-bold text-primary"><i class="fas fa-folder-open me-2"></i>原始佐證資料調閱</h4>
+                            <div class="d-flex justify-content-between text-muted small mt-2">
+                                <span>事業單位：${companyName}</span>
+                                <span>歸檔年度：${recordData.service_year}</span>
+                                <span>訪視日期：${recordData.visit_date}</span>
+                            </div>
+                        </div>
+
+                        <div class="attachments-container">
+                            ${attachmentsHtml}
+                        </div>
+
+                        <div class="text-center mt-5 text-muted small border-top pt-3">
+                            <i class="fas fa-shield-alt me-1"></i> OHSMS Secure Storage Access
+                        </div>
+                    </div>
+                `;
+            } catch (e) {
+                container.innerHTML = `<div class="alert alert-danger">讀取失敗: ${e.message}</div>`;
             }
-
-            const pdfViewerHtml = finalPdfUrl 
-                ? `<iframe src="${finalPdfUrl}#toolbar=0&navpanes=0" class="pdf-frame"></iframe>
-                   <div class="text-end mt-2">
-                        <a href="${finalPdfUrl}" download="Evidence_${year}_${companyName}.pdf" class="btn btn-sm btn-dark">
-                            <i class="fas fa-download me-1"></i> 下載完整證據包
-                        </a>
-                   </div>`
-                : `<div class="alert alert-warning text-center py-5">
-                        <i class="fas fa-file-pdf fa-3x mb-3"></i>
-                        <h5>尚無正式憑證 PDF</h5>
-                        <p>請確認該案件是否已完成結案程序。</p>
-                   </div>`;
-
-            // 4. 渲染 Paper HTML
-            container.innerHTML = `
-                <div class="paper-sheet animate__animated animate__fadeInUp">
-                    <div class="watermark">${companyName}</div>
-                    
-                    <div class="d-flex justify-content-between align-items-start border-bottom pb-3 mb-4">
-                        <div>
-                            <h2 class="fw-bold text-dark mb-1"><i class="fas fa-file-contract me-2 text-warning"></i>服務執行紀錄憑證</h2>
-                            <div class="text-muted">
-                                <span class="me-3"><i class="fas fa-building me-1"></i>${companyName}</span>
-                                <span class="me-3"><i class="fas fa-calendar-day me-1"></i>訪視日期：${record.visit_date}</span>
-                                <span><i class="fas fa-tag me-1"></i>年度：${year}</span>
-                            </div>
-                        </div>
-                        <div class="text-end">
-                            <img src="https://api.qrserver.com/v1/create-qr-code/?size=80x80&data=${encodeURIComponent(record.id)}" alt="QR" class="border p-1">
-                            <div class="small text-muted mt-1 font-monospace">${record.id.substring(0,8)}...</div>
-                        </div>
-                    </div>
-
-                    <div class="audit-stamp-box">
-                        <div class="audit-badge">Audit Log</div>
-                        <div class="row g-3">
-                            <div class="col-md-3">
-                                <small class="text-muted d-block">審核人員</small>
-                                <strong>${reviewerName}</strong>
-                            </div>
-                            <div class="col-md-3">
-                                <small class="text-muted d-block">核定時間</small>
-                                <span class="font-monospace">${auditTime}</span>
-                            </div>
-                            <div class="col-md-3">
-                                <small class="text-muted d-block">核定類型</small>
-                                ${auditTypeBadge}
-                            </div>
-                            <div class="col-md-12 border-top pt-2 mt-2">
-                                <small class="text-muted d-block">審核意見 / 備註</small>
-                                <div class="text-dark bg-white p-2 rounded border border-light">${auditNote}</div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="mb-3">
-                        <h5 class="fw-bold text-dark border-start border-4 border-warning ps-2 mb-3">正式評鑑證據 (PDF)</h5>
-                        ${pdfViewerHtml}
-                    </div>
-
-                    ${attachmentsHtml}
-
-                    <div class="text-center mt-5 text-muted small border-top pt-3">
-                        <i class="fas fa-shield-alt me-1"></i> OHSMS Secure Audit Trail System | Evidence ID: ${record.id}
-                    </div>
-                </div>
-            `;
         }
     </script>
 </body>
