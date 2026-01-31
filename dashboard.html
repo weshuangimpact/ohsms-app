@@ -37,7 +37,7 @@
         /* 統一頁首與頁尾樣式 */
         .navbar {
             background-color: #202124 !important; /* 深黑色背景 */
-            min-height: 85px; /* [修正] 增高至 85px 與頁尾一致 */
+            min-height: 85px; /* [修正] 統一高度為 85px */
             color: #fff; /* 白字 */
             flex-shrink: 0; /* 防止被壓縮 */
         }
@@ -104,6 +104,24 @@
             line-height: 1.4;
             margin-top: 8px;
         }
+
+        /* =========================================
+           [新增] 系統精神字卡 CSS 設定
+           ========================================= */
+        .instruction-box {
+            background-color: #fff;
+            border-left: 5px solid #202124; /* 使用深色飾條代表系統核心 */
+            padding: 20px 25px;
+            border-radius: 4px;
+            margin-bottom: 30px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+            width: 100%;
+        }
+        .instruction-title {
+            color: #202124;
+            font-weight: 700;
+            margin-bottom: 10px;
+        }
     </style>
 
     <script>
@@ -151,6 +169,15 @@
             <p class="text-secondary">請選擇下方功能模組進行操作</p>
         </div>
 
+        <div class="instruction-box">
+            <div class="instruction-title">
+                <i class="fas fa-network-wired me-2"></i>系統設計精神：PDCA+E+5W1H
+            </div>
+            <p class="mb-0 text-dark" style="line-height: 1.6;">
+                本系統融合 PDCA+E+5W1H 設計架構，確保每次的服務歷程皆能被有效保存與管理，建立具備可解釋性 (Explainability) 的完整證據鏈，落實類似 AI Act 的數位治理精神。
+            </p>
+        </div>
+
         <div class="row g-4">
             
             <div class="col-xl-3 col-md-6" id="card-index1">
@@ -159,7 +186,7 @@
                         <div class="d-flex justify-content-between">
                             <div>
                                 <h6 class="text-uppercase text-primary fw-bold small mb-1">Plan / Do</h6>
-                                <h5 class="card-title fw-bold mb-2">服務執行歷程管理</h5>
+                                <h5 class="card-title fw-bold mb-2">顧問資料上傳</h5>
                             </div>
                             <div class="icon-wrapper bg-primary bg-opacity-10 text-primary">
                                 <i class="fas fa-upload"></i>
