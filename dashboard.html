@@ -12,11 +12,54 @@
             --primary-bg: #f8f9fa;
             --card-hover-transform: translateY(-5px);
         }
+
+        /* =========================================
+           統一頁首/頁尾 CSS 設定 (整合版)
+           ========================================= */
+        html, body {
+            height: 100%; /* 確保高度撐滿 */
+        }
+
         body {
             background-color: var(--primary-bg);
             font-family: 'Segoe UI', 'Microsoft JhengHei', sans-serif;
-            display: none; /* 權限驗證前先隱藏 */
+            display: none; /* 權限驗證前先隱藏，驗證後改為 flex */
+            flex-direction: column; /* 讓版面垂直排列 */
+            min-height: 100vh;
         }
+
+        /* 內容區塊自動撐開，將頁尾推到底部 */
+        .main-content {
+            flex: 1; 
+            width: 100%; /* 確保寬度 */
+        }
+
+        /* 統一頁首與頁尾樣式 */
+        .navbar, footer {
+            background-color: #202124 !important; /* 深黑色背景 */
+            height: 65px; /* 固定高度 */
+            color: #fff; /* 白字 */
+            flex-shrink: 0; /* 防止被壓縮 */
+        }
+
+        footer {
+            font-size: 0.9rem;
+            letter-spacing: 0.5px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-top: auto; /* 確保在 Flex 佈局中推到底部 */
+        }
+
+        /* 修正 Bootstrap Container 在全螢幕下的邊距 */
+        .container-fluid {
+            padding-left: 2rem;
+            padding-right: 2rem;
+        }
+
+        /* =========================================
+           原 Dashboard UI 設定 (保持不變)
+           ========================================= */
         .dashboard-card {
             border: none;
             border-radius: 12px;
@@ -38,8 +81,6 @@
         .card-data { border-left-color: #4f46e5; }
         .card-admin { border-left-color: #212529; }
         .card-account { border-left-color: #0dcaf0; }
-        
-        /* 個人設定飾條顏色 (灰色) */
         .card-profile { border-left-color: #6c757d; }
 
         .icon-wrapper {
@@ -70,29 +111,30 @@
 </head>
 <body>
 
-    <nav class="navbar navbar-expand-lg navbar-dark bg-dark py-2 shadow-sm">
-        <div class="container-fluid px-4">
-            <a class="navbar-brand fw-bold" href="#"><i class="fas fa-shield-alt me-2"></i>OHSMS 職安管理系統</a>
-            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navContent">
-                <span class="navbar-toggler-icon"></span>
-            </button>
-            
-            <div class="collapse navbar-collapse" id="navContent">
-                <ul class="navbar-nav ms-auto mb-2 mb-lg-0 align-items-center">
-                    <li class="nav-item me-3">
-                        <span class="text-light opacity-75" id="user-display"><small>載入中...</small></span>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link text-white btn btn-sm btn-outline-secondary px-3" href="#" onclick="logout()">
-                            <i class="fas fa-sign-out-alt me-1"></i> 登出
-                        </a>
-                    </li>
-                </ul>
+    <nav class="navbar navbar-expand-lg navbar-dark px-4">
+        <div class="container-fluid d-flex justify-content-between align-items-center p-0">
+            <a class="navbar-brand d-flex align-items-center fw-bold" href="dashboard.html">
+                <i class="fas fa-shield-alt me-2"></i>
+                OHSMS 職安管理系統
+            </a>
+
+            <div class="d-flex align-items-center">
+                <span class="text-white me-4 small" id="header-date">
+                    <i class="fas fa-spinner fa-spin"></i>
+                </span>
+                
+                <span class="text-white me-4 fw-bold" id="header-user">
+                    Hi! 使用者
+                </span>
+                
+                <button class="btn btn-outline-light btn-sm" onclick="logoutSystem()">
+                    <i class="fas fa-sign-out-alt me-1"></i>登出
+                </button>
             </div>
         </div>
     </nav>
 
-    <div class="container-fluid px-4 mt-4">
+    <div class="container-fluid px-4 mt-4 main-content">
         
         <div class="row mb-4 align-items-end">
             <div class="col-md-8">
@@ -251,29 +293,42 @@
         </div>
     </div>
 
+    <footer>
+        <span>可信智慧整合有限公司 42917004 &nbsp;|&nbsp; 服務專線：0912-310570</span>
+    </footer>
+
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     
     <script>
         document.addEventListener('DOMContentLoaded', function() {
-            // 1. 顯示畫面
-            document.body.style.display = 'block';
+            // ------------------------------------------
+            // 1. 基礎畫面與權限載入
+            // ------------------------------------------
+            // 改為 flex 以支援 Sticky Footer
+            document.body.style.display = 'flex'; 
 
-            // 2. 讀取使用者資訊
             const userRole = sessionStorage.getItem('currentUserRole') || 'admin';
             const userName = sessionStorage.getItem('currentUserName') || '管理員';
             
-            let roleTitle = '使用者';
-            if(userRole === 'admin') roleTitle = '系統管理員';
-            if(userRole === 'medical') roleTitle = '醫護人員';
-            if(userRole === 'doc_control' || userRole === 'general') roleTitle = '文管人員';
-            if(userRole === 'consultant') roleTitle = '外部顧問';
-            
-            const userDisplay = document.getElementById('user-display');
-            if(userDisplay) {
-                userDisplay.innerHTML = `${roleTitle} <b>${userName}</b>`;
+            // ------------------------------------------
+            // 2. 統一頁首資訊 (日期/使用者)
+            // ------------------------------------------
+            // 顯示使用者名稱 (更新至新 ID: header-user)
+            const userEl = document.getElementById('header-user');
+            if(userEl) userEl.innerText = `Hi! ${userName}`;
+
+            // 設定標準日期格式：2026/1/31(六)
+            const dateEl = document.getElementById('header-date');
+            if(dateEl) {
+                const now = new Date();
+                const days = ['日', '一', '二', '三', '四', '五', '六'];
+                const formattedDate = `${now.getFullYear()}/${now.getMonth() + 1}/${now.getDate()}(${days[now.getDay()]})`;
+                dateEl.innerHTML = `<i class="far fa-calendar-alt me-1"></i>今日是 ${formattedDate}`;
             }
 
-            // 3. 權限邏輯 (RBAC) - 控制卡片顯示
+            // ------------------------------------------
+            // 3. 權限邏輯 (RBAC) - 控制 Dashboard 卡片顯示
+            // ------------------------------------------
             const cards = {
                 plan: document.getElementById('card-index1'),    // Index 1 (Plan/Do)
                 manager: document.getElementById('card-index2'), // Index 2 (Check/Act)
@@ -284,8 +339,7 @@
                 profile: document.getElementById('card-profile') // Profile Settings
             };
 
-            // 初始化：先隱藏"敏感/進階"卡片，保留通用卡片 (Plan, Manager, Eval, Profile)
-            // Admin等級的卡片預設隱藏
+            // 初始化：先隱藏"敏感/進階"卡片，保留通用卡片
             if(cards.maint) cards.maint.style.display = 'none';
             if(cards.master) cards.master.style.display = 'none';
             if(cards.users) cards.users.style.display = 'none';
@@ -298,46 +352,32 @@
                 if(cards.users) cards.users.style.display = 'block';
             }
             else if (userRole === 'doc_control' || userRole === 'general') {
-                // 文管 (doc_control): 
-                // 可見: index1, index3, index7, index6, profile
-                // 隱藏: index2, admin_users
-                
-                // 開啟: master(index7), maint(index6)
+                // 文管: 開啟 master, maint; 隱藏 manager
                 if(cards.master) cards.master.style.display = 'block';
                 if(cards.maint) cards.maint.style.display = 'block';
-                
-                // 隱藏: manager(index2)
                 if(cards.manager) cards.manager.style.display = 'none';
-                
-                // users 預設已隱藏
             }
             else if (userRole === 'consultant') {
-                // 顧問 (consultant):
-                // 可見: index1, profile
-                // 隱藏: index2, index3, index6, index7, users
-                
-                // 隱藏預設可見的卡片
-                if(cards.manager) cards.manager.style.display = 'none'; // index2
-                if(cards.eval) cards.eval.style.display = 'none';       // index3
-                
-                // master, maint, users 預設已隱藏
+                // 顧問: 隱藏 manager, eval
+                if(cards.manager) cards.manager.style.display = 'none';
+                if(cards.eval) cards.eval.style.display = 'none';
             }
-            else if (userRole === 'medical') {
-                // 醫護: 專注執行面 (維持原樣)
-                // Manager/Eval/Plan/Profile 保持顯示
-                // Maint/Master/Users 保持隱藏
-            }
+            // 醫護: 維持原樣
         });
 
-        // 登出功能
-        function logout() {
+        // ------------------------------------------
+        // 統一登出功能
+        // ------------------------------------------
+        function logoutSystem() {
             if(confirm('確定要登出系統嗎？')) {
                 sessionStorage.clear();
                 window.location.href = 'login.html';
             }
         }
 
-        // 時鐘功能
+        // ------------------------------------------
+        // 時鐘功能 (保留 Dashboard 內部用)
+        // ------------------------------------------
         setInterval(() => {
             const now = new Date();
             const clock = document.getElementById('clock');
