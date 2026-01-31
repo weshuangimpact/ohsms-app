@@ -9,14 +9,14 @@
     
     <style>
         /* =========================================
-           1. 統一頁首/頁尾 CSS 設定 (內頁專用 / 高度統一版)
+           1. 統一頁首/頁尾 CSS 設定 (內頁專用)
            ========================================= */
         html, body {
             height: 100%;
         }
 
         body {
-            display: none; /* 權限驗證前先隱藏，JS 載入後改為 flex */
+            display: none; /* JS 載入後改為 flex */
             flex-direction: column;
             min-height: 100vh;
             background-color: #f8f9fa; /* 預設背景色 */
@@ -85,52 +85,37 @@
         /* =========================================
            3. 客服專用 UI 設定
            ========================================= */
-        .contact-card {
-            border: none;
-            border-radius: 12px;
+        /* 側邊資訊卡片 */
+        .contact-info-card {
             background: white;
-            padding: 30px;
-            text-align: center;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.05);
-            transition: all 0.3s ease;
-            height: 100%;
+            border-radius: 12px;
+            padding: 25px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+            margin-bottom: 20px;
+            transition: all 0.3s;
             cursor: pointer;
-            border-top: 4px solid transparent;
+            border-left: 4px solid transparent;
         }
-        .contact-card:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 10px 20px rgba(0,0,0,0.1);
+        .contact-info-card:hover {
+            transform: translateX(5px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
         }
-
-        /* 個別卡片配色 */
-        .card-line { border-top-color: #06c755; }
-        .card-line .icon-box { background-color: #06c755; color: white; }
         
-        .card-phone { border-top-color: #0d6efd; }
-        .card-phone .icon-box { background-color: #0d6efd; color: white; }
-        
-        .card-email { border-top-color: #ffc107; }
-        .card-email .icon-box { background-color: #ffc107; color: #333; }
+        .card-line { border-left-color: #06c755; }
+        .card-phone { border-left-color: #0d6efd; }
+        .card-email { border-left-color: #ffc107; }
 
-        .icon-box {
-            width: 80px; height: 80px;
+        .icon-circle {
+            width: 50px; height: 50px;
             border-radius: 50%;
+            background: #f8f9fa;
             display: flex; align-items: center; justify-content: center;
-            font-size: 2.5rem;
-            margin: 0 auto 20px auto;
+            font-size: 1.25rem;
+            margin-right: 15px;
         }
-
-        .qr-placeholder {
-            width: 200px;
-            height: 200px;
-            background-color: #f8f9fa;
-            border: 2px dashed #dee2e6;
-            margin: 0 auto;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: #adb5bd;
-        }
+        
+        /* 導引卡片文字顏色 */
+        .text-pink { color: var(--theme-color); }
     </style>
 
     <script>
@@ -181,75 +166,94 @@
         
         <div class="mb-4">
             <h2 class="fw-bold text-dark mb-1">線上客服中心</h2>
-            <p class="text-secondary">Service Support：即時通訊與問題排解</p>
+            <p class="text-secondary">Always Here：您的專屬職安系統管家</p>
         </div>
 
         <div class="instruction-box">
             <div class="instruction-title">
-                <i class="fas fa-headset me-2"></i>Service Spirit：連結 (Connect) 與 解決 (Solve)
+                <i class="fas fa-headset me-2"></i>Service Spirit：有溫度的數位連結
             </div>
             <p class="mb-0 text-dark" style="line-height: 1.6;">
-                本模組建立即時溝通管道，確保使用者的需求與操作問題能被 <strong>有效傳遞 (Transmission)</strong> 與 <strong>及時回應 (Response)</strong>，並透過數位通訊紀錄保持服務歷程的可追溯性，落實以人為本的服務精神。
+                本模組建立即時且暢通的溝通管道，確保使用者的需求與操作問題能被 <strong>有效傳遞 (Transmission)</strong> 與 <strong>及時回應 (Response)</strong>。我們提供包含免登入對談在內的多元管道，落實以人為本、無障礙的 <strong>友善服務 (Friendly Service)</strong> 精神。
             </p>
         </div>
 
-        <div class="row g-4 justify-content-center">
+        <div class="row g-4">
             
-            <div class="col-lg-4 col-md-6">
-                <div class="contact-card card-line" onclick="window.open('https://line.me/ti/p/您的LINE_ID連結', '_blank')">
-                    <div class="icon-box">
-                        <i class="fab fa-line"></i>
+            <div class="col-lg-8">
+                <div class="card border-0 shadow-sm h-100 bg-white">
+                    <div class="card-body d-flex flex-column align-items-center justify-content-center text-center p-5">
+                        <div class="mb-4 p-4 rounded-circle" style="background-color: var(--theme-light);">
+                            <i class="fas fa-comments text-pink" style="font-size: 4rem;"></i>
+                        </div>
+                        <h3 class="fw-bold text-dark">OHSMS 線上支援助理</h3>
+                        <p class="text-muted fs-5 mt-2">
+                            遇到問題了嗎？無需安裝軟體，<br>
+                            請點擊畫面 <strong class="text-pink">右下角</strong> 的綠色圖示 <i class="fas fa-comment-dots"></i><br>
+                            即可開始與客服人員免登入對談。
+                        </p>
+                        
+                        <div class="mt-4 p-3 bg-light rounded text-start d-inline-block border">
+                            <small class="text-secondary">
+                                <i class="fas fa-info-circle me-2 text-pink"></i>服務時間：週一至週五 09:00 - 18:00<br>
+                                <i class="fas fa-moon me-2 text-pink"></i>非服務時間請直接留言，我們將於次一工作日優先回覆。
+                            </small>
+                        </div>
                     </div>
-                    <h4 class="fw-bold mb-2">LINE 線上客服</h4>
-                    <p class="text-muted small mb-3">點擊此處即可開啟 LINE App<br>與專員進行一對一線上對談</p>
-                    
-                    <div class="qr-placeholder rounded mb-2">
-                        <div class="text-center">
-                            <i class="fas fa-qrcode fa-3x mb-2"></i><br>
-                            <span class="small">請掃描 QR Code<br>或點擊卡片</span>
-                        </div>
-                        </div>
-                    
-                    <button class="btn btn-success w-100 rounded-pill mt-3 fw-bold">
-                        <i class="fas fa-comments me-2"></i>立即對談
-                    </button>
                 </div>
             </div>
 
-            <div class="col-lg-4 col-md-6">
-                <div class="d-flex flex-column h-100 gap-4">
-                    
-                    <div class="contact-card card-phone flex-grow-1" onclick="location.href='tel:0912310570'">
-                        <div class="d-flex align-items-center mb-3">
-                            <div class="icon-box mb-0 me-3" style="width: 60px; height: 60px; font-size: 1.5rem;">
-                                <i class="fas fa-phone-alt"></i>
-                            </div>
-                            <div class="text-start">
-                                <h5 class="fw-bold mb-1">電話諮詢</h5>
-                                <p class="text-muted small mb-0">緊急狀況請直接撥打</p>
-                            </div>
+            <div class="col-lg-4">
+                <h5 class="fw-bold mb-3 text-secondary">其他聯絡方式</h5>
+                
+                <div class="contact-info-card card-line" onclick="window.open('https://line.me/ti/p/您的LINE_ID連結', '_blank')">
+                    <div class="d-flex align-items-center">
+                        <div class="icon-circle text-white" style="background-color: #06c755;">
+                            <i class="fab fa-line"></i>
                         </div>
-                        <h3 class="fw-bold text-primary my-2">0912-310-570</h3>
-                        <p class="small text-muted">服務時間：週一至週五 09:00 - 18:00</p>
-                    </div>
-
-                    <div class="contact-card card-email flex-grow-1" onclick="location.href='mailto:service@wesmartai.com'">
-                        <div class="d-flex align-items-center mb-3">
-                            <div class="icon-box mb-0 me-3" style="width: 60px; height: 60px; font-size: 1.5rem;">
-                                <i class="fas fa-envelope"></i>
-                            </div>
-                            <div class="text-start">
-                                <h5 class="fw-bold mb-1">電子郵件</h5>
-                                <p class="text-muted small mb-0">系統問題回報與建議</p>
-                            </div>
+                        <div>
+                            <h6 class="fw-bold mb-1">LINE 官方帳號</h6>
+                            <small class="text-muted">點擊即刻對談</small>
                         </div>
-                        <h6 class="fw-bold text-dark my-2 text-break">service@wesmartai.com</h6>
-                        <p class="small text-muted">我們將於 24 小時內回覆您</p>
                     </div>
-
                 </div>
-            </div>
 
+                <div class="contact-info-card card-phone" onclick="location.href='tel:0912310570'">
+                    <div class="d-flex align-items-center">
+                        <div class="icon-circle text-white bg-primary">
+                            <i class="fas fa-phone-alt"></i>
+                        </div>
+                        <div>
+                            <h6 class="fw-bold mb-1">緊急客服專線</h6>
+                            <small class="text-muted">0912-310-570</small>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="contact-info-card card-email" onclick="location.href='mailto:service@wesmartai.com'">
+                    <div class="d-flex align-items-center">
+                        <div class="icon-circle text-dark bg-warning">
+                            <i class="fas fa-envelope"></i>
+                        </div>
+                        <div>
+                            <h6 class="fw-bold mb-1">問題回報信箱</h6>
+                            <small class="text-muted">service@wesmartai.com</small>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card border-0 shadow-sm mt-4 bg-light">
+                    <div class="card-body">
+                        <h6 class="fw-bold mb-3"><i class="fas fa-question-circle me-2 text-secondary"></i>常見問題 (FAQ)</h6>
+                        <ul class="list-unstyled small mb-0">
+                            <li class="mb-2"><a href="#" class="text-decoration-none text-secondary">• 忘記登入密碼如何重設？</a></li>
+                            <li class="mb-2"><a href="#" class="text-decoration-none text-secondary">• 如何上傳顧問訪視紀錄？</a></li>
+                            <li class="mb-2"><a href="#" class="text-decoration-none text-secondary">• 帳號權限不足無法存取頁面？</a></li>
+                        </ul>
+                    </div>
+                </div>
+
+            </div>
         </div>
     </div>
 
@@ -297,5 +301,17 @@
             }
         }
     </script>
-</body>
+
+    <script type="text/javascript">
+    var Tawk_API=Tawk_API||{}, Tawk_LoadStart=new Date();
+    (function(){
+    var s1=document.createElement("script"),s0=document.getElementsByTagName("script")[0];
+    s1.async=true;
+    s1.src='https://embed.tawk.to/697d86ca0f84561c354701fe/1jg95d25c';
+    s1.charset='UTF-8';
+    s1.setAttribute('crossorigin','*');
+    s0.parentNode.insertBefore(s1,s0);
+    })();
+    </script>
+    </body>
 </html>
