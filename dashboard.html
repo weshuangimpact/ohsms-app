@@ -182,7 +182,7 @@
                 <i class="fas fa-network-wired me-2"></i>系統設計精神：PDCA+E+5W1H
             </div>
             <p class="mb-0 text-dark" style="line-height: 1.6;">
-                本系統融合 PDCA+E(評鑑)+5W1H 設計架構，確保每次的服務歷程皆能被有效保存與管理，建立具備可解釋性、可追溯的完整證據鏈，落實數位治理精神。
+                本系統融合 PDCA+E+5W1H 設計架構，確保每次的服務歷程皆能被有效保存與管理，建立具備可解釋性 (Explainability) 的完整證據鏈，落實類似 AI Act 的數位治理精神。
             </p>
         </div>
 
@@ -194,7 +194,7 @@
                         <div class="d-flex justify-content-between">
                             <div>
                                 <h6 class="text-uppercase text-primary fw-bold small mb-1">Plan / Do</h6>
-                                <h5 class="card-title fw-bold mb-2">服務執行歷程管理</h5>
+                                <h5 class="card-title fw-bold mb-2">顧問資料上傳</h5>
                             </div>
                             <div class="icon-wrapper bg-primary bg-opacity-10 text-primary">
                                 <i class="fas fa-upload"></i>
@@ -342,7 +342,7 @@
                         </div>
                         <div class="guide-text">
                             操作指引：<br>
-                            提供 LINE、電話等即時諮詢管道，協助解決系統操作問題。
+                            提供即時諮詢管道與問題回報，協助解決系統操作問題。
                         </div>
                     </div>
                 </div>
@@ -365,7 +365,6 @@
             // ------------------------------------------
             // 1. 基礎畫面與權限載入
             // ------------------------------------------
-            // 啟用 Flex 佈局，配合 CSS 的 min-height: 100vh 實現版面擴展與 Sticky Footer
             document.body.style.display = 'flex'; 
 
             const userRole = sessionStorage.getItem('currentUserRole') || 'admin';
@@ -374,11 +373,9 @@
             // ------------------------------------------
             // 2. 統一頁首資訊 (日期/時間/使用者)
             // ------------------------------------------
-            // 顯示使用者名稱
             const userEl = document.getElementById('header-user');
             if(userEl) userEl.innerText = `Hi! ${userName}`;
 
-            // 設定標準日期格式：2026/1/31(六)
             const dateEl = document.getElementById('header-date');
             if(dateEl) {
                 const now = new Date();
@@ -402,28 +399,50 @@
                 master: document.getElementById('card-index7'),
                 users: document.getElementById('card-users'),
                 profile: document.getElementById('card-profile'),
-                service: document.getElementById('card-index4') // [新增] 客服卡片
+                service: document.getElementById('card-index4')
             };
 
-            // 初始化：先隱藏"敏感/進階"卡片
-            if(cards.maint) cards.maint.style.display = 'none';
-            if(cards.master) cards.master.style.display = 'none';
-            if(cards.users) cards.users.style.display = 'none';
+            // 輔助函式
+            const show = (el) => { if(el) el.style.display = 'block'; }
+            const hide = (el) => { if(el) el.style.display = 'none'; }
 
-            // 根據角色開啟/關閉
+            // 角色判斷
             if (userRole === 'admin') {
-                if(cards.maint) cards.maint.style.display = 'block';
-                if(cards.master) cards.master.style.display = 'block';
-                if(cards.users) cards.users.style.display = 'block';
+                // Admin: 全部可見
+                Object.values(cards).forEach(show);
             }
             else if (userRole === 'doc_control' || userRole === 'general') {
-                if(cards.master) cards.master.style.display = 'block';
-                if(cards.maint) cards.maint.style.display = 'block';
-                if(cards.manager) cards.manager.style.display = 'none';
+                // Doc Control: 2, 3, 7, 6, profile, 4 (隱藏 1, users)
+                hide(cards.plan);      // 1
+                show(cards.manager);   // 2
+                show(cards.eval);      // 3
+                show(cards.maint);     // 6
+                show(cards.master);    // 7
+                hide(cards.users);     // Users
+                show(cards.profile);   // Profile
+                show(cards.service);   // 4
             }
             else if (userRole === 'consultant') {
-                if(cards.manager) cards.manager.style.display = 'none';
-                if(cards.eval) cards.eval.style.display = 'none';
+                // Consultant: 1, profile, 4 (隱藏 2, 3, 6, 7, users)
+                show(cards.plan);      // 1
+                hide(cards.manager);   // 2
+                hide(cards.eval);      // 3
+                hide(cards.maint);     // 6
+                hide(cards.master);    // 7
+                hide(cards.users);     // Users
+                show(cards.profile);   // Profile
+                show(cards.service);   // 4
+            }
+            else {
+                // 預設/其他角色 (例如 medical): 暫時只開放 Profile/Service/Plan
+                hide(cards.manager);
+                hide(cards.eval);
+                hide(cards.maint);
+                hide(cards.master);
+                hide(cards.users);
+                show(cards.plan);
+                show(cards.profile);
+                show(cards.service);
             }
         });
 
