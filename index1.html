@@ -7,80 +7,173 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     
-<style>
-    /* 核心基礎設定 (Plan Blue) */
-    :root { --primary-bg: #f4f6f9; --theme-color: #0d6efd; --theme-light: #e7f1ff; }
-    body { background-color: var(--primary-bg); font-family: 'Segoe UI', 'Microsoft JhengHei', sans-serif; display: none; }
-    .container, .container-fluid { max-width: 100% !important; padding-left: 1.5rem !important; padding-right: 1.5rem !important; }
-    .card-body { padding: 0 !important; }
-    .d-flex.justify-content-between.align-items-center.mb-4 { margin-bottom: 0.5rem !important; }
-    .section-title { border-left: 5px solid var(--theme-color); padding-left: 15px; margin-bottom: 20px; }
-    .card-header { background-color: white; border-bottom: 1px solid #f0f0f0; }
-    
-    /* UI 元件 */
-    .step-indicator { display: flex; justify-content: space-between; margin-bottom: 30px; position: relative; max-width: 600px; margin-left: auto; margin-right: auto;}
-    .step-indicator::before { content: ''; position: absolute; top: 15px; left: 0; right: 0; height: 2px; background: #e0e0e0; z-index: 0; }
-    .step-item { position: relative; z-index: 1; background: var(--primary-bg); padding: 0 10px; text-align: center; color: #999; font-weight: 600; }
-    .step-item.active { color: var(--theme-color); }
-    .step-circle { width: 32px; height: 32px; background: #e0e0e0; color: #fff; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 8px; font-weight: bold; transition: all 0.3s; }
-    .step-item.active .step-circle { background: var(--theme-color); box-shadow: 0 0 0 5px rgba(13, 110, 253, 0.2); }
-    .step-item.completed .step-circle { background: #198754; }
+    <style>
+        /* =========================================
+           1. 統一頁首/頁尾 CSS 設定 (內頁專用 / 高度統一版)
+           ========================================= */
+        html, body {
+            height: 100%;
+        }
 
-    .record-card { cursor: pointer; border: 1px solid #eee; transition: all 0.2s; background: #fff;}
-    .record-card:hover, .record-card.selected { border-color: var(--theme-color); background-color: var(--theme-light); }
+        body {
+            display: none; /* 權限驗證前先隱藏，JS 載入後改為 flex */
+            flex-direction: column;
+            min-height: 100vh;
+            background-color: #f8f9fa; /* 預設背景色 */
+            font-family: 'Segoe UI', 'Microsoft JhengHei', sans-serif;
+        }
 
-    .check-list-group .list-group-item { border: 1px solid #eee; margin-bottom: 8px; border-radius: 6px !important; transition: background 0.2s; padding: 12px 15px; }
-    .check-list-group .list-group-item:hover { background-color: #f8f9fa; }
-    .form-check-input:checked + .form-check-label { color: var(--theme-color); font-weight: bold; }
+        /* 內容區塊自動撐開 */
+        .container, .main-content, .container-fluid {
+            flex: 1; 
+            max-width: 100% !important; 
+            padding-left: 1.5rem !important; 
+            padding-right: 1.5rem !important;
+        }
 
-    .item-actions { display: none; align-items: center; gap: 8px; margin-left: auto; }
-    .item-actions.visible { display: flex; }
+        /* 頁首設定 */
+        .navbar {
+            background-color: #202124 !important;
+            min-height: 85px; /* [修正] 統一高度為 85px */
+            color: #fff;
+            flex-shrink: 0;
+        }
 
-    .instruction-box { background-color: #fff; border-left: 5px solid var(--theme-color); padding: 20px 25px; border-radius: 4px; margin-bottom: 30px; text-align: left; box-shadow: 0 2px 5px rgba(0,0,0,0.05); width: 100%; }
-    .instruction-title { color: #0a58ca; font-weight: 700; margin-bottom: 10px; }
-    
-    /* 備註欄樣式 */
-    .remark-box {
-        border: 2px dashed #cbd5e1;
-        background-color: #f8fafc;
-        border-radius: 6px;
-        padding: 15px;
-        margin-bottom: 20px;
-    }
-</style>
+        /* 頁尾設定 */
+        footer {
+            background-color: #202124 !important;
+            color: #fff;
+            flex-shrink: 0;
+            font-size: 0.9rem;
+            letter-spacing: 0.5px;
+            display: flex;
+            flex-direction: column; /* 垂直排列 */
+            align-items: center;
+            justify-content: center;
+            margin-top: auto;
+            padding: 15px 0;
+            min-height: 85px; /* 雙行高度 */
+        }
+
+        /* =========================================
+           2. 統一標題與字卡 CSS 設定 (Plan Blue)
+           ========================================= */
+        :root { 
+            --theme-color: #0d6efd; /* Plan 階段的主題藍色 */
+            --theme-light: #e7f1ff;
+        }
+
+        /* PDCA 字卡 (白色區塊) 設定 */
+        .instruction-box {
+            background-color: #fff; /* 白色背景 */
+            border-left: 5px solid var(--theme-color); /* 左側藍色飾條 */
+            padding: 20px 25px; /* 內距 */
+            border-radius: 4px; /* 圓角 */
+            margin-bottom: 30px; /* 下方留白 */
+            box-shadow: 0 2px 5px rgba(0,0,0,0.05); /* 輕微陰影 */
+            width: 100%;
+            text-align: left;
+        }
+
+        /* PDCA 字卡標題設定 */
+        .instruction-title {
+            color: var(--theme-color); /* 字體顏色跟隨主題色 */
+            font-weight: 700; /* 粗體 */
+            margin-bottom: 10px; /* 與內文的間距 */
+        }
+
+        /* =========================================
+           3. 既有功能 UI 設定 (保留不變)
+           ========================================= */
+        .card-body { padding: 0 !important; }
+        .section-title { border-left: 5px solid var(--theme-color); padding-left: 15px; margin-bottom: 20px; }
+        .card-header { background-color: white; border-bottom: 1px solid #f0f0f0; }
+        
+        /* 步驟指示器 */
+        .step-indicator { display: flex; justify-content: space-between; margin-bottom: 30px; position: relative; max-width: 600px; margin-left: auto; margin-right: auto;}
+        .step-indicator::before { content: ''; position: absolute; top: 15px; left: 0; right: 0; height: 2px; background: #e0e0e0; z-index: 0; }
+        .step-item { position: relative; z-index: 1; background: #f8f9fa; padding: 0 10px; text-align: center; color: #999; font-weight: 600; }
+        .step-item.active { color: var(--theme-color); }
+        .step-circle { width: 32px; height: 32px; background: #e0e0e0; color: #fff; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 8px; font-weight: bold; transition: all 0.3s; }
+        .step-item.active .step-circle { background: var(--theme-color); box-shadow: 0 0 0 5px rgba(13, 110, 253, 0.2); }
+        .step-item.completed .step-circle { background: #198754; }
+
+        /* 紀錄卡片 */
+        .record-card { cursor: pointer; border: 1px solid #eee; transition: all 0.2s; background: #fff;}
+        .record-card:hover, .record-card.selected { border-color: var(--theme-color); background-color: var(--theme-light); }
+
+        /* 檢查清單 */
+        .check-list-group .list-group-item { border: 1px solid #eee; margin-bottom: 8px; border-radius: 6px !important; transition: background 0.2s; padding: 12px 15px; }
+        .check-list-group .list-group-item:hover { background-color: #f8f9fa; }
+        .form-check-input:checked + .form-check-label { color: var(--theme-color); font-weight: bold; }
+
+        .item-actions { display: none; align-items: center; gap: 8px; margin-left: auto; }
+        .item-actions.visible { display: flex; }
+        
+        /* 備註欄樣式 */
+        .remark-box {
+            border: 2px dashed #cbd5e1;
+            background-color: #f8fafc;
+            border-radius: 6px;
+            padding: 15px;
+            margin-bottom: 20px;
+        }
+    </style>
 
     <script>
-        document.addEventListener('DOMContentLoaded', function() {
-            if (!sessionStorage.getItem('currentUserId')) { window.location.href = 'login.html'; }
-            document.body.style.display = 'block';
-            document.getElementById('user-display').innerText = sessionStorage.getItem('currentUserName') || '使用者';
-        });
+        // 權限檢查
+        if (!sessionStorage.getItem('currentUserId')) { window.location.href = 'login.html'; }
     </script>
 </head>
 <body>
 
-    <nav class="navbar navbar-expand-lg navbar-dark bg-dark py-3 mb-4">
-        <div class="container-fluid px-4">
-            <a class="navbar-brand" href="dashboard.html"><i class="fas fa-shield-alt me-2"></i>OHSMS</a>
+    <nav class="navbar navbar-expand-lg navbar-dark px-4">
+        <div class="container-fluid d-flex justify-content-between align-items-center p-0">
+            <a class="navbar-brand d-flex align-items-center fw-bold" href="dashboard.html">
+                <i class="fas fa-shield-alt me-2"></i>
+                OHSMS 職安管理系統
+            </a>
+
             <div class="d-flex align-items-center">
-                <span class="text-light me-3" id="user-display"></span>
-                <a href="dashboard.html" class="btn btn-outline-light btn-sm"><i class="fas fa-arrow-left me-1"></i> 返回儀表板</a>
+                <span class="text-white me-3 small" id="header-date">
+                    <i class="fas fa-spinner fa-spin"></i>
+                </span>
+                
+                <span class="text-white me-4 small border-start ps-3 border-secondary" id="header-clock" style="opacity: 0.9;">
+                    --:--
+                </span>
+                
+                <span class="text-white me-4 fw-bold" id="header-user">
+                    Hi! 使用者
+                </span>
+                
+                <a class="btn btn-outline-light btn-sm me-2" href="dashboard.html">
+                    <i class="fas fa-reply me-1"></i>回到儀表板
+                </a>
+                
+                <button class="btn btn-outline-light btn-sm" onclick="logoutSystem()">
+                    <i class="fas fa-sign-out-alt me-1"></i>登出
+                </button>
             </div>
         </div>
     </nav>
 
-    <div class="container pb-5">
-        <div class="d-flex justify-content-between align-items-center mb-4">
-            <div>
-                <h2 class="fw-bold text-dark"><i class="fas fa-file-arrow-up me-2 text-primary"></i>顧問資料上傳</h2>
-                <p class="text-muted mb-0">Plan & Do 階段：建立基準與服務歷程及完整執行紀錄</p>
-            </div>
+    <div class="container main-content pb-5 mt-4">
+        
+        <div class="mb-4">
+            <h2 class="fw-bold text-dark mb-1">顧問資料上傳 (Plan & Do)</h2>
+            <p class="text-secondary">Plan & Do 階段：建立基準與服務歷程及完整執行紀錄</p>
         </div>
 
-        <div class="card-body p-4 p-md-5">
+        <div class="card-body p-0">
+            
             <div class="instruction-box">
-                <div class="instruction-title"><i class="fas fa-compass me-2"></i>PDCA 設計理念：Plan (計畫) —— 基準確立與歷史繼承</div>
-                <p class="mb-0 text-dark" style="line-height: 1.6;">本模組貫徹「基準建檔」(Plan) 與「執行留痕」(Do) 之雙重核心，透過嚴謹的版本控制與補件機制，完整串聯從規劃到現場服務的數位證據鏈，確保資料具備不可否認性。</p>
+                <div class="instruction-title">
+                    <i class="fas fa-clipboard-list me-2"></i>PDCA 設計理念：Plan (計畫) —— 基準確立與歷史繼承
+                </div>
+                <p class="mb-0 text-dark" style="line-height: 1.6;">
+                    本模組貫徹「基準建檔」(Plan) 與「執行留痕」(Do) 之雙重核心，透過嚴謹的版本控制與補件機制，完整串聯從規劃到現場服務的數位證據鏈，確保資料具備不可否認性。
+                </p>
             </div>
 
             <div class="step-indicator px-5">
@@ -213,10 +306,57 @@
         </div>
     </div>
 
+    <footer>
+        <div class="mb-1">可信智慧整合有限公司 42917004 &nbsp;|&nbsp; 服務專線：0912-310570</div>
+        <div class="small opacity-75" style="font-family: 'Segoe UI', sans-serif; letter-spacing: 1px;">
+            WesmartAI , Making Trust Transparent.
+        </div>
+    </footer>
+
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     
     <script>
+        // ==========================================
+        // 統一頁首與系統初始化邏輯
+        // ==========================================
+        document.addEventListener('DOMContentLoaded', function() {
+            // 1. 顯示畫面 (Flex 佈局)
+            document.body.style.display = 'flex';
+
+            // 2. 啟動時鐘
+            setInterval(() => {
+                const now = new Date();
+                const clockEl = document.getElementById('header-clock');
+                if(clockEl) clockEl.textContent = now.toLocaleTimeString('zh-TW', { hour12: false });
+            }, 1000);
+
+            // 3. 設定日期 (格式：2026/1/31(六))
+            const dateEl = document.getElementById('header-date');
+            if(dateEl) {
+                const now = new Date();
+                const days = ['日', '一', '二', '三', '四', '五', '六'];
+                const formattedDate = `${now.getFullYear()}/${now.getMonth() + 1}/${now.getDate()}(${days[now.getDay()]})`;
+                dateEl.innerHTML = `<i class="far fa-calendar-alt me-1"></i>今日是 ${formattedDate}`;
+            }
+
+            // 4. 讀取使用者名稱
+            const userName = sessionStorage.getItem('currentUserName');
+            const userEl = document.getElementById('header-user');
+            if(userEl && userName) userEl.innerText = `Hi! ${userName}`;
+        });
+
+        // 統一登出功能
+        function logoutSystem() {
+            if(confirm('確定要登出系統嗎？')) {
+                sessionStorage.clear();
+                window.location.href = 'login.html';
+            }
+        }
+
+        // ==========================================
+        // 原有功能邏輯 (保持不變)
+        // ==========================================
         const SUPABASE_URL = 'https://yhehfucgemxnfrdvpdhw.supabase.co';
         const SUPABASE_KEY = 'sb_publishable_52emtU-9l-SDxcJTWVTPTA_Yu6qEogh';
         const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
@@ -300,7 +440,7 @@
         }
 
         // ==========================================
-        // 核心上傳 Logic (修正：使用 currentStagingId 隔離資料夾)
+        // 核心上傳 Logic 
         // ==========================================
         async function handleItemFileUpload(itemId, code, input) {
             if (!input.files || !input.files[0]) return;
@@ -315,7 +455,6 @@
                 const fileExt = file.name.split('.').pop() || 'dat'; 
                 const finalFileName = `${code}_${timestamp}.${fileExt}`;
                 
-                // ★ 關鍵修正：路徑改為 `${currentStagingId}/${finalFileName}`
                 const filePath = `${currentStagingId}/${finalFileName}`;
 
                 // 刪除該暫存 ID 資料夾下的舊檔
@@ -341,7 +480,6 @@
             document.getElementById(`spinner-${itemId}`).style.display = 'block';
             document.getElementById(`btn-group-${itemId}`).style.display = 'none';
             try {
-                // ★ 關鍵修正：刪除時也指定 currentStagingId
                 await deleteFileByPrefix(currentStagingId, `${code}_`);
                 updateItemUI(itemId, code, null, null, false); 
             } catch (e) {
@@ -373,7 +511,6 @@
                 uploadBtn.style.display = 'none';
                 btnGroup.style.display = 'flex';
                 
-                // ★ 關鍵修正：預覽路徑改為 currentStagingId
                 const { data } = supabaseClient.storage.from(BUCKET_NAME).getPublicUrl(`${currentStagingId}/${fullFileName}`);
                 previewBtn.href = data.publicUrl;
                 
@@ -416,7 +553,6 @@
             } catch (err) { container.innerHTML = `<div class="alert alert-danger">錯誤: ${err.message}</div>`; }
         }
 
-        // 1. 處理點擊
         async function handleCardClick(motherId) {
             currentRecordId = motherId;
             const { data: pendingItems, error } = await supabaseClient
@@ -456,20 +592,17 @@
             new bootstrap.Modal(document.getElementById('actionChoiceModal')).show();
         }
 
-        // 2. 初始化 Step 2 (修正：生成唯一 ID)
         async function initStep2(stagingId) {
             const modalEl = document.getElementById('actionChoiceModal');
             const modal = bootstrap.Modal.getInstance(modalEl);
             if (modal) modal.hide();
 
-            // ★ 關鍵修正：若無 stagingId (新增模式)，立即產生一組 UUID
             if (!stagingId) {
                 currentStagingId = crypto.randomUUID();
             } else {
                 currentStagingId = stagingId;
             }
 
-            // 重置表單
             document.querySelectorAll('input[type="checkbox"]').forEach(cb => cb.checked = false);
             document.querySelectorAll('.item-actions').forEach(el => el.classList.remove('visible'));
             document.getElementById('service-type-select').value = "";
@@ -481,12 +614,10 @@
 
             checklistItems.forEach(item => updateItemUI(item.id, item.code, null, null, false));
 
-            // 讀取母案資料
             const { data: motherData } = await supabaseClient.from('service_records').select(`*, workplaces(companies(name))`).eq('id', currentRecordId).single();
             document.getElementById('current-company-name').innerText = motherData.workplaces.companies.name;
             document.getElementById('current-year-badge').innerText = (motherData.service_year || '') + ' 年度 (母案)';
 
-            // ★ 關鍵修正：只讀取該 currentStagingId 資料夾內的檔案
             const { data: files } = await supabaseClient.storage.from(BUCKET_NAME).list(`${currentStagingId}`);
             
             if (stagingId) {
@@ -569,9 +700,6 @@
             });
         }
 
-        // ==========================================
-        // 送出邏輯 (修正：寫入時強制指定 ID)
-        // ==========================================
         async function submitRecord() {
             if (!currentRecordId) return;
             const btn = document.getElementById('btn-submit');
@@ -597,13 +725,11 @@
                 if (selectedItems.length === 0) throw new Error("請至少勾選一項執行紀錄項目 (A~Q)。");
                 if (!visitDate) throw new Error("請填寫實際執行日期。");
 
-                // ★ 關鍵修正：列出 currentStagingId 資料夾的檔案
                 const { data: files } = await supabaseClient.storage.from(BUCKET_NAME).list(`${currentStagingId}`);
                 let attachments = [];
                 if(files) {
                     attachments = files.map(f => ({
                         name: f.name,
-                        // ★ 關鍵修正：路徑包含 currentStagingId
                         path: `${currentStagingId}/${f.name}`,
                         size: f.metadata.size,
                         type: f.metadata.mimetype
@@ -616,7 +742,6 @@
                 const { data: recordData } = await supabaseClient.from('service_records').select('workplace_id, consultant_id, service_year').eq('id', currentRecordId).single();
 
                 const payload = {
-                    // ★ 關鍵修正：強制指定 id 為我們的 currentStagingId
                     id: currentStagingId, 
                     origin_record_id: currentRecordId,
                     workplace_id: recordData.workplace_id,
@@ -640,14 +765,10 @@
                     updated_at: new Date()
                 };
 
-                // ★ 關鍵修正：使用 upsert，因為 ID 已確定，新增或修改都適用
                 const { error } = await supabaseClient.from('service_record_staging').upsert(payload);
 
                 if (error) throw error;
 
-                // 判斷提示語 (雖然 upsert 都一樣，但為了體驗區分一下)
-                // 這裡簡單判定：如果 currentStagingId 之前有值(來自initStep2參數)，當作修改；否則當作新增
-                // 但實際上 currentStagingId 在 initStep2 一定會被賦值，所以這裡統一提示成功即可
                 alert('✅ 存檔成功！資料已送出待審核。');
                 backToStep1();
 
