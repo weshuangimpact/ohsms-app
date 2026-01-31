@@ -13,7 +13,7 @@
             --card-hover-transform: translateY(-5px);
         }
         
-        /* Layout 設定: 確保頁尾固定在底部 */
+        /* Layout 設定: 僅為了讓頁尾固定在底部，不影響其他 UI */
         body {
             background-color: var(--primary-bg);
             font-family: 'Segoe UI', 'Microsoft JhengHei', sans-serif;
@@ -32,10 +32,10 @@
             flex: 1;
         }
 
-        /* 統一頁首與頁尾樣式 */
+        /* 統一頁首與頁尾樣式 (背景黑、高度 65px) */
         .navbar, footer {
-            background-color: #202124 !important; /* 深黑色 */
-            height: 65px; /* 統一高度 */
+            background-color: #202124 !important; 
+            height: 65px; 
             color: #fff;
         }
 
@@ -53,23 +53,23 @@
             box-shadow: 0 8px 15px rgba(0,0,0,0.1);
         }
 
-        /* 各模組代表色 (飾條與Icon) */
-        .card-manager { border-left-color: #198754; } /* Check - Green */
+        /* 各模組代表色 (維持原檔設定) */
+        .card-manager { border-left-color: #198754; } 
         .card-manager .icon-bg { background-color: #e8f5e9; color: #198754; }
         
-        .card-eval { border-left-color: #ffc107; }    /* Eval - Yellow */
+        .card-eval { border-left-color: #ffc107; }    
         .card-eval .icon-bg { background-color: #fff3cd; color: #ffc107; }
 
-        .card-plan { border-left-color: #0d6efd; }    /* Plan - Blue */
+        .card-plan { border-left-color: #0d6efd; }    
         .card-plan .icon-bg { background-color: #e7f1ff; color: #0d6efd; }
         
-        .card-maint { border-left-color: #4f46e5; }   /* Master - Indigo */
+        .card-maint { border-left-color: #4f46e5; }   
         .card-maint .icon-bg { background-color: #e0e7ff; color: #4f46e5; }
         
-        .card-users { border-left-color: #0dcaf0; }   /* User - Cyan */
+        .card-users { border-left-color: #0dcaf0; }   
         .card-users .icon-bg { background-color: #cff4fc; color: #0dcaf0; }
 
-        .card-profile { border-left-color: #6c757d; } /* Profile - Grey */
+        .card-profile { border-left-color: #6c757d; } 
         .card-profile .icon-bg { background-color: #f8f9fa; color: #6c757d; }
 
         .icon-bg {
@@ -80,7 +80,6 @@
         }
         
         /* 頁尾文字樣式 */
-        footer a { color: #fff; text-decoration: none; }
         footer span { font-size: 0.9rem; letter-spacing: 0.5px; }
     </style>
 </head>
@@ -95,8 +94,7 @@
 
             <div class="d-flex align-items-center">
                 <span class="text-white me-4 small" id="date-display">
-                    <i class="far fa-calendar-alt me-1"></i>載入中...
-                </span>
+                    </span>
                 
                 <span class="text-white me-4 fw-bold" id="user-display">
                     Hi! 使用者
@@ -221,30 +219,23 @@
             };
 
             if (userRole === 'admin') {
-                // 管理員 (Admin): 全開
+                // 管理員 (Admin)
                 if(cards.users) cards.users.style.display = 'block';
                 if(cards.maint) cards.maint.style.display = 'block';
-                if(cards.manager) cards.manager.style.display = 'none'; // Admin 暫時隱藏 index2 ? 依照原始邏輯
-                
-                // 根據您的原始設定，Admin 這裡隱藏了 manager (index2)，若需開啟請移除下一行
-                // cards.manager.style.display = 'block'; 
+                // cards.manager 根據您原檔邏輯，若需要則保留
             }
             else if (userRole === 'consultant') {
-                // 顧問 (consultant): 
-                // 隱藏: manager(index2), eval(index3), maint(index7), users
+                // 顧問 (consultant)
                 if(cards.manager) cards.manager.style.display = 'none';
                 if(cards.eval) cards.eval.style.display = 'none';
                 if(cards.maint) cards.maint.style.display = 'none';
                 if(cards.users) cards.users.style.display = 'none';
             }
             else if (userRole === 'medical') {
-                // 醫護 (Medical): 
-                // Manager/Eval/Plan 顯示
-                // Maint/Users 隱藏
+                // 醫護 (Medical)
                 if(cards.maint) cards.maint.style.display = 'none';
                 if(cards.users) cards.users.style.display = 'none';
             }
-            // doc_control 文管人員等其他角色邏輯可在此擴充
         });
 
         // 登出功能
