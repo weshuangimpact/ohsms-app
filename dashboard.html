@@ -14,7 +14,7 @@
         }
 
         /* =========================================
-           統一頁首/頁尾 CSS 設定 (整合版)
+           統一頁首/頁尾 CSS 設定 (高度統一版)
            ========================================= */
         html, body {
             height: 100%; /* 確保高度撐滿 */
@@ -37,7 +37,7 @@
         /* 統一頁首與頁尾樣式 */
         .navbar {
             background-color: #202124 !important; /* 深黑色背景 */
-            height: 65px; /* 固定高度 */
+            min-height: 85px; /* [修正] 增高至 85px 與頁尾一致 */
             color: #fff; /* 白字 */
             flex-shrink: 0; /* 防止被壓縮 */
         }
@@ -49,12 +49,12 @@
             font-size: 0.9rem;
             letter-spacing: 0.5px;
             display: flex;
-            flex-direction: column; /* 改為垂直排列以容納兩行 */
+            flex-direction: column; /* 垂直排列 */
             align-items: center;
             justify-content: center;
             margin-top: auto;
-            padding: 15px 0; /* 增加內距 */
-            min-height: 85px; /* 增加高度以容納兩行文字 */
+            padding: 15px 0;
+            min-height: 85px; /* 雙行內容高度 */
         }
 
         /* 修正 Bootstrap Container 在全螢幕下的邊距 */
@@ -80,7 +80,7 @@
             box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1);
         }
         
-        /* 卡片左側飾條顏色定義 (對應主色調) */
+        /* 卡片左側飾條顏色定義 */
         .card-plan { border-left-color: #0d6efd; }
         .card-check { border-left-color: #198754; }
         .card-eval { border-left-color: #ffc107; }
@@ -107,7 +107,7 @@
     </style>
 
     <script>
-        // 權限檢查：無登入者直接踢回登入頁
+        // 權限檢查
         const role = sessionStorage.getItem('currentUserRole');
         if (!role) {
             // window.location.href = 'login.html'; 
@@ -316,13 +316,13 @@
             const userName = sessionStorage.getItem('currentUserName') || '管理員';
             
             // ------------------------------------------
-            // 2. 統一頁首資訊 (日期/時間/使用者)
+            // 2. 統一頁首資訊
             // ------------------------------------------
-            // 顯示使用者名稱
+            // 顯示使用者
             const userEl = document.getElementById('header-user');
             if(userEl) userEl.innerText = `Hi! ${userName}`;
 
-            // 設定標準日期格式：2026/1/31(六)
+            // 設定日期
             const dateEl = document.getElementById('header-date');
             if(dateEl) {
                 const now = new Date();
@@ -331,7 +331,7 @@
                 dateEl.innerHTML = `<i class="far fa-calendar-alt me-1"></i>今日是 ${formattedDate}`;
             }
 
-            // 啟動頁首時鐘
+            // 啟動時鐘
             updateClock();
             setInterval(updateClock, 1000);
 
