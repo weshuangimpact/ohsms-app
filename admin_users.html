@@ -9,51 +9,82 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css"/>
     
     <style>
-        /* [維持] 主色調設定為 #0dcaf0 (Cyan / Info) */
+        /* =========================================
+           1. 統一頁首/頁尾 CSS 設定 (內頁專用 / 高度統一版)
+           ========================================= */
+        html, body {
+            height: 100%;
+        }
+
+        body {
+            display: none; /* 權限驗證前先隱藏，JS 載入後改為 flex */
+            flex-direction: column;
+            min-height: 100vh;
+            background-color: #f8f9fa; /* 預設背景色 */
+            font-family: 'Segoe UI', 'Microsoft JhengHei', sans-serif;
+        }
+
+        /* 內容區塊自動撐開 */
+        .container, .main-content, .container-fluid {
+            flex: 1; 
+        }
+
+        /* 頁首設定 */
+        .navbar {
+            background-color: #202124 !important;
+            min-height: 85px; /* [修正] 統一高度為 85px */
+            color: #fff;
+            flex-shrink: 0;
+        }
+
+        /* 頁尾設定 */
+        footer {
+            background-color: #202124 !important;
+            color: #fff;
+            flex-shrink: 0;
+            font-size: 0.9rem;
+            letter-spacing: 0.5px;
+            display: flex;
+            flex-direction: column; /* 垂直排列 */
+            align-items: center;
+            justify-content: center;
+            margin-top: auto;
+            padding: 15px 0;
+            min-height: 85px; /* 雙行高度 */
+        }
+
+        /* =========================================
+           2. 統一標題與字卡 CSS 設定 (Account Cyan)
+           ========================================= */
         :root { 
-            --primary-bg: #f4f6f9; 
-            --theme-color: #0dcaf0; 
+            --primary-bg: #f8f9fa; 
+            --theme-color: #0dcaf0; /* Account Mgmt 階段的主題青色 */
             --theme-text: #055160;
         }
-        
-        body {
-            background-color: var(--primary-bg);
-            font-family: 'Segoe UI', 'Microsoft JhengHei', sans-serif;
-            display: none; /* Auth Guard */
-        }
-        
-        /* 標題飾條 */
-        .section-title { 
-            border-left: 5px solid var(--theme-color); 
-            padding-left: 15px; 
-            margin-bottom: 20px; 
+
+        /* PDCA/5W1H 字卡 (白色區塊) 設定 */
+        .instruction-box {
+            background-color: #fff;              /* 白色背景 */
+            border-left: 5px solid var(--theme-color); /* 左側主題色飾條 */
+            padding: 20px 25px;                  /* 內距 */
+            border-radius: 4px;                  /* 圓角 */
+            margin-bottom: 30px;                 /* 下方留白 */
+            box-shadow: 0 2px 5px rgba(0,0,0,0.05); /* 輕微陰影 */
+            width: 100%;
+            text-align: left;
         }
 
-        /* 5W1H 整合式理念字卡 */
-        .concept-card {
-            background: white;
-            border: none;
-            border-left: 5px solid var(--theme-color); /* 統一色調 */
-            border-radius: 8px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
-            padding: 20px;
-            margin-bottom: 20px;
-        }
-        .concept-title { 
-            font-weight: bold;
-            color: var(--theme-text); 
-            margin-bottom: 10px; 
-            font-size: 1.1rem; 
-        }
-        .concept-text { 
-            font-size: 0.95rem;
-            color: #495057; 
-            line-height: 1.6; 
-            margin-bottom: 0; 
-            text-align: justify;
+        /* 字卡標題設定 */
+        .instruction-title {
+            color: var(--theme-text);            /* 字體顏色 */
+            font-weight: 700;                    /* 粗體 */
+            margin-bottom: 10px;                 /* 與內文的間距 */
+            font-size: 1.1rem;
         }
 
-        /* 搜尋區塊 */
+        /* =========================================
+           3. 既有功能 UI 設定 (保留列表與 Badge 樣式)
+           ========================================= */
         .search-box {
             background: white;
             padding: 20px;
@@ -62,10 +93,9 @@
             margin-bottom: 20px;
         }
 
-        /* 列表卡片 (統一色調) */
         .card-list {
             border: none;
-            border-left: 5px solid var(--theme-color); /* 統一色調 */
+            border-left: 5px solid var(--theme-color);
             box-shadow: 0 4px 6px rgba(0,0,0,0.05);
         }
 
@@ -78,51 +108,73 @@
         /* 按鈕樣式覆寫 */
         .btn-theme {
             background-color: var(--theme-color);
-            color: white;
+            color: #fff;
             font-weight: bold;
             border: none;
         }
-        .btn-theme:hover { background-color: #0bb5d8; color: white; }
+        .btn-theme:hover { background-color: #0bb5d8; color: #fff; }
     </style>
 
     <script>
+        // 權限檢查
         document.addEventListener('DOMContentLoaded', function() {
-            // 簡易權限檢核
             const role = sessionStorage.getItem('currentUserRole');
             if (!role || role !== 'admin') {
                 alert('權限不足：此頁面僅限系統管理員存取。');
                 window.location.href = 'dashboard.html';
                 return;
             }
-            document.body.style.display = 'block';
+            // 顯示畫面 (Flex)
+            document.body.style.display = 'flex';
         });
     </script>
 </head>
 <body>
 
-    <nav class="navbar navbar-expand-lg navbar-dark bg-dark py-3 mb-4">
-        <div class="container-fluid px-4">
-            <a class="navbar-brand fw-bold" href="dashboard.html"><i class="fas fa-shield-alt me-2"></i>OHSMS</a>
+    <nav class="navbar navbar-expand-lg navbar-dark px-4">
+        <div class="container-fluid d-flex justify-content-between align-items-center p-0">
+            <a class="navbar-brand d-flex align-items-center fw-bold" href="dashboard.html">
+                <i class="fas fa-shield-alt me-2"></i>
+                OHSMS 職安管理系統
+            </a>
+
             <div class="d-flex align-items-center">
-                <span class="text-light small me-3">系統管理後台</span>
-                <a href="dashboard.html" class="btn btn-outline-light btn-sm"><i class="fas fa-arrow-left me-1"></i> 返回儀表板</a>
+                <span class="text-white me-3 small" id="header-date">
+                    <i class="fas fa-spinner fa-spin"></i>
+                </span>
+                
+                <span class="text-white me-4 small border-start ps-3 border-secondary" id="header-clock" style="opacity: 0.9;">
+                    --:--
+                </span>
+                
+                <span class="text-white me-4 fw-bold" id="header-user">
+                    Hi! 使用者
+                </span>
+                
+                <a class="btn btn-outline-light btn-sm me-2" href="dashboard.html">
+                    <i class="fas fa-reply me-1"></i>回到儀表板
+                </a>
+                
+                <button class="btn btn-outline-light btn-sm" onclick="logoutSystem()">
+                    <i class="fas fa-sign-out-alt me-1"></i>登出
+                </button>
             </div>
         </div>
     </nav>
 
-    <div class="container-fluid px-4 pb-5">
+    <div class="container-fluid px-4 pb-5 mt-4 main-content">
         
-        <div class="d-flex justify-content-between align-items-center mb-4">
-            <div>
-                <h2 class="fw-bold text-dark section-title"><i class="fas fa-users-cog me-2"></i>帳號權限管理</h2>
-                <p class="text-muted mb-0 ms-3">管理系統使用者帳號、角色權限與狀態</p>
-            </div>
+        <div class="mb-4">
+            <h2 class="fw-bold text-dark mb-1">帳號權限管理</h2>
+            <p class="text-secondary">Account Mgmt 階段：管理系統使用者帳號、角色權限與狀態</p>
         </div>
 
-        <div class="concept-card">
-            <div class="concept-title"><i class="fas fa-info-circle me-2"></i>5W1H 設計理念：帳號權限與責任追溯</div>
-            <p class="concept-text">
-                本模組依 5W1H 原則，記錄帳號之身分、角色、權限來源與生效歷程，作為系統操作稽核與責任追溯之制度依據。
+        <div class="instruction-box">
+            <div class="instruction-title">
+                <i class="fas fa-info-circle me-2"></i>5W1H 設計理念：帳號權限與責任追溯
+            </div>
+            <p class="mb-0 text-dark" style="line-height: 1.6;">
+                本模組依 5W1H 原則，記錄帳號之 <strong>身分 (Who)</strong>、<strong>角色 (What)</strong>、<strong>權限來源 (Where)</strong> 與 <strong>生效歷程 (When)</strong>，作為系統操作稽核與責任追溯之制度依據。
             </p>
         </div>
 
@@ -185,7 +237,8 @@
                 </div>
                 <div class="modal-body">
                     <input type="hidden" id="target-staff-id">
-                    <input type="hidden" id="target-user-id"> <div class="alert alert-info bg-opacity-10 border-info border-opacity-25 mb-3 small" style="color: #055160;">
+                    <input type="hidden" id="target-user-id"> 
+                    <div class="alert alert-info bg-opacity-10 border-info border-opacity-25 mb-3 small" style="color: #055160;">
                         <i class="fas fa-info-circle me-1"></i> 
                         此操作將建立 Profiles 並連結 Medical Staff。請將預設密碼告知使用者。
                     </div>
@@ -230,17 +283,63 @@
         </div>
     </div>
 
+    <footer>
+        <div class="mb-1">可信智慧整合有限公司 42917004 &nbsp;|&nbsp; 服務專線：0912-310570</div>
+        <div class="small opacity-75" style="font-family: 'Segoe UI', sans-serif; letter-spacing: 1px;">
+            WesmartAI , Making Trust Transparent.
+        </div>
+    </footer>
+
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
     <script>
-        const SUPABASE_URL = 'https://yhehfucgemxnfrdvpdhw.supabase.co';
-        const SUPABASE_KEY = 'sb_publishable_52emtU-9l-SDxcJTWVTPTA_Yu6qEogh'; // 請確認 key 是否正確
-        const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+        // ==========================================
+        // 統一頁首與系統初始化邏輯
+        // ==========================================
+        document.addEventListener('DOMContentLoaded', function() {
+            // 1. 顯示畫面 (Flex 佈局)
+            document.body.style.display = 'flex';
 
-        document.addEventListener('DOMContentLoaded', () => {
+            // 2. 啟動時鐘
+            setInterval(() => {
+                const now = new Date();
+                const clockEl = document.getElementById('header-clock');
+                if(clockEl) clockEl.textContent = now.toLocaleTimeString('zh-TW', { hour12: false });
+            }, 1000);
+
+            // 3. 設定日期
+            const dateEl = document.getElementById('header-date');
+            if(dateEl) {
+                const now = new Date();
+                const days = ['日', '一', '二', '三', '四', '五', '六'];
+                const formattedDate = `${now.getFullYear()}/${now.getMonth() + 1}/${now.getDate()}(${days[now.getDay()]})`;
+                dateEl.innerHTML = `<i class="far fa-calendar-alt me-1"></i>今日是 ${formattedDate}`;
+            }
+
+            // 4. 讀取使用者名稱
+            const userName = sessionStorage.getItem('currentUserName');
+            const userEl = document.getElementById('header-user');
+            if(userEl && userName) userEl.innerText = `Hi! ${userName}`;
+
+            // 5. 執行原有載入邏輯
             loadUsers();
         });
+
+        // 統一登出功能
+        function logoutSystem() {
+            if(confirm('確定要登出系統嗎？')) {
+                sessionStorage.clear();
+                window.location.href = 'login.html';
+            }
+        }
+
+        // ==========================================
+        // 原有功能邏輯 (保持不變)
+        // ==========================================
+        const SUPABASE_URL = 'https://yhehfucgemxnfrdvpdhw.supabase.co';
+        const SUPABASE_KEY = 'sb_publishable_52emtU-9l-SDxcJTWVTPTA_Yu6qEogh'; 
+        const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
         // 1. 列表載入函式
         async function loadUsers() {
@@ -331,12 +430,9 @@
             new bootstrap.Modal(document.getElementById('inviteModal')).show();
         }
 
-        // 3. [核心修改] 嚴格順序版：先 Auth -> 再 Profile -> 最後 Staff
+        // 3. 直接開通帳號邏輯
         async function directActivateUser() {
             const staffId = document.getElementById('target-staff-id').value;
-            // 忽略 hidden 的 user-id，我們強制重新檢查，避免用到垃圾 ID
-            // const existingUserId = document.getElementById('target-user-id')?.value; 
-            
             const email = document.getElementById('invite-email').value.trim();
             const password = document.getElementById('invite-password').value;
             const role = document.getElementById('invite-system-role').value;
@@ -350,96 +446,53 @@
             btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 執行 Step 1: 建立帳號...';
 
             let newUserId = null;
-
             try {
-                // ==========================================
-                // Step 1: 建立 Auth 帳號 (最重要的一步)
-                // ==========================================
+                // Step 1: 建立 Auth 帳號
                 console.log("正在嘗試建立 Auth 使用者:", email);
-                
-                // 定義虛擬儲存，防止踢掉管理員
-                const dummyStorage = {
-                    getItem: (key) => null, setItem: (key, value) => {}, removeItem: (key) => {}
-                };
-
+                const dummyStorage = { getItem: (key) => null, setItem: (key, value) => {}, removeItem: (key) => {} };
                 const tempClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY, {
-                    auth: {
-                        persistSession: false, 
-                        autoRefreshToken: false,
-                        detectSessionInUrl: false,
-                        storage: dummyStorage 
-                    }
+                    auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false, storage: dummyStorage }
                 });
-
                 const { data: authData, error: authError } = await tempClient.auth.signUp({
-                    email: email,
-                    password: password,
-                    options: { data: { full_name: name, role: role } }
+                    email: email, password: password, options: { data: { full_name: name, role: role } }
                 });
-
+                
                 if (authError) {
-                    // 如果錯誤是 "User already registered"，我們不能假裝成功，必須報錯
-                    // 因為我們拿不到舊帳號的 ID (安全性限制)，無法繼續寫入 Profile
                     if (authError.message.includes("already registered")) {
-                        throw new Error("❌ 失敗：此 Email 已存在於 Auth 系統中！\n\n請至 Supabase 後台「Authentication」刪除該使用者，或手動複製其 UID 來修復。");
+                        throw new Error("❌ 失敗：此 Email 已存在於 Auth 系統中！請至 Supabase 後台處理。");
                     }
                     throw new Error("Auth 建立失敗: " + authError.message);
                 }
 
                 if (!authData.user || !authData.user.id) {
-                    throw new Error("Auth 請求完成但未回傳 ID，請檢查後台是否開啟了「Confirm Email」？(必須關閉)");
+                    throw new Error("Auth 請求完成但未回傳 ID。");
                 }
 
                 newUserId = authData.user.id;
                 console.log("Step 1 成功，取得 User ID:", newUserId);
                 
-                // 更新按鈕狀態給使用者看
                 btn.innerHTML = '<i class="fas fa-sync fa-spin"></i> 執行 Step 2: 寫入資料...';
 
-                // ==========================================
-                // Step 2: 寫入 Profiles (使用剛拿到的 ID)
-                // ==========================================
-                // 使用全域 client (Admin 身分)
-                const { error: profileError } = await supabaseClient
-                    .from('profiles')
-                    .upsert({
-                        id: newUserId, // 確保使用 Step 1 拿到的 ID
-                        email: email,
-                        full_name: name,
-                        role: role,
-                        status: 'active',
-                        is_active: true,
-                        created_by: (await supabaseClient.auth.getUser()).data.user?.id 
-                    });
-
+                // Step 2: 寫入 Profiles
+                const { error: profileError } = await supabaseClient.from('profiles').upsert({
+                    id: newUserId, email: email, full_name: name, role: role, status: 'active', is_active: true,
+                    created_by: (await supabaseClient.auth.getUser()).data.user?.id 
+                });
                 if (profileError) throw new Error("Profile 寫入失敗: " + profileError.message);
-                console.log("Step 2 Profile 寫入成功");
 
-                // ==========================================
-                // Step 3: 更新 Medical Staff 連結
-                // ==========================================
-                const { error: staffError } = await supabaseClient
-                    .from('medical_staff')
-                    .update({ 
-                        user_id: newUserId, 
-                        system_role: role,
-                        is_active: true,
-                        email: email
-                    })
-                    .eq('id', staffId);
-
+                // Step 3: 更新 Medical Staff
+                const { error: staffError } = await supabaseClient.from('medical_staff').update({ 
+                    user_id: newUserId, system_role: role, is_active: true, email: email
+                }).eq('id', staffId);
                 if (staffError) throw new Error("名單綁定失敗: " + staffError.message);
-                console.log("Step 3 Staff 更新成功");
 
-                // 全部成功
                 alert(`✅ 帳號開通完整成功！\n\nUser ID: ${newUserId}\n\n請嘗試登入。`);
-                
                 bootstrap.Modal.getInstance(document.getElementById('inviteModal')).hide();
                 loadUsers();
 
             } catch (err) {
                 console.error(err);
-                alert(err.message); // 直接顯示錯誤訊息
+                alert(err.message);
             } finally {
                 btn.disabled = false;
                 btn.innerHTML = originalText;
