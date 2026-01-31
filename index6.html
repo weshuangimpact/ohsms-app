@@ -9,24 +9,80 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css"/>
     
     <style>
-        :root { --primary-bg: #f4f6f9; }
-        body {
-            background-color: var(--primary-bg);
-            font-family: 'Segoe UI', 'Microsoft JhengHei', sans-serif;
-            display: none; /* Auth Guard */
-        }
-        
-        .audit-info-card {
-            background-color: #e9ecef;
-            border-left: 5px solid #343a40;
-            color: #495057;
-            padding: 1.25rem;
-            margin-bottom: 1.5rem;
-            border-radius: 0.375rem;
-            font-size: 0.9rem;
-            line-height: 1.6;
+        /* =========================================
+           1. 統一頁首/頁尾 CSS 設定 (內頁專用 / 高度統一版)
+           ========================================= */
+        html, body {
+            height: 100%;
         }
 
+        body {
+            display: none; /* 權限驗證前先隱藏，JS 載入後改為 flex */
+            flex-direction: column;
+            min-height: 100vh;
+            background-color: #f8f9fa; /* 預設背景色 */
+            font-family: 'Segoe UI', 'Microsoft JhengHei', sans-serif;
+        }
+
+        /* 內容區塊自動撐開 */
+        .container, .main-content, .container-fluid {
+            flex: 1; 
+        }
+
+        /* 頁首設定 */
+        .navbar {
+            background-color: #202124 !important;
+            min-height: 85px; /* [修正] 統一高度為 85px */
+            color: #fff;
+            flex-shrink: 0;
+        }
+
+        /* 頁尾設定 */
+        footer {
+            background-color: #202124 !important;
+            color: #fff;
+            flex-shrink: 0;
+            font-size: 0.9rem;
+            letter-spacing: 0.5px;
+            display: flex;
+            flex-direction: column; /* 垂直排列 */
+            align-items: center;
+            justify-content: center;
+            margin-top: auto;
+            padding: 15px 0;
+            min-height: 85px; /* 雙行高度 */
+        }
+
+        /* =========================================
+           2. 統一標題與字卡 CSS 設定 (Audit Dark)
+           ========================================= */
+        :root { 
+            --primary-bg: #f8f9fa; 
+            --theme-color: #212529; /* Audit 階段的主題深色 (對應 Dashboard) */
+        }
+
+        /* PDCA/5W1H 字卡 (白色區塊) 設定 */
+        .instruction-box {
+            background-color: #fff;              /* 白色背景 */
+            border-left: 5px solid var(--theme-color); /* 左側飾條 */
+            padding: 20px 25px;                  /* 內距 */
+            border-radius: 4px;                  /* 圓角 */
+            margin-bottom: 30px;                 /* 下方留白 */
+            box-shadow: 0 2px 5px rgba(0,0,0,0.05); /* 輕微陰影 */
+            width: 100%;
+            text-align: left;
+        }
+
+        /* 字卡標題設定 */
+        .instruction-title {
+            color: var(--theme-color);           /* 字體顏色跟隨主題色 */
+            font-weight: 700;                    /* 粗體 */
+            margin-bottom: 10px;                 /* 與內文的間距 */
+        }
+
+        /* =========================================
+           3. 既有功能 UI 設定 (保留表格與搜尋框樣式)
+           ========================================= */
         .table th { font-weight: 600; font-size: 0.9rem; }
         .table td { font-size: 0.9rem; vertical-align: middle; }
         
@@ -44,63 +100,71 @@
     </style>
 
     <script>
+        // 權限檢查 (保留原有邏輯)
         document.addEventListener('DOMContentLoaded', function() {
             const role = sessionStorage.getItem('currentUserRole');
+            // 若為醫護人員或無權限，踢回儀表板
             if (!role || role === 'medical') {
                 alert('權限不足：此頁面僅限管理人員存取。');
                 window.location.href = 'dashboard.html';
                 return;
             }
-            document.body.style.display = 'block';
-            
-            // 設定預設時間 (今天 00:00 ~ 23:59)
-            const now = new Date();
-            const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0);
-            const todayEnd = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59);
-            
-            const formatDT = (d) => {
-                const pad = (n) => n.toString().padStart(2, '0');
-                return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
-            };
-
-            const startEl = document.getElementById('search-start');
-            const endEl = document.getElementById('search-end');
-            
-            if(startEl) startEl.value = formatDT(todayStart);
-            if(endEl) endEl.value = formatDT(todayEnd);
         });
     </script>
 </head>
 <body>
 
-    <nav class="navbar navbar-expand-lg navbar-dark bg-dark py-3 mb-4">
-        <div class="container-fluid px-4">
-            <a class="navbar-brand fw-bold" href="dashboard.html"><i class="fas fa-shield-alt me-2"></i>OHSMS</a>
+    <nav class="navbar navbar-expand-lg navbar-dark px-4">
+        <div class="container-fluid d-flex justify-content-between align-items-center p-0">
+            <a class="navbar-brand d-flex align-items-center fw-bold" href="dashboard.html">
+                <i class="fas fa-shield-alt me-2"></i>
+                OHSMS 職安管理系統
+            </a>
+
             <div class="d-flex align-items-center">
-                <span class="text-light small me-3">系統管理後台</span>
-                <a href="dashboard.html" class="btn btn-outline-light btn-sm"><i class="fas fa-arrow-left me-1"></i> 返回儀表板</a>
+                <span class="text-white me-3 small" id="header-date">
+                    <i class="fas fa-spinner fa-spin"></i>
+                </span>
+                
+                <span class="text-white me-4 small border-start ps-3 border-secondary" id="header-clock" style="opacity: 0.9;">
+                    --:--
+                </span>
+                
+                <span class="text-white me-4 fw-bold" id="header-user">
+                    Hi! 使用者
+                </span>
+                
+                <a class="btn btn-outline-light btn-sm me-2" href="dashboard.html">
+                    <i class="fas fa-reply me-1"></i>回到儀表板
+                </a>
+                
+                <button class="btn btn-outline-light btn-sm" onclick="logoutSystem()">
+                    <i class="fas fa-sign-out-alt me-1"></i>登出
+                </button>
             </div>
         </div>
     </nav>
 
-    <div class="container-fluid px-4 pb-5">
+    <div class="container-fluid px-4 pb-5 mt-4 main-content">
         
-        <div class="d-flex justify-content-between align-items-center mb-4">
+        <div class="d-flex justify-content-between align-items-end mb-4">
             <div>
-                <h2 class="fw-bold text-dark"><i class="fas fa-history me-2"></i>系統稽核紀錄</h2>
-                <p class="text-muted mb-0">本頁面紀錄系統內所有關鍵操作</p>
+                <h2 class="fw-bold text-dark mb-1">系統日誌與稽核證據 (Audit Evidence)</h2>
+                <p class="text-secondary mb-0">Audit 階段：系統操作日誌與不可否認性稽核</p>
             </div>
-            <button class="btn btn-success btn-sm fw-bold" onclick="exportLogs()">
+            <button class="btn btn-success btn-sm fw-bold mb-1" onclick="exportLogs()">
                 <i class="fas fa-file-csv me-2"></i>匯出 CSV
             </button>
         </div>
 
-        <div class="audit-info-card shadow-sm">
-            <strong><i class="fas fa-fingerprint me-2"></i>5W1H 設計理念 —— 保存完整操作歷程 (Audit Trail)</strong><br>
-            <span style="line-height: 1.8;">
-            本系統依循資安稽核標準，詳實記錄 <strong>Who</strong> (操作者)、<strong>When</strong> (時間)、<strong>Where</strong> (來源模組)、<strong>What</strong> (執行動作) 與 <strong>How</strong> (異動內容)。
-            透過完整的軌跡留存，確保所有資料異動具備不可否認性 (Non-repudiation) 與可追溯性。
-            </span>
+        <div class="instruction-box">
+            <div class="instruction-title">
+                <i class="fas fa-fingerprint me-2"></i>5W1H 設計理念：Audit (稽核) —— 保存完整操作歷程
+            </div>
+            <p class="mb-0 text-dark" style="line-height: 1.6;">
+                本系統依循資安稽核標準，詳實記錄 <strong>Who</strong> (操作者)、<strong>When</strong> (時間)、<strong>Where</strong> (來源模組)、<strong>What</strong> (執行動作) 與 <strong>How</strong> (異動內容)。
+                透過完整的軌跡留存，確保所有資料異動具備不可否認性 (Non-repudiation) 與可追溯性。
+            </p>
         </div>
 
         <div class="search-box">
@@ -170,38 +234,92 @@
 
     </div>
 
+    <footer>
+        <div class="mb-1">可信智慧整合有限公司 42917004 &nbsp;|&nbsp; 服務專線：0912-310570</div>
+        <div class="small opacity-75" style="font-family: 'Segoe UI', sans-serif; letter-spacing: 1px;">
+            WesmartAI , Making Trust Transparent.
+        </div>
+    </footer>
+
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
     <script>
-        // [Fix] 1. 確保變數名稱不與全域 supabase 衝突
+        // ==========================================
+        // 統一頁首與系統初始化邏輯
+        // ==========================================
+        document.addEventListener('DOMContentLoaded', function() {
+            // 1. 顯示畫面 (Flex 佈局)
+            document.body.style.display = 'flex';
+
+            // 2. 啟動時鐘
+            setInterval(() => {
+                const now = new Date();
+                const clockEl = document.getElementById('header-clock');
+                if(clockEl) clockEl.textContent = now.toLocaleTimeString('zh-TW', { hour12: false });
+            }, 1000);
+
+            // 3. 設定日期
+            const dateEl = document.getElementById('header-date');
+            if(dateEl) {
+                const now = new Date();
+                const days = ['日', '一', '二', '三', '四', '五', '六'];
+                const formattedDate = `${now.getFullYear()}/${now.getMonth() + 1}/${now.getDate()}(${days[now.getDay()]})`;
+                dateEl.innerHTML = `<i class="far fa-calendar-alt me-1"></i>今日是 ${formattedDate}`;
+            }
+
+            // 4. 讀取使用者名稱
+            const userName = sessionStorage.getItem('currentUserName') || '使用者';
+            const userEl = document.getElementById('header-user');
+            if(userEl) userEl.innerText = `Hi! ${userName}`;
+
+            // 5. 設定預設搜尋時間 (今天 00:00 ~ 23:59)
+            const now = new Date();
+            const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0);
+            const todayEnd = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59);
+            
+            const formatDT = (d) => {
+                const pad = (n) => n.toString().padStart(2, '0');
+                return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+            };
+
+            const startEl = document.getElementById('search-start');
+            const endEl = document.getElementById('search-end');
+            
+            if(startEl) startEl.value = formatDT(todayStart);
+            if(endEl) endEl.value = formatDT(todayEnd);
+        });
+
+        // 統一登出功能
+        function logoutSystem() {
+            if(confirm('確定要登出系統嗎？')) {
+                sessionStorage.clear();
+                window.location.href = 'login.html';
+            }
+        }
+
+        // ==========================================
+        // 原有功能邏輯 (Supabase 連線與操作)
+        // ==========================================
         const SUPABASE_URL = 'https://yhehfucgemxnfrdvpdhw.supabase.co';
         const SUPABASE_KEY = 'sb_publishable_52emtU-9l-SDxcJTWVTPTA_Yu6qEogh';
         
         let supabaseClient;
         let currentLogs = [];
 
-        // 初始化 Supabase
         try {
             if (typeof window.supabase === 'undefined') {
                 console.error('Supabase library not loaded.');
                 alert('系統錯誤：無法載入資料庫連線元件，請檢查網路。');
             } else {
-                // 使用 createClient 建立實例，並命名為 supabaseClient
                 const { createClient } = window.supabase;
                 supabaseClient = createClient(SUPABASE_URL, SUPABASE_KEY);
-                console.log('Supabase client initialized.');
             }
         } catch (e) {
             console.error('Init Error:', e);
         }
 
-        // ==========================================
-        // 1. 讀取 Logs (主要功能)
-        // ==========================================
         async function loadLogs() {
-            console.log('Button clicked!'); // [Test] 確認按鈕有反應
-
             if (!supabaseClient) {
                 alert('資料庫連線尚未初始化，請重新整理頁面。');
                 return;
@@ -211,7 +329,7 @@
             const endStr = document.getElementById('search-end').value;
             const actionType = document.getElementById('filter-action').value;
             const keyword = document.getElementById('search-keyword').value.trim();
-            const btn = document.getElementById('btn-search'); // 使用 ID 抓取更穩
+            const btn = document.getElementById('btn-search');
             const tbody = document.getElementById('logTableBody');
 
             if (!startStr || !endStr) {
@@ -219,13 +337,11 @@
                 return;
             }
 
-            // UI Loading
             btn.disabled = true;
             btn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>查詢中...';
             tbody.innerHTML = '<tr><td colspan="6" class="text-center py-5">資料讀取中...</td></tr>';
 
             try {
-                // 查詢
                 let query = supabaseClient
                     .from('audit_logs')
                     .select('*')
@@ -242,7 +358,6 @@
                 
                 if (error) throw error;
 
-                // 前端關鍵字篩選
                 let filteredData = data || [];
                 if (keyword) {
                     const lowerKey = keyword.toLowerCase();
@@ -255,7 +370,6 @@
 
                 currentLogs = filteredData;
                 
-                // [Fix] 若無資料，彈窗通知
                 if (filteredData.length === 0) {
                     alert('🔍 查無符合條件的紀錄 (資料庫回傳 0 筆)');
                 }
@@ -272,9 +386,6 @@
             }
         }
 
-        // ==========================================
-        // 2. 渲染表格
-        // ==========================================
         function renderTable(logs) {
             const tbody = document.getElementById('logTableBody');
             const countLabel = document.getElementById('record-count');
@@ -312,9 +423,6 @@
             }).join('');
         }
 
-        // ==========================================
-        // 3. 匯出 CSV
-        // ==========================================
         function exportLogs() {
             if (currentLogs.length === 0) return alert('目前無資料可匯出，請先執行查詢。');
 
