@@ -16,28 +16,32 @@
         /* =========================================
            統一頁首/頁尾 CSS 設定 (高度統一版)
            ========================================= */
-        html, body {
-            height: 100%; /* 確保高度撐滿 */
+        html {
+            height: 100%; /* 確保根元素高度 */
         }
 
         body {
             background-color: var(--primary-bg);
             font-family: 'Segoe UI', 'Microsoft JhengHei', sans-serif;
-            display: none; /* 權限驗證前先隱藏，驗證後改為 flex */
-            flex-direction: column; /* 讓版面垂直排列 */
+            
+            /* 使用 min-height: 100vh 確保背景色至少填滿一頁 */
             min-height: 100vh;
+            
+            display: none; /* 權限驗證前先隱藏，驗證後透過 JS 改為 flex */
+            flex-direction: column; /* 讓版面垂直排列 (Header -> Content -> Footer) */
+            margin: 0;
         }
 
         /* 內容區塊自動撐開，將頁尾推到底部 */
         .main-content {
             flex: 1; 
-            width: 100%; /* 確保寬度 */
+            width: 100%; /* 確保寬度佔滿 */
         }
 
         /* 統一頁首與頁尾樣式 */
         .navbar {
             background-color: #202124 !important; /* 深黑色背景 */
-            min-height: 85px; /* [修正] 統一高度為 85px */
+            min-height: 85px; /* 統一高度 */
             color: #fff; /* 白字 */
             flex-shrink: 0; /* 防止被壓縮 */
         }
@@ -52,9 +56,9 @@
             flex-direction: column; /* 垂直排列 */
             align-items: center;
             justify-content: center;
-            margin-top: auto;
+            margin-top: auto; /* 確保在 Flex 佈局中推到底部 (Sticky Footer) */
             padding: 15px 0;
-            min-height: 85px; /* 雙行內容高度 */
+            min-height: 85px;
         }
 
         /* 修正 Bootstrap Container 在全螢幕下的邊距 */
@@ -88,6 +92,9 @@
         .card-admin { border-left-color: #212529; }
         .card-account { border-left-color: #0dcaf0; }
         .card-profile { border-left-color: #6c757d; }
+        
+        /* [新增] 客服卡片顏色定義 (粉紅) */
+        .card-service { border-left-color: #e83e8c; }
 
         .icon-wrapper {
             width: 50px;
@@ -106,11 +113,11 @@
         }
 
         /* =========================================
-           [新增] 系統精神字卡 CSS 設定
+           系統精神字卡 CSS 設定
            ========================================= */
         .instruction-box {
             background-color: #fff;
-            border-left: 5px solid #202124; /* 使用深色飾條代表系統核心 */
+            border-left: 5px solid #202124; /* 使用深色飾條代表系統核心/基礎架構 */
             padding: 20px 25px;
             border-radius: 4px;
             margin-bottom: 30px;
@@ -121,6 +128,7 @@
             color: #202124;
             font-weight: 700;
             margin-bottom: 10px;
+            font-size: 1.1rem;
         }
     </style>
 
@@ -174,7 +182,7 @@
                 <i class="fas fa-network-wired me-2"></i>系統設計精神：PDCA+E+5W1H
             </div>
             <p class="mb-0 text-dark" style="line-height: 1.6;">
-                本系統融合 PDCA+E(評鑑EVALUATION)+5W1H 設計架構，確保每次的服務歷程皆能被有效保存與管理，建立具備可追溯性、可解釋性的完整證據鏈，落實數位治理精神。
+                本系統融合 PDCA+E+5W1H 設計架構，確保每次的服務歷程皆能被有效保存與管理，建立具備可解釋性 (Explainability) 的完整證據鏈，落實類似 AI Act 的數位治理精神。
             </p>
         </div>
 
@@ -186,7 +194,7 @@
                         <div class="d-flex justify-content-between">
                             <div>
                                 <h6 class="text-uppercase text-primary fw-bold small mb-1">Plan / Do</h6>
-                                <h5 class="card-title fw-bold mb-2">服務執行歷程管理</h5>
+                                <h5 class="card-title fw-bold mb-2">顧問資料上傳</h5>
                             </div>
                             <div class="icon-wrapper bg-primary bg-opacity-10 text-primary">
                                 <i class="fas fa-upload"></i>
@@ -320,6 +328,26 @@
                 </div>
             </div>
 
+            <div class="col-xl-3 col-md-6" id="card-index4">
+                <div class="card dashboard-card bg-white card-service" onclick="window.location.href='index4.html'">
+                    <div class="card-body p-4">
+                        <div class="d-flex justify-content-between">
+                            <div>
+                                <h6 class="text-uppercase fw-bold small mb-1" style="color: #e83e8c;">Service</h6>
+                                <h5 class="card-title fw-bold mb-2">線上客服中心</h5>
+                            </div>
+                            <div class="icon-wrapper bg-danger bg-opacity-10" style="color: #e83e8c;">
+                                <i class="fas fa-headset"></i>
+                            </div>
+                        </div>
+                        <div class="guide-text">
+                            操作指引：<br>
+                            提供 LINE、電話等即時諮詢管道，協助解決系統操作問題。
+                        </div>
+                    </div>
+                </div>
+            </div>
+
         </div>
     </div>
 
@@ -337,19 +365,20 @@
             // ------------------------------------------
             // 1. 基礎畫面與權限載入
             // ------------------------------------------
+            // 啟用 Flex 佈局，配合 CSS 的 min-height: 100vh 實現版面擴展與 Sticky Footer
             document.body.style.display = 'flex'; 
 
             const userRole = sessionStorage.getItem('currentUserRole') || 'admin';
             const userName = sessionStorage.getItem('currentUserName') || '管理員';
             
             // ------------------------------------------
-            // 2. 統一頁首資訊
+            // 2. 統一頁首資訊 (日期/時間/使用者)
             // ------------------------------------------
-            // 顯示使用者
+            // 顯示使用者名稱
             const userEl = document.getElementById('header-user');
             if(userEl) userEl.innerText = `Hi! ${userName}`;
 
-            // 設定日期
+            // 設定標準日期格式：2026/1/31(六)
             const dateEl = document.getElementById('header-date');
             if(dateEl) {
                 const now = new Date();
@@ -358,12 +387,12 @@
                 dateEl.innerHTML = `<i class="far fa-calendar-alt me-1"></i>今日是 ${formattedDate}`;
             }
 
-            // 啟動時鐘
+            // 啟動頁首時鐘
             updateClock();
             setInterval(updateClock, 1000);
 
             // ------------------------------------------
-            // 3. 權限邏輯 (RBAC)
+            // 3. 權限邏輯 (RBAC) - 控制 Dashboard 卡片顯示
             // ------------------------------------------
             const cards = {
                 plan: document.getElementById('card-index1'),
@@ -372,15 +401,16 @@
                 maint: document.getElementById('card-index6'),
                 master: document.getElementById('card-index7'),
                 users: document.getElementById('card-users'),
-                profile: document.getElementById('card-profile')
+                profile: document.getElementById('card-profile'),
+                service: document.getElementById('card-index4') // [新增] 客服卡片
             };
 
-            // 初始化隱藏
+            // 初始化：先隱藏"敏感/進階"卡片
             if(cards.maint) cards.maint.style.display = 'none';
             if(cards.master) cards.master.style.display = 'none';
             if(cards.users) cards.users.style.display = 'none';
 
-            // 角色判斷
+            // 根據角色開啟/關閉
             if (userRole === 'admin') {
                 if(cards.maint) cards.maint.style.display = 'block';
                 if(cards.master) cards.master.style.display = 'block';
