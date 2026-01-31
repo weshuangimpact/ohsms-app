@@ -10,15 +10,81 @@
     <script src="https://unpkg.com/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
     
     <style>
+        /* =========================================
+           1. 統一頁首/頁尾 CSS 設定 (內頁專用 / 高度統一版)
+           ========================================= */
+        html, body {
+            height: 100%;
+        }
+
+        body {
+            display: none; /* 權限驗證前先隱藏，JS 載入後改為 flex */
+            flex-direction: column;
+            min-height: 100vh;
+            background-color: #f8f9fa; /* 預設背景色 */
+            font-family: 'Segoe UI', 'Microsoft JhengHei', sans-serif;
+        }
+
+        /* 內容區塊自動撐開 */
+        .container, .container-fluid, .main-content {
+            flex: 1; 
+        }
+
+        /* 頁首設定 */
+        .navbar {
+            background-color: #202124 !important;
+            min-height: 85px; /* [修正] 統一高度為 85px */
+            color: #fff;
+            flex-shrink: 0;
+        }
+
+        /* 頁尾設定 */
+        footer {
+            background-color: #202124 !important;
+            color: #fff;
+            flex-shrink: 0;
+            font-size: 0.9rem;
+            letter-spacing: 0.5px;
+            display: flex;
+            flex-direction: column; /* 垂直排列 */
+            align-items: center;
+            justify-content: center;
+            margin-top: auto;
+            padding: 15px 0;
+            min-height: 85px; /* 雙行高度 */
+        }
+
+        /* =========================================
+           2. 統一標題與字卡 CSS 設定 (Check Green)
+           ========================================= */
         :root { 
             --primary-bg: #f4f6f9; 
-            --theme-color: #198754; /* Success Green */
+            --theme-color: #198754; /* Check 階段的主題綠色 */
         }
-        
-        body { background-color: var(--primary-bg); font-family: 'Segoe UI', 'Microsoft JhengHei', sans-serif; }
-        
-        /* 標題飾條 */
-        .section-title { border-left: 5px solid var(--theme-color); padding-left: 15px; margin-bottom: 20px; }
+
+        /* PDCA 字卡 (白色區塊) 設定 */
+        .instruction-box {
+            background-color: #fff; /* 白色背景 */
+            border-left: 5px solid var(--theme-color); /* 左側主題色飾條 */
+            padding: 20px 25px; /* 內距 */
+            border-radius: 4px; /* 圓角 */
+            margin-bottom: 30px; /* 下方留白 */
+            box-shadow: 0 2px 5px rgba(0,0,0,0.05); /* 輕微陰影 */
+            width: 100%;
+            text-align: left;
+        }
+
+        /* PDCA 字卡標題設定 */
+        .instruction-title {
+            color: var(--theme-color); /* 字體顏色跟隨主題色 */
+            font-weight: 700; /* 粗體 */
+            margin-bottom: 10px; /* 與內文的間距 */
+        }
+
+        /* =========================================
+           3. 既有功能 UI 設定 (保留不變)
+           ========================================= */
+        .section-title { border-left: 5px solid var(--theme-color); padding-left: 15px; margin-bottom: 20px; } /* 保留部分舊代碼相容性 */
         
         .info-card { padding: 1.25rem; border-radius: 0.5rem; background-color: white; border: none; }
         
@@ -26,41 +92,46 @@
         .stat-value { font-size: 2rem; font-weight: 700; color: var(--theme-color); }
         .chart-container { position: relative; height: 260px; width: 100%; }
         .table-pending thead { background-color: #f8fafc; }
-        
-        /* PDCA 說明區塊 (綠色主題) */
-        .instruction-box {
-            background-color: #fff;
-            border-left: 5px solid var(--theme-color);
-            padding: 20px 25px;
-            border-radius: 4px;
-            margin-bottom: 30px;
-            text-align: left;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
-        }
-        .instruction-title {
-            color: var(--theme-color);
-            font-weight: 700;
-            margin-bottom: 10px;
-        }
     </style>
 </head>
 <body>
 
-    <nav class="navbar navbar-expand-lg navbar-dark bg-dark py-3 mb-4">
-        <div class="container-fluid px-4">
-            <a class="navbar-brand" href="dashboard.html"><i class="fas fa-shield-alt me-2"></i>OHSMS 管理者控制台</a>
+    <nav class="navbar navbar-expand-lg navbar-dark px-4">
+        <div class="container-fluid d-flex justify-content-between align-items-center p-0">
+            <a class="navbar-brand d-flex align-items-center fw-bold" href="dashboard.html">
+                <i class="fas fa-shield-alt me-2"></i>
+                OHSMS 管理者控制台
+            </a>
+
             <div class="d-flex align-items-center">
-                <span class="text-light me-3" id="user-display"></span>
-                <a href="dashboard.html" class="btn btn-outline-light btn-sm"><i class="fas fa-arrow-left me-1"></i> 返回儀表板</a>
+                <span class="text-white me-3 small" id="header-date">
+                    <i class="fas fa-spinner fa-spin"></i>
+                </span>
+                
+                <span class="text-white me-4 small border-start ps-3 border-secondary" id="header-clock" style="opacity: 0.9;">
+                    --:--
+                </span>
+                
+                <span class="text-white me-4 fw-bold" id="header-user">
+                    Hi! 使用者
+                </span>
+                
+                <a class="btn btn-outline-light btn-sm me-2" href="dashboard.html">
+                    <i class="fas fa-reply me-1"></i>回到儀表板
+                </a>
+                
+                <button class="btn btn-outline-light btn-sm" onclick="logoutSystem()">
+                    <i class="fas fa-sign-out-alt me-1"></i>登出
+                </button>
             </div>
         </div>
     </nav>
 
-    <div class="container-fluid px-4 pb-5">
+    <div class="container-fluid px-4 pb-5 mt-4 main-content">
         
-        <div class="section-title">
-            <h4 class="fw-bold text-dark mb-0">管理者總覽 (Check / Act)</h4>
-            <small class="text-muted">即時年度結案達成率與暫存資料審查</small>
+        <div class="mb-4">
+            <h2 class="fw-bold text-dark mb-1">管理者總覽 (Check / Act)</h2>
+            <p class="text-secondary">即時年度結案達成率與暫存資料審查</p>
         </div>
 
         <div class="instruction-box">
@@ -288,11 +359,63 @@
         </div>
     </div>
 
+    <footer>
+        <div class="mb-1">可信智慧整合有限公司 42917004 &nbsp;|&nbsp; 服務專線：0912-310570</div>
+        <div class="small opacity-75" style="font-family: 'Segoe UI', sans-serif; letter-spacing: 1px;">
+            WesmartAI , Making Trust Transparent.
+        </div>
+    </footer>
+
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
     <script>
+        // ==========================================
+        // 統一頁首與系統初始化邏輯
+        // ==========================================
+        document.addEventListener('DOMContentLoaded', function() {
+            // 1. 顯示畫面 (Flex 佈局)
+            document.body.style.display = 'flex';
+
+            // 2. 啟動時鐘
+            setInterval(() => {
+                const now = new Date();
+                const clockEl = document.getElementById('header-clock');
+                if(clockEl) clockEl.textContent = now.toLocaleTimeString('zh-TW', { hour12: false });
+            }, 1000);
+
+            // 3. 設定日期
+            const dateEl = document.getElementById('header-date');
+            if(dateEl) {
+                const now = new Date();
+                const days = ['日', '一', '二', '三', '四', '五', '六'];
+                const formattedDate = `${now.getFullYear()}/${now.getMonth() + 1}/${now.getDate()}(${days[now.getDay()]})`;
+                dateEl.innerHTML = `<i class="far fa-calendar-alt me-1"></i>今日是 ${formattedDate}`;
+            }
+
+            // 4. 讀取使用者名稱 (並更新到 header)
+            const role = sessionStorage.getItem('currentUserRole') || 'admin';
+            const userName = sessionStorage.getItem('currentUserName') || '管理員';
+            const userEl = document.getElementById('header-user');
+            if(userEl) userEl.innerText = `Hi! ${userName}`;
+            
+            // 執行原有初始化
+            initChart();
+            refreshData();
+        });
+
+        // 統一登出功能
+        function logoutSystem() {
+            if(confirm('確定要登出系統嗎？')) {
+                sessionStorage.clear();
+                window.location.href = 'login.html';
+            }
+        }
+
+        // ==========================================
+        // 原有功能邏輯 (保持不變)
+        // ==========================================
         const SUPABASE_URL = 'https://yhehfucgemxnfrdvpdhw.supabase.co';
         const SUPABASE_KEY = 'sb_publishable_52emtU-9l-SDxcJTWVTPTA_Yu6qEogh';
         const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
@@ -301,14 +424,6 @@
         let rateChart = null;
         let currentStagingData = []; 
         let currentReviewId = null; 
-
-        document.addEventListener('DOMContentLoaded', () => {
-            const role = sessionStorage.getItem('currentUserRole') || 'admin';
-            const userName = sessionStorage.getItem('currentUserName') || '管理員';
-            document.getElementById('user-display').innerHTML = `<small>${role}: ${userName}</small>`;
-            initChart();
-            refreshData();
-        });
 
         function initChart() {
             const ctx = document.getElementById('rateChart').getContext('2d');
@@ -327,13 +442,11 @@
             const tbody = document.getElementById('pendingTableBody');
             
             try {
-                // 1. 讀取正式庫 (Service Records)
                 const { count: approvedCount, error: err1 } = await supabaseClient
                     .from('service_records')
                     .select('*', { count: 'exact', head: true })
                     .eq('service_year', year);
 
-                // 2. 讀取 Pending 資料 (Staging)
                 const { data: stagingData, error: err2 } = await supabaseClient
                     .from('service_record_staging')
                     .select(`
@@ -356,7 +469,6 @@
                 currentStagingData = filteredPending; 
                 const pendingCount = filteredPending.length;
 
-                // UI Update
                 const total = approvedCount + pendingCount;
                 const rate = total === 0 ? 100 : Math.round((approvedCount / total) * 100);
                 document.getElementById('val-approved').innerText = approvedCount;
@@ -365,7 +477,6 @@
                 rateChart.data.datasets[0].data = [approvedCount, pendingCount];
                 rateChart.update();
 
-                // 渲染列表 (包含 5 個按鈕)
                 tbody.innerHTML = filteredPending.map((p) => {
                     let descText = '-';
                     try {
@@ -418,7 +529,6 @@
             }
         }
 
-        // --- 預覽功能 (不含結案按鈕) ---
         async function openStagingPreview(id, btn) {
             const record = currentStagingData.find(r => r.id === id);
             if (!record) return;
@@ -429,7 +539,6 @@
             btn.disabled = true;
 
             try {
-                // 資料準備
                 const companyName = record.workplaces?.companies?.name || '未知公司';
                 const serviceItem = record.service_type || '未指定';
                 const visitDate = record.visit_date || record.service_date || '未設定';
@@ -445,10 +554,7 @@
                     }
                 } catch(e) {}
 
-                // ★ 關鍵修正：讀取路徑使用 record.id (暫存單 ID)，確保與 index1 上傳路徑一致
                 const fileSourceId = record.id; 
-                
-                // 檔案抓取邏輯
                 let files = record.attachment_files;
                 if (typeof files === 'string') { try { files = JSON.parse(files); } catch(e) { files = []; } }
                 if (!Array.isArray(files)) files = [];
@@ -461,7 +567,7 @@
                         if (!exists) {
                             files.push({
                                 name: sf.name,
-                                path: `${fileSourceId}/${sf.name}`, // 路徑使用 record.id
+                                path: `${fileSourceId}/${sf.name}`,
                                 type: sf.metadata?.mimetype || 'application/pdf'
                             });
                         }
@@ -569,9 +675,6 @@
             }
         }
 
-        // ===========================================
-        // 新增功能：審核彈窗邏輯
-        // ===========================================
         function openApprovalModal(id, type) {
             const record = currentStagingData.find(r => r.id === id);
             if(!record) return alert("資料讀取錯誤");
@@ -612,9 +715,6 @@
             new bootstrap.Modal(document.getElementById('approvalModal')).show();
         }
 
-        // ===========================================
-        // 核心功能：執行最終核定 (證據保全 + DB寫入)
-        // ===========================================
         async function performFinalApproval() {
             const id = document.getElementById('approve-target-id').value;
             const type = document.getElementById('approve-type').value;
@@ -632,11 +732,9 @@
             btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> 證據保全處理中...';
 
             try {
-                // 取得原始紀錄
                 const record = currentStagingData.find(r => r.id === id);
-                const fileSourceId = record.id; // ★ 使用暫存 ID
+                const fileSourceId = record.id;
 
-                // 1. 抓取檔案 (為了合併證據)
                 const { data: files, error: listError } = await supabaseClient.storage.from('staging').list(fileSourceId);
                 if (listError) throw listError;
 
@@ -649,7 +747,6 @@
                 }
                 pdfUrls.sort();
 
-                // 2. 合併 PDF
                 let finalPdfBlob = null;
                 if (pdfUrls.length > 0) {
                     const mergedPdf = await PDFDocument.create();
@@ -664,7 +761,6 @@
                     finalPdfBlob = new Blob([mergedBytes], { type: 'application/pdf' });
                 }
 
-                // 3. 上傳到 'service-records' (正式 Bucket)
                 const year = record.service_year || new Date().getFullYear();
                 const timestamp = Date.now();
                 const targetPath = `${year}/${id}/Evidence_Final_${timestamp}.pdf`; 
@@ -677,8 +773,6 @@
                     if (uploadError) throw new Error("證據檔案上傳失敗: " + uploadError.message);
                 }
 
-                // 4. 資料庫交易 (★ 這是之前遺失的關鍵代碼)
-                // A. 更新 Staging 狀態
                 const { error: updateError } = await supabaseClient
                     .from('service_record_staging')
                     .update({ 
@@ -690,7 +784,6 @@
                     .eq('id', id);
                 if (updateError) throw updateError;
 
-                // B. 寫入 Service Records (使用 insert 新增資料，避免覆蓋)
                 const { error: insertError } = await supabaseClient
                     .from('service_records')
                     .insert({
@@ -700,7 +793,7 @@
                         consultant_id: record.consultant_id,
                         is_special_case: (type === 'special'),
                         audit_note: comment,
-                        attachment_folder_id: fileSourceId // 連結回 Staging ID
+                        attachment_folder_id: fileSourceId 
                     });
                 
                 if (insertError) throw new Error("寫入正式資料庫失敗: " + insertError.message);
