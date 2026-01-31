@@ -9,30 +9,29 @@
     
     <style>
         /* =========================================
-           1. 統一頁首/頁尾 CSS 設定 (內頁專用 / 高度統一版)
+           1. 統一頁首/頁尾 CSS 設定 (版面佈局)
            ========================================= */
         html, body {
             height: 100%;
         }
 
         body {
-            display: none; /* 權限驗證前先隱藏，JS 載入後改為 flex */
+            display: flex; /* 確保 Flex 佈局生效 */
             flex-direction: column;
             min-height: 100vh;
-            background-color: #f8f9fa; /* 預設背景色 */
+            background-color: #f8f9fa; /* 統一背景色 */
             font-family: 'Segoe UI', 'Microsoft JhengHei', sans-serif;
-            color: #333;
         }
 
         /* 內容區塊自動撐開 */
-        .container, .main-content, .container-fluid {
-            flex: 1; 
+        .container, .main-content {
+            flex: 1;
         }
 
         /* 頁首設定 */
         .navbar {
             background-color: #202124 !important;
-            min-height: 85px; /* [修正] 統一高度為 85px */
+            min-height: 85px; /* 統一高度 */
             color: #fff;
             flex-shrink: 0;
         }
@@ -45,44 +44,41 @@
             font-size: 0.9rem;
             letter-spacing: 0.5px;
             display: flex;
-            flex-direction: column; /* 垂直排列 */
+            flex-direction: column;
             align-items: center;
             justify-content: center;
             margin-top: auto;
             padding: 15px 0;
-            min-height: 85px; /* 雙行高度 */
+            min-height: 85px;
         }
 
         /* =========================================
-           2. 統一標題與字卡 CSS 設定 (Profile Gray)
+           2. 統一標題與 PDCA 字卡 CSS
            ========================================= */
         :root { 
-            --primary-bg: #f4f6f9; 
-            --theme-color: #6c757d; /* Profile Settings 階段的主題灰色 */
+            /* 依據規則：個人帳號密碼管理 對應灰色 */
+            --theme-color: #6c757d; 
         }
 
-        /* PDCA/5W1H 字卡 (白色區塊) 設定 */
+        /* PDCA 字卡 (白色區塊) 設定 */
         .instruction-box {
-            background-color: #fff;              /* 白色背景 */
-            border-left: 5px solid var(--theme-color); /* 左側主題色飾條 */
-            padding: 20px 25px;                  /* 內距 */
-            border-radius: 4px;                  /* 圓角 */
-            margin-bottom: 30px;                 /* 下方留白 */
-            box-shadow: 0 2px 5px rgba(0,0,0,0.05); /* 輕微陰影 */
-            width: 100%;
-            text-align: left;
+            background-color: #fff;
+            border-left: 5px solid var(--theme-color);
+            padding: 20px 25px;
+            border-radius: 4px;
+            margin-bottom: 30px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
         }
 
-        /* 字卡標題設定 */
+        /* PDCA 字卡標題設定 */
         .instruction-title {
-            color: var(--theme-color);           /* 字體顏色跟隨主題色 */
-            font-weight: 700;                    /* 粗體 */
-            margin-bottom: 10px;                 /* 與內文的間距 */
-            font-size: 1.1rem;
+            color: var(--theme-color);
+            font-weight: 700;
+            margin-bottom: 10px;
         }
 
         /* =========================================
-           3. 既有功能 UI 設定 (保留表單樣式)
+           3. 原有頁面專屬 CSS (保留不變)
            ========================================= */
         .settings-card {
             border: none;
@@ -94,36 +90,19 @@
 
         /* 表單樣式優化 */
         .form-control:focus {
-            box-shadow: 0 0 0 0.25rem rgba(108, 117, 125, 0.15); /* 調整為灰色系 */
-            border-color: var(--theme-color);
+            box-shadow: 0 0 0 0.25rem rgba(108, 117, 125, 0.15); /* 微調配合灰色主題，或保持原藍色皆可，此處微調為灰色光暈 */
+            border-color: #6c757d;
         }
+        
+        /* 密碼眼睛圖示 */
         .password-toggle {
             cursor: pointer;
             color: #6c757d;
         }
-        .password-toggle:hover { color: #343a40; }
-        
-        /* 按鈕顏色覆寫配合主題 */
-        .btn-primary {
-            background-color: var(--theme-color);
-            border-color: var(--theme-color);
-        }
-        .btn-primary:hover {
-            background-color: #5a6268;
-            border-color: #545b62;
+        .password-toggle:hover { 
+            color: #000; 
         }
     </style>
-
-    <script>
-        // 權限檢查
-        document.addEventListener('DOMContentLoaded', function() {
-            if (!sessionStorage.getItem('currentUserId')) { 
-                window.location.href = 'login.html'; 
-            }
-            // 顯示畫面
-            document.body.style.display = 'flex';
-        });
-    </script>
 </head>
 <body>
 
@@ -158,28 +137,26 @@
         </div>
     </nav>
 
-    <div class="container main-content mt-4 pb-5">
+    <div class="container main-content pb-5 pt-4">
         
         <div class="mb-4">
-            <h2 class="fw-bold text-dark mb-1">個人帳號密碼管理</h2>
-            <p class="text-secondary">Profile Settings 階段：帳號安全與登入憑證維護</p>
+            <h2 class="fw-bold text-dark mb-1">個人帳號設定</h2>
+            <p class="text-secondary">個人帳號密碼管理：確保帳戶安全與更新登入憑證</p>
         </div>
 
         <div class="instruction-box">
             <div class="instruction-title">
-                <i class="fas fa-user-shield me-2"></i>5W1H 設計理念：Security (安全) —— 權限與隱私保護
+                <i class="fas fa-user-lock me-2"></i>系統提示：帳號安全管理
             </div>
             <p class="mb-0 text-dark" style="line-height: 1.6;">
-                透過嚴謹的身分驗證機制 <strong>(Who)</strong>，確保只有授權使用者能在特定時間 <strong>(When)</strong> 修改其登入憑證 <strong>(What)</strong>，以落實系統存取控制與資料安全政策 <strong>(Why)</strong>。
+                本模組提供使用者自主更新登入憑證之功能。為確保資訊安全 (Security)，系統強制執行「舊密碼驗證」機制，確認操作者身分無誤後方可設定新密碼，並建議定期更換以降低帳號被盜用之風險。
             </p>
         </div>
 
         <div class="row justify-content-center">
-            <div class="col-lg-6 col-md-8">
-                
-                <div class="settings-card">
+            <div class="col-lg-8 col-md-10"> <div class="settings-card">
                     <div class="p-4 p-md-5">
-                        <h6 class="fw-bold text-secondary mb-3"><i class="fas fa-user-lock me-2"></i>變更登入密碼</h6>
+                        <h6 class="fw-bold mb-3" style="color: var(--theme-color);"><i class="fas fa-key me-2"></i>變更登入密碼</h6>
                         
                         <div class="alert alert-light border small text-muted mb-4">
                             <i class="fas fa-info-circle me-1"></i> 
@@ -206,20 +183,20 @@
                             <hr class="my-4">
 
                             <div class="mb-3">
-                                <label class="form-label fw-bold small text-secondary">設定新密碼</label>
+                                <label class="form-label fw-bold small" style="color: var(--theme-color);">設定新密碼</label>
                                 <div class="input-group">
-                                    <input type="password" class="form-control border-secondary" id="new-password" placeholder="請輸入新密碼 (至少 6 碼)" required minlength="6">
-                                    <span class="input-group-text bg-white border-start-0 border-secondary">
+                                    <input type="password" class="form-control" id="new-password" placeholder="請輸入新密碼 (至少 6 碼)" required minlength="6">
+                                    <span class="input-group-text bg-white border-start-0">
                                         <i class="fas fa-eye password-toggle" onclick="togglePassword('new-password', this)"></i>
                                     </span>
                                 </div>
                             </div>
 
                             <div class="mb-4">
-                                <label class="form-label fw-bold small text-secondary">確認新密碼</label>
+                                <label class="form-label fw-bold small" style="color: var(--theme-color);">確認新密碼</label>
                                 <div class="input-group">
-                                    <input type="password" class="form-control border-secondary" id="confirm-password" placeholder="請再次輸入新密碼" required minlength="6">
-                                    <span class="input-group-text bg-white border-start-0 border-secondary">
+                                    <input type="password" class="form-control" id="confirm-password" placeholder="請再次輸入新密碼" required minlength="6">
+                                    <span class="input-group-text bg-white border-start-0">
                                         <i class="fas fa-eye password-toggle" onclick="togglePassword('confirm-password', this)"></i>
                                     </span>
                                 </div>
@@ -229,7 +206,7 @@
                             </div>
 
                             <div class="d-grid gap-2">
-                                <button type="submit" id="btn-save" class="btn btn-primary fw-bold py-2">
+                                <button type="submit" id="btn-save" class="btn btn-secondary fw-bold py-2">
                                     驗證並儲存修改
                                 </button>
                             </div>
@@ -253,17 +230,17 @@
 
     <script>
         // ==========================================
-        // 統一頁首與系統初始化邏輯
+        // 1. 統一頁首邏輯 (日期/時鐘/使用者)
         // ==========================================
         document.addEventListener('DOMContentLoaded', function() {
-            // 1. 啟動時鐘
+            // 啟動時鐘
             setInterval(() => {
                 const now = new Date();
                 const clockEl = document.getElementById('header-clock');
                 if(clockEl) clockEl.textContent = now.toLocaleTimeString('zh-TW', { hour12: false });
             }, 1000);
 
-            // 2. 設定日期
+            // 設定日期
             const dateEl = document.getElementById('header-date');
             if(dateEl) {
                 const now = new Date();
@@ -272,15 +249,15 @@
                 dateEl.innerHTML = `<i class="far fa-calendar-alt me-1"></i>今日是 ${formattedDate}`;
             }
 
-            // 3. 讀取使用者名稱
+            // 讀取使用者名稱
             const userName = sessionStorage.getItem('currentUserName');
             const userEl = document.getElementById('header-user');
             if(userEl && userName) userEl.innerText = `Hi! ${userName}`;
-
-            // 4. 自動填入 Email (如果 session 有紀錄的話)
-            const savedEmail = sessionStorage.getItem('currentUserEmail'); 
+            
+            // 自動填入 Email (原有邏輯整合)
+            const savedEmail = sessionStorage.getItem('currentUserEmail');
             if(savedEmail) {
-                 document.getElementById('input-email').value = savedEmail;
+                document.getElementById('input-email').value = savedEmail;
             }
         });
 
@@ -293,7 +270,7 @@
         }
 
         // ==========================================
-        // 原有功能邏輯 (保持不變)
+        // 2. 原有功能邏輯 (Supabase 密碼修改)
         // ==========================================
         const SUPABASE_URL = 'https://yhehfucgemxnfrdvpdhw.supabase.co';
         const SUPABASE_KEY = 'sb_publishable_52emtU-9l-SDxcJTWVTPTA_Yu6qEogh';
@@ -309,7 +286,7 @@
             
             const feedback = document.getElementById('password-feedback');
             const confirmPwdInput = document.getElementById('confirm-password');
-
+            
             // 1. 前端比對
             confirmPwdInput.classList.remove('is-invalid');
             if (newPwd !== confirmPwd) {
@@ -350,8 +327,6 @@
 
                 // C. 成功
                 alert('✅ 密碼修改成功！\n請使用新密碼重新登入。');
-                
-                // 為了安全，通常修改密碼後建議登出，或導回登入頁
                 sessionStorage.clear();
                 window.location.href = 'login.html';
 
