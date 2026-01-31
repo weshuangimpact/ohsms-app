@@ -1,0 +1,301 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>線上客服中心 | OHSMS</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    
+    <style>
+        /* =========================================
+           1. 統一頁首/頁尾 CSS 設定 (內頁專用 / 高度統一版)
+           ========================================= */
+        html, body {
+            height: 100%;
+        }
+
+        body {
+            display: none; /* 權限驗證前先隱藏，JS 載入後改為 flex */
+            flex-direction: column;
+            min-height: 100vh;
+            background-color: #f8f9fa; /* 預設背景色 */
+            font-family: 'Segoe UI', 'Microsoft JhengHei', sans-serif;
+            color: #333;
+        }
+
+        /* 內容區塊自動撐開 */
+        .container, .main-content, .container-fluid {
+            flex: 1; 
+        }
+
+        /* 頁首設定 */
+        .navbar {
+            background-color: #202124 !important;
+            min-height: 85px; /* [修正] 統一高度為 85px */
+            color: #fff;
+            flex-shrink: 0;
+        }
+
+        /* 頁尾設定 */
+        footer {
+            background-color: #202124 !important;
+            color: #fff;
+            flex-shrink: 0;
+            font-size: 0.9rem;
+            letter-spacing: 0.5px;
+            display: flex;
+            flex-direction: column; /* 垂直排列 */
+            align-items: center;
+            justify-content: center;
+            margin-top: auto;
+            padding: 15px 0;
+            min-height: 85px; /* 雙行高度 */
+        }
+
+        /* =========================================
+           2. 統一標題與字卡 CSS 設定 (Service Pink)
+           ========================================= */
+        :root { 
+            --primary-bg: #f8f9fa; 
+            --theme-color: #e83e8c; /* Service 階段的主題粉紅色 */
+            --theme-light: #fce4ec; /* 淺粉色背景 */
+        }
+
+        /* PDCA 字卡 (白色區塊) 設定 */
+        .instruction-box {
+            background-color: #fff;              /* 白色背景 */
+            border-left: 5px solid var(--theme-color); /* 左側主題色飾條 */
+            padding: 20px 25px;                  /* 內距 */
+            border-radius: 4px;                  /* 圓角 */
+            margin-bottom: 30px;                 /* 下方留白 */
+            box-shadow: 0 2px 5px rgba(0,0,0,0.05); /* 輕微陰影 */
+            width: 100%;
+            text-align: left;
+        }
+
+        /* PDCA 字卡標題設定 */
+        .instruction-title {
+            color: var(--theme-color);           /* 字體顏色跟隨主題色 */
+            font-weight: 700;                    /* 粗體 */
+            margin-bottom: 10px;                 /* 與內文的間距 */
+            font-size: 1.1rem;
+        }
+
+        /* =========================================
+           3. 客服專用 UI 設定
+           ========================================= */
+        .contact-card {
+            border: none;
+            border-radius: 12px;
+            background: white;
+            padding: 30px;
+            text-align: center;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+            transition: all 0.3s ease;
+            height: 100%;
+            cursor: pointer;
+            border-top: 4px solid transparent;
+        }
+        .contact-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 20px rgba(0,0,0,0.1);
+        }
+
+        /* 個別卡片配色 */
+        .card-line { border-top-color: #06c755; }
+        .card-line .icon-box { background-color: #06c755; color: white; }
+        
+        .card-phone { border-top-color: #0d6efd; }
+        .card-phone .icon-box { background-color: #0d6efd; color: white; }
+        
+        .card-email { border-top-color: #ffc107; }
+        .card-email .icon-box { background-color: #ffc107; color: #333; }
+
+        .icon-box {
+            width: 80px; height: 80px;
+            border-radius: 50%;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 2.5rem;
+            margin: 0 auto 20px auto;
+        }
+
+        .qr-placeholder {
+            width: 200px;
+            height: 200px;
+            background-color: #f8f9fa;
+            border: 2px dashed #dee2e6;
+            margin: 0 auto;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #adb5bd;
+        }
+    </style>
+
+    <script>
+        // 權限檢查
+        document.addEventListener('DOMContentLoaded', function() {
+            if (!sessionStorage.getItem('currentUserId')) { 
+                window.location.href = 'login.html'; 
+            }
+            // 顯示畫面
+            document.body.style.display = 'flex';
+        });
+    </script>
+</head>
+<body>
+
+    <nav class="navbar navbar-expand-lg navbar-dark px-4">
+        <div class="container-fluid d-flex justify-content-between align-items-center p-0">
+            <a class="navbar-brand d-flex align-items-center fw-bold" href="dashboard.html">
+                <i class="fas fa-shield-alt me-2"></i>
+                OHSMS 職安管理系統
+            </a>
+
+            <div class="d-flex align-items-center">
+                <span class="text-white me-3 small" id="header-date">
+                    <i class="fas fa-spinner fa-spin"></i>
+                </span>
+                
+                <span class="text-white me-4 small border-start ps-3 border-secondary" id="header-clock" style="opacity: 0.9;">
+                    --:--
+                </span>
+                
+                <span class="text-white me-4 fw-bold" id="header-user">
+                    Hi! 使用者
+                </span>
+                
+                <a class="btn btn-outline-light btn-sm me-2" href="dashboard.html">
+                    <i class="fas fa-reply me-1"></i>回到儀表板
+                </a>
+                
+                <button class="btn btn-outline-light btn-sm" onclick="logoutSystem()">
+                    <i class="fas fa-sign-out-alt me-1"></i>登出
+                </button>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container-fluid px-4 mt-4 main-content pb-5">
+        
+        <div class="mb-4">
+            <h2 class="fw-bold text-dark mb-1">線上客服中心</h2>
+            <p class="text-secondary">Service Support：即時通訊與問題排解</p>
+        </div>
+
+        <div class="instruction-box">
+            <div class="instruction-title">
+                <i class="fas fa-headset me-2"></i>Service Spirit：連結 (Connect) 與 解決 (Solve)
+            </div>
+            <p class="mb-0 text-dark" style="line-height: 1.6;">
+                本模組建立即時溝通管道，確保使用者的需求與操作問題能被 <strong>有效傳遞 (Transmission)</strong> 與 <strong>及時回應 (Response)</strong>，並透過數位通訊紀錄保持服務歷程的可追溯性，落實以人為本的服務精神。
+            </p>
+        </div>
+
+        <div class="row g-4 justify-content-center">
+            
+            <div class="col-lg-4 col-md-6">
+                <div class="contact-card card-line" onclick="window.open('https://line.me/ti/p/您的LINE_ID連結', '_blank')">
+                    <div class="icon-box">
+                        <i class="fab fa-line"></i>
+                    </div>
+                    <h4 class="fw-bold mb-2">LINE 線上客服</h4>
+                    <p class="text-muted small mb-3">點擊此處即可開啟 LINE App<br>與專員進行一對一線上對談</p>
+                    
+                    <div class="qr-placeholder rounded mb-2">
+                        <div class="text-center">
+                            <i class="fas fa-qrcode fa-3x mb-2"></i><br>
+                            <span class="small">請掃描 QR Code<br>或點擊卡片</span>
+                        </div>
+                        </div>
+                    
+                    <button class="btn btn-success w-100 rounded-pill mt-3 fw-bold">
+                        <i class="fas fa-comments me-2"></i>立即對談
+                    </button>
+                </div>
+            </div>
+
+            <div class="col-lg-4 col-md-6">
+                <div class="d-flex flex-column h-100 gap-4">
+                    
+                    <div class="contact-card card-phone flex-grow-1" onclick="location.href='tel:0912310570'">
+                        <div class="d-flex align-items-center mb-3">
+                            <div class="icon-box mb-0 me-3" style="width: 60px; height: 60px; font-size: 1.5rem;">
+                                <i class="fas fa-phone-alt"></i>
+                            </div>
+                            <div class="text-start">
+                                <h5 class="fw-bold mb-1">電話諮詢</h5>
+                                <p class="text-muted small mb-0">緊急狀況請直接撥打</p>
+                            </div>
+                        </div>
+                        <h3 class="fw-bold text-primary my-2">0912-310-570</h3>
+                        <p class="small text-muted">服務時間：週一至週五 09:00 - 18:00</p>
+                    </div>
+
+                    <div class="contact-card card-email flex-grow-1" onclick="location.href='mailto:service@wesmartai.com'">
+                        <div class="d-flex align-items-center mb-3">
+                            <div class="icon-box mb-0 me-3" style="width: 60px; height: 60px; font-size: 1.5rem;">
+                                <i class="fas fa-envelope"></i>
+                            </div>
+                            <div class="text-start">
+                                <h5 class="fw-bold mb-1">電子郵件</h5>
+                                <p class="text-muted small mb-0">系統問題回報與建議</p>
+                            </div>
+                        </div>
+                        <h6 class="fw-bold text-dark my-2 text-break">service@wesmartai.com</h6>
+                        <p class="small text-muted">我們將於 24 小時內回覆您</p>
+                    </div>
+
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <footer>
+        <div class="mb-1">可信智慧整合有限公司 42917004 &nbsp;|&nbsp; 服務專線：0912-310570</div>
+        <div class="small opacity-75" style="font-family: 'Segoe UI', sans-serif; letter-spacing: 1px;">
+            WesmartAI , Making Trust Transparent.
+        </div>
+    </footer>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    
+    <script>
+        // ==========================================
+        // 統一頁首與系統初始化邏輯
+        // ==========================================
+        document.addEventListener('DOMContentLoaded', function() {
+            // 1. 啟動時鐘
+            setInterval(() => {
+                const now = new Date();
+                const clockEl = document.getElementById('header-clock');
+                if(clockEl) clockEl.textContent = now.toLocaleTimeString('zh-TW', { hour12: false });
+            }, 1000);
+
+            // 2. 設定日期
+            const dateEl = document.getElementById('header-date');
+            if(dateEl) {
+                const now = new Date();
+                const days = ['日', '一', '二', '三', '四', '五', '六'];
+                const formattedDate = `${now.getFullYear()}/${now.getMonth() + 1}/${now.getDate()}(${days[now.getDay()]})`;
+                dateEl.innerHTML = `<i class="far fa-calendar-alt me-1"></i>今日是 ${formattedDate}`;
+            }
+
+            // 3. 讀取使用者名稱
+            const userName = sessionStorage.getItem('currentUserName');
+            const userEl = document.getElementById('header-user');
+            if(userEl && userName) userEl.innerText = `Hi! ${userName}`;
+        });
+
+        // 統一登出功能
+        function logoutSystem() {
+            if(confirm('確定要登出系統嗎？')) {
+                sessionStorage.clear();
+                window.location.href = 'login.html';
+            }
+        }
+    </script>
+</body>
+</html>
