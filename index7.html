@@ -1252,18 +1252,18 @@
         }
 
 // ==========================================
-        // ★ 最終修正版：匯入執行按鈕監聽 (含自動對應與防呆) ★
+        // ★ 修正後的匯入邏輯 (含自動翻譯與防呆) ★
         // ==========================================
         document.getElementById('btn-confirm-import').addEventListener('click', async function() {
             const btn = this;
             
-            // 防呆：檢查是否有資料
+            // 1. 檢查是否有資料
             if (!pendingImportData || pendingImportData.length === 0) {
-                alert('沒有可匯入的資料，請先選擇檔案並預覽。');
+                alert('沒有可匯入的資料，請先選擇檔案。');
                 return;
             }
 
-            const originalText = btn.innerHTML; // 保存原始按鈕文字
+            const originalText = btn.innerHTML; 
             btn.disabled = true;
             btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>處理中...';
 
@@ -1273,11 +1273,10 @@
 
             try {
                 // ------------------------------------------------
-                // 1. 公司匯入 (Companies)
+                // 情況 A：匯入公司 (Companies)
                 // ------------------------------------------------
                 if(pendingImportType === 'company') {
                     for (let item of pendingImportData) {
-                        // 相容中文欄位
                         const payload = {
                             tax_id: (item.tax_id || item.統一編號 || '').toString().trim(),
                             name: (item.name || item.公司名稱 || '').trim(),
@@ -1287,24 +1286,20 @@
                             service_year: item.service_year || 2025,
                             created_by: sessionStorage.getItem('currentUserId')
                         };
-
+                        // 略過無效資料
                         if(!payload.tax_id || !payload.name) continue;
 
                         const { error } = await supabaseClient
                             .from('companies')
                             .upsert(payload, { onConflict: 'tax_id' });
                         
-                        if (error) {
-                            errorCount++;
-                            errorLog.push(`統編 ${payload.tax_id}: ${error.message}`);
-                        } else {
-                            successCount++;
-                        }
+                        if (error) { errorCount++; errorLog.push(`統編 ${payload.tax_id}: ${error.message}`); }
+                        else successCount++;
                     }
-                    loadCompanies();
+                    loadCompanies(); // 重整列表
                 } 
                 // ------------------------------------------------
-                // 2. 顧問匯入 (Staff)
+                // 情況 B：匯入顧問 (Staff)
                 // ------------------------------------------------
                 else if(pendingImportType === 'staff') {
                     for (let item of pendingImportData) {
@@ -1315,76 +1310,70 @@
                             email: item.email || item.信箱,
                             is_active: true
                         };
-
                         if(!payload.name) continue;
 
-                        const { error } = await supabaseClient
-                            .from('medical_staff')
-                            .insert(payload);
-                        
-                        if (error) {
-                            errorCount++;
-                            errorLog.push(`姓名 ${payload.name}: ${error.message}`);
-                        } else {
-                            successCount++;
-                        }
+                        const { error } = await supabaseClient.from('medical_staff').insert(payload);
+                        if (error) { errorCount++; errorLog.push(`姓名 ${payload.name}: ${error.message}`); }
+                        else successCount++;
                     }
-                    loadStaff();
+                    loadStaff(); // 重整列表
                 } 
                 // ------------------------------------------------
-                // 3. 服務歷程匯入 (Records) - ★ 重點修正區 ★
+                // 情況 C：匯入服務紀錄 (Records) ★ 修正重點 ★
                 // ------------------------------------------------
                 else if(pendingImportType === 'record') {
                     
-                    // A. 預先建立對照表 (優化效能)
+                    // 1. 先把所有公司和顧問抓出來建立「對照表」，這樣比對比較快
                     const { data: allCompanies } = await supabaseClient.from('companies').select('id, name, tax_id');
                     const { data: allStaff } = await supabaseClient.from('medical_staff').select('id, name');
                     
-                    const compMap = {}; // Key: 名稱或統編, Value: ID
+                    // 建立公司對照表 (Key: 名稱, Value: ID)
+                    const compMap = {}; 
                     if(allCompanies) {
                         allCompanies.forEach(c => {
-                            compMap[c.name.trim()] = c.id;
-                            if(c.tax_id) compMap[c.tax_id.trim()] = c.id;
+                            compMap[c.name.trim()] = c.id;     // 用名稱查
+                            if(c.tax_id) compMap[c.tax_id.trim()] = c.id; // 用統編查也可以
                         });
                     }
                     
-                    const staffMap = {}; // Key: 姓名, Value: ID
+                    // 建立顧問對照表 (Key: 姓名, Value: ID)
+                    const staffMap = {};
                     if(allStaff) {
                         allStaff.forEach(s => {
                             staffMap[s.name.trim()] = s.id;
                         });
                     }
 
-                    // B. 逐筆處理
+                    // 2. 開始逐筆處理 CSV 資料
                     for (let i = 0; i < pendingImportData.length; i++) {
                         const row = pendingImportData[i];
 
-                        // 1. 解析公司 ID
+                        // (A) 找公司 ID
                         const cName = (row.company_name || row.公司名稱 || '').trim();
                         const cTax = (row.tax_id || row.統編 || '').toString().trim();
                         
-                        // 嘗試用名稱或統編找 ID
+                        // 嘗試在對照表中尋找
                         const targetCompId = compMap[cName] || compMap[cTax];
                         
                         if (!targetCompId) {
                             errorCount++;
-                            errorLog.push(`第 ${i+1} 筆: 找不到公司「${cName || cTax}」，請先建立公司資料`);
+                            errorLog.push(`第 ${i+1} 筆: 找不到公司「${cName || cTax}」，請確認該公司是否已建立資料。`);
                             continue;
                         }
 
-                        // 2. 解析顧問 ID
+                        // (B) 找顧問 ID
                         const sName = (row.consultant_name || row.顧問姓名 || '').trim();
-                        const targetStaffId = staffMap[sName]; // 如果找不到會是 undefined，資料庫允許 null 則沒差，若不允許則報錯
+                        const targetStaffId = staffMap[sName]; // 找不到會是 undefined，資料庫允許空值則沒關係
 
-                        // 3. 處理 Workplace ID (自動建立)
+                        // (C) 找作業場所 ID (沒有就自動建)
                         let targetWorkplaceId = null;
                         
-                        // 先查現有的
+                        // 先查該公司現有的場所
                         const { data: wpData } = await supabaseClient
                             .from('workplaces')
                             .select('id')
                             .eq('company_id', targetCompId)
-                            .limit(1); // 簡單起見，抓第一個
+                            .limit(1);
 
                         if (wpData && wpData.length > 0) {
                             targetWorkplaceId = wpData[0].id;
@@ -1400,33 +1389,30 @@
                                 .select()
                                 .single();
                             
-                            if (newWp) {
-                                targetWorkplaceId = newWp.id;
-                            } else {
+                            if (newWp) targetWorkplaceId = newWp.id;
+                            else {
                                 errorCount++;
-                                errorLog.push(`第 ${i+1} 筆: 無法建立作業場所 (${wpErr?.message})`);
+                                errorLog.push(`第 ${i+1} 筆: 無法自動建立場所 (${wpErr?.message})`);
                                 continue;
                             }
                         }
 
-                        // 4. 準備寫入資料
-                        // 如果 CSV 沒日期，預設今天
+                        // (D) 準備寫入資料庫
+                        // 自動補填日期為今天 (因為 CSV 沒日期)
                         const todayStr = new Date().toISOString().split('T')[0];
                         const visitDate = row.visit_date || row.service_date || row.日期 || todayStr;
                         
                         const payload = {
                             workplace_id: targetWorkplaceId,
-                            consultant_id: targetStaffId, // 可為 null
+                            consultant_id: targetStaffId, // 若沒對應到顧問，此欄位會是 null
                             visit_date: visitDate,
                             service_year: new Date(visitDate).getFullYear(),
                             execution_items: row.execution_items || row.執行事項 || '一般訪視',
-                            process_desc: row.process_desc || '批次匯入資料',
+                            process_desc: '批次匯入資料',
                             created_by: sessionStorage.getItem('currentUserId')
                         };
 
-                        const { error } = await supabaseClient
-                            .from('service_records')
-                            .insert(payload);
+                        const { error } = await supabaseClient.from('service_records').insert(payload);
 
                         if (error) {
                             errorCount++;
@@ -1435,16 +1421,14 @@
                             successCount++;
                         }
                     }
-                    
-                    // 重新載入下方列表
-                    loadRecords();
+                    loadRecords(); // 完成後重整列表
                 }
 
-                // --- 結尾提示 ---
-                let msg = `匯入作業結束。\n成功: ${successCount} 筆`;
+                // 3. 顯示結果
+                let msg = `匯入結束。\n成功: ${successCount} 筆`;
                 if(errorCount > 0) {
-                    msg += `\n失敗: ${errorCount} 筆\n\n(錯誤範例: ${errorLog.slice(0,3).join('; ')}...)`;
-                    console.warn('匯入詳細錯誤:', errorLog);
+                    msg += `\n失敗: ${errorCount} 筆\n(錯誤: ${errorLog.slice(0,3).join('; ')}...)`;
+                    console.warn('詳細錯誤:', errorLog);
                 }
                 alert(msg);
                 
@@ -1458,9 +1442,9 @@
                 alert('❌ 系統錯誤: ' + e.message);
             } finally {
                 btn.disabled = false;
-                btn.innerHTML = originalText; // 恢復按鈕文字
+                btn.innerHTML = originalText;
             }
-        }) ;
+        });
     </script>
 </body>
 </html>
