@@ -6,7 +6,6 @@
     <title>基本資料建立 | OHSMS</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.css"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 
     <style>
@@ -586,15 +585,27 @@
 
     <script>
     // ==========================================
-    // 統一頁首與系統初始化邏輯
+    // 全域設定與變數 (Global Setup)
+    // ==========================================
+    const SUPABASE_URL = 'https://yhehfucgemxnfrdvpdhw.supabase.co';
+    const SUPABASE_KEY = 'sb_publishable_52emtU-9l-SDxcJTWVTPTA_Yu6qEogh'; 
+    const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+    let pendingImportData = [];
+    let pendingImportType = '';
+
+    // ==========================================
+    // 系統初始化 (System Init)
     // ==========================================
     document.addEventListener('DOMContentLoaded', function() {
+        // 1. 啟動時鐘
         setInterval(() => {
             const now = new Date();
             const clockEl = document.getElementById('header-clock');
             if(clockEl) clockEl.textContent = now.toLocaleTimeString('zh-TW', { hour12: false });
         }, 1000);
 
+        // 2. 設定日期
         const dateEl = document.getElementById('header-date');
         if(dateEl) {
             const now = new Date();
@@ -603,16 +614,23 @@
             dateEl.innerHTML = `<i class="far fa-calendar-alt me-1"></i>今日是 ${formattedDate}`;
         }
 
+        // 3. 顯示使用者
         const userName = sessionStorage.getItem('currentUserName') || '使用者';
         const userEl = document.getElementById('header-user');
         if(userEl) userEl.innerText = `Hi! ${userName}`;
 
-        // 初始化載入
+        // 4. 載入資料表
         loadCompanies();
         loadStaff();
         loadRecords();
+
+        // 5. 綁定匯入相關事件 (Event Listeners)
+        bindImportEvents();
     });
 
+    // ==========================================
+    // 全域功能函式 (Accessible by HTML onclick)
+    // ==========================================
     function logoutSystem() {
         if(confirm('確定要登出系統嗎？')) {
             sessionStorage.clear();
@@ -620,18 +638,25 @@
         }
     }
 
-    // ==========================================
-    // Supabase 設定
-    // ==========================================
-    const SUPABASE_URL = 'https://yhehfucgemxnfrdvpdhw.supabase.co';
-    const SUPABASE_KEY = 'sb_publishable_52emtU-9l-SDxcJTWVTPTA_Yu6qEogh'; 
-    const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+    function openImportModal(type) {
+        pendingImportType = type;
+        const fileInput = document.getElementById('importFile');
+        const preview = document.getElementById('importPreview');
+        const confirmBtn = document.getElementById('btn-confirm-import');
+        
+        if(fileInput) fileInput.value = '';
+        if(preview) preview.innerText = '';
+        if(confirmBtn) confirmBtn.disabled = true;
+        
+        new bootstrap.Modal(document.getElementById('importModal')).show();
+    }
 
     // ==========================================
     // 1. 公司 (Companies) 邏輯
     // ==========================================
     async function loadCompanies() {
         const tbody = document.getElementById('companyTableBody');
+        if(!tbody) return;
         tbody.innerHTML = '<tr><td colspan="5" class="text-center">載入中...</td></tr>';
         
         const { data, error } = await supabaseClient.from('companies').select('*').order('created_at', { ascending: false });
@@ -640,7 +665,7 @@
             tbody.innerHTML = '<tr><td colspan="5" class="text-danger">載入失敗</td></tr>';
             return;
         }
-        if(data.length === 0) {
+        if(!data || data.length === 0) {
             tbody.innerHTML = '<tr><td colspan="5" class="text-center">無資料</td></tr>';
             return;
         }
@@ -686,7 +711,6 @@
 
         if(!data.tax_id || !data.name) return alert('統編與公司名稱為必填');
 
-        // 取得當前使用者 ID (確保新增/修改都有紀錄)
         const { data: { user } } = await supabaseClient.auth.getUser();
         const currentUserId = user?.id;
         if (currentUserId) {
@@ -718,6 +742,7 @@
     // ==========================================
     async function loadStaff() {
         const tbody = document.getElementById('staffTableBody');
+        if(!tbody) return;
         tbody.innerHTML = '<tr><td colspan="6" class="text-center">載入中...</td></tr>';
         
         const { data, error } = await supabaseClient.from('medical_staff').select('*').order('created_at', { ascending: false });
@@ -726,12 +751,13 @@
             tbody.innerHTML = '<tr><td colspan="6" class="text-danger">載入失敗</td></tr>';
             return;
         }
-        if(data.length === 0) {
+        if(!data || data.length === 0) {
             tbody.innerHTML = '<tr><td colspan="6" class="text-center">無資料</td></tr>';
             return;
         }
 
         tbody.innerHTML = data.map(s => {
+            // 顯示邏輯校正
             let displayRole = s.system_role || s.role;
             if(displayRole === 'medical' || !displayRole) {
                 if(s.role === 'admin') displayRole = 'admin';
@@ -765,7 +791,6 @@
         document.getElementById('staffName').value = name;
         const roleSelect = document.getElementById('staffRole');
         
-        // 修正下拉選單預設值
         const validRoles = ['admin', 'consultant', 'doc_control'];
         if(validRoles.includes(role)) {
             roleSelect.value = role;
@@ -827,6 +852,7 @@
     // ==========================================
     async function loadRecords() {
         const tbody = document.getElementById('recordTableBody');
+        if(!tbody) return;
         
         const { data, error } = await supabaseClient
             .from('service_records')
@@ -842,7 +868,7 @@
             console.error(error);
             return;
         }
-        if(data.length === 0) {
+        if(!data || data.length === 0) {
             tbody.innerHTML = '<tr><td colspan="5" class="text-center">無資料</td></tr>';
             return;
         }
@@ -859,41 +885,206 @@
     }
 
     // ==========================================
-    // 4. Excel 匯入邏輯 (含自動 Mapping)
+    // 4. Excel 匯入邏輯 (事件綁定與處理)
     // ==========================================
-    let pendingImportData = [];
-    let pendingImportType = '';
+    function bindImportEvents() {
+        const fileInput = document.getElementById('importFile');
+        const confirmBtn = document.getElementById('btn-confirm-import');
 
-    function openImportModal(type) {
-        pendingImportType = type;
-        document.getElementById('importFile').value = '';
-        document.getElementById('importPreview').innerText = '';
-        document.getElementById('btn-confirm-import').disabled = true;
-        new bootstrap.Modal(document.getElementById('importModal')).show();
+        if(fileInput) {
+            fileInput.addEventListener('change', function(e) {
+                const file = e.target.files[0];
+                if(!file) return;
+
+                if (typeof XLSX === 'undefined') {
+                    alert("Excel 處理庫 (XLSX) 未正確載入，請檢查網路或稍後再試。");
+                    return;
+                }
+
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    try {
+                        const data = new Uint8Array(e.target.result);
+                        const workbook = XLSX.read(data, {type: 'array'});
+                        const sheetName = workbook.SheetNames[0];
+                        const sheet = workbook.Sheets[sheetName];
+                        const json = XLSX.utils.sheet_to_json(sheet);
+
+                        if(json.length > 0) {
+                            pendingImportData = processImportData(json, pendingImportType);
+                            document.getElementById('importPreview').innerText = `預覽：讀取到 ${json.length} 筆資料`;
+                            document.getElementById('btn-confirm-import').disabled = false;
+                        } else {
+                            document.getElementById('importPreview').innerText = '檔案內無資料';
+                        }
+                    } catch (err) {
+                        console.error(err);
+                        alert("檔案讀取失敗，請確認格式是否正確");
+                    }
+                };
+                reader.readAsArrayBuffer(file);
+            });
+        }
+
+        if(confirmBtn) {
+            confirmBtn.addEventListener('click', async function() {
+                const btn = this;
+                btn.disabled = true;
+                btn.innerText = '匯入中...';
+
+                const { data: { user } } = await supabaseClient.auth.getUser();
+                const currentUserId = user?.id;
+
+                if (!currentUserId) {
+                    alert('無法取得使用者資訊，請重新登入');
+                    btn.disabled = false;
+                    btn.innerText = '確認匯入';
+                    return;
+                }
+
+                try {
+                    // ----------------------------------------------------
+                    // 情境 A: 匯入服務紀錄 (需處理關聯 ID 與自動建立廠區)
+                    // ----------------------------------------------------
+                    if (pendingImportType === 'record') {
+                        
+                        // 1. 撈取對照資料
+                        const { data: companies } = await supabaseClient.from('companies').select('id, name');
+                        const { data: staffList } = await supabaseClient.from('medical_staff').select('id, name');
+                        const { data: workplaces } = await supabaseClient.from('workplaces').select('id, company_id');
+                        
+                        const mappedRecords = [];
+                        const errors = [];
+                        
+                        // 2. 逐筆處理
+                        for (const row of pendingImportData) {
+                            const compName = row['公司名稱']; 
+                            const staffName = row['顧問姓名'];
+                            
+                            if (!compName) continue; 
+
+                            // (A) 找公司 ID
+                            const comp = companies?.find(c => c.name === compName);
+                            if (!comp) {
+                                errors.push(`找不到公司: ${compName} (請先匯入客戶資料)`);
+                                continue;
+                            }
+
+                            // (B) 找顧問 ID
+                            let staffId = null;
+                            if (staffName) {
+                                const staff = staffList?.find(s => s.name === staffName);
+                                if (staff) staffId = staff.id;
+                            }
+
+                            // (C) 找廠區 ID
+                            let wp = workplaces?.find(w => w.company_id === comp.id);
+                            let wpId = wp ? wp.id : null;
+
+                            // (D) 自動建立預設廠區
+                            if (!wpId) {
+                                const { data: newWp, error: wpErr } = await supabaseClient
+                                    .from('workplaces')
+                                    .insert({
+                                        company_id: comp.id,
+                                        name: compName + ' (預設廠區)',
+                                        created_by: currentUserId,
+                                        updated_by: currentUserId
+                                    })
+                                    .select()
+                                    .single();
+                                
+                                if (wpErr) {
+                                    errors.push(`建立廠區失敗 (${compName}): ${wpErr.message}`);
+                                    continue;
+                                }
+                                wpId = newWp.id;
+                                if(workplaces) workplaces.push(newWp);
+                            }
+
+                            // (E) 建立資料物件
+                            mappedRecords.push({
+                                workplace_id: wpId,
+                                consultant_id: staffId,
+                                visit_date: row['預計訪視日'] || null, 
+                                service_year: row['年度'] || new Date().getFullYear(),
+                                status: row['狀態'] || 'planned',
+                                created_by: currentUserId,
+                                updated_by: currentUserId
+                            });
+                        }
+
+                        if (errors.length > 0) {
+                            alert('⚠️ 部分資料匯入失敗 (前5筆錯誤):\n' + errors.slice(0, 5).join('\n'));
+                            if (mappedRecords.length === 0) throw new Error("所有資料皆無法對應，請檢查公司資料是否已匯入");
+                        }
+
+                        if (mappedRecords.length > 0) {
+                            const { error } = await supabaseClient.from('service_records').insert(mappedRecords);
+                            if(error) throw error;
+                        }
+
+                    } else {
+                        // ----------------------------------------------------
+                        // 情境 B: 其他類型 (Company, Staff) 一般匯入
+                        // ----------------------------------------------------
+                        const dataWithUser = pendingImportData.map(item => ({
+                            ...item,
+                            created_by: currentUserId,
+                            updated_by: currentUserId
+                        }));
+
+                        if(pendingImportType === 'company') {
+                            const companiesToInsert = dataWithUser.map(row => ({
+                                tax_id: row['統一編號'],
+                                name: row['事業單位名稱'] || row['公司名稱'],
+                                industry: row['產業類別'] || '', 
+                                region: row['公司地址'] || '',
+                                created_by: currentUserId,
+                                updated_by: currentUserId
+                            }));
+                            const { error } = await supabaseClient.from('companies').upsert(companiesToInsert, { onConflict: 'tax_id' });
+                            if(error) throw error;
+
+                        } else if(pendingImportType === 'staff') {
+                            const staffToInsert = dataWithUser.map(row => {
+                                let role = 'doc_control'; 
+                                const rawRole = row['身分角色'] || row['職稱/角色'] || '';
+                                if(rawRole.includes('顧問')) role = 'consultant';
+                                else if(rawRole.includes('管理')) role = 'admin';
+
+                                return {
+                                    name: row['姓名'],
+                                    role: role,
+                                    system_role: role,
+                                    phone: row['電話'],
+                                    email: row['Email'],
+                                    created_by: currentUserId,
+                                    updated_by: currentUserId
+                                };
+                            });
+                            const { error } = await supabaseClient.from('medical_staff').insert(staffToInsert);
+                            if(error) throw error;
+                        }
+                    }
+
+                    alert('✅ 匯入成功！');
+                    bootstrap.Modal.getInstance(document.getElementById('importModal')).hide();
+                    
+                    if(pendingImportType === 'company') loadCompanies();
+                    else if(pendingImportType === 'staff') loadStaff();
+                    else loadRecords();
+
+                } catch(e) {
+                    console.error(e);
+                    alert('❌ 匯入發生錯誤: ' + e.message);
+                } finally {
+                    btn.disabled = false;
+                    btn.innerText = '確認匯入';
+                }
+            });
+        }
     }
-
-    document.getElementById('importFile').addEventListener('change', function(e) {
-        const file = e.target.files[0];
-        if(!file) return;
-
-        const reader = new FileReader();
-        reader.onload = function(e) {
-            const data = new Uint8Array(e.target.result);
-            const workbook = XLSX.read(data, {type: 'array'});
-            const sheetName = workbook.SheetNames[0];
-            const sheet = workbook.Sheets[sheetName];
-            const json = XLSX.utils.sheet_to_json(sheet);
-
-            if(json.length > 0) {
-                pendingImportData = processImportData(json, pendingImportType);
-                document.getElementById('importPreview').innerText = `預覽：讀取到 ${json.length} 筆資料`;
-                document.getElementById('btn-confirm-import').disabled = false;
-            } else {
-                document.getElementById('importPreview').innerText = '檔案內無資料';
-            }
-        };
-        reader.readAsArrayBuffer(file);
-    });
 
     function processImportData(json, type) {
         return json.map(row => {
@@ -903,187 +1094,9 @@
                 let val = row[key];
                 newRow[cleanKey] = val;
             }
-            
-            // 人員匯入預處理：若無系統角色，預設給 Doc Control
-            if(type === 'staff') {
-                if(!newRow.system_role && newRow.role) {
-                    newRow.system_role = newRow.role; 
-                }
-                if(!newRow.system_role) newRow.system_role = 'doc_control';
-            }
-
             return newRow;
         });
     }
-
-    document.getElementById('btn-confirm-import').addEventListener('click', async function() {
-        const btn = this;
-        btn.disabled = true;
-        btn.innerText = '匯入中...';
-
-        const { data: { user } } = await supabaseClient.auth.getUser();
-        const currentUserId = user?.id;
-
-        if (!currentUserId) {
-            alert('無法取得使用者資訊，請重新登入');
-            btn.disabled = false;
-            btn.innerText = '確認匯入';
-            return;
-        }
-
-        try {
-            // =======================================================
-            // [關鍵修正] 服務紀錄匯入：自動查表與建立關聯
-            // =======================================================
-            if (pendingImportType === 'record') {
-                
-                // 1. 撈取對照表 (Reference Data)
-                const { data: companies } = await supabaseClient.from('companies').select('id, name');
-                const { data: staffList } = await supabaseClient.from('medical_staff').select('id, name');
-                const { data: workplaces } = await supabaseClient.from('workplaces').select('id, company_id');
-                
-                const mappedRecords = [];
-                const errors = [];
-                
-                // 2. 逐筆處理
-                for (const row of pendingImportData) {
-                    const compName = row['公司名稱']; 
-                    const staffName = row['顧問姓名'];
-                    
-                    if (!compName) continue; // 跳過空行
-
-                    // (A) 找公司 ID
-                    const comp = companies?.find(c => c.name === compName);
-                    if (!comp) {
-                        errors.push(`找不到公司: ${compName} (請先匯入客戶資料)`);
-                        continue;
-                    }
-
-                    // (B) 找顧問 ID (若無則留空)
-                    let staffId = null;
-                    if (staffName) {
-                        const staff = staffList?.find(s => s.name === staffName);
-                        if (staff) staffId = staff.id;
-                    }
-
-                    // (C) 找廠區 ID (Workplace)
-                    let wp = workplaces?.find(w => w.company_id === comp.id);
-                    let wpId = wp ? wp.id : null;
-
-                    // (D) [自動補救] 如果沒有廠區，自動建立「預設廠區」
-                    if (!wpId) {
-                        // console.log(`自動為 ${compName} 建立預設廠區...`);
-                        const { data: newWp, error: wpErr } = await supabaseClient
-                            .from('workplaces')
-                            .insert({
-                                company_id: comp.id,
-                                name: compName + ' (預設廠區)',
-                                created_by: currentUserId,
-                                updated_by: currentUserId
-                            })
-                            .select()
-                            .single();
-                        
-                        if (wpErr) {
-                            errors.push(`建立廠區失敗 (${compName}): ${wpErr.message}`);
-                            continue;
-                        }
-                        wpId = newWp.id;
-                        // 更新快取，避免下一筆重複建立
-                        if(workplaces) workplaces.push(newWp);
-                    }
-
-                    // (E) 準備寫入 DB 的格式 (對應 Template CSV 欄位)
-                    // 公司名稱, 顧問姓名, 執行事項, 預計訪視日, 年度, 狀態
-                    mappedRecords.push({
-                        workplace_id: wpId,
-                        consultant_id: staffId,
-                        visit_date: row['預計訪視日'] || null, 
-                        service_year: row['年度'] || new Date().getFullYear(),
-                        status: row['狀態'] || 'planned',
-                        created_by: currentUserId,
-                        updated_by: currentUserId
-                    });
-                }
-
-                if (errors.length > 0) {
-                    alert('⚠️ 部分資料匯入失敗 (前5筆錯誤):\n' + errors.slice(0, 5).join('\n'));
-                    if (mappedRecords.length === 0) throw new Error("所有資料皆無法對應，請檢查公司資料是否已匯入");
-                }
-
-                // 3. 寫入服務紀錄
-                if (mappedRecords.length > 0) {
-                    const { error } = await supabaseClient.from('service_records').insert(mappedRecords);
-                    if(error) throw error;
-                }
-
-            } else {
-                // =======================================================
-                // 其他類型 (Company, Staff) 的一般匯入邏輯
-                // =======================================================
-                
-                // 為每一筆資料補上 created_by
-                const dataWithUser = pendingImportData.map(item => ({
-                    ...item,
-                    created_by: currentUserId,
-                    updated_by: currentUserId
-                }));
-
-                if(pendingImportType === 'company') {
-                    // 對應 template: 統一編號, 事業單位名稱, 公司地址, 聯絡人, 電話...
-                    // 需要將 Excel 中文欄位轉為 DB 英文欄位
-                    const companiesToInsert = dataWithUser.map(row => ({
-                        tax_id: row['統一編號'],
-                        name: row['事業單位名稱'] || row['公司名稱'],
-                        industry: row['產業類別'] || '', 
-                        region: row['公司地址'] || '', // 簡易對應
-                        created_by: currentUserId,
-                        updated_by: currentUserId
-                    }));
-                    
-                    const { error } = await supabaseClient.from('companies').upsert(companiesToInsert, { onConflict: 'tax_id' });
-                    if(error) throw error;
-
-                } else if(pendingImportType === 'staff') {
-                    // 對應 template: 姓名, 身分角色, 職務型態, 電話, Email...
-                    const staffToInsert = dataWithUser.map(row => {
-                        let role = 'doc_control'; // default
-                        // 簡易轉換中文角色
-                        const rawRole = row['身分角色'] || row['職稱/角色'] || '';
-                        if(rawRole.includes('顧問')) role = 'consultant';
-                        else if(rawRole.includes('管理')) role = 'admin';
-
-                        return {
-                            name: row['姓名'],
-                            role: role,
-                            system_role: role,
-                            phone: row['電話'],
-                            email: row['Email'],
-                            created_by: currentUserId,
-                            updated_by: currentUserId
-                        };
-                    });
-
-                    const { error } = await supabaseClient.from('medical_staff').insert(staffToInsert);
-                    if(error) throw error;
-                }
-            }
-
-            alert('✅ 匯入成功！');
-            bootstrap.Modal.getInstance(document.getElementById('importModal')).hide();
-            
-            if(pendingImportType === 'company') loadCompanies();
-            else if(pendingImportType === 'staff') loadStaff();
-            else loadRecords();
-
-        } catch(e) {
-            console.error(e);
-            alert('❌ 匯入發生錯誤: ' + e.message);
-        } finally {
-            btn.disabled = false;
-            btn.innerText = '確認匯入';
-        }
-    });
     </script>
 </body>
 </html>
