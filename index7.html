@@ -227,8 +227,7 @@
                                 <tr>
                                     <th>姓名</th>
                                     <th>職稱/角色</th>
-                                    <th>系統權限</th>
-                                    <th>電話</th>
+                                    <th>系統權限</th> <th>電話</th>
                                     <th>Email</th>
                                     <th>操作</th>
                                 </tr>
@@ -522,6 +521,7 @@
             }
 
             tbody.innerHTML = data.map(s => {
+                // 顯示邏輯校正
                 let displayRole = s.system_role || s.role;
                 if(displayRole === 'medical') {
                     if(s.role === 'admin') displayRole = 'admin';
@@ -553,11 +553,12 @@
         function editStaff(id, name, role, phone, email) {
             document.getElementById('staffId').value = id;
             document.getElementById('staffName').value = name;
+            // 嘗試對應 role
             const roleSelect = document.getElementById('staffRole');
             if(role === 'admin' || role === 'consultant' || role === 'doc_control') {
                 roleSelect.value = role;
             } else {
-                roleSelect.value = 'doc_control'; 
+                roleSelect.value = 'doc_control'; // default
             }
             document.getElementById('staffPhone').value = phone;
             document.getElementById('staffEmail').value = email;
@@ -569,6 +570,7 @@
             const id = document.getElementById('staffId').value;
             const roleVal = document.getElementById('staffRole').value;
             
+            // [修正] 取得當前使用者 ID
             const { data: { user } } = await supabaseClient.auth.getUser();
             const currentUserId = user?.id;
 
@@ -577,14 +579,15 @@
             const data = {
                 name: document.getElementById('staffName').value,
                 role: roleVal,
-                system_role: roleVal, 
+                system_role: roleVal, // 同步設定系統權限
                 phone: document.getElementById('staffPhone').value,
                 email: document.getElementById('staffEmail').value,
+                // [修正] 補上 created_by/updated_by
                 updated_by: currentUserId
             };
 
             if(!id) {
-                data.created_by = currentUserId; 
+                data.created_by = currentUserId; // 僅新增時需要
             }
 
             if(!data.name) return alert('姓名為必填');
@@ -618,10 +621,8 @@
                 .from('service_records')
                 .select(`
                     id, service_year, visit_date, status,
-                    consultant_id,
-                    workplace_id,
-                    medical_staff!consultant_id (name),
-                    workplaces!workplace_id (companies(name))
+                    medical_staff(name),
+                    workplaces(companies(name))
                 `)
                 .order('visit_date', { ascending: false })
                 .limit(20);
@@ -637,9 +638,9 @@
 
             tbody.innerHTML = data.map(r => `
                 <tr>
-                    <td>${r.service_year || 'N/A'}</td>
+                    <td>${r.service_year}</td>
                     <td>${r.workplaces?.companies?.name || 'Unknown'}</td>
-                    <td>${r.visit_date || 'N/A'}</td>
+                    <td>${r.visit_date}</td>
                     <td>${r.medical_staff?.name || '-'}</td>
                     <td>${r.status || 'Planned'}</td>
                 </tr>
@@ -647,7 +648,7 @@
         }
 
         // ==========================================
-        // 4. Excel 匯入邏輯 (含自動 Mapping)
+        // 4. Excel 匯入邏輯
         // ==========================================
         let pendingImportData = [];
         let pendingImportType = '';
@@ -684,18 +685,23 @@
         });
 
         function processImportData(json, type) {
+            // 這裡可以做欄位對應轉換
             return json.map(row => {
                 let newRow = {};
+                // 簡易對應，假設 Excel 欄位名稱對應 DB 欄位 (或英文)
                 for (let key in row) {
+                    // 去除空白
                     let cleanKey = key.trim();
                     let val = row[key];
                     newRow[cleanKey] = val;
                 }
                 
+                // 針對人員匯入，補上 system_role 預設值
                 if(type === 'staff') {
                     if(!newRow.system_role && newRow.role) {
                         newRow.system_role = newRow.role; 
                     }
+                    // 如果還是空的
                     if(!newRow.system_role) newRow.system_role = 'doc_control';
                 }
 
@@ -708,6 +714,7 @@
             btn.disabled = true;
             btn.innerText = '匯入中...';
 
+            // [修正] 取得當前使用者 ID
             const { data: { user } } = await supabaseClient.auth.getUser();
             const currentUserId = user?.id;
 
@@ -719,103 +726,22 @@
             }
 
             try {
-                // [關鍵] 紀錄匯入時的特殊處理：名稱 -> ID 轉換 + 自動建立廠區
-                if (pendingImportType === 'record') {
-                    
-                    // 1. 撈取對照表 (Reference Data)
-                    const { data: companies } = await supabaseClient.from('companies').select('id, name');
-                    const { data: staffList } = await supabaseClient.from('medical_staff').select('id, name');
-                    const { data: workplaces } = await supabaseClient.from('workplaces').select('id, company_id');
-                    
-                    const mappedRecords = [];
-                    const errors = [];
-                    
-                    // 2. 逐筆處理
-                    for (const row of pendingImportData) {
-                        const compName = row['公司名稱']; // Excel 欄位
-                        const staffName = row['顧問姓名']; // Excel 欄位
-                        
-                        if (!compName) continue; // 跳過空行
+                // [修正] 為每一筆匯入資料補上 created_by
+                const dataWithUser = pendingImportData.map(item => ({
+                    ...item,
+                    created_by: currentUserId,
+                    updated_by: currentUserId
+                }));
 
-                        // 找公司 ID
-                        const comp = companies?.find(c => c.name === compName);
-                        if (!comp) {
-                            errors.push(`找不到公司: ${compName}`);
-                            continue;
-                        }
-
-                        // 找顧問 ID
-                        let staffId = null;
-                        if (staffName) {
-                            const staff = staffList?.find(s => s.name === staffName);
-                            if (staff) staffId = staff.id;
-                        }
-
-                        // 找廠區 ID (Workplace)
-                        let wp = workplaces?.find(w => w.company_id === comp.id);
-                        let wpId = wp ? wp.id : null;
-
-                        // [自動補救] 如果沒有廠區，自動建立「預設廠區」
-                        if (!wpId) {
-                            console.log(`自動為 ${compName} 建立預設廠區...`);
-                            const { data: newWp, error: wpErr } = await supabaseClient
-                                .from('workplaces')
-                                .insert({
-                                    company_id: comp.id,
-                                    name: compName + ' (預設廠區)',
-                                    created_by: currentUserId,
-                                    updated_by: currentUserId
-                                })
-                                .select()
-                                .single();
-                            
-                            if (wpErr) {
-                                errors.push(`建立廠區失敗 (${compName}): ${wpErr.message}`);
-                                continue;
-                            }
-                            wpId = newWp.id;
-                            // 加入快取避免重複建立
-                            if(workplaces) workplaces.push(newWp);
-                        }
-
-                        // 準備寫入 DB 的格式
-                        mappedRecords.push({
-                            workplace_id: wpId,
-                            consultant_id: staffId,
-                            visit_date: row['預計訪視日'] || null, 
-                            service_year: row['年度'] || new Date().getFullYear(),
-                            status: 'planned',
-                            created_by: currentUserId,
-                            updated_by: currentUserId
-                        });
-                    }
-
-                    if (errors.length > 0) {
-                        alert('部分資料匯入失敗 (請檢查公司名稱是否正確):\n' + errors.slice(0, 5).join('\n') + (errors.length > 5 ? '...' : ''));
-                        if (mappedRecords.length === 0) throw new Error("所有資料皆無法對應，請檢查公司名稱是否已建立");
-                    }
-
-                    // 寫入服務紀錄
-                    if (mappedRecords.length > 0) {
-                        const { error } = await supabaseClient.from('service_records').insert(mappedRecords);
-                        if(error) throw error;
-                    }
-
-                } else {
-                    // 其他類型 (Company, Staff) 的一般匯入邏輯
-                    const dataWithUser = pendingImportData.map(item => ({
-                        ...item,
-                        created_by: currentUserId,
-                        updated_by: currentUserId
-                    }));
-
-                    if(pendingImportType === 'company') {
-                        const { error } = await supabaseClient.from('companies').upsert(dataWithUser, { onConflict: 'tax_id' });
-                        if(error) throw error;
-                    } else if(pendingImportType === 'staff') {
-                        const { error } = await supabaseClient.from('medical_staff').insert(dataWithUser);
-                        if(error) throw error;
-                    }
+                if(pendingImportType === 'company') {
+                    const { error } = await supabaseClient.from('companies').upsert(dataWithUser, { onConflict: 'tax_id' });
+                    if(error) throw error;
+                } else if(pendingImportType === 'staff') {
+                    const { error } = await supabaseClient.from('medical_staff').insert(dataWithUser);
+                    if(error) throw error;
+                } else if(pendingImportType === 'record') {
+                    const { error } = await supabaseClient.from('service_records').insert(dataWithUser);
+                    if(error) throw error;
                 }
 
                 alert('✅ 匯入成功！');
