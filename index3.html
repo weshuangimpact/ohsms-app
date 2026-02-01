@@ -11,22 +11,29 @@
         /* =========================================
            1. 統一頁首/頁尾 CSS 設定 (內頁專用 / 高度統一版)
            ========================================= */
+        :root { 
+            --primary-bg: #f8f9fa; 
+            --theme-color: #ffc107; /* 維持本頁面的評鑑黃色主色調 */
+            --theme-dark: #b08d00;  /* 深色文字用 */
+            --theme-light: #fff3cd; /* 淺色背景用 */
+        }
+
         html, body {
             height: 100%;
         }
 
         body {
-            display: none; /* 權限驗證前先隱藏，JS 載入後改為 flex */
+            display: none; /* 權限檢查前隱藏，檢查通過後改為 flex */
             flex-direction: column;
             min-height: 100vh;
-            background-color: #f8f9fa; /* 預設背景色 */
+            background-color: var(--primary-bg);
             font-family: 'Segoe UI', 'Microsoft JhengHei', sans-serif;
             color: #333;
         }
 
         /* 內容區塊自動撐開 */
         .container, .main-content, .container-fluid {
-            flex: 1; 
+            flex: 1;
         }
 
         /* 頁首設定 */
@@ -45,129 +52,133 @@
             font-size: 0.9rem;
             letter-spacing: 0.5px;
             display: flex;
-            flex-direction: column; /* 垂直排列 */
+            flex-direction: column;
             align-items: center;
             justify-content: center;
             margin-top: auto;
             padding: 15px 0;
-            min-height: 85px; /* 雙行高度 */
+            min-height: 85px;
         }
 
         /* =========================================
-           2. 本頁特定樣式 (Chat & Search)
+           2. 統一標題與字卡 CSS
            ========================================= */
-        .chat-container {
-            max-width: 900px;
-            margin: 0 auto;
-            background: white;
-            border-radius: 12px;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-            overflow: hidden;
-            display: flex;
-            flex-direction: column;
-            height: 75vh;
+        /* PDCA 字卡 (白色區塊) 設定 */
+        .instruction-box {
+            background-color: #fff;
+            border-left: 5px solid var(--theme-color);
+            padding: 20px 25px;
+            border-radius: 4px;
+            margin-bottom: 30px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+            text-align: left;
         }
 
-        .chat-header {
-            background: #202124;
-            color: white;
-            padding: 15px 20px;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
+        /* PDCA 字卡標題設定 */
+        .instruction-title {
+            color: var(--theme-dark);
+            font-weight: 700;
+            margin-bottom: 10px;
         }
 
-        .chat-messages {
-            flex: 1;
-            padding: 20px;
-            overflow-y: auto;
-            background-color: #f8f9fa;
+        /* =========================================
+           3. 本頁特定樣式 (保留原始設定)
+           ========================================= */
+        .container, .container-fluid {
+            max-width: 100% !important;
+            padding-left: 2rem;
+            padding-right: 2rem;
         }
 
-        .message {
-            margin-bottom: 20px;
-            display: flex;
-            flex-direction: column;
-            max-width: 85%;
+        .main-content { 
+            max-width: 100% !important; 
+            margin: 2rem auto; 
         }
 
-        .message.user {
-            align-self: flex-end;
-            align-items: flex-end;
-        }
-
-        .message.bot {
-            align-self: flex-start;
-            align-items: flex-start;
-        }
-
-        .message-content {
-            padding: 12px 16px;
-            border-radius: 12px;
-            font-size: 1rem;
-            line-height: 1.5;
-            position: relative;
-        }
-
-        .message.user .message-content {
-            background-color: #0d6efd;
-            color: white;
-            border-bottom-right-radius: 2px;
-        }
-
-        .message.bot .message-content {
-            background-color: white;
-            color: #333;
-            border: 1px solid #e0e0e0;
-            border-bottom-left-radius: 2px;
-            box-shadow: 0 1px 2px rgba(0,0,0,0.05);
-        }
-
-        .chat-input-area {
-            padding: 20px;
-            background: white;
-            border-top: 1px solid #eee;
-        }
-
-        /* 證據卡片樣式 */
-        .evidence-card {
-            background: white;
-            border: 1px solid #ddd;
-            border-radius: 8px;
-            padding: 15px;
-            margin-top: 10px;
-            cursor: pointer;
-            transition: all 0.2s;
-        }
-        .evidence-card:hover {
-            border-color: #0d6efd;
-            box-shadow: 0 2px 8px rgba(13, 110, 253, 0.1);
-        }
-
-        .typing-indicator span {
-            display: inline-block;
-            width: 6px;
-            height: 6px;
-            background-color: #ccc;
+        .robot-wrapper {
+            width: 100px; height: 100px;
+            background-color: var(--theme-light);
+            color: var(--theme-dark);
             border-radius: 50%;
-            margin: 0 2px;
-            animation: typing 1s infinite;
-        }
-        .typing-indicator span:nth-child(2) { animation-delay: 0.2s; }
-        .typing-indicator span:nth-child(3) { animation-delay: 0.4s; }
-        
-        @keyframes typing {
-            0%, 100% { transform: translateY(0); }
-            50% { transform: translateY(-5px); }
+            display: flex; align-items: center; justify-content: center;
+            font-size: 3rem;
+            margin: 0 auto 20px auto;
+            border: 2px solid rgba(255, 193, 7, 0.2);
         }
 
-        .tag-badge {
-            font-size: 0.75rem;
-            padding: 3px 8px;
-            border-radius: 12px;
-            background: #e9ecef;
-            color: #555;
-            margin-right: 5px;
+        .search-box-wrapper {
+            background: #fff; 
+            border: 1px solid #dfe1e5; 
+            border-radius: 50px;
+            padding: 15px 30px; 
+            box-shadow: 0 4px 12px rgba(32,33,36,.15);
+            display: flex; align-items: center;
+            transition: box-shadow 0.3s;
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        .search-box-wrapper:hover, .search-box-wrapper:focus-within {
+            box-shadow: 0 6px 16px rgba(255, 193, 7, 0.25);
+            border-color: var(--theme-color);
+        }
+        .search-input { border: none; outline: none; width: 100%; font-size: 1.2rem; margin-left: 15px; color: #555; }
+        
+        .btn-search { 
+            background: none; 
+            border: none; 
+            color: var(--theme-dark); 
+            font-weight: bold; 
+            font-size: 1.1rem; 
+            transition: color 0.2s;
+        }
+        .btn-search:hover { color: #d35400; }
+        
+        .result-card {
+            background: #fff; 
+            border: 1px solid #e0e0e0; 
+            border-radius: 8px; 
+            padding: 20px;
+            margin-bottom: 15px; 
+            cursor: pointer; 
+            transition: all 0.2s;
+            border-left: 4px solid transparent;
+        }
+        .result-card:hover { 
+            transform: translateY(-3px); 
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1); 
+            border-left-color: var(--theme-color); 
+        }
+        .result-title { color: #333; font-size: 1.25rem; font-weight: 600; margin-bottom: 5px; }
+        
+        .tag-year { 
+            background: var(--theme-light); 
+            color: var(--theme-dark); 
+            padding: 2px 8px; 
+            border-radius: 4px; 
+            font-weight: bold; 
+            font-size: 0.85rem; 
+        }
+
+        /* 預覽樣式 */
+        .preview-modal-body {
+            background: #525659; padding: 30px; height: 80vh; overflow-y: auto;
+            display: flex; flex-direction: column; align-items: center; user-select: none;
+        }
+        .paper-sheet {
+            background: white; width: 100%; max-width: 1000px; min-height: 1000px;
+            padding: 50px; margin-bottom: 20px; box-shadow: 0 0 15px rgba(0,0,0,0.5); position: relative;
+        }
+        .attachment-item { border: 1px solid #eee; padding: 10px; margin-bottom: 15px; text-align: center; }
+        .attachment-img { max-width: 100%; height: auto; border: 1px solid #ddd; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+        .attachment-pdf-frame { width: 100%; height: 600px; border: 1px solid #ddd; }
+        .watermark {
+            position: absolute; top: 40%; left: 50%; transform: translate(-50%, -50%) rotate(-45deg);
+            font-size: 5rem; color: rgba(0,0,0,0.05); border: 5px solid rgba(0,0,0,0.05);
+            padding: 20px; pointer-events: none; z-index: 10; white-space: nowrap;
+        }
+        .file-header-badge {
+            font-size: 0.9rem; padding: 8px 12px; border-radius: 4px; 
+            background: #f8f9fa; border: 1px solid #dee2e6; color: #495057; display: inline-block; margin-bottom: 10px;
         }
     </style>
 </head>
@@ -177,7 +188,7 @@
         <div class="container-fluid d-flex justify-content-between align-items-center p-0">
             <a class="navbar-brand d-flex align-items-center fw-bold" href="dashboard.html">
                 <i class="fas fa-shield-alt me-2"></i>
-                OHSMS 智慧助理
+                OHSMS 職安管理系統
             </a>
 
             <div class="d-flex align-items-center">
@@ -188,7 +199,7 @@
                 <span class="text-white me-4 small border-start ps-3 border-secondary" id="header-clock" style="opacity: 0.9;">
                     --:--
                 </span>
-                
+             
                 <span class="text-white me-4 fw-bold" id="header-user">
                     Hi! 使用者
                 </span>
@@ -204,47 +215,61 @@
         </div>
     </nav>
 
-    <div class="container-fluid px-4 py-4 main-content">
-        <div class="chat-container">
-            <div class="chat-header">
-                <div class="d-flex align-items-center">
-                    <i class="fas fa-robot fa-lg me-2 text-warning"></i>
-                    <div>
-                        <h6 class="mb-0 fw-bold">評鑑支援 AI 助理</h6>
-                        <small class="opacity-75" style="font-size: 0.75rem;">Connected to OHSMS Evidence DB</small>
-                    </div>
-                </div>
-                <div>
-                    <button class="btn btn-sm btn-outline-light" onclick="clearChat()">
-                        <i class="fas fa-trash-alt me-1"></i>清除對話
-                    </button>
-                </div>
-            </div>
+    <div class="container main-content">
+        
+        <div class="mb-4">
+            <h2 class="fw-bold text-dark mb-1">評鑑支援 AI 智慧助理 (Evaluation)</h2>
+            <p class="text-secondary">Evaluation 階段：智慧稽核與佐證調閱</p>
+        </div>
 
-            <div class="chat-messages" id="chat-box">
-                <div class="message bot">
-                    <div class="message-content">
-                        <strong><i class="fas fa-info-circle me-2 text-primary"></i>你好！我是您的評鑑支援助理。</strong><br>
-                        我可以協助您調閱歷史證據、產生評鑑摘要，或回答法規相關問題。<br><br>
-                        您可以試著問：<br>
-                        <span class="badge bg-light text-dark border mt-2 cursor-pointer" onclick="setInput('列出台積電去年的訪視紀錄')">"列出台積電去年的訪視紀錄"</span><br>
-                        <span class="badge bg-light text-dark border mt-1 cursor-pointer" onclick="setInput('查詢噪音改善的相關證據')">"查詢噪音改善的相關證據"</span>
+        <div class="instruction-box">
+            <div class="instruction-title">
+                <i class="fas fa-clipboard-check me-2"></i>PDCA+E 設計理念：Evaluation (評鑑) —— 智慧稽核與全貌驗證
+            </div>
+            <p class="mb-0 text-dark" style="line-height: 1.6;">
+                建立獨立於常態循環之外的客觀驗證機制，透過 NLP 語意引擎即時穿透歷史數據，將零散的執行紀錄轉化為具備法律效力的合規佐證，實現「隨時可受稽核」的數位治理高度。
+            </p>
+        </div>
+
+        <div class="text-center mt-5">
+            <div class="robot-wrapper">
+                <i class="fas fa-robot"></i>
+            </div>
+            <h3 class="fw-bold mb-3">評鑑資料查詢助手</h3>
+            <p class="text-muted mb-4">請輸入關鍵字，查詢歷史服務紀錄與當時負責顧問。</p>
+
+            <div class="search-box-wrapper mx-auto" style="max-width: 700px;">
+                <i class="fas fa-search text-muted fs-5"></i>
+                <input type="text" id="searchInput" class="search-input" placeholder="輸入公司、年份或顧問姓名 (例如：2022 甲顧問)..." autofocus>
+                <button class="btn-search" onclick="executeSearch()">搜尋</button>
+            </div>
+        </div>
+
+        <div class="row justify-content-center mt-4">
+            <div class="col-lg-10">
+                <div id="loading" class="text-center my-5" style="display:none;">
+                    <div class="spinner-border text-primary"></div><br><span class="text-muted">AI 正在檢索歷史卷宗...</span>
+                </div>
+                <div id="resultsArea"></div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="previewModal" tabindex="-1" data-bs-backdrop="static">
+        <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
+            <div class="modal-content">
+                <div class="modal-header bg-dark text-white">
+                    <h5 class="modal-title"><i class="fas fa-file-contract me-2"></i>原始佐證調閱</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body p-0" oncontextmenu="return false;">
+                    <div class="preview-modal-body" id="previewContainer">
                     </div>
                 </div>
-            </div>
-
-            <div class="chat-input-area">
-                <form id="chat-form" onsubmit="handleSearch(event)">
-                    <div class="input-group">
-                        <input type="text" class="form-control border-end-0" id="user-input" placeholder="請輸入關鍵字 (如：公司名稱、危害因子、日期)..." autocomplete="off">
-                        <button class="btn btn-primary px-4" type="submit">
-                            <i class="fas fa-paper-plane"></i>
-                        </button>
-                    </div>
-                    <div class="form-text mt-2 small text-muted">
-                        <i class="fas fa-shield-alt me-1"></i> 資料來源：正式核定之證據庫 (Evidence Table)
-                    </div>
-                </form>
+                <div class="modal-footer bg-light">
+                    <small class="text-danger fw-bold me-auto"><i class="fas fa-lock me-1"></i>系統浮水印保護中，禁止下載與截圖</small>
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">關閉</button>
+                </div>
             </div>
         </div>
     </div>
@@ -258,34 +283,40 @@
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-
+    
     <script>
-        // ==========================================
-        // 統一頁首與系統初始化
-        // ==========================================
-        document.addEventListener('DOMContentLoaded', function() {
+        const SUPABASE_URL = 'https://yhehfucgemxnfrdvpdhw.supabase.co';
+        const SUPABASE_KEY = 'sb_publishable_52emtU-9l-SDxcJTWVTPTA_Yu6qEogh'; 
+        const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+        // 統一初始化邏輯
+        document.addEventListener('DOMContentLoaded', () => {
+            // 顯示頁面
             document.body.style.display = 'flex';
 
-            // 時鐘與日期
+            // 時鐘
             setInterval(() => {
                 const now = new Date();
                 const clockEl = document.getElementById('header-clock');
                 if(clockEl) clockEl.textContent = now.toLocaleTimeString('zh-TW', { hour12: false });
             }, 1000);
 
+            // 日期
             const dateEl = document.getElementById('header-date');
             if(dateEl) {
                 const now = new Date();
                 const days = ['日', '一', '二', '三', '四', '五', '六'];
-                dateEl.innerHTML = `<i class="far fa-calendar-alt me-1"></i>今日是 ${now.getFullYear()}/${now.getMonth() + 1}/${now.getDate()}(${days[now.getDay()]})`;
+                const formattedDate = `${now.getFullYear()}/${now.getMonth() + 1}/${now.getDate()}(${days[now.getDay()]})`;
+                dateEl.innerHTML = `<i class="far fa-calendar-alt me-1"></i>今日是 ${formattedDate}`;
             }
 
             // 使用者名稱
-            const userName = sessionStorage.getItem('currentUserName') || '訪客';
+            const userName = sessionStorage.getItem('currentUserName');
             const userEl = document.getElementById('header-user');
-            if(userEl) userEl.innerText = `Hi! ${userName}`;
+            if(userEl && userName) userEl.innerText = `Hi! ${userName}`;
         });
 
+        // 登出
         function logoutSystem() {
             if(confirm('確定要登出系統嗎？')) {
                 sessionStorage.clear();
@@ -293,316 +324,208 @@
             }
         }
 
-        // ==========================================
-        // AI 助理核心邏輯
-        // ==========================================
-        const SUPABASE_URL = 'https://yhehfucgemxnfrdvpdhw.supabase.co';
-        const SUPABASE_KEY = 'sb_publishable_52emtU-9l-SDxcJTWVTPTA_Yu6qEogh';
-        const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+        // A~Q 對照表
+        const FILE_NAME_MAP = {
+            'A': '勞工健康服務執行紀錄表 (核心)',
+            'B': '9-1 健檢分析與評估',
+            'C': '9-2 選配工',
+            'D': '9-3 健檢追蹤管理',
+            'E': '9-4 母性/未滿18',
+            'F': '9-5 職衛紀錄保存',
+            'G': '9-6 衛教指導',
+            'H': '9-7 急救處置',
+            'I': '9-8 雇主報告',
+            'J': '11-1 危害辨識',
+            'K': '11-2 改善建議',
+            'L': '11-3 關連調查',
+            'M': '11-4 復工評估',
+            'N': '11-5 其他指定',
+            'O': '12 服務計畫',
+            'P': '13 管理方案',
+            'Q': 'Other 其他附件'
+        };
 
-        const chatBox = document.getElementById('chat-box');
-        const userInput = document.getElementById('user-input');
+        document.getElementById('searchInput').addEventListener('keyup', (e) => { if(e.key === 'Enter') executeSearch(); });
 
-        function setInput(text) {
-            userInput.value = text;
-            userInput.focus();
-        }
-
-        function clearChat() {
-            if(confirm('確定清除對話紀錄？')) {
-                chatBox.innerHTML = '';
-                addBotMessage('對話已清除。有什麼我可以幫您的嗎？');
-            }
-        }
-
-        function appendMessage(role, htmlContent) {
-            const div = document.createElement('div');
-            div.className = `message ${role}`;
-            div.innerHTML = `<div class="message-content">${htmlContent}</div>`;
-            chatBox.appendChild(div);
-            chatBox.scrollTop = chatBox.scrollHeight;
-            return div;
-        }
-
-        function addBotMessage(content) {
-            return appendMessage('bot', content);
-        }
-
-        function addUserMessage(content) {
-            return appendMessage('user', content);
-        }
-
-        function showTyping() {
-            const id = 'typing-' + Date.now();
-            const div = document.createElement('div');
-            div.className = 'message bot';
-            div.id = id;
-            div.innerHTML = `
-                <div class="message-content">
-                    <div class="typing-indicator"><span></span><span></span><span></span></div>
-                </div>`;
-            chatBox.appendChild(div);
-            chatBox.scrollTop = chatBox.scrollHeight;
-            return id;
-        }
-
-        function removeTyping(id) {
-            const el = document.getElementById(id);
-            if(el) el.remove();
-        }
-
-        async function handleSearch(e) {
-            e.preventDefault();
-            const query = userInput.value.trim();
+        // 搜尋功能 (資料庫改為 evidence)
+        async function executeSearch() {
+            const query = document.getElementById('searchInput').value.trim();
+            const container = document.getElementById('resultsArea');
+            const loader = document.getElementById('loading');
+            
             if(!query) return;
-
-            addUserMessage(query);
-            userInput.value = '';
             
-            const typingId = showTyping();
+            container.innerHTML = '';
+            loader.style.display = 'block';
 
             try {
-                // 模擬 AI 思考延遲
-                await new Promise(r => setTimeout(r, 600));
-
-                // 搜尋證據庫 (從 evidence 表)
-                const results = await searchRecords(query);
-                
-                removeTyping(typingId);
-
-                if (results.length === 0) {
-                    addBotMessage(`找不到與 "<strong>${query}</strong>" 相關的核定證據。<br>請嘗試其他關鍵字，或確認該案件是否已完成結案程序。`);
-                } else {
-                    let msg = `🔍 找到 <strong>${results.length}</strong> 筆相關證據：<br>`;
-                    results.forEach(r => {
-                        const companyName = r.workplaces?.companies?.name || '未知公司';
-                        const consultant = r.medical_staff?.name || '未知顧問';
-                        const date = r.visit_date || r.service_date || '未設定';
-                        // 嘗試解析摘要
-                        let summary = '無詳細說明';
-                        if (r.process_desc) {
-                             summary = r.process_desc.length > 30 ? r.process_desc.substring(0,30) + '...' : r.process_desc;
-                        } else if (r.execution_items) {
-                             summary = r.execution_items;
-                        }
-
-                        // 判斷是否特案
-                        const badge = r.is_special_case ? '<span class="badge bg-warning text-dark me-1">特案</span>' : '';
-
-                        msg += `
-                            <div class="evidence-card" onclick="openEvidence('${r.id}')">
-                                <div class="d-flex justify-content-between align-items-center mb-1">
-                                    <strong class="text-primary">${companyName}</strong>
-                                    <small class="text-muted">${date}</small>
-                                </div>
-                                <div class="small mb-1"><i class="fas fa-user-md me-1"></i>${consultant} ${badge}</div>
-                                <div class="text-secondary small text-truncate">${summary}</div>
-                            </div>
-                        `;
-                    });
-                    addBotMessage(msg);
-                }
-
-            } catch (err) {
-                console.error(err);
-                removeTyping(typingId);
-                addBotMessage('❌ 系統發生錯誤，請稍後再試。');
-            }
-        }
-
-        async function searchRecords(keyword) {
-            // 方案：先搜公司 ID
-            let companyIds = [];
-            if (keyword) {
-                const { data: comps } = await supabaseClient.from('companies').select('id').ilike('name', `%${keyword}%`);
-                if (comps) companyIds = comps.map(c => c.id);
-            }
-            
-            // 建立查詢 (target: evidence table)
-            let query = supabaseClient
-                .from('evidence') 
-                .select(`
-                    *,
-                    workplaces!inner (
-                        company_id,
-                        companies (name)
-                    ),
-                    medical_staff (name)
-                `)
-                .order('visit_date', { ascending: false })
-                .limit(10);
-
-            // 如果有關鍵字
-            if (keyword) {
-                query = query.or(`audit_note.ilike.%${keyword}%,execution_items.ilike.%${keyword}%`);
-            }
-
-            const { data, error } = await query;
-            
-            if (error) throw error;
-            
-            if (keyword && data) {
-                const lowerKey = keyword.toLowerCase();
-                return data.sort((a, b) => {
-                    const nameA = a.workplaces?.companies?.name || '';
-                    const nameB = b.workplaces?.companies?.name || '';
-                    const matchA = nameA.toLowerCase().includes(lowerKey);
-                    const matchB = nameB.toLowerCase().includes(lowerKey);
-                    return (matchB ? 1 : 0) - (matchA ? 1 : 0);
-                });
-            }
-
-            return data || [];
-        }
-
-        // 修改：調閱 evidence 詳細資料 (含 Paper Sheet 樣式)
-        async function openEvidence(id) {
-            const newWin = window.open('', '_blank');
-            if(!newWin) return alert('請允許開啟彈跳視窗');
-            
-            newWin.document.write('<div style="padding:20px;">載入中... <div class="spinner-border spinner-border-sm"></div></div>');
-
-            try {
-                const { data: rec, error } = await supabaseClient
+                // ★ 修正重點：改為查詢 evidence 資料表
+                const { data, error } = await supabaseClient
                     .from('evidence')
                     .select(`
-                        *,
+                        *, 
+                        medical_staff (name), 
                         workplaces (
-                            companies (name, tax_id, address)
-                        ),
-                        medical_staff (name, email)
+                            department_name, 
+                            companies(name, tax_id)
+                        )
                     `)
-                    .eq('id', id)
-                    .single();
+                    .order('visit_date', { ascending: false })
+                    .limit(50);
 
-                if (error) throw error;
+                if(error) throw error;
 
-                // 準備檔案連結
-                let attachmentsHtml = '<div class="alert alert-secondary">無附件</div>';
+                // 前端關鍵字過濾
+                const filtered = data.filter(r => {
+                    const historicalConsultantName = r.medical_staff?.name || '';
+                    const companyName = r.workplaces?.companies?.name || '';
+                    // raw_data 在 evidence 表可能不存在，改搜尋 execution_items 或 audit_note
+                    const searchTarget = `${companyName} ${r.service_year} ${historicalConsultantName} ${r.execution_items || ''} ${r.audit_note || ''}`.toLowerCase();
+                    return searchTarget.includes(query.toLowerCase());
+                });
 
-                // 1. 檢查 Evidence_Final PDF (位於 storage: evidence/{year}/{id}/Evidence_Final_*.pdf)
-                // ★ 修正：將 Bucket 從 service-records 改為 evidence
-                if (rec.service_year && rec.id) {
-                    const path = `${rec.service_year}/${rec.id}`;
-                    const { data: list } = await supabaseClient.storage.from('evidence').list(path);
-                    
-                    if (list && list.length > 0) {
-                        const pdfs = list.filter(f => f.name.startsWith('Evidence_Final') && f.name.endsWith('.pdf'));
-                        if (pdfs.length > 0) {
-                            // 取最新的
-                            pdfs.sort((a,b) => b.created_at.localeCompare(a.created_at));
-                            const lastPdf = pdfs[0];
-                            const { data: pubUrl } = supabaseClient.storage.from('evidence').getPublicUrl(`${path}/${lastPdf.name}`);
-                            
-                            attachmentsHtml = `
-                                <div class="card mb-3 border-success">
-                                    <div class="card-header bg-success text-white">
-                                        <i class="fas fa-file-pdf me-2"></i>正式結案證據 (Final Evidence)
-                                    </div>
-                                    <div class="card-body">
-                                        <iframe src="${pubUrl.publicUrl}#toolbar=0" style="width:100%; height:600px; border:none;"></iframe>
-                                    </div>
-                                    <div class="card-footer bg-white text-end">
-                                        <a href="${pubUrl.publicUrl}" target="_blank" class="btn btn-sm btn-success">
-                                            <i class="fas fa-download me-1"></i>下載 PDF
-                                        </a>
-                                    </div>
-                                </div>
-                            `;
-                        }
-                    }
+                loader.style.display = 'none';
+                
+                if(filtered.length === 0) {
+                    container.innerHTML = `<div class="text-center text-muted mt-4">查無資料</div>`;
+                    return;
                 }
 
-                const companyName = rec.workplaces?.companies?.name || '未知公司';
+                // 渲染結果卡片
+                container.innerHTML = filtered.map(rec => {
+                    const company = rec.workplaces?.companies?.name || '未知公司';
+                    const date = rec.visit_date || 'N/A';
+                    
+                    let displayConsultant = '未知顧問';
+                    if (rec.medical_staff && rec.medical_staff.name) {
+                        displayConsultant = rec.medical_staff.name; 
+                    }
 
-                // 產生 Paper Sheet 樣式 HTML
-                const finalHtml = `
-                    <!DOCTYPE html>
-                    <html lang="zh-TW">
-                    <head>
-                        <title>證據調閱: ${companyName}</title>
-                        <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-                        <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
-                        <style>
-                            body { background: #e9ecef; padding: 20px; font-family: 'Segoe UI', sans-serif; }
-                            .paper-sheet {
-                                background: white;
-                                max-width: 900px;
-                                margin: 0 auto;
-                                padding: 40px;
-                                box-shadow: 0 0 15px rgba(0,0,0,0.1);
-                                position: relative;
-                                overflow: hidden;
-                                min-height: 80vh;
-                            }
-                            .watermark {
-                                position: absolute;
-                                top: 50%;
-                                left: 50%;
-                                transform: translate(-50%, -50%) rotate(-30deg);
-                                font-size: 6rem;
-                                color: rgba(0,0,0,0.03);
-                                font-weight: bold;
-                                pointer-events: none;
-                                white-space: nowrap;
-                                user-select: none;
-                            }
-                        </style>
-                    </head>
-                    <body>
-                        <div class="paper-sheet">
-                            <div class="watermark">${companyName} 原始資料</div>
-                            
-                            <div class="border-bottom pb-3 mb-4 d-flex justify-content-between align-items-center">
+                    const dataStr = encodeURIComponent(JSON.stringify(rec));
+                    const compStr = encodeURIComponent(company);
+                    const consultStr = encodeURIComponent(displayConsultant);
+
+                    return `
+                        <div class="result-card" onclick="openFullPreview('${rec.id}', '${compStr}', '${dataStr}', '${consultStr}')">
+                            <div class="d-flex justify-content-between">
                                 <div>
-                                    <h4 class="fw-bold text-primary mb-1"><i class="fas fa-folder-open me-2"></i>原始佐證資料調閱</h4>
-                                    <span class="text-muted small">Evidence ID: ${rec.id}</span>
+                                    <span class="tag-year me-2">${rec.service_year}</span>
+                                    <span class="text-muted small">${date}</span>
+                                    <h4 class="result-title mt-1">${company}</h4>
                                 </div>
                                 <div class="text-end">
-                                    ${rec.is_special_case 
-                                        ? '<span class="badge bg-warning text-dark fs-6">特案允許結案</span>' 
-                                        : '<span class="badge bg-success fs-6">標準合規結案</span>'}
+                                    <span class="badge bg-secondary">${displayConsultant}</span>
+                                    ${rec.is_special_case ? '<span class="badge bg-warning text-dark ms-1">特案</span>' : ''}
                                 </div>
                             </div>
+                            <p class="text-muted mt-2 mb-0 text-truncate">點擊查看原始佐證檔案</p>
+                        </div>
+                    `;
+                }).join('');
 
-                            <div class="row g-3 mb-4">
-                                <div class="col-md-4">
-                                    <label class="text-muted small">事業單位</label>
-                                    <div class="fw-bold">${companyName}</div>
-                                </div>
-                                <div class="col-md-4">
-                                    <label class="text-muted small">執行顧問</label>
-                                    <div class="fw-bold">${rec.medical_staff?.name}</div>
-                                </div>
-                                <div class="col-md-4">
-                                    <label class="text-muted small">歸檔年度/日期</label>
-                                    <div class="fw-bold">${rec.service_year} / ${rec.visit_date}</div>
-                                </div>
-                                <div class="col-12">
-                                    <label class="text-muted small">執行事項摘要</label>
-                                    <div class="bg-light p-2 rounded border">${rec.execution_items || '無紀錄'}</div>
-                                </div>
-                                ${rec.audit_note ? `<div class="col-12"><label class="text-muted small">審核備註</label><div class="text-danger small">${rec.audit_note}</div></div>` : ''}
-                            </div>
+            } catch (err) {
+                loader.style.display = 'none';
+                console.error(err);
+                container.innerHTML = `<div class="alert alert-warning">資料讀取錯誤或連線異常: ${err.message}</div>`;
+            }
+        }
 
-                            <h5 class="fw-bold mb-3 border-start border-4 border-primary ps-2">佐證附件 (Evidence)</h5>
-                            ${attachmentsHtml}
+        // 開啟完整預覽 (修正版：Bucket 改為 evidence)
+        async function openFullPreview(recordId, compNameEncoded, dataEncoded, consultNameEncoded) {
+            const companyName = decodeURIComponent(compNameEncoded);
+            const recordData = JSON.parse(decodeURIComponent(dataEncoded));
+            
+            const container = document.getElementById('previewContainer');
+            
+            // 顯示 Loading
+            container.innerHTML = `<div class="text-white text-center mt-5"><div class="spinner-border"></div><p>正在連線至雲端硬碟調閱卷宗...</p></div>`;
+            new bootstrap.Modal(document.getElementById('previewModal')).show();
 
-                            <div class="text-center mt-5 text-muted small border-top pt-3">
-                                <i class="fas fa-shield-alt me-1"></i> OHSMS Secure Storage Access | Generated at ${new Date().toLocaleString()}
+            try {
+                // ★ 修正重點：路徑結構與 Bucket 名稱
+                // Index 2 上傳路徑為: `${year}/${id}/Evidence_Final_${timestamp}.pdf` 
+                // 我們這裡列出該資料夾下所有檔案
+                const storagePath = `${recordData.service_year}/${recordId}/`;
+                const { data: fileList } = await supabaseClient.storage.from('evidence').list(storagePath); // Bucket: evidence
+
+                if (fileList) {
+                    fileList.sort((a, b) => a.name.localeCompare(b.name));
+                }
+
+                let attachmentsHtml = '';
+                
+                if (fileList && fileList.length > 0) {
+                    // 產生 Signed URL
+                    const filesWithUrl = await Promise.all(fileList.map(async (f) => {
+                        const { data } = await supabaseClient.storage.from('evidence').createSignedUrl(`${storagePath}${f.name}`, 600);
+                        return { name: f.name, url: data?.signedUrl };
+                    }));
+
+                    // 渲染檔案列表
+                    attachmentsHtml = filesWithUrl.map(f => {
+                        if(!f.url) return '';
+                        
+                        // 判斷是否為結案證據 PDF
+                        const isEvidencePdf = f.name.startsWith('Evidence_Final');
+                        const displayName = isEvidencePdf ? '正式結案證據 (Final Evidence)' : f.name;
+
+                        const isImg = f.name.match(/\.(jpeg|jpg|png|gif)$/i);
+                        const isPdf = f.name.match(/\.pdf$/i);
+                        let content = '';
+
+                        if (isImg) {
+                            content = `<img src="${f.url}" class="attachment-img" alt="${f.name}">`;
+                        } else if (isPdf) {
+                            content = `<iframe src="${f.url}#toolbar=0" class="attachment-pdf-frame"></iframe>`;
+                        } else {
+                            content = `<div class="p-5 bg-light border text-muted">
+                                <i class="fas fa-file-alt fa-3x mb-3"></i><br>
+                                此格式無法線上預覽<br>
+                                <a href="${f.url}" target="_blank" class="btn btn-outline-primary btn-sm mt-3">下載檔案</a>
+                            </div>`;
+                        }
+
+                        return `
+                        <div class="attachment-item">
+                            <div class="file-header-badge"><i class="fas fa-file me-2"></i>${displayName}</div>
+                            ${content}
+                        </div>`;
+                    }).join('');
+                } else {
+                    attachmentsHtml = `
+                    <div class="alert alert-warning text-center p-5">
+                        <i class="fas fa-folder-open fa-3x mb-3"></i><br>
+                        <h5>查無檔案</h5>
+                        <p>雲端資料庫中找不到本案件的佐證附件。</p>
+                        <small class="text-muted">Bucket: evidence, Path: ${storagePath}</small>
+                    </div>`;
+                }
+
+                // 渲染單一 Paper Sheet
+                container.innerHTML = `
+                    <div class="paper-sheet">
+                        <div class="watermark">${companyName} 原始資料</div>
+                        
+                        <div class="border-bottom pb-3 mb-4">
+                            <h4 class="fw-bold text-primary"><i class="fas fa-folder-open me-2"></i>原始佐證資料調閱</h4>
+                            <div class="d-flex justify-content-between text-muted small mt-2">
+                                <span>事業單位：${companyName}</span>
+                                <span>歸檔年度：${recordData.service_year}</span>
+                                <span>訪視日期：${recordData.visit_date}</span>
                             </div>
                         </div>
-                    </body>
-                    </html>
+
+                        <div class="attachments-container">
+                            ${attachmentsHtml}
+                        </div>
+
+                        <div class="text-center mt-5 text-muted small border-top pt-3">
+                            <i class="fas fa-shield-alt me-1"></i> OHSMS Secure Storage Access
+                        </div>
+                    </div>
                 `;
-
-                newWin.document.open();
-                newWin.document.write(finalHtml);
-                newWin.document.close();
-
-            } catch(e) {
-                console.error(e);
-                newWin.document.body.innerHTML = `<div style="padding:20px; color:red;"><h3>調閱失敗</h3><p>${e.message}</p></div>`;
+            } catch (e) {
+                container.innerHTML = `<div class="alert alert-danger">讀取失敗: ${e.message}</div>`;
             }
         }
     </script>
