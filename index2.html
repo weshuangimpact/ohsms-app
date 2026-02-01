@@ -722,95 +722,120 @@ async function performFinalApproval() {
             const btn = document.getElementById('btn-confirm-approval');
 
             if (type === 'special' && !comment) {
-                return alert('【特案結案】必須填寫審核意見，以利後續稽核！');
+                return alert('【特案結案】必須填寫審核意見！');
             }
 
-            if (!confirm(`確定要執行「${type === 'special' ? '特案' : '標準'}」結案嗎？\n此動作將合併附件並寫入正式資料庫，無法復原。`)) return;
+            if (!confirm(`確定要執行「${type === 'special' ? '特案' : '標準'}」結案嗎？`)) return;
 
             const originalBtnText = btn.innerText;
             btn.disabled = true;
-            btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> 證據保全處理中...';
+            btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> 處理中...';
 
             try {
-                const record = currentStagingData.find(r => r.id === id);
-                const fileSourceId = record.id;
+                // 1. 【關鍵修正】不讀取快取，直接從資料庫抓最新、最乾淨的 attachment_files
+                const { data: freshRecord, error: fetchError } = await supabaseClient
+                    .from('service_record_staging')
+                    .select('*')
+                    .eq('id', id)
+                    .single();
 
-                const { data: files, error: listError } = await supabaseClient.storage.from('staging').list(fileSourceId);
-                if (listError) throw listError;
+                if (fetchError || !freshRecord) throw new Error("讀取資料失敗，請重試");
 
-                const pdfUrls = [];
-                for (const f of files) {
-                    if (f.name.toLowerCase().endsWith('.pdf')) {
-                        const { data } = supabaseClient.storage.from('staging').getPublicUrl(`${fileSourceId}/${f.name}`);
-                        pdfUrls.push(data.publicUrl);
+                const fileSourceId = freshRecord.id;
+                
+                // 2. 解析附件並「篩選出超連結」 (Generate Hyperlinks)
+                let rawFiles = freshRecord.attachment_files;
+                if (typeof rawFiles === 'string') {
+                    try { rawFiles = JSON.parse(rawFiles); } catch(e) { rawFiles = []; }
+                }
+                if (!Array.isArray(rawFiles)) rawFiles = [];
+
+                // 準備要寫入 additional_appendices 的陣列
+                const hyperlinksArray = [];
+                const pdfUrlsForMerge = []; // 給合併 PDF 用的
+
+                for (const f of rawFiles) {
+                    // 取得 Staging Bucket 的公開連結
+                    const fullPath = f.path.includes('/') ? f.path : `${fileSourceId}/${f.path}`;
+                    const { data } = supabaseClient.storage.from('staging').getPublicUrl(fullPath);
+                    
+                    if (data && data.publicUrl) {
+                        // A. 這是您要的：篩選出超連結，準備寫入 DB
+                        hyperlinksArray.push({
+                            name: f.name,
+                            url: data.publicUrl
+                        });
+
+                        // B. 另外收集 PDF 連結給合併程式用
+                        if (f.name.toLowerCase().endsWith('.pdf')) {
+                            pdfUrlsForMerge.push(data.publicUrl);
+                        }
                     }
                 }
-                pdfUrls.sort();
 
+                // 3. 處理 PDF 合併 (維持原功能)
                 let finalPdfBlob = null;
-                if (pdfUrls.length > 0) {
+                if (pdfUrlsForMerge.length > 0) {
                     const mergedPdf = await PDFDocument.create();
-                    for (const url of pdfUrls) {
-                        const res = await fetch(url);
-                        const pdfBytes = await res.arrayBuffer();
-                        const pdf = await PDFDocument.load(pdfBytes);
-                        const copiedPages = await mergedPdf.copyPages(pdf, pdf.getPageIndices());
-                        copiedPages.forEach((page) => mergedPdf.addPage(page));
+                    for (const url of pdfUrlsForMerge) {
+                        try {
+                            const res = await fetch(url);
+                            const pdfBytes = await res.arrayBuffer();
+                            const pdf = await PDFDocument.load(pdfBytes);
+                            const copiedPages = await mergedPdf.copyPages(pdf, pdf.getPageIndices());
+                            copiedPages.forEach((page) => mergedPdf.addPage(page));
+                        } catch (err) { console.error("PDF Merge Skipped", err); }
                     }
                     const mergedBytes = await mergedPdf.save();
                     finalPdfBlob = new Blob([mergedBytes], { type: 'application/pdf' });
                 }
 
-                const year = record.service_year || new Date().getFullYear();
+                // 4. 上傳合併後的 PDF 到 Evidence Bucket
+                const year = freshRecord.service_year || new Date().getFullYear();
                 const timestamp = Date.now();
                 const targetPath = `${year}/${id}/Evidence_Final_${timestamp}.pdf`; 
-
                 let evidenceFileUrl = null;
+
                 if (finalPdfBlob) {
                     const { error: uploadError } = await supabaseClient.storage
                         .from('evidence')
                         .upload(targetPath, finalPdfBlob, { upsert: true });
-                    
                     if (uploadError) throw new Error("證據檔案上傳失敗: " + uploadError.message);
                     evidenceFileUrl = targetPath;
                 }
 
-                const { error: updateError } = await supabaseClient
-                    .from('service_record_staging')
-                    .update({ 
-                        status: 'approved',
-                        reviewer_comment: comment,
-                        is_special_case: (type === 'special'),
-                        audit_note: comment
-                    })
-                    .eq('id', id);
-                if (updateError) throw updateError;
+                // 5. 更新 Staging 狀態
+                await supabaseClient.from('service_record_staging').update({ 
+                    status: 'approved',
+                    reviewer_comment: comment,
+                    is_special_case: (type === 'special'),
+                    audit_note: comment
+                }).eq('id', id);
 
-                // 結案寫入 'evidence' 表
+                // 6. 【寫入資料庫】 將剛剛產生的 hyperlinksArray 寫入 additional_appendices
                 const { error: insertError } = await supabaseClient
                     .from('evidence')
                     .insert({
-                        workplace_id: record.workplace_id,
-                        visit_date: record.visit_date,
+                        workplace_id: freshRecord.workplace_id,
+                        visit_date: freshRecord.visit_date,
                         service_year: year,
-                        consultant_id: record.consultant_id,
+                        consultant_id: freshRecord.consultant_id,
                         is_special_case: (type === 'special'),
                         audit_note: comment,
                         attachment_folder_id: fileSourceId,
-                        file_url: evidenceFileUrl,
-                        additional_appendices: record.attachment_files // ★ 將 staging 的 attachment_files 直接寫入 evidence 的 additional_appendices
+                        file_url: evidenceFileUrl, // 這是合併的大檔
+                        additional_appendices: hyperlinksArray // ★ 這裡就是你要的超連結陣列
                     });
                 
                 if (insertError) throw new Error("寫入正式資料庫失敗: " + insertError.message);
 
-                alert('✅ 結案成功！\n評鑑證據已封存至正式資料庫。');
-                
+                alert('✅ 結案成功！');
                 bootstrap.Modal.getInstance(document.getElementById('approvalModal')).hide();
                 refreshData(); 
 
             } catch (e) {
                 console.error(e);
-                alert('❌ 結案失敗: ' + e.message);
+                alert('❌ 錯誤: ' + e.message);
             } finally {
                 btn.disabled = false;
                 btn.innerText = originalBtnText;
