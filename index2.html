@@ -442,7 +442,7 @@
             const tbody = document.getElementById('pendingTableBody');
             
             try {
-                // 修改 1: 讀取 'evidence' 表而非 'service_records' 來計算已核定數量
+                // 讀取 'evidence' 表而非 'service_records' 來計算已核定數量
                 const { count: approvedCount, error: err1 } = await supabaseClient
                     .from('evidence')
                     .select('*', { count: 'exact', head: true })
@@ -767,8 +767,9 @@
                 const targetPath = `${year}/${id}/Evidence_Final_${timestamp}.pdf`; 
 
                 if (finalPdfBlob) {
+                    // ★ 修正：將上傳目標改為 'evidence' Bucket
                     const { error: uploadError } = await supabaseClient.storage
-                        .from('service-records')
+                        .from('evidence')
                         .upload(targetPath, finalPdfBlob, { upsert: true });
                     
                     if (uploadError) throw new Error("證據檔案上傳失敗: " + uploadError.message);
@@ -785,7 +786,7 @@
                     .eq('id', id);
                 if (updateError) throw updateError;
 
-                // 修改 2: 結案寫入 'evidence' 表而非 'service_records'
+                // 結案寫入 'evidence' 表
                 const { error: insertError } = await supabaseClient
                     .from('evidence')
                     .insert({
