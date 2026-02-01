@@ -10,94 +10,20 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 
     <style>
-        /* =========================================
-           1. 統一頁首/頁尾 CSS 設定 (內頁專用 / 高度統一版)
-           ========================================= */
-        html, body {
-            height: 100%;
-        }
-
-        body {
-            display: none; /* 權限驗證前先隱藏，JS 載入後改為 flex */
-            flex-direction: column;
-            min-height: 100vh;
-            background-color: #f8f9fa; /* 預設背景色 */
-            font-family: 'Segoe UI', 'Microsoft JhengHei', sans-serif;
-        }
-
-        /* 內容區塊自動撐開 */
-        .container, .main-content, .container-fluid {
-            flex: 1; 
-        }
-
-        /* 頁首設定 */
-        .navbar {
-            background-color: #202124 !important;
-            min-height: 85px; /* [修正] 統一高度為 85px */
-            color: #fff;
-            flex-shrink: 0;
-        }
-
-        /* 頁尾設定 */
-        footer {
-            background-color: #202124 !important;
-            color: #fff;
-            flex-shrink: 0;
-            font-size: 0.9rem;
-            letter-spacing: 0.5px;
-            display: flex;
-            flex-direction: column; /* 垂直排列 */
-            align-items: center;
-            justify-content: center;
-            margin-top: auto;
-            padding: 15px 0;
-            min-height: 85px; /* 雙行高度 */
-        }
-
-        /* =========================================
-           2. 統一標題與字卡 CSS 設定 (Data Purple)
-           ========================================= */
-        :root { 
-            --primary-bg: #f4f6f9; 
-            --theme-color: #4f46e5; /* Data Mgmt 階段的主題紫色 */
-        }
-
-        /* PDCA/5W1H 字卡 (白色區塊) 設定 */
-        .instruction-box {
-            background-color: #fff;              /* 白色背景 */
-            border-left: 5px solid var(--theme-color); /* 左側主題色飾條 */
-            padding: 20px 25px;                  /* 內距 */
-            border-radius: 4px;                  /* 圓角 */
-            margin-bottom: 30px;                 /* 下方留白 */
-            box-shadow: 0 2px 5px rgba(0,0,0,0.05); /* 輕微陰影 */
-            width: 100%;
-            text-align: left;
-        }
-
-        /* 字卡標題設定 */
-        .instruction-title {
-            color: var(--theme-color);           /* 字體顏色跟隨主題色 */
-            font-weight: 700;                    /* 粗體 */
-            margin-bottom: 10px;                 /* 與內文的間距 */
-            font-size: 1.1rem;
-        }
-
-        /* =========================================
-           3. 既有功能 UI 設定 (保留表格、分頁與匯入區塊樣式)
-           ========================================= */
+        :root { --primary-bg: #f4f6f9; --theme-color: #4f46e5; }
+        body { background-color: var(--primary-bg); font-family: 'Segoe UI', 'Microsoft JhengHei', sans-serif; display: none; }
+        
+        .section-title { border-left: 5px solid var(--theme-color); padding-left: 15px; margin-bottom: 20px; }
         .card-header { background-color: white; border-bottom: 1px solid #f0f0f0; }
         .table th { font-weight: 600; color: #555; background-color: #f8f9fa; white-space: nowrap; }
         .table td { vertical-align: middle; }
-        
         .nav-pills .nav-link { color: #555; font-weight: 600; }
         .nav-pills .nav-link.active { background-color: var(--theme-color); color: white; }
-        
         .import-area { border: 2px dashed #cbd5e1; border-radius: 8px; padding: 20px; text-align: center; background: #fff; transition: all 0.3s; cursor: pointer; }
         .import-area:hover { border-color: var(--theme-color); background: #eef2ff; }
     </style>
 
     <script>
-        // 權限檢查 (保留原有邏輯：顧問不可進入)
         document.addEventListener('DOMContentLoaded', function() {
             const role = sessionStorage.getItem('currentUserRole');
             if (role === 'consultant') {
@@ -105,58 +31,32 @@
                 window.location.href = 'dashboard.html';
                 return;
             }
-            // 權限通過後顯示 (配合 Flex 佈局)
-            document.body.style.display = 'flex'; 
+            document.body.style.display = 'block';
         });
     </script>
 </head>
 <body>
 
-    <nav class="navbar navbar-expand-lg navbar-dark px-4">
-        <div class="container-fluid d-flex justify-content-between align-items-center p-0">
-            <a class="navbar-brand d-flex align-items-center fw-bold" href="dashboard.html">
-                <i class="fas fa-shield-alt me-2"></i>
-                OHSMS 職安管理系統
-            </a>
-
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark py-3 mb-4">
+        <div class="container-fluid px-4">
+            <a class="navbar-brand fw-bold" href="dashboard.html"><i class="fas fa-shield-alt me-2"></i>OHSMS</a>
             <div class="d-flex align-items-center">
-                <span class="text-white me-3 small" id="header-date">
-                    <i class="fas fa-spinner fa-spin"></i>
-                </span>
-                
-                <span class="text-white me-4 small border-start ps-3 border-secondary" id="header-clock" style="opacity: 0.9;">
-                    --:--
-                </span>
-                
-                <span class="text-white me-4 fw-bold" id="header-user">
-                    Hi! 使用者
-                </span>
-                
-                <a class="btn btn-outline-light btn-sm me-2" href="dashboard.html">
-                    <i class="fas fa-reply me-1"></i>回到儀表板
-                </a>
-                
-                <button class="btn btn-outline-light btn-sm" onclick="logoutSystem()">
-                    <i class="fas fa-sign-out-alt me-1"></i>登出
-                </button>
+                <span class="text-light small me-3">系統管理後台</span>
+                <a href="dashboard.html" class="btn btn-outline-light btn-sm"><i class="fas fa-arrow-left me-1"></i> 返回儀表板</a>
             </div>
         </div>
     </nav>
 
-    <div class="container-fluid px-4 pb-5 mt-4 main-content">
+    <div class="container-fluid px-4 pb-5">
         
-        <div class="mb-4">
-            <h2 class="fw-bold text-dark mb-1">基本資料建立</h2>
-            <p class="text-secondary">Data Mgmt 階段：系統基礎資料維護與批次管理</p>
-        </div>
-
-        <div class="instruction-box">
-            <div class="instruction-title">
-                <i class="fas fa-cubes me-2"></i>5W1H 設計理念：Data (資料) —— 結構化與關聯性
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <div>
+                <h4 class="fw-bold text-dark"><i class="fas fa-database me-2 text-primary"></i>基本資料建立</h4>
+                <p class="text-muted mb-0 small">
+                    <span class="badge bg-primary bg-opacity-10 text-primary me-2">5W1H 設計精神</span>
+                    透過系統化連結 <strong>顧問(Who)</strong>、<strong>時間(When)</strong>、<strong>場所(Where)</strong> 與 <strong>事項(What)</strong>，確保服務歷程具備 <strong>完整可追溯性(How)</strong> 與 <strong>法規依據(Why)</strong>。
+                </p>
             </div>
-            <p class="mb-0 text-dark" style="line-height: 1.6;">
-                透過系統化連結顧問(Who)、時間(When)、場所(Where)與事項(What)，確保服務歷程具備完整可追溯性(How) 與法規依據(Why)。此模組為所有服務紀錄的基礎，確保資料的一致性與正確性。
-            </p>
         </div>
 
         <ul class="nav nav-pills mb-4" id="pills-tab" role="tablist">
@@ -167,7 +67,7 @@
                 <button class="nav-link" id="pills-staff-tab" data-bs-toggle="pill" data-bs-target="#pills-staff" type="button" role="tab">2. 醫護/顧問名單</button>
             </li>
             <li class="nav-item" role="presentation">
-                <button class="nav-link" id="pills-record-tab" data-bs-toggle="pill" data-bs-target="#pills-record" type="button" role="tab">3. 服務執行歷程 (母案)</button>
+                <button class="nav-link" id="pills-record-tab" data-bs-toggle="pill" data-bs-target="#pills-record" type="button" role="tab">3. 服務執行歷程</button>
             </li>
         </ul>
 
@@ -306,7 +206,7 @@
                     <div class="col-lg-8">
                         <div class="card border-0 shadow-sm h-100">
                             <div class="card-header py-3 d-flex justify-content-between align-items-center">
-                                <h6 class="fw-bold mb-0 text-dark"><i class="fas fa-history me-2 text-warning"></i>服務歷程母案 (Service Plans)</h6>
+                                <h6 class="fw-bold mb-0 text-dark"><i class="fas fa-history me-2 text-warning"></i>服務歷程 (Service Records)</h6>
                                 <div class="input-group input-group-sm w-auto">
                                     <input type="text" class="form-control" placeholder="搜尋公司或顧問..." id="search-record">
                                     <button class="btn btn-outline-secondary" onclick="loadRecords()"><i class="fas fa-search"></i></button>
@@ -317,10 +217,10 @@
                                     <table class="table table-hover mb-0">
                                         <thead class="table-light sticky-top">
                                             <tr>
-                                                <th>建立日期</th>
+                                                <th>日期</th>
                                                 <th>客戶公司</th>
                                                 <th>負責顧問</th>
-                                                <th>預定執行事項</th>
+                                                <th>起訖時間</th>
                                                 <th class="text-end">操作</th>
                                             </tr>
                                         </thead>
@@ -336,12 +236,12 @@
                     <div class="col-lg-4">
                         <div class="d-grid gap-2 mb-4">
                             <button class="btn btn-warning fw-bold py-2 text-dark" onclick="openRecordModal()">
-                                <i class="fas fa-plus me-2"></i>新增母案計畫
+                                <i class="fas fa-plus me-2"></i>新增服務歷程
                             </button>
                         </div>
 
                         <div class="card border-0 shadow-sm mb-4">
-                            <div class="card-header bg-white fw-bold"><i class="fas fa-file-import me-2"></i>批次匯入計畫</div>
+                            <div class="card-header bg-white fw-bold"><i class="fas fa-file-import me-2"></i>批次匯入歷程</div>
                             <div class="card-body">
                                 <div class="import-area" onclick="document.getElementById('file-record').click()">
                                     <i class="fas fa-cloud-upload-alt fa-2x text-muted mb-2"></i>
@@ -349,7 +249,7 @@
                                     <input type="file" id="file-record" hidden accept=".csv, .xlsx, .xls" onchange="handleFileSelect(this, 'record')">
                                 </div>
                                 <div class="mt-2 text-end">
-                                    <small class="text-muted d-block mb-1"><i class="fas fa-info-circle"></i> 僅需建立母案基本資料</small>
+                                    <small class="text-muted d-block mb-1"><i class="fas fa-info-circle"></i> 匯入僅需日期與事項，時間請手動補登</small>
                                     <a href="#" class="small text-decoration-none" onclick="downloadTemplate('record')"><i class="fas fa-download me-1"></i>下載範本</a>
                                 </div>
                             </div>
@@ -357,9 +257,9 @@
                         
                          <div class="card border-0 shadow-sm bg-light">
                             <div class="card-body">
-                                <h6 class="fw-bold text-muted small">計畫統計</h6>
+                                <h6 class="fw-bold text-muted small">歷程統計</h6>
                                 <div class="d-flex justify-content-between mb-1">
-                                    <span>總服務母案：</span>
+                                    <span>總服務場次：</span>
                                     <strong id="stat-record-count">0</strong>
                                 </div>
                             </div>
@@ -504,7 +404,7 @@
         <div class="modal-dialog">
             <div class="modal-content">
                 <div class="modal-header bg-warning text-dark">
-                    <h5 class="modal-title" id="recordModalTitle">新增服務母案 (計畫)</h5>
+                    <h5 class="modal-title" id="recordModalTitle">新增服務歷程</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                 </div>
                 <div class="modal-body">
@@ -519,24 +419,35 @@
                             <div class="form-text small">系統將自動對應至該公司的作業場所 (Workplace)</div>
                         </div>
 
-                        <div class="mb-3">
-                            <label class="form-label fw-bold small">負責顧問 *</label>
-                            <select class="form-select" id="record-consultant" required>
-                                <option value="">載入中...</option>
-                            </select>
+                        <div class="row g-3 mb-3">
+                            <div class="col-md-6">
+                                <label class="form-label fw-bold small">負責顧問 *</label>
+                                <select class="form-select" id="record-consultant" required>
+                                    <option value="">載入中...</option>
+                                </select>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label fw-bold small">服務日期 *</label>
+                                <input type="date" class="form-control" id="record-date" required>
+                            </div>
                         </div>
 
-                        <div class="mb-3">
-                            <label class="form-label fw-bold small">執行事項 (Service Type) *</label>
-                            <select class="form-select" id="record-item-select" onchange="toggleOtherItem()">
-                                <option value="勞工身心健康管理">勞工身心健康管理</option>
-                                <option value="職業病預防">職業病預防</option>
-                                <option value="臨場健康服務">臨場健康服務</option>
-                                <option value="健康促進規劃">健康促進規劃</option>
-                                <option value="other">其他 (可填寫)</option>
-                            </select>
-                            <input type="text" class="form-control mt-2" id="record-item-other" style="display:none;" placeholder="請輸入其他事項">
+                        <div class="row g-3 mb-3">
+                            <div class="col-md-6">
+                                <label class="form-label fw-bold small">開始時間</label>
+                                <input type="time" class="form-control" id="record-start">
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label fw-bold small">結束時間</label>
+                                <input type="time" class="form-control" id="record-end">
+                            </div>
                         </div>
+                        
+                        <div class="mb-3">
+                            <label class="form-label fw-bold small">執行事項 (選填)</label>
+                            <input type="text" class="form-control" id="record-items" placeholder="例如：噪音檢測、法規諮詢...">
+                        </div>
+
                     </form>
                 </div>
                 <div class="modal-footer justify-content-between">
@@ -545,7 +456,7 @@
                     </button>
                     <div>
                         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
-                        <button type="button" class="btn btn-warning text-dark" onclick="saveRecord()">儲存母案</button>
+                        <button type="button" class="btn btn-warning text-dark" onclick="saveRecord()">儲存</button>
                     </div>
                 </div>
             </div>
@@ -574,62 +485,19 @@
         </div>
     </div>
 
-    <footer>
-        <div class="mb-1">可信智慧整合有限公司 42917004</div>
-        <div class="small opacity-75" style="font-family: 'Segoe UI', sans-serif; letter-spacing: 1px;">
-            WesmartAI , Making Trust Transparent.
-        </div>
-    </footer>
-
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
     <script>
-        // ==========================================
-        // 統一頁首與系統初始化邏輯 (合併原有的 DOMContentLoaded)
-        // ==========================================
-        document.addEventListener('DOMContentLoaded', function() {
-            // 1. 啟動時鐘
-            setInterval(() => {
-                const now = new Date();
-                const clockEl = document.getElementById('header-clock');
-                if(clockEl) clockEl.textContent = now.toLocaleTimeString('zh-TW', { hour12: false });
-            }, 1000);
-
-            // 2. 設定日期
-            const dateEl = document.getElementById('header-date');
-            if(dateEl) {
-                const now = new Date();
-                const days = ['日', '一', '二', '三', '四', '五', '六'];
-                const formattedDate = `${now.getFullYear()}/${now.getMonth() + 1}/${now.getDate()}(${days[now.getDay()]})`;
-                dateEl.innerHTML = `<i class="far fa-calendar-alt me-1"></i>今日是 ${formattedDate}`;
-            }
-
-            // 3. 讀取使用者名稱
-            const userName = sessionStorage.getItem('currentUserName');
-            const userEl = document.getElementById('header-user');
-            if(userEl && userName) userEl.innerText = `Hi! ${userName}`;
-
-            // 4. 執行頁面初始化載入 (原有的邏輯)
-            loadCompanies();
-            loadStaff();
-            loadRecords(); 
-        });
-
-        // 統一登出功能
-        function logoutSystem() {
-            if(confirm('確定要登出系統嗎？')) {
-                sessionStorage.clear();
-                window.location.href = 'login.html';
-            }
-        }
-
-        // ==========================================
-        // 原有功能邏輯 (Supabase 連線與操作，保持不變)
-        // ==========================================
         const SUPABASE_URL = 'https://yhehfucgemxnfrdvpdhw.supabase.co';
         const SUPABASE_KEY = 'sb_publishable_52emtU-9l-SDxcJTWVTPTA_Yu6qEogh';
         const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+        document.addEventListener('DOMContentLoaded', () => {
+            loadCompanies();
+            loadStaff();
+            loadRecords(); // 載入歷程
+        });
 
         // ==========================================
         // 1. 公司主檔邏輯
@@ -722,6 +590,7 @@
             if(id) {
                 ({ error } = await supabaseClient.from('companies').update(payload).eq('id', id));
             } else {
+                // 自動建立 Workplace 邏輯
                 payload.created_by = sessionStorage.getItem('currentUserId');
                 const { data, error: insertError } = await supabaseClient.from('companies').insert(payload).select('id').single();
                 error = insertError;
@@ -776,7 +645,13 @@
                 return;
             }
             
-            const roleMap = { 'consultant': '顧問', 'admin': '管理員', 'doc_control': '文管人員', 'medical': '醫護人員' };
+            // 中文顯示對照
+            const roleMap = {
+                'consultant': '顧問',
+                'admin': '管理員',
+                'doc_control': '文管人員',
+                'medical': '醫護人員'
+            };
 
             tbody.innerHTML = data.map(s => `
                 <tr>
@@ -860,16 +735,17 @@
         }
         
         // ==========================================
-        // 3. 服務執行歷程 (母案) 邏輯
+        // 3. 服務執行歷程邏輯
         // ==========================================
         async function loadRecords() {
             const tbody = document.getElementById('recordTableBody');
             const search = document.getElementById('search-record').value.trim();
             tbody.innerHTML = '<tr><td colspan="5" class="text-center py-4"><div class="spinner-border spinner-border-sm text-warning"></div></td></tr>';
 
+            // 關聯查詢
             let query = supabaseClient.from('service_records')
                 .select(`
-                    id, visit_date, execution_items, service_year,
+                    id, visit_date, start_time, end_time, service_year,
                     workplaces (
                         id, companies ( name )
                     ),
@@ -884,6 +760,7 @@
                 return;
             }
             
+            // 前端過濾
             let filteredData = data;
             if (search) {
                 const s = search.toLowerCase();
@@ -904,15 +781,14 @@
             tbody.innerHTML = filteredData.map(r => {
                 const compName = r.workplaces?.companies?.name || '<span class="text-muted">未知公司</span>';
                 const staffName = r.medical_staff?.name || '<span class="text-muted">未知顧問</span>';
-                const items = r.execution_items || '-';
-                const displayDate = r.visit_date || '-';
+                const timeStr = (r.start_time && r.end_time) ? `${r.start_time.slice(0,5)} ~ ${r.end_time.slice(0,5)}` : '-';
                 
                 return `
                 <tr>
-                    <td class="font-monospace">${displayDate}</td>
+                    <td class="font-monospace">${r.visit_date}</td>
                     <td class="fw-bold">${compName}</td>
                     <td>${staffName}</td>
-                    <td class="small text-truncate" style="max-width:200px;">${items}</td>
+                    <td class="small">${timeStr}</td>
                     <td class="text-end">
                         <button class="btn btn-sm btn-outline-primary" onclick="editRecord('${r.id}')"><i class="fas fa-edit"></i></button>
                     </td>
@@ -925,12 +801,8 @@
 
             document.getElementById('recordForm').reset();
             document.getElementById('record-id').value = '';
-            document.getElementById('recordModalTitle').innerText = '新增服務母案 (計畫)';
-            document.getElementById('btn-delete-record').style.display = 'none'; 
-            
-            document.getElementById('record-item-select').value = "勞工身心健康管理";
-            toggleOtherItem();
-
+            document.getElementById('recordModalTitle').innerText = '新增服務歷程';
+            document.getElementById('btn-delete-record').style.display = 'none'; // 新增模式隱藏刪除
             new bootstrap.Modal(document.getElementById('recordModal')).show();
         }
 
@@ -938,9 +810,11 @@
              const coSelect = document.getElementById('record-company');
              const staffSelect = document.getElementById('record-consultant');
              
+             // 讀取公司
              const { data: companies } = await supabaseClient.from('companies').select('id, name').eq('is_active', true).order('name');
              coSelect.innerHTML = '<option value="">請選擇...</option>' + companies.map(c => `<option value="${c.id}">${c.name}</option>`).join('');
  
+             // 讀取顧問
              const { data: staffs } = await supabaseClient.from('medical_staff').select('id, name').eq('is_active', true).order('name');
              staffSelect.innerHTML = '<option value="">請選擇...</option>' + staffs.map(s => `<option value="${s.id}">${s.name}</option>`).join('');
         }
@@ -948,6 +822,7 @@
         async function editRecord(id) {
             await loadDropdowns(); 
 
+            // 抓取資料 (包含關聯的 workplace -> company_id)
             const { data, error } = await supabaseClient
                 .from('service_records')
                 .select('*, workplaces(company_id)')
@@ -958,80 +833,55 @@
 
             document.getElementById('record-id').value = data.id;
             
+            // 回填公司 (透過 workplace 反查)
             if (data.workplaces && data.workplaces.company_id) {
                 document.getElementById('record-company').value = data.workplaces.company_id;
             }
 
             document.getElementById('record-consultant').value = data.consultant_id;
-            
-            const dbItem = data.execution_items || '';
-            const selectEl = document.getElementById('record-item-select');
-            const otherEl = document.getElementById('record-item-other');
-            
-            const options = Array.from(selectEl.options).map(o => o.value);
-            if (options.includes(dbItem) && dbItem !== 'other') {
-                selectEl.value = dbItem;
-                otherEl.value = '';
-            } else {
-                selectEl.value = 'other';
-                otherEl.value = dbItem;
-            }
-            toggleOtherItem();
+            document.getElementById('record-date').value = data.visit_date;
+            document.getElementById('record-start').value = data.start_time || '';
+            document.getElementById('record-end').value = data.end_time || '';
+            document.getElementById('record-items').value = data.execution_items || '';
 
-            document.getElementById('recordModalTitle').innerText = '編輯服務母案';
-            document.getElementById('btn-delete-record').style.display = 'block'; 
+            document.getElementById('recordModalTitle').innerText = '編輯服務歷程';
+            document.getElementById('btn-delete-record').style.display = 'block'; // 編輯模式顯示刪除
             new bootstrap.Modal(document.getElementById('recordModal')).show();
-        }
-
-        function toggleOtherItem() {
-            const select = document.getElementById('record-item-select');
-            const otherInput = document.getElementById('record-item-other');
-            if(select.value === 'other') {
-                otherInput.style.display = 'block';
-            } else {
-                otherInput.style.display = 'none';
-            }
         }
 
         async function saveRecord() {
             const id = document.getElementById('record-id').value;
             const companyId = document.getElementById('record-company').value;
             const consultantId = document.getElementById('record-consultant').value;
-            
-            let items = document.getElementById('record-item-select').value;
-            if(items === 'other') {
-                items = document.getElementById('record-item-other').value.trim();
-                if(!items) return alert('請填寫其他事項內容');
-            }
+            const visitDate = document.getElementById('record-date').value;
+            const startTime = document.getElementById('record-start').value || null;
+            const endTime = document.getElementById('record-end').value || null;
+            const items = document.getElementById('record-items').value || null;
 
-            if(!companyId || !consultantId) return alert('公司與顧問為必填');
+            if(!companyId || !consultantId || !visitDate) return alert('公司、顧問與日期為必填');
 
+            // 取得 workplaceId
             const { data: wpData, error: wpError } = await supabaseClient.from('workplaces').select('id').eq('company_id', companyId).limit(1);
             
             if (wpError || !wpData || wpData.length === 0) {
                 return alert('錯誤：該公司尚未建立作業場所 (Workplace)。請先至公司資料建立場所。');
             }
             const workplaceId = wpData[0].id;
-            
-            const today = new Date();
-            const visitDate = today.toISOString().split('T')[0];
-            const year = today.getFullYear();
+            const year = new Date(visitDate).getFullYear();
 
             const payload = {
                 workplace_id: workplaceId,
-                visit_date: visitDate, 
+                visit_date: visitDate,
                 service_year: year,
                 consultant_id: consultantId,
-                start_time: null, 
-                end_time: null,   
+                start_time: startTime,
+                end_time: endTime,
                 execution_items: items,
                 updated_by: sessionStorage.getItem('currentUserId')
             };
 
             let error;
             if (id) {
-                delete payload.visit_date; 
-                delete payload.service_year;
                 ({ error } = await supabaseClient.from('service_records').update(payload).eq('id', id));
             } else {
                 payload.created_by = sessionStorage.getItem('currentUserId');
@@ -1050,7 +900,7 @@
             const id = document.getElementById('record-id').value;
             if(!id) return;
 
-            if(!confirm('確定要刪除此筆服務母案嗎？此動作無法復原。')) return;
+            if(!confirm('確定要刪除此筆服務紀錄嗎？此動作無法復原。')) return;
 
             const { error } = await supabaseClient.from('service_records').delete().eq('id', id);
 
@@ -1064,7 +914,7 @@
 
 
         // ==========================================
-        // 4. 匯入功能 (Excel Import)
+        // 4. 匯入功能 (Excel Import) - 修正版
         // ==========================================
         let pendingImportData = [];
         let pendingImportType = '';
@@ -1078,8 +928,9 @@
                 csvContent += "姓名,身分角色(醫師/護理人員/顧問),職務型態(全職/兼職),電話,Email,入職日期(YYYY-MM-DD)\n";
                 csvContent += "李小美,護理人員,全職,0987654321,nurse@test.com,2024-05-20";
             } else if (type === 'record') {
-                csvContent += "公司名稱,顧問姓名,執行事項\n";
-                csvContent += "範例公司,王顧問,噪音檢測";
+                // 移除時間欄位
+                csvContent += "公司名稱,顧問姓名,服務日期(YYYY-MM-DD),執行事項\n";
+                csvContent += "範例公司,王顧問,2025-06-15,噪音檢測";
             }
             const encodedUri = encodeURI(csvContent);
             const link = document.createElement("a");
@@ -1108,7 +959,7 @@
             reader.readAsArrayBuffer(file);
         }
 
-        async function parseAndImportData(rows, type) {
+async function parseAndImportData(rows, type) {
             pendingImportType = type;
             pendingImportData = []; // 清空待匯入陣列
             const previewArea = document.getElementById('import-preview-area');
@@ -1154,16 +1005,20 @@
                     });
 
                 } else if (type === 'record') {
-                    html += '<th>公司名稱</th><th>顧問姓名</th><th>執行事項</th><th>對應狀態</th></tr></thead><tbody>';
+                    // ★ 修正重點：歷程匯入邏輯
+                    html += '<th>公司名稱</th><th>顧問姓名</th><th>服務日期</th><th>對應狀態</th></tr></thead><tbody>';
                     
                     previewArea.innerHTML = '<div class="text-center p-3"><span class="spinner-border text-primary"></span> 正在核對公司與顧問資料庫...</div>';
                     
+                    // 1. 抓取所有公司 (含 Workplace ID) 與 顧問
                     const { data: allCompanies } = await supabaseClient.from('companies').select('id, name, workplaces(id)');
                     const { data: allStaff } = await supabaseClient.from('medical_staff').select('id, name');
 
+                    // 2. 建立對照表 (Map) - 移除空白並轉小寫以增加對應成功率
                     const compMap = {}; 
                     if(allCompanies) {
                         allCompanies.forEach(c => {
+                            // 只要該公司有任一 workplace，就抓第1個當作匯入目標
                             if(c.workplaces && c.workplaces.length > 0) {
                                 compMap[c.name.trim()] = c.workplaces[0].id;
                             }
@@ -1176,21 +1031,20 @@
                         });
                     }
 
+                    // 3. 逐行比對
                     rows.forEach(row => {
-                        if(!row[0]) return; 
-                        const cName = String(row[0]).trim(); 
-                        const sName = String(row[1]).trim(); 
-                        const items = row[2]; 
+                        if(!row[0]) return; // 跳過空行
+                        const cName = String(row[0]).trim(); // Excel 公司名
+                        const sName = String(row[1]).trim(); // Excel 顧問名
+                        const date = formatDate(row[2]);
+                        const items = row[3]; 
 
-                        const wpId = compMap[cName];
-                        const stId = staffMap[sName];
-                        
-                        // 自動生成當日日期
-                        const today = new Date();
-                        const date = today.toISOString().split('T')[0];
-                        const year = today.getFullYear();
+                        const wpId = compMap[cName]; // 查找 ID
+                        const stId = staffMap[sName]; // 查找 ID
+                        const year = date ? new Date(date).getFullYear() : null;
 
-                        if(wpId && stId) {
+                        // ★ 判定：公司有ID 且 顧問有ID 且 日期有效 -> 放入 pendingImportData
+                        if(wpId && stId && date) {
                              pendingImportData.push({
                                 workplace_id: wpId, 
                                 consultant_id: stId, 
@@ -1199,21 +1053,24 @@
                                 execution_items: items,
                                 created_by: sessionStorage.getItem('currentUserId')
                             });
+                            // 顯示綠色 OK
                             html += `<tr class="table-success">
                                 <td>${cName}</td>
                                 <td>${sName}</td>
-                                <td>${items || '-'}</td>
+                                <td>${date}</td>
                                 <td><span class="badge bg-success">可匯入</span></td>
                             </tr>`;
                         } else {
+                            // 顯示紅色 錯誤原因
                             let errorMsg = [];
                             if(!wpId) errorMsg.push("公司未建立或無場所");
                             if(!stId) errorMsg.push("無此顧問");
+                            if(!date) errorMsg.push("日期格式錯");
                             
                             html += `<tr class="table-danger">
                                 <td>${cName}</td>
                                 <td>${sName}</td>
-                                <td>${items || '-'}</td>
+                                <td>${date || '-'}</td>
                                 <td><span class="badge bg-danger">${errorMsg.join(', ')}</span></td>
                             </tr>`;
                         }
@@ -1222,6 +1079,7 @@
 
                 html += '</tbody></table>';
                 
+                // 顯示統計資訊
                 const validCount = pendingImportData.length;
                 const totalCount = rows.filter(r => r[0]).length;
                 html = `<div class="alert ${validCount > 0 ? 'alert-info' : 'alert-danger'} mb-2">
