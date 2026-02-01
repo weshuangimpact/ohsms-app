@@ -670,7 +670,7 @@
         // 核心功能：核准 (Approve) - 修正版
         // ==========================================
         async function approveRecord(stagingId) {
-            const btn = document.querySelector('#btn-approve'); // 修正選擇器
+            const btn = document.querySelector('#btn-approve'); 
             const originalText = btn.innerHTML;
             btn.disabled = true;
             btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> 處理中...';
