@@ -503,11 +503,11 @@
                 let filesHtml = '<div class="alert alert-secondary">無附件</div>';
                 let linksHtml = '';
 
-                // 1. 檢查 Evidence_Final PDF (位於 storage: service-records/{year}/{id}/Evidence_Final_*.pdf)
-                // 由於檔名有 timestamp，需列出目錄
+                // 1. 檢查 Evidence_Final PDF (位於 storage: evidence/{year}/{id}/Evidence_Final_*.pdf)
+                // ★ 修正：將 Bucket 從 service-records 改為 evidence
                 if (rec.service_year && rec.id) {
                     const path = `${rec.service_year}/${rec.id}`;
-                    const { data: list } = await supabaseClient.storage.from('service-records').list(path);
+                    const { data: list } = await supabaseClient.storage.from('evidence').list(path);
                     
                     if (list && list.length > 0) {
                         const pdfs = list.filter(f => f.name.startsWith('Evidence_Final') && f.name.endsWith('.pdf'));
@@ -515,7 +515,7 @@
                             // 取最新的
                             pdfs.sort((a,b) => b.created_at.localeCompare(a.created_at));
                             const lastPdf = pdfs[0];
-                            const { data: pubUrl } = supabaseClient.storage.from('service-records').getPublicUrl(`${path}/${lastPdf.name}`);
+                            const { data: pubUrl } = supabaseClient.storage.from('evidence').getPublicUrl(`${path}/${lastPdf.name}`);
                             
                             filesHtml = `
                                 <div class="card mb-3 border-success">
