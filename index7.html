@@ -381,445 +381,352 @@
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     
-<script>
-    // ==========================================
-    // 統一頁首與系統初始化邏輯
-    // ==========================================
-    document.addEventListener('DOMContentLoaded', function() {
-        setInterval(() => {
-            const now = new Date();
-            const clockEl = document.getElementById('header-clock');
-            if(clockEl) clockEl.textContent = now.toLocaleTimeString('zh-TW', { hour12: false });
-        }, 1000);
+    <script>
+        // ==========================================
+        // 統一頁首與系統初始化邏輯
+        // ==========================================
+        document.addEventListener('DOMContentLoaded', function() {
+            setInterval(() => {
+                const now = new Date();
+                const clockEl = document.getElementById('header-clock');
+                if(clockEl) clockEl.textContent = now.toLocaleTimeString('zh-TW', { hour12: false });
+            }, 1000);
 
-        const dateEl = document.getElementById('header-date');
-        if(dateEl) {
-            const now = new Date();
-            const days = ['日', '一', '二', '三', '四', '五', '六'];
-            const formattedDate = `${now.getFullYear()}/${now.getMonth() + 1}/${now.getDate()}(${days[now.getDay()]})`;
-            dateEl.innerHTML = `<i class="far fa-calendar-alt me-1"></i>今日是 ${formattedDate}`;
-        }
-
-        const userName = sessionStorage.getItem('currentUserName') || '使用者';
-        const userEl = document.getElementById('header-user');
-        if(userEl) userEl.innerText = `Hi! ${userName}`;
-
-        // 初始化載入
-        loadCompanies();
-        loadStaff();
-        loadRecords();
-    });
-
-    function logoutSystem() {
-        if(confirm('確定要登出系統嗎？')) {
-            sessionStorage.clear();
-            window.location.href = 'login.html';
-        }
-    }
-
-    // ==========================================
-    // Supabase 設定
-    // ==========================================
-    const SUPABASE_URL = 'https://yhehfucgemxnfrdvpdhw.supabase.co';
-    const SUPABASE_KEY = 'sb_publishable_52emtU-9l-SDxcJTWVTPTA_Yu6qEogh'; 
-    const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-
-    // ==========================================
-    // 1. 公司 (Companies) 邏輯
-    // ==========================================
-    async function loadCompanies() {
-        const tbody = document.getElementById('companyTableBody');
-        tbody.innerHTML = '<tr><td colspan="5" class="text-center">載入中...</td></tr>';
-        
-        const { data, error } = await supabaseClient.from('companies').select('*').order('created_at', { ascending: false });
-        if(error) {
-            console.error(error);
-            tbody.innerHTML = '<tr><td colspan="5" class="text-danger">載入失敗</td></tr>';
-            return;
-        }
-        if(data.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="5" class="text-center">無資料</td></tr>';
-            return;
-        }
-
-        tbody.innerHTML = data.map(c => `
-            <tr>
-                <td>${c.tax_id}</td>
-                <td class="fw-bold">${c.name}</td>
-                <td>${c.industry || '-'}</td>
-                <td>${c.region || '-'}</td>
-                <td>
-                    <button class="btn btn-sm btn-outline-primary" onclick="editCompany('${c.id}', '${c.tax_id}', '${c.name}', '${c.industry||''}', '${c.region||''}')">編輯</button>
-                </td>
-            </tr>
-        `).join('');
-    }
-
-    function openCompanyModal() {
-        document.getElementById('companyForm').reset();
-        document.getElementById('compId').value = '';
-        document.getElementById('companyModalLabel').innerText = '新增客戶';
-        new bootstrap.Modal(document.getElementById('companyModal')).show();
-    }
-
-    function editCompany(id, tax, name, ind, reg) {
-        document.getElementById('compId').value = id;
-        document.getElementById('compTaxId').value = tax;
-        document.getElementById('compName').value = name;
-        document.getElementById('compIndustry').value = ind;
-        document.getElementById('compRegion').value = reg;
-        document.getElementById('companyModalLabel').innerText = '編輯客戶';
-        new bootstrap.Modal(document.getElementById('companyModal')).show();
-    }
-
-    async function saveCompany() {
-        const id = document.getElementById('compId').value;
-        const data = {
-            tax_id: document.getElementById('compTaxId').value,
-            name: document.getElementById('compName').value,
-            industry: document.getElementById('compIndustry').value,
-            region: document.getElementById('compRegion').value
-        };
-
-        if(!data.tax_id || !data.name) return alert('統編與公司名稱為必填');
-
-        // 取得當前使用者 ID (確保新增/修改都有紀錄)
-        const { data: { user } } = await supabaseClient.auth.getUser();
-        const currentUserId = user?.id;
-        if (currentUserId) {
-            data.updated_by = currentUserId;
-            if(!id) data.created_by = currentUserId;
-        }
-
-        try {
-            let error;
-            if(id) {
-                const res = await supabaseClient.from('companies').update(data).eq('id', id);
-                error = res.error;
-            } else {
-                const res = await supabaseClient.from('companies').insert(data);
-                error = res.error;
+            const dateEl = document.getElementById('header-date');
+            if(dateEl) {
+                const now = new Date();
+                const days = ['日', '一', '二', '三', '四', '五', '六'];
+                const formattedDate = `${now.getFullYear()}/${now.getMonth() + 1}/${now.getDate()}(${days[now.getDay()]})`;
+                dateEl.innerHTML = `<i class="far fa-calendar-alt me-1"></i>今日是 ${formattedDate}`;
             }
 
-            if(error) throw error;
-            alert('儲存成功');
-            bootstrap.Modal.getInstance(document.getElementById('companyModal')).hide();
+            const userName = sessionStorage.getItem('currentUserName') || '使用者';
+            const userEl = document.getElementById('header-user');
+            if(userEl) userEl.innerText = `Hi! ${userName}`;
+
+            // 初始化載入
             loadCompanies();
-        } catch(e) {
-            alert('儲存失敗: ' + e.message);
-        }
-    }
-
-    // ==========================================
-    // 2. 人員 (Staff) 邏輯
-    // ==========================================
-    async function loadStaff() {
-        const tbody = document.getElementById('staffTableBody');
-        tbody.innerHTML = '<tr><td colspan="6" class="text-center">載入中...</td></tr>';
-        
-        const { data, error } = await supabaseClient.from('medical_staff').select('*').order('created_at', { ascending: false });
-        if(error) {
-            console.error(error);
-            tbody.innerHTML = '<tr><td colspan="6" class="text-danger">載入失敗</td></tr>';
-            return;
-        }
-        if(data.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="6" class="text-center">無資料</td></tr>';
-            return;
-        }
-
-        tbody.innerHTML = data.map(s => {
-            let displayRole = s.system_role || s.role;
-            if(displayRole === 'medical' || !displayRole) {
-                if(s.role === 'admin') displayRole = 'admin';
-                else if(s.role === 'doc_control') displayRole = 'doc_control';
-                else displayRole = 'doc_control';
-            }
-
-            return `
-            <tr>
-                <td class="fw-bold">${s.name}</td>
-                <td>${s.role || '-'}</td>
-                <td><span class="badge bg-secondary">${displayRole}</span></td>
-                <td>${s.phone || '-'}</td>
-                <td>${s.email || '-'}</td>
-                <td>
-                    <button class="btn btn-sm btn-outline-primary" onclick="editStaff('${s.id}', '${s.name}', '${s.role||''}', '${s.phone||''}', '${s.email||''}')">編輯</button>
-                </td>
-            </tr>
-        `}).join('');
-    }
-
-    function openStaffModal() {
-        document.getElementById('staffForm').reset();
-        document.getElementById('staffId').value = '';
-        document.getElementById('staffModalLabel').innerText = '新增人員';
-        new bootstrap.Modal(document.getElementById('staffModal')).show();
-    }
-
-    function editStaff(id, name, role, phone, email) {
-        document.getElementById('staffId').value = id;
-        document.getElementById('staffName').value = name;
-        const roleSelect = document.getElementById('staffRole');
-        
-        // 修正下拉選單預設值
-        const validRoles = ['admin', 'consultant', 'doc_control'];
-        if(validRoles.includes(role)) {
-            roleSelect.value = role;
-        } else {
-            roleSelect.value = 'doc_control'; 
-        }
-        
-        document.getElementById('staffPhone').value = phone;
-        document.getElementById('staffEmail').value = email;
-        document.getElementById('staffModalLabel').innerText = '編輯人員';
-        new bootstrap.Modal(document.getElementById('staffModal')).show();
-    }
-
-    async function saveStaff() {
-        const id = document.getElementById('staffId').value;
-        const roleVal = document.getElementById('staffRole').value;
-        
-        const { data: { user } } = await supabaseClient.auth.getUser();
-        const currentUserId = user?.id;
-
-        if (!currentUserId) return alert('無法取得使用者資訊，請重新登入');
-
-        const data = {
-            name: document.getElementById('staffName').value,
-            role: roleVal,
-            system_role: roleVal, 
-            phone: document.getElementById('staffPhone').value,
-            email: document.getElementById('staffEmail').value,
-            updated_by: currentUserId
-        };
-
-        if(!id) {
-            data.created_by = currentUserId; 
-        }
-
-        if(!data.name) return alert('姓名為必填');
-
-        try {
-            let error;
-            if(id) {
-                const res = await supabaseClient.from('medical_staff').update(data).eq('id', id);
-                error = res.error;
-            } else {
-                const res = await supabaseClient.from('medical_staff').insert(data);
-                error = res.error;
-            }
-
-            if(error) throw error;
-            alert('儲存成功');
-            bootstrap.Modal.getInstance(document.getElementById('staffModal')).hide();
             loadStaff();
-        } catch(e) {
-            alert('儲存失敗: ' + e.message);
-        }
-    }
-
-    // ==========================================
-    // 3. 服務紀錄 (Records) - 僅讀取
-    // ==========================================
-    async function loadRecords() {
-        const tbody = document.getElementById('recordTableBody');
-        
-        const { data, error } = await supabaseClient
-            .from('service_records')
-            .select(`
-                id, service_year, visit_date, status,
-                workplaces ( companies (name) ),
-                medical_staff (name)
-            `)
-            .order('visit_date', { ascending: false })
-            .limit(20);
-
-        if(error) {
-            console.error(error);
-            return;
-        }
-        if(data.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="5" class="text-center">無資料</td></tr>';
-            return;
-        }
-
-        tbody.innerHTML = data.map(r => `
-            <tr>
-                <td>${r.service_year || 'N/A'}</td>
-                <td>${r.workplaces?.companies?.name || 'Unknown'}</td>
-                <td>${r.visit_date || 'N/A'}</td>
-                <td>${r.medical_staff?.name || '-'}</td>
-                <td>${r.status || 'Planned'}</td>
-            </tr>
-        `).join('');
-    }
-
-    // ==========================================
-    // 4. Excel 匯入邏輯 (含自動 Mapping)
-    // ==========================================
-    let pendingImportData = [];
-    let pendingImportType = '';
-
-    function openImportModal(type) {
-        pendingImportType = type;
-        document.getElementById('importFile').value = '';
-        document.getElementById('importPreview').innerText = '';
-        document.getElementById('btn-confirm-import').disabled = true;
-        new bootstrap.Modal(document.getElementById('importModal')).show();
-    }
-
-    document.getElementById('importFile').addEventListener('change', function(e) {
-        const file = e.target.files[0];
-        if(!file) return;
-
-        const reader = new FileReader();
-        reader.onload = function(e) {
-            const data = new Uint8Array(e.target.result);
-            const workbook = XLSX.read(data, {type: 'array'});
-            const sheetName = workbook.SheetNames[0];
-            const sheet = workbook.Sheets[sheetName];
-            const json = XLSX.utils.sheet_to_json(sheet);
-
-            if(json.length > 0) {
-                pendingImportData = processImportData(json, pendingImportType);
-                document.getElementById('importPreview').innerText = `預覽：讀取到 ${json.length} 筆資料`;
-                document.getElementById('btn-confirm-import').disabled = false;
-            } else {
-                document.getElementById('importPreview').innerText = '檔案內無資料';
-            }
-        };
-        reader.readAsArrayBuffer(file);
-    });
-
-    function processImportData(json, type) {
-        return json.map(row => {
-            let newRow = {};
-            for (let key in row) {
-                let cleanKey = key.trim();
-                let val = row[key];
-                newRow[cleanKey] = val;
-            }
-            
-            // 人員匯入預處理：若無系統角色，預設給 Doc Control
-            if(type === 'staff') {
-                if(!newRow.system_role && newRow.role) {
-                    newRow.system_role = newRow.role; 
-                }
-                if(!newRow.system_role) newRow.system_role = 'doc_control';
-            }
-
-            return newRow;
+            loadRecords();
         });
-    }
 
-    document.getElementById('btn-confirm-import').addEventListener('click', async function() {
-        const btn = this;
-        btn.disabled = true;
-        btn.innerText = '匯入中...';
-
-        const { data: { user } } = await supabaseClient.auth.getUser();
-        const currentUserId = user?.id;
-
-        if (!currentUserId) {
-            alert('無法取得使用者資訊，請重新登入');
-            btn.disabled = false;
-            btn.innerText = '確認匯入';
-            return;
+        function logoutSystem() {
+            if(confirm('確定要登出系統嗎？')) {
+                sessionStorage.clear();
+                window.location.href = 'login.html';
+            }
         }
 
-        try {
-            // =======================================================
-            // [關鍵修正] 服務紀錄匯入：自動查表與建立關聯
-            // =======================================================
-            if (pendingImportType === 'record') {
-                
-                // 1. 撈取對照表 (Reference Data)
-                const { data: companies } = await supabaseClient.from('companies').select('id, name');
-                const { data: staffList } = await supabaseClient.from('medical_staff').select('id, name');
-                const { data: workplaces } = await supabaseClient.from('workplaces').select('id, company_id');
-                
-                const mappedRecords = [];
-                const errors = [];
-                
-                // 2. 逐筆處理
-                for (const row of pendingImportData) {
-                    const compName = row['公司名稱']; 
-                    const staffName = row['顧問姓名'];
-                    
-                    if (!compName) continue; // 跳過空行
+        // ==========================================
+        // Supabase 設定
+        // ==========================================
+        const SUPABASE_URL = 'https://yhehfucgemxnfrdvpdhw.supabase.co';
+        const SUPABASE_KEY = 'sb_publishable_52emtU-9l-SDxcJTWVTPTA_Yu6qEogh'; 
+        const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-                    // (A) 找公司 ID
-                    const comp = companies?.find(c => c.name === compName);
-                    if (!comp) {
-                        errors.push(`找不到公司: ${compName} (請先匯入客戶資料)`);
-                        continue;
-                    }
+        // ==========================================
+        // 1. 公司 (Companies) 邏輯
+        // ==========================================
+        async function loadCompanies() {
+            const tbody = document.getElementById('companyTableBody');
+            tbody.innerHTML = '<tr><td colspan="5" class="text-center">載入中...</td></tr>';
+            
+            const { data, error } = await supabaseClient.from('companies').select('*').order('created_at', { ascending: false });
+            if(error) {
+                console.error(error);
+                tbody.innerHTML = '<tr><td colspan="5" class="text-danger">載入失敗</td></tr>';
+                return;
+            }
+            if(data.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="5" class="text-center">無資料</td></tr>';
+                return;
+            }
 
-                    // (B) 找顧問 ID (若無則留空)
-                    let staffId = null;
-                    if (staffName) {
-                        const staff = staffList?.find(s => s.name === staffName);
-                        if (staff) staffId = staff.id;
-                    }
+            tbody.innerHTML = data.map(c => `
+                <tr>
+                    <td>${c.tax_id}</td>
+                    <td class="fw-bold">${c.name}</td>
+                    <td>${c.industry || '-'}</td>
+                    <td>${c.region || '-'}</td>
+                    <td>
+                        <button class="btn btn-sm btn-outline-primary" onclick="editCompany('${c.id}', '${c.tax_id}', '${c.name}', '${c.industry||''}', '${c.region||''}')">編輯</button>
+                    </td>
+                </tr>
+            `).join('');
+        }
 
-                    // (C) 找廠區 ID (Workplace)
-                    let wp = workplaces?.find(w => w.company_id === comp.id);
-                    let wpId = wp ? wp.id : null;
+        function openCompanyModal() {
+            document.getElementById('companyForm').reset();
+            document.getElementById('compId').value = '';
+            document.getElementById('companyModalLabel').innerText = '新增客戶';
+            new bootstrap.Modal(document.getElementById('companyModal')).show();
+        }
 
-                    // (D) [自動補救] 如果沒有廠區，自動建立「預設廠區」
-                    if (!wpId) {
-                        // console.log(`自動為 ${compName} 建立預設廠區...`);
-                        const { data: newWp, error: wpErr } = await supabaseClient
-                            .from('workplaces')
-                            .insert({
-                                company_id: comp.id,
-                                name: compName + ' (預設廠區)',
-                                created_by: currentUserId,
-                                updated_by: currentUserId
-                            })
-                            .select()
-                            .single();
-                        
-                        if (wpErr) {
-                            errors.push(`建立廠區失敗 (${compName}): ${wpErr.message}`);
-                            continue;
-                        }
-                        wpId = newWp.id;
-                        // 更新快取，避免下一筆重複建立
-                        if(workplaces) workplaces.push(newWp);
-                    }
+        function editCompany(id, tax, name, ind, reg) {
+            document.getElementById('compId').value = id;
+            document.getElementById('compTaxId').value = tax;
+            document.getElementById('compName').value = name;
+            document.getElementById('compIndustry').value = ind;
+            document.getElementById('compRegion').value = reg;
+            document.getElementById('companyModalLabel').innerText = '編輯客戶';
+            new bootstrap.Modal(document.getElementById('companyModal')).show();
+        }
 
-                    // (E) 準備寫入 DB 的格式 (對應 Template CSV 欄位)
-                    // 公司名稱, 顧問姓名, 執行事項, 預計訪視日, 年度, 狀態
-                    mappedRecords.push({
-                        workplace_id: wpId,
-                        consultant_id: staffId,
-                        visit_date: row['預計訪視日'] || null, 
-                        service_year: row['年度'] || new Date().getFullYear(),
-                        status: row['狀態'] || 'planned',
-                        created_by: currentUserId,
-                        updated_by: currentUserId
-                    });
+        async function saveCompany() {
+            const id = document.getElementById('compId').value;
+            const data = {
+                tax_id: document.getElementById('compTaxId').value,
+                name: document.getElementById('compName').value,
+                industry: document.getElementById('compIndustry').value,
+                region: document.getElementById('compRegion').value
+            };
+
+            if(!data.tax_id || !data.name) return alert('統編與公司名稱為必填');
+
+            try {
+                let error;
+                if(id) {
+                    const res = await supabaseClient.from('companies').update(data).eq('id', id);
+                    error = res.error;
+                } else {
+                    const res = await supabaseClient.from('companies').insert(data);
+                    error = res.error;
                 }
 
-                if (errors.length > 0) {
-                    alert('⚠️ 部分資料匯入失敗 (前5筆錯誤):\n' + errors.slice(0, 5).join('\n'));
-                    if (mappedRecords.length === 0) throw new Error("所有資料皆無法對應，請檢查公司資料是否已匯入");
+                if(error) throw error;
+                alert('儲存成功');
+                bootstrap.Modal.getInstance(document.getElementById('companyModal')).hide();
+                loadCompanies();
+            } catch(e) {
+                alert('儲存失敗: ' + e.message);
+            }
+        }
+
+        // ==========================================
+        // 2. 人員 (Staff) 邏輯
+        // ==========================================
+        async function loadStaff() {
+            const tbody = document.getElementById('staffTableBody');
+            tbody.innerHTML = '<tr><td colspan="6" class="text-center">載入中...</td></tr>';
+            
+            const { data, error } = await supabaseClient.from('medical_staff').select('*').order('created_at', { ascending: false });
+            if(error) {
+                console.error(error);
+                tbody.innerHTML = '<tr><td colspan="6" class="text-danger">載入失敗</td></tr>';
+                return;
+            }
+            if(data.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="6" class="text-center">無資料</td></tr>';
+                return;
+            }
+
+            tbody.innerHTML = data.map(s => {
+                // 顯示邏輯校正
+                let displayRole = s.system_role || s.role;
+                if(displayRole === 'medical') {
+                    if(s.role === 'admin') displayRole = 'admin';
+                    else if(s.role === 'doc_control') displayRole = 'doc_control';
+                    else displayRole = 'doc_control';
                 }
 
-                // 3. 寫入服務紀錄
-                if (mappedRecords.length > 0) {
-                    const { error } = await supabaseClient.from('service_records').insert(mappedRecords);
-                    if(error) throw error;
-                }
+                return `
+                <tr>
+                    <td class="fw-bold">${s.name}</td>
+                    <td>${s.role || '-'}</td>
+                    <td><span class="badge bg-secondary">${displayRole}</span></td>
+                    <td>${s.phone || '-'}</td>
+                    <td>${s.email || '-'}</td>
+                    <td>
+                        <button class="btn btn-sm btn-outline-primary" onclick="editStaff('${s.id}', '${s.name}', '${s.role||''}', '${s.phone||''}', '${s.email||''}')">編輯</button>
+                    </td>
+                </tr>
+            `}).join('');
+        }
 
+        function openStaffModal() {
+            document.getElementById('staffForm').reset();
+            document.getElementById('staffId').value = '';
+            document.getElementById('staffModalLabel').innerText = '新增人員';
+            new bootstrap.Modal(document.getElementById('staffModal')).show();
+        }
+
+        function editStaff(id, name, role, phone, email) {
+            document.getElementById('staffId').value = id;
+            document.getElementById('staffName').value = name;
+            // 嘗試對應 role
+            const roleSelect = document.getElementById('staffRole');
+            if(role === 'admin' || role === 'consultant' || role === 'doc_control') {
+                roleSelect.value = role;
             } else {
-                // =======================================================
-                // 其他類型 (Company, Staff) 的一般匯入邏輯
-                // =======================================================
+                roleSelect.value = 'doc_control'; // default
+            }
+            document.getElementById('staffPhone').value = phone;
+            document.getElementById('staffEmail').value = email;
+            document.getElementById('staffModalLabel').innerText = '編輯人員';
+            new bootstrap.Modal(document.getElementById('staffModal')).show();
+        }
+
+        async function saveStaff() {
+            const id = document.getElementById('staffId').value;
+            const roleVal = document.getElementById('staffRole').value;
+            
+            // [修正] 取得當前使用者 ID
+            const { data: { user } } = await supabaseClient.auth.getUser();
+            const currentUserId = user?.id;
+
+            if (!currentUserId) return alert('無法取得使用者資訊，請重新登入');
+
+            const data = {
+                name: document.getElementById('staffName').value,
+                role: roleVal,
+                system_role: roleVal, // 同步設定系統權限
+                phone: document.getElementById('staffPhone').value,
+                email: document.getElementById('staffEmail').value,
+                // [修正] 補上 created_by/updated_by
+                updated_by: currentUserId
+            };
+
+            if(!id) {
+                data.created_by = currentUserId; // 僅新增時需要
+            }
+
+            if(!data.name) return alert('姓名為必填');
+
+            try {
+                let error;
+                if(id) {
+                    const res = await supabaseClient.from('medical_staff').update(data).eq('id', id);
+                    error = res.error;
+                } else {
+                    const res = await supabaseClient.from('medical_staff').insert(data);
+                    error = res.error;
+                }
+
+                if(error) throw error;
+                alert('儲存成功');
+                bootstrap.Modal.getInstance(document.getElementById('staffModal')).hide();
+                loadStaff();
+            } catch(e) {
+                alert('儲存失敗: ' + e.message);
+            }
+        }
+
+        // ==========================================
+        // 3. 服務紀錄 (Records) - 僅讀取
+        // ==========================================
+        async function loadRecords() {
+            const tbody = document.getElementById('recordTableBody');
+            
+            const { data, error } = await supabaseClient
+                .from('service_records')
+                .select(`
+                    id, service_year, visit_date, status,
+                    medical_staff(name),
+                    workplaces(companies(name))
+                `)
+                .order('visit_date', { ascending: false })
+                .limit(20);
+
+            if(error) {
+                console.error(error);
+                return;
+            }
+            if(data.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="5" class="text-center">無資料</td></tr>';
+                return;
+            }
+
+            tbody.innerHTML = data.map(r => `
+                <tr>
+                    <td>${r.service_year}</td>
+                    <td>${r.workplaces?.companies?.name || 'Unknown'}</td>
+                    <td>${r.visit_date}</td>
+                    <td>${r.medical_staff?.name || '-'}</td>
+                    <td>${r.status || 'Planned'}</td>
+                </tr>
+            `).join('');
+        }
+
+        // ==========================================
+        // 4. Excel 匯入邏輯
+        // ==========================================
+        let pendingImportData = [];
+        let pendingImportType = '';
+
+        function openImportModal(type) {
+            pendingImportType = type;
+            document.getElementById('importFile').value = '';
+            document.getElementById('importPreview').innerText = '';
+            document.getElementById('btn-confirm-import').disabled = true;
+            new bootstrap.Modal(document.getElementById('importModal')).show();
+        }
+
+        document.getElementById('importFile').addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if(!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const data = new Uint8Array(e.target.result);
+                const workbook = XLSX.read(data, {type: 'array'});
+                const sheetName = workbook.SheetNames[0];
+                const sheet = workbook.Sheets[sheetName];
+                const json = XLSX.utils.sheet_to_json(sheet);
+
+                if(json.length > 0) {
+                    pendingImportData = processImportData(json, pendingImportType);
+                    document.getElementById('importPreview').innerText = `預覽：讀取到 ${json.length} 筆資料`;
+                    document.getElementById('btn-confirm-import').disabled = false;
+                } else {
+                    document.getElementById('importPreview').innerText = '檔案內無資料';
+                }
+            };
+            reader.readAsArrayBuffer(file);
+        });
+
+        function processImportData(json, type) {
+            // 這裡可以做欄位對應轉換
+            return json.map(row => {
+                let newRow = {};
+                // 簡易對應，假設 Excel 欄位名稱對應 DB 欄位 (或英文)
+                for (let key in row) {
+                    // 去除空白
+                    let cleanKey = key.trim();
+                    let val = row[key];
+                    newRow[cleanKey] = val;
+                }
                 
-                // 為每一筆資料補上 created_by
+                // 針對人員匯入，補上 system_role 預設值
+                if(type === 'staff') {
+                    if(!newRow.system_role && newRow.role) {
+                        newRow.system_role = newRow.role; 
+                    }
+                    // 如果還是空的
+                    if(!newRow.system_role) newRow.system_role = 'doc_control';
+                }
+
+                return newRow;
+            });
+        }
+
+        document.getElementById('btn-confirm-import').addEventListener('click', async function() {
+            const btn = this;
+            btn.disabled = true;
+            btn.innerText = '匯入中...';
+
+            // [修正] 取得當前使用者 ID
+            const { data: { user } } = await supabaseClient.auth.getUser();
+            const currentUserId = user?.id;
+
+            if (!currentUserId) {
+                alert('無法取得使用者資訊，請重新登入');
+                btn.disabled = false;
+                btn.innerText = '確認匯入';
+                return;
+            }
+
+            try {
+                // [修正] 為每一筆匯入資料補上 created_by
                 const dataWithUser = pendingImportData.map(item => ({
                     ...item,
                     created_by: currentUserId,
@@ -827,60 +734,32 @@
                 }));
 
                 if(pendingImportType === 'company') {
-                    // 對應 template: 統一編號, 事業單位名稱, 公司地址, 聯絡人, 電話...
-                    // 需要將 Excel 中文欄位轉為 DB 英文欄位
-                    const companiesToInsert = dataWithUser.map(row => ({
-                        tax_id: row['統一編號'],
-                        name: row['事業單位名稱'] || row['公司名稱'],
-                        industry: row['產業類別'] || '', 
-                        region: row['公司地址'] || '', // 簡易對應
-                        created_by: currentUserId,
-                        updated_by: currentUserId
-                    }));
-                    
-                    const { error } = await supabaseClient.from('companies').upsert(companiesToInsert, { onConflict: 'tax_id' });
+                    const { error } = await supabaseClient.from('companies').upsert(dataWithUser, { onConflict: 'tax_id' });
                     if(error) throw error;
-
                 } else if(pendingImportType === 'staff') {
-                    // 對應 template: 姓名, 身分角色, 職務型態, 電話, Email...
-                    const staffToInsert = dataWithUser.map(row => {
-                        let role = 'doc_control'; // default
-                        // 簡易轉換中文角色
-                        const rawRole = row['身分角色'] || row['職稱/角色'] || '';
-                        if(rawRole.includes('顧問')) role = 'consultant';
-                        else if(rawRole.includes('管理')) role = 'admin';
-
-                        return {
-                            name: row['姓名'],
-                            role: role,
-                            system_role: role,
-                            phone: row['電話'],
-                            email: row['Email'],
-                            created_by: currentUserId,
-                            updated_by: currentUserId
-                        };
-                    });
-
-                    const { error } = await supabaseClient.from('medical_staff').insert(staffToInsert);
+                    const { error } = await supabaseClient.from('medical_staff').insert(dataWithUser);
+                    if(error) throw error;
+                } else if(pendingImportType === 'record') {
+                    const { error } = await supabaseClient.from('service_records').insert(dataWithUser);
                     if(error) throw error;
                 }
+
+                alert('✅ 匯入成功！');
+                bootstrap.Modal.getInstance(document.getElementById('importModal')).hide();
+                
+                if(pendingImportType === 'company') loadCompanies();
+                else if(pendingImportType === 'staff') loadStaff();
+                else loadRecords();
+
+            } catch(e) {
+                console.error(e);
+                alert('❌ 匯入發生錯誤: ' + e.message);
+            } finally {
+                btn.disabled = false;
+                btn.innerText = '確認匯入';
             }
+        });
 
-            alert('✅ 匯入成功！');
-            bootstrap.Modal.getInstance(document.getElementById('importModal')).hide();
-            
-            if(pendingImportType === 'company') loadCompanies();
-            else if(pendingImportType === 'staff') loadStaff();
-            else loadRecords();
-
-        } catch(e) {
-            console.error(e);
-            alert('❌ 匯入發生錯誤: ' + e.message);
-        } finally {
-            btn.disabled = false;
-            btn.innerText = '確認匯入';
-        }
-    });
-</script>
+    </script>
 </body>
 </html>
