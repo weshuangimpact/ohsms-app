@@ -120,21 +120,35 @@
             color: #202124;
             line-height: 1.5;
         }
+        
+        /* 附件列表樣式 */
+        .attachment-section {
+            background-color: #f8f9fa;
+            border: 1px solid #e9ecef;
+            border-radius: 6px;
+            padding: 15px;
+            margin-top: 10px;
+        }
         .attachment-list {
             list-style: none;
             padding: 0;
-            margin-top: 8px;
+            margin: 0;
         }
         .attachment-item {
             display: flex;
             align-items: center;
-            margin-bottom: 6px;
+            padding: 8px 0;
+            border-bottom: 1px solid #eee;
             font-size: 0.95rem;
         }
+        .attachment-item:last-child { border-bottom: none; }
+        
         .attachment-link {
             text-decoration: none;
             color: #0d6efd;
             word-break: break-all;
+            display: flex;
+            align-items: center;
         }
         .attachment-link:hover { text-decoration: underline; }
         
@@ -289,13 +303,19 @@
             </div>
             
             <div class="info-group">
-                <div class="info-label">What (執行項目與附件)</div>
+                <div class="info-label">What (執行項目)</div>
                 <div class="info-value bg-light p-3 rounded mb-2" id="detailWhat">--</div>
-                
-                <div class="info-label text-primary mt-3"><i class="fas fa-paperclip me-1"></i>相關附件 (Attachments)</div>
-                <ul class="attachment-list" id="detailAttachments">
-                    <li class="text-muted small">無附件</li>
-                </ul>
+            </div>
+
+            <div class="info-group">
+                <div class="info-label text-primary d-flex align-items-center">
+                    <i class="fas fa-paperclip me-2"></i>原始附件列表 (Raw Attachments)
+                </div>
+                <div class="attachment-section">
+                    <ul class="attachment-list" id="detailAttachments">
+                        <li class="text-muted small">讀取中...</li>
+                    </ul>
+                </div>
             </div>
 
             <div class="info-group mt-auto">
@@ -309,50 +329,41 @@
         <div class="detail-right">
             <div id="pdfPlaceholder" class="text-muted text-center">
                 <i class="fas fa-spinner fa-spin fa-2x mb-3"></i><br>
-                正在載入證據檔案...
+                正在載入主證據檔案...
             </div>
             <iframe id="pdfFrame" style="display:none;" title="Evidence Preview"></iframe>
         </div>
     </div>
 
     <script>
-        // 1. Supabase 設定
         const SUPABASE_URL = 'https://yhehfucgemxnfrdvpdhw.supabase.co';
         const SUPABASE_KEY = 'sb_publishable_52emtU-9l-SDxcJTWVTPTA_Yu6qEogh';
         const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-        // 2. 初始化
         document.addEventListener('DOMContentLoaded', function() {
             initClock();
-            
-            // 路由判斷
             const urlParams = new URLSearchParams(window.location.search);
             const evidenceId = urlParams.get('id');
 
             if (evidenceId) {
-                // 進入詳情模式
                 document.getElementById('searchPage').style.display = 'none';
-                document.getElementById('detailPage').style.display = 'flex'; // 開啟 Flex 佈局
+                document.getElementById('detailPage').style.display = 'flex';
                 document.getElementById('backBtn').style.display = 'none';
                 document.getElementById('closeTabBtn').style.display = 'inline-block';
                 loadDetailData(evidenceId);
             } else {
-                // 進入搜尋模式
                 document.getElementById('searchPage').style.display = 'block';
                 document.getElementById('detailPage').style.display = 'none';
             }
         });
 
-        // ==========================================
-        // 3. 搜尋邏輯
-        // ==========================================
+        // 搜尋功能
         async function performSearch() {
             const year = document.getElementById('searchYear').value.trim();
             const company = document.getElementById('searchCompany').value.trim().toLowerCase();
             const consultant = document.getElementById('searchConsultant').value.trim().toLowerCase();
             
             toggleLoading(true);
-            
             try {
                 let query = supabaseClient
                     .from('evidence')
@@ -368,12 +379,10 @@
                 const { data, error } = await query;
                 if(error) throw error;
 
-                // 前端過濾
                 let results = data.filter(item => {
                     const cName = item.workplaces?.companies?.name || '';
                     const cTax = item.workplaces?.companies?.tax_id || '';
                     const sName = item.medical_staff?.name || '';
-                    
                     const matchComp = !company || cName.toLowerCase().includes(company) || cTax.includes(company);
                     const matchCons = !consultant || sName.toLowerCase().includes(consultant);
                     return matchComp && matchCons;
@@ -401,59 +410,42 @@
                 noData.style.display = 'block';
                 return;
             }
-
             resultArea.style.display = 'block';
             noData.style.display = 'none';
 
             data.forEach((item) => {
                 const comp = item.workplaces?.companies?.name || '未知';
                 const staff = item.medical_staff?.name || '未指派';
-                // 開啟新分頁
                 const viewUrl = `index3.html?id=${item.id}`;
-
-                const row = `
+                tbody.innerHTML += `
                     <tr>
                         <td>${item.visit_date}</td>
                         <td>${item.service_year}</td>
                         <td class="fw-bold">${comp}</td>
                         <td>${staff}</td>
                         <td class="text-center">
-                            <a href="${viewUrl}" target="_blank" class="btn btn-sm btn-outline-primary">
-                                <i class="fas fa-eye me-1"></i>檢視
-                            </a>
+                            <a href="${viewUrl}" target="_blank" class="btn btn-sm btn-outline-primary"><i class="fas fa-eye me-1"></i>檢視</a>
                         </td>
-                    </tr>
-                `;
-                tbody.innerHTML += row;
+                    </tr>`;
             });
         }
 
-        // ==========================================
-        // 4. 詳情載入邏輯 (重點修正)
-        // ==========================================
+        // 載入詳情功能
         async function loadDetailData(id) {
             try {
-                // 4-1. 查詢資料 (嘗試讀取 attachment_files 欄位)
-                // 注意：若 evidence 表沒有 attachment_files 欄位，此處可能會報錯，
-                // 但根據您的需求，我們假設該欄位存在或已同步。
+                // 讀取資料，包含 attachment_files JSON
                 const { data, error } = await supabaseClient
                     .from('evidence')
-                    .select(`
-                        *,
-                        workplaces ( companies (name) ),
-                        medical_staff (name)
-                    `)
+                    .select(`*, workplaces(companies(name)), medical_staff(name)`)
                     .eq('id', id)
                     .single();
 
                 if(error) throw error;
 
                 // 填入 5W1H
-                const staff = data.medical_staff?.name || '未指派';
-                const comp = data.workplaces?.companies?.name || '未知';
-                document.getElementById('detailWho').textContent = `${staff} (顧問) / ${comp}`;
+                document.getElementById('detailWho').textContent = `${data.medical_staff?.name || '未指派'} (顧問) / ${data.workplaces?.companies?.name || '未知'}`;
                 document.getElementById('detailWhen').textContent = `${data.visit_date} (Year: ${data.service_year})`;
-                document.getElementById('detailWhere').textContent = comp;
+                document.getElementById('detailWhere').textContent = data.workplaces?.companies?.name || '';
                 document.getElementById('detailWhat').textContent = data.execution_items || '無文字紀錄';
                 
                 const noteEl = document.getElementById('detailNote');
@@ -461,29 +453,28 @@
                     ? `<i class="fas fa-exclamation-triangle me-1"></i>${data.audit_note}` 
                     : '<span class="text-success">無異常</span>';
 
-                // 4-2. 處理附件列表與預覽
-                // 優先使用 attachment_files (JSON)，若無則使用 bucket listing (folder_id)
+                // ===============================================
+                // 附件列表處理 (Left Side)
+                // ===============================================
                 const attachListEl = document.getElementById('detailAttachments');
                 attachListEl.innerHTML = '';
 
-                let mainPdfUrl = null;
-                let filesToProcess = [];
-
-                // 檢查 attachment_files (來自 CSV 的 JSON 結構)
-                if (data.attachment_files && Array.isArray(data.attachment_files) && data.attachment_files.length > 0) {
-                    filesToProcess = data.attachment_files.map(f => ({
+                let rawFiles = [];
+                // 優先使用 attachment_files 欄位 (裡面是 JSON 陣列)
+                if (data.attachment_files && Array.isArray(data.attachment_files)) {
+                    // 使用 CSV 中顯示的 path 格式 (UUID/Filename)，並補上年份
+                    rawFiles = data.attachment_files.map(f => ({
                         name: f.name,
-                        // 修正路徑: Year/FolderID/Filename (CSV 中的 path 只有 FolderID/Filename)
-                        path: `${data.service_year}/${f.path}`, 
-                        type: f.type
+                        path: `${data.service_year}/${f.path}`, // 組合完整路徑
+                        type: f.type || 'unknown'
                     }));
                 } 
-                // Fallback: 如果沒有 attachment_files，嘗試用 folder_id 掃描 Bucket
+                // Fallback: 如果沒有 attachment_files，掃描資料夾
                 else if (data.attachment_folder_id) {
                     const folderPath = `${data.service_year}/${data.attachment_folder_id}`;
                     const { data: bucketFiles } = await supabaseClient.storage.from('evidence').list(folderPath);
                     if (bucketFiles) {
-                        filesToProcess = bucketFiles
+                        rawFiles = bucketFiles
                             .filter(f => f.name !== '.emptyFolderPlaceholder')
                             .map(f => ({
                                 name: f.name,
@@ -493,52 +484,64 @@
                     }
                 }
 
-                // 渲染檔案列表並找出主 PDF
-                if (filesToProcess.length > 0) {
-                    for (const file of filesToProcess) {
-                        // 取得 Signed URL (1小時有效)
-                        const { data: signed } = await supabaseClient.storage
-                            .from('evidence')
-                            .createSignedUrl(file.path, 3600);
+                // 渲染左側列表
+                let mainPreviewUrl = null;
 
+                if (rawFiles.length > 0) {
+                    for (const file of rawFiles) {
+                        const { data: signed } = await supabaseClient.storage.from('evidence').createSignedUrl(file.path, 3600);
                         if (signed?.signedUrl) {
-                            // 加入列表 (顯示於 What 下方)
-                            const li = document.createElement('li');
-                            li.className = 'attachment-item';
+                            
+                            // 判斷是否為「最終證據」PDF (通常不顯示在左側原始附件，或特別標示)
+                            // 這裡假設所有 attachment_files 都是原始檔 (包含 Q)
+                            
                             // 圖示判斷
                             let icon = 'fa-file text-secondary';
                             if (file.name.toLowerCase().includes('.pdf')) icon = 'fa-file-pdf text-danger';
                             else if (file.name.match(/\.(jpg|png|jpeg|avif)$/i)) icon = 'fa-file-image text-primary';
-                            
+                            else if (file.name.match(/\.(xls|xlsx|csv)$/i)) icon = 'fa-file-csv text-success';
+
+                            const li = document.createElement('li');
+                            li.className = 'attachment-item';
                             li.innerHTML = `
-                                <i class="fas ${icon} me-2" style="width:20px;"></i>
                                 <a href="${signed.signedUrl}" target="_blank" class="attachment-link">
+                                    <i class="fas ${icon} me-2" style="width:20px;"></i>
                                     ${file.name}
                                 </a>
                             `;
                             attachListEl.appendChild(li);
 
-                            // 設定主 PDF (取第一個找到的 PDF)
-                            if (!mainPdfUrl && file.name.toLowerCase().endsWith('.pdf')) {
-                                mainPdfUrl = signed.signedUrl;
+                            // 設定右側預覽 (找第一個 PDF，或包含 'Evidence_Final' 的 PDF 優先)
+                            if (file.name.includes('Evidence_Final') && file.name.endsWith('.pdf')) {
+                                mainPreviewUrl = signed.signedUrl; 
+                            } else if (!mainPreviewUrl && file.name.endsWith('.pdf')) {
+                                mainPreviewUrl = signed.signedUrl;
                             }
                         }
                     }
                 } else {
                     attachListEl.innerHTML = '<li class="text-muted small">無相關附件</li>';
-                    document.getElementById('pdfPlaceholder').innerHTML = '<i class="fas fa-times-circle fa-2x mb-2 text-muted"></i><br>無證據檔案';
                 }
 
-                // 4-3. 顯示右側 PDF
-                if (mainPdfUrl) {
+                // ===============================================
+                // 右側預覽 (Right Side)
+                // ===============================================
+                // 如果在 attachment_files 沒找到主證據，嘗試直接用 file_url 欄位
+                if (!mainPreviewUrl && data.file_url) {
+                     // 如果 file_url 存的是相對路徑 (如 Year/UUID/Final.pdf)，直接用
+                     // 如果是絕對路徑，需處理
+                     // 這裡假設是 storage path
+                     const { data: mainSigned } = await supabaseClient.storage.from('evidence').createSignedUrl(data.file_url, 3600);
+                     if (mainSigned?.signedUrl) mainPreviewUrl = mainSigned.signedUrl;
+                }
+
+                if (mainPreviewUrl) {
                     const iframe = document.getElementById('pdfFrame');
-                    // 加上 #toolbar=0 嘗試隱藏瀏覽器原生工具列 (部分瀏覽器有效)
-                    iframe.src = mainPdfUrl + "#toolbar=0&view=FitH"; 
+                    iframe.src = mainPreviewUrl + "#toolbar=0&view=FitH";
                     iframe.style.display = 'block';
                     document.getElementById('pdfPlaceholder').style.display = 'none';
                 } else {
-                    // 若無 PDF (可能只有圖片)，顯示提示
-                     document.getElementById('pdfPlaceholder').innerHTML = '<i class="fas fa-image fa-2x mb-2 text-muted"></i><br>僅有圖片證據，請點擊左側連結檢視';
+                    document.getElementById('pdfPlaceholder').innerHTML = '<i class="fas fa-eye-slash fa-2x mb-2 text-muted"></i><br>無主證據文件可預覽<br>(請點擊左側附件檢視)';
                 }
 
             } catch (err) {
@@ -547,20 +550,14 @@
             }
         }
 
-        function toggleLoading(show) {
-            document.getElementById('loadingOverlay').style.display = show ? 'flex' : 'none';
-        }
-
+        function toggleLoading(show) { document.getElementById('loadingOverlay').style.display = show ? 'flex' : 'none'; }
         function resetSearch() {
             document.getElementById('searchForm').reset();
             document.getElementById('resultArea').style.display = 'none';
             document.getElementById('noDataMessage').style.display = 'none';
         }
-
         function initClock() {
-            setInterval(() => {
-                document.getElementById('header-clock').textContent = new Date().toLocaleTimeString('zh-TW', { hour12: false });
-            }, 1000);
+            setInterval(() => { document.getElementById('header-clock').textContent = new Date().toLocaleTimeString('zh-TW', { hour12: false }); }, 1000);
             const now = new Date();
             document.getElementById('header-date').textContent = `${now.getFullYear()}/${now.getMonth()+1}/${now.getDate()}`;
         }
