@@ -701,15 +701,27 @@
         }
 
 // ==========================================
-        // 1. 新增/編輯 公司 (修改版：同步建立母案)
+        // 1. 新增/編輯 公司 (修正版：修復無法儲存問題)
         // ==========================================
         async function saveCompany() {
+            const btn = document.querySelector('#companyModal .modal-footer .btn-primary');
+            const originalText = btn.innerHTML;
+            
+            // 取得輸入值
             const id = document.getElementById('company-id').value;
             const taxId = document.getElementById('company-tax-id').value.trim();
             const name = document.getElementById('company-name').value.trim();
             const serviceYear = document.getElementById('company-year').value || 2025;
             
-            if (!taxId || !name) return alert('統編與名稱為必填');
+            // 必填檢查
+            if (!taxId || !name) {
+                alert('「統編」與「事業單位名稱」為必填欄位');
+                return;
+            }
+
+            // 鎖定按鈕避免重複送出
+            btn.disabled = true;
+            btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>儲存中...';
 
             const payload = {
                 tax_id: taxId,
@@ -718,19 +730,22 @@
                 contact_person: document.getElementById('company-contact').value.trim(),
                 phone: document.getElementById('company-phone').value.trim(),
                 service_year: parseInt(serviceYear),
-                created_by: sessionStorage.getItem('currentUserId') // 記錄建立者
+                created_by: sessionStorage.getItem('currentUserId')
             };
 
             try {
-                // A. 寫入公司資料
-                let companyId = id;
+                let companyId = id; // 如果是編輯模式，ID 已存在
+
                 if (id) {
-                    // 編輯模式
-                    const { error } = await supabaseClient.from('companies').update(payload).eq('id', id);
+                    // --- 編輯模式 ---
+                    const { error } = await supabaseClient
+                        .from('companies')
+                        .update(payload)
+                        .eq('id', id);
                     if (error) throw error;
                 } else {
-                    // 新增模式
-                    // 1. 先建立公司
+                    // --- 新增模式 ---
+                    // 1. 先建立公司並取得回傳資料 (關鍵：需加 select() 和 single())
                     const { data: newComp, error } = await supabaseClient
                         .from('companies')
                         .insert(payload)
@@ -738,14 +753,16 @@
                         .single();
                     
                     if (error) throw error;
-                    companyId = newComp.id;
+                    if (!newComp) throw new Error('公司建立失敗，未回傳 ID');
+                    
+                    companyId = newComp.id; // 取得新產生的 ID
 
-                    // 2. ★同步自動建立：預設作業場所 (Workplace)
+                    // 2. 自動建立：預設作業場所 (Workplace)
                     const { data: newWp, error: wpError } = await supabaseClient
                         .from('workplaces')
                         .insert({
                             company_id: companyId,
-                            department_name: '全廠', // 預設名稱
+                            department_name: '全廠',
                             created_by: sessionStorage.getItem('currentUserId')
                         })
                         .select()
@@ -753,15 +770,15 @@
 
                     if (wpError) console.warn('自動建立場所失敗:', wpError.message);
                     
-                    // 3. ★同步自動建立：年度服務母案 (Service Record)
+                    // 3. 自動建立：年度服務母案 (Service Record)
                     if (newWp) {
                         const { error: recError } = await supabaseClient
                             .from('service_records')
                             .insert({
                                 workplace_id: newWp.id,
-                                visit_date: `${serviceYear}-01-01`, // 預設為該年 1/1
+                                visit_date: `${serviceYear}-01-01`,
                                 service_year: serviceYear,
-                                execution_items: '年度服務計畫母案 (系統自動建立)', // 標記來源
+                                execution_items: '年度服務計畫母案 (系統自動建立)',
                                 process_desc: '待指派顧問',
                                 created_by: sessionStorage.getItem('currentUserId')
                             });
@@ -769,23 +786,24 @@
                     }
                 }
 
-                alert('✅ 儲存成功！(已同步建立作業場所與年度母案)');
-                bootstrap.Modal.getInstance(document.getElementById('companyModal')).hide();
-                loadCompanies();
+                alert('✅ 儲存成功！');
                 
-                // 若是在第三分頁，也順便重整一下
-                loadRecords(); 
+                // 關閉視窗並重整
+                const modalEl = document.getElementById('companyModal');
+                const modal = bootstrap.Modal.getInstance(modalEl);
+                if (modal) modal.hide();
+                
+                loadCompanies();
+                loadRecords(); // 順便更新母案列表
 
             } catch (err) {
                 console.error(err);
-                alert('❌ 儲存失敗: ' + err.message);
+                alert('❌ 儲存失敗: ' + (err.message || '未知錯誤'));
+            } finally {
+                // 恢復按鈕狀態
+                btn.disabled = false;
+                btn.innerHTML = originalText;
             }
-        }
-
-        function toggleEndDate(checkbox) {
-            const endInput = document.getElementById('contract-end');
-            endInput.disabled = checkbox.checked;
-            if(checkbox.checked) endInput.value = '';
         }
 
         // ==========================================
