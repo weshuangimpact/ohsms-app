@@ -528,7 +528,7 @@
                                 </select>
                             </div>
                             <div class="col-md-6">
-                                <label class="form-label fw-bold small">立案日期 *</label>
+                                <label class="form-label fw-bold small">服務日期 *</label>
                                 <input type="date" class="form-control" id="record-date" required>
                             </div>
                         </div>
@@ -981,6 +981,9 @@
             new bootstrap.Modal(document.getElementById('recordModal')).show();
         }
 
+        // ==========================================
+        // KEY CHANGE HERE: Removed Writing to service_records
+        // ==========================================
         async function saveRecord() {
             const id = document.getElementById('record-id').value;
             const companyId = document.getElementById('record-company').value;
@@ -1012,26 +1015,15 @@
                 updated_by: sessionStorage.getItem('currentUserId')
             };
 
-            let error;
+            // -----------------------------------------------------------
+            // [已修改] 移除寫入資料庫邏輯 (Commented Out)
+            // -----------------------------------------------------------
+            /* let error;
             if (id) {
                 ({ error } = await supabaseClient.from('service_records').update(payload).eq('id', id));
             } else {
-                // 修正：依照需求，新增時不寫入 service_records，改為更新 workplace
-                // payload.created_by = sessionStorage.getItem('currentUserId');
-                // ({ error } = await supabaseClient.from('service_records').insert(payload));
-                
-                // 改為更新 workplaces (符合「寫入 Workplace 為正確」的要求)
-                ({ error } = await supabaseClient.from('workplaces').update({
-                    updated_by: sessionStorage.getItem('currentUserId'),
-                    updated_at: new Date() // 更新時間戳記
-                }).eq('id', workplaceId));
-
-                if (!error) {
-                    alert('✅ 已更新作業場所資訊 (本次新增未建立服務紀錄)');
-                    bootstrap.Modal.getInstance(document.getElementById('recordModal')).hide();
-                    loadRecords(); // 重新整理列表 (注意：因未寫入 service_records，列表中不會出現新資料)
-                    return;
-                }
+                payload.created_by = sessionStorage.getItem('currentUserId');
+                ({ error } = await supabaseClient.from('service_records').insert(payload));
             }
 
             if(error) alert('儲存失敗: ' + error.message);
@@ -1040,6 +1032,12 @@
                 bootstrap.Modal.getInstance(document.getElementById('recordModal')).hide();
                 loadRecords();
             }
+            */
+            
+            // 僅執行 UI 關閉動作，不寫入 DB
+            console.log("Record Save Skipped. Payload:", payload);
+            alert('✅ 動作完成 (未寫入資料庫)');
+            bootstrap.Modal.getInstance(document.getElementById('recordModal')).hide();
         }
         
         async function deleteRecord() {
