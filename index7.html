@@ -330,7 +330,7 @@
                     <div class="col-lg-4">
                         <div class="d-grid gap-2 mb-4">
                             <button class="btn btn-warning fw-bold py-2 text-dark" onclick="openRecordModal()">
-                                <i class="fas fa-plus me-2"></i>新增服務歷程
+                                <i class="fas fa-plus me-2"></i>新增服務歷程 (母案)
                             </button>
                         </div>
 
@@ -343,7 +343,7 @@
                                     <input type="file" id="file-record" hidden accept=".csv, .xlsx, .xls" onchange="handleFileSelect(this, 'record')">
                                 </div>
                                 <div class="mt-2 text-end">
-                                    <small class="text-muted d-block mb-1"><i class="fas fa-info-circle"></i> 匯入僅需日期與事項，時間請手動補登</small>
+                                    <small class="text-muted d-block mb-1"><i class="fas fa-info-circle"></i> 匯入僅需公司與顧問，日期可留空</small>
                                     <a href="#" class="small text-decoration-none" onclick="downloadTemplate('record')"><i class="fas fa-download me-1"></i>下載範本</a>
                                 </div>
                             </div>
@@ -528,8 +528,9 @@
                                 </select>
                             </div>
                             <div class="col-md-6">
-                                <label class="form-label fw-bold small">服務日期 *</label>
-                                <input type="date" class="form-control" id="record-date" required>
+                                <label class="form-label fw-bold small">服務日期</label>
+                                <input type="date" class="form-control" id="record-date">
+                                <div class="form-text small text-primary">(建立母案時可免填)</div>
                             </div>
                         </div>
 
@@ -915,9 +916,14 @@
                 const staffName = r.medical_staff?.name || '<span class="text-muted">未知顧問</span>';
                 const timeStr = (r.start_time && r.end_time) ? `${r.start_time.slice(0,5)} ~ ${r.end_time.slice(0,5)}` : '-';
                 
+                // 判斷是否為母案 (無日期)
+                const dateDisplay = r.visit_date 
+                    ? `<span class="font-monospace">${r.visit_date}</span>` 
+                    : `<span class="badge bg-secondary">📅 年度母案 (未定)</span>`;
+
                 return `
                 <tr>
-                    <td class="font-monospace">${r.visit_date}</td>
+                    <td>${dateDisplay}</td>
                     <td class="fw-bold">${compName}</td>
                     <td>${staffName}</td>
                     <td class="small">${timeStr}</td>
@@ -933,7 +939,7 @@
 
             document.getElementById('recordForm').reset();
             document.getElementById('record-id').value = '';
-            document.getElementById('recordModalTitle').innerText = '新增服務歷程';
+            document.getElementById('recordModalTitle').innerText = '新增服務歷程 (母案)';
             document.getElementById('btn-delete-record').style.display = 'none'; // 新增模式隱藏刪除
             new bootstrap.Modal(document.getElementById('recordModal')).show();
         }
@@ -971,7 +977,7 @@
             }
 
             document.getElementById('record-consultant').value = data.consultant_id;
-            document.getElementById('record-date').value = data.visit_date;
+            document.getElementById('record-date').value = data.visit_date || ''; // 若為 null 則填空
             document.getElementById('record-start').value = data.start_time || '';
             document.getElementById('record-end').value = data.end_time || '';
             document.getElementById('record-items').value = data.execution_items || '';
@@ -981,16 +987,23 @@
             new bootstrap.Modal(document.getElementById('recordModal')).show();
         }
 
+        // ==========================================
+        // ★ 重點修正：儲存邏輯 (允許日期為空)
+        // ==========================================
         async function saveRecord() {
             const id = document.getElementById('record-id').value;
             const companyId = document.getElementById('record-company').value;
             const consultantId = document.getElementById('record-consultant').value;
-            const visitDate = document.getElementById('record-date').value;
+            
+            // 取得日期值 (可能是空字串)
+            const visitDateRaw = document.getElementById('record-date').value;
+            
             const startTime = document.getElementById('record-start').value || null;
             const endTime = document.getElementById('record-end').value || null;
             const items = document.getElementById('record-items').value || null;
 
-            if(!companyId || !consultantId || !visitDate) return alert('公司、顧問與日期為必填');
+            // 1. 必填檢查：只檢查公司與顧問
+            if(!companyId || !consultantId) return alert('公司與顧問為必填欄位 (日期可保留空白作為母案)');
 
             // 取得 workplaceId
             const { data: wpData, error: wpError } = await supabaseClient.from('workplaces').select('id').eq('company_id', companyId).limit(1);
@@ -999,12 +1012,21 @@
                 return alert('錯誤：該公司尚未建立作業場所 (Workplace)。請先至公司資料建立場所。');
             }
             const workplaceId = wpData[0].id;
-            const year = new Date(visitDate).getFullYear();
+
+            // 2. 日期與年份邏輯處理
+            let visitDate = null;
+            let year = null;
+
+            if (visitDateRaw) {
+                visitDate = visitDateRaw;
+                year = new Date(visitDateRaw).getFullYear();
+            }
+            // 若 visitDateRaw 為空，visitDate 與 year 保持 null (符合您的需求)
 
             const payload = {
                 workplace_id: workplaceId,
-                visit_date: visitDate,
-                service_year: year,
+                visit_date: visitDate,   // 若無日期則存 null
+                service_year: year,      // 若無日期則存 null (不要預設當前年)
                 consultant_id: consultantId,
                 start_time: startTime,
                 end_time: endTime,
@@ -1022,7 +1044,7 @@
 
             if(error) alert('儲存失敗: ' + error.message);
             else {
-                alert('✅ 儲存成功！');
+                alert('✅ 儲存成功！' + (!visitDate ? ' (已建立母案)' : ''));
                 bootstrap.Modal.getInstance(document.getElementById('recordModal')).hide();
                 loadRecords();
             }
@@ -1062,7 +1084,7 @@
             } else if (type === 'record') {
                 // 移除時間欄位
                 csvContent += "公司名稱,顧問姓名,服務日期(YYYY-MM-DD),執行事項\n";
-                csvContent += "範例公司,王顧問,2025-06-15,噪音檢測";
+                csvContent += "範例公司,王顧問,,母案建立(日期留空)";
             }
             const encodedUri = encodeURI(csvContent);
             const link = document.createElement("a");
@@ -1137,7 +1159,7 @@ async function parseAndImportData(rows, type) {
                     });
 
                 } else if (type === 'record') {
-                    // ★ 修正重點：歷程匯入邏輯
+                    // ★ 修正重點：歷程匯入邏輯 (允許無日期)
                     html += '<th>公司名稱</th><th>顧問姓名</th><th>服務日期</th><th>對應狀態</th></tr></thead><tbody>';
                     
                     previewArea.innerHTML = '<div class="text-center p-3"><span class="spinner-border text-primary"></span> 正在核對公司與顧問資料庫...</div>';
@@ -1168,28 +1190,32 @@ async function parseAndImportData(rows, type) {
                         if(!row[0]) return; // 跳過空行
                         const cName = String(row[0]).trim(); // Excel 公司名
                         const sName = String(row[1]).trim(); // Excel 顧問名
-                        const date = formatDate(row[2]);
+                        const date = formatDate(row[2]); // 若 Excel 空白，這裡會是 null
                         const items = row[3]; 
 
                         const wpId = compMap[cName]; // 查找 ID
                         const stId = staffMap[sName]; // 查找 ID
+                        
+                        // 計算年份：若有日期則算，無日期則為 null
                         const year = date ? new Date(date).getFullYear() : null;
 
-                        // ★ 判定：公司有ID 且 顧問有ID 且 日期有效 -> 放入 pendingImportData
-                        if(wpId && stId && date) {
+                        // ★ 判定：公司有ID 且 顧問有ID 即可 (移除 && date 條件)
+                        if(wpId && stId) {
                              pendingImportData.push({
                                 workplace_id: wpId, 
                                 consultant_id: stId, 
-                                visit_date: date,
-                                service_year: year, 
+                                visit_date: date,     // 可為 null
+                                service_year: year,   // 可為 null
                                 execution_items: items,
                                 created_by: sessionStorage.getItem('currentUserId')
                             });
+                            
                             // 顯示綠色 OK
+                            const dateDisplay = date ? date : '<span class="text-muted fst-italic">母案 (Null)</span>';
                             html += `<tr class="table-success">
                                 <td>${cName}</td>
                                 <td>${sName}</td>
-                                <td>${date}</td>
+                                <td>${dateDisplay}</td>
                                 <td><span class="badge bg-success">可匯入</span></td>
                             </tr>`;
                         } else {
@@ -1197,7 +1223,7 @@ async function parseAndImportData(rows, type) {
                             let errorMsg = [];
                             if(!wpId) errorMsg.push("公司未建立或無場所");
                             if(!stId) errorMsg.push("無此顧問");
-                            if(!date) errorMsg.push("日期格式錯");
+                            // if(!date) errorMsg.push("日期格式錯"); // 日期錯不再是錯誤
                             
                             html += `<tr class="table-danger">
                                 <td>${cName}</td>
