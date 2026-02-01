@@ -148,7 +148,7 @@
         }
         #pdfPreviewFrame {
             width: 100%;
-            height: 500px;
+            height: 600px;
             border: 1px solid #dee2e6;
             border-radius: 4px;
         }
@@ -271,7 +271,8 @@
     </div>
 
     <div class="modal fade" id="detailModal" tabindex="-1" aria-hidden="true">
-        <div class="modal-dialog modal-xl"> <div class="modal-content">
+        <div class="modal-dialog modal-xl">
+            <div class="modal-content">
                 <div class="modal-header">
                     <h5 class="modal-title"><i class="fas fa-file-contract me-2"></i>服務軌跡詳情與證據預覽</h5>
                     <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
@@ -327,10 +328,10 @@
 
     <script>
         // ==========================================
-        // 1. Supabase 初始化
+        // 1. Supabase 初始化 (使用 supabaseClient 避免衝突)
         // ==========================================
         const SUPABASE_URL = 'https://yhehfucgemxnfrdvpdhw.supabase.co';
-        const SUPABASE_KEY = 'sb_publishable_52emtU-9l-SDxcJTWVTPTA_Yu6qEogh'; // 這是公開 Key
+        const SUPABASE_KEY = 'sb_publishable_52emtU-9l-SDxcJTWVTPTA_Yu6qEogh';
         const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
         
         // Modal 實例
@@ -340,7 +341,7 @@
             // 初始化 Modal
             detailModal = new bootstrap.Modal(document.getElementById('detailModal'));
 
-            // 時鐘與日期 (保留既有功能)
+            // 時鐘與日期
             setInterval(() => {
                 const now = new Date();
                 const clockEl = document.getElementById('header-clock');
@@ -388,7 +389,6 @@
             document.getElementById('noDataMessage').style.display = 'none';
 
             try {
-                // 查詢 evidence 及其關聯
                 let query = supabaseClient
                     .from('evidence')
                     .select(`
@@ -396,14 +396,13 @@
                         workplaces!inner ( companies!inner (name, tax_id) ),
                         medical_staff (name)
                     `)
-                    .order('visit_date', { ascending: false }); // 依照日期降冪
+                    .order('visit_date', { ascending: false });
 
                 if (year) query = query.eq('service_year', year);
 
                 const { data, error } = await query;
                 if (error) throw error;
 
-                // 前端過濾 (公司與顧問)
                 let filteredData = data;
                 if (companyQuery) {
                     const q = companyQuery.toLowerCase();
@@ -431,7 +430,6 @@
             }
         }
 
-        // 渲染列表
         function renderResults(data) {
             const tbody = document.getElementById('resultBody');
             const resultArea = document.getElementById('resultArea');
@@ -453,7 +451,7 @@
                 const staffName = item.medical_staff?.name || '未指派';
                 const date = item.visit_date || '-';
 
-                // [修正] 按鈕現在會呼叫 openDetailModal 並傳入 ID
+                // 注意：這裡將 id 傳入 openDetailModal
                 const row = `
                     <tr>
                         <th scope="row">${index + 1}</th>
@@ -474,15 +472,14 @@
         }
 
         // ==========================================
-        // 3. 詳細資料 Modal 邏輯 (包含檔案預覽)
+        // 3. 詳細資料 Modal 邏輯 (修正：自動搜尋 Bucket)
         // ==========================================
         async function openDetailModal(evidenceId) {
-            // 顯示 Modal (並先清空舊資料)
+            // UI 重置
             document.getElementById('modalWho').innerText = '讀取中...';
             document.getElementById('pdfPlaceholder').style.display = 'block';
             document.getElementById('pdfPlaceholder').innerHTML = '<i class="fas fa-spinner fa-spin fa-2x mb-2"></i><br>正在讀取資料庫與檔案...';
             
-            // 移除舊的 iframe
             const container = document.getElementById('pdfContainer');
             const oldIframe = container.querySelector('iframe');
             if(oldIframe) oldIframe.remove();
@@ -490,11 +487,12 @@
             detailModal.show();
 
             try {
-                // 步驟 1: 查詢單筆詳細資料 (包含 5W1H 欄位: start_time, end_time, execution_items, audit_note, file_url)
+                // 步驟 1: 查詢單筆詳細資料 (包含 attachment_folder_id)
                 const { data, error } = await supabaseClient
                     .from('evidence')
                     .select(`
-                        id, visit_date, start_time, end_time, execution_items, audit_note, file_url,
+                        id, visit_date, start_time, end_time, execution_items, audit_note, 
+                        file_url, attachment_folder_id, service_year,
                         workplaces ( companies (name) ),
                         medical_staff (name)
                     `)
@@ -503,7 +501,7 @@
 
                 if (error) throw error;
 
-                // 步驟 2: 填入文字資料 (5W1H)
+                // 填入 5W1H 資料
                 const staffName = data.medical_staff?.name || '未指派';
                 const compName = data.workplaces?.companies?.name || '未知企業';
                 const timeRange = `${data.start_time || '--:--'} ~ ${data.end_time || '--:--'}`;
@@ -520,43 +518,69 @@
                     noteEl.innerHTML = '<span class="text-muted text-success"><i class="fas fa-check-circle me-1"></i>本次服務無特殊稽核異常</span>';
                 }
 
-                // 步驟 3: 處理檔案預覽 (Supabase Storage)
-                const pdfContainer = document.getElementById('pdfContainer');
-                const pdfPlaceholder = document.getElementById('pdfPlaceholder');
-                const downloadBtn = document.getElementById('downloadBtn');
+                // ==========================================
+                // 步驟 2: 智慧檔案搜尋 (修正重點)
+                // ==========================================
+                let targetFilePath = data.file_url;
+                
+                // 如果 file_url 是空的，但有 attachment_folder_id，則嘗試去 Bucket 找
+                if (!targetFilePath && data.attachment_folder_id) {
+                    console.log("未發現直接連結，嘗試搜尋資料夾:", data.attachment_folder_id);
+                    
+                    // 根據截圖，結構為: [FolderID] -> [Year] -> [File]
+                    // 組合搜尋路徑
+                    const searchPath = `${data.attachment_folder_id}/${data.service_year}`;
+                    
+                    // 使用 Storage List API 列出檔案
+                    const { data: fileList, error: listError } = await supabaseClient
+                        .storage
+                        .from('evidence')
+                        .list(searchPath);
 
-                if (data.file_url) {
-                    // 假設 file_url 儲存的是路徑 (如 "folder/file.pdf")
-                    // 使用 createSignedUrl 產生臨時連結 (有效期 60 分鐘)
-                    // 若您的 Bucket 是 Public，可改用 getPublicUrl
+                    if (!listError && fileList && fileList.length > 0) {
+                        // 優先找 PDF 檔，若無則取第一個檔案
+                        const pdfFile = fileList.find(f => f.name.toLowerCase().endsWith('.pdf'));
+                        const targetFile = pdfFile || fileList[0];
+                        
+                        if (targetFile) {
+                            // 組合完整路徑: FolderID/Year/FileName
+                            targetFilePath = `${searchPath}/${targetFile.name}`;
+                            console.log("自動找到檔案:", targetFilePath);
+                        }
+                    } else {
+                         console.log("資料夾內無檔案或路徑錯誤:", searchPath);
+                    }
+                }
+
+                // 步驟 3: 產生 Signed URL 並預覽
+                const downloadBtn = document.getElementById('downloadBtn');
+                const pdfPlaceholder = document.getElementById('pdfPlaceholder');
+
+                if (targetFilePath) {
                     const { data: fileData, error: fileError } = await supabaseClient
                         .storage
-                        .from('evidence') // Bucket 名稱
-                        .createSignedUrl(data.file_url, 3600); // 3600秒 = 1小時
+                        .from('evidence')
+                        .createSignedUrl(targetFilePath, 3600); // 1小時有效
 
                     if (fileError) {
-                        console.error('檔案連結生成失敗:', fileError);
-                        pdfPlaceholder.innerHTML = '<span class="text-danger"><i class="fas fa-times-circle"></i> 無法讀取檔案 (權限或路徑錯誤)</span>';
+                        console.error('簽署連結失敗:', fileError);
+                        pdfPlaceholder.innerHTML = '<span class="text-danger"><i class="fas fa-times-circle"></i> 無法讀取檔案 (權限不足)</span>';
                         downloadBtn.classList.add('disabled');
                     } else {
-                        // 成功取得連結
                         const signedUrl = fileData.signedUrl;
-                        
-                        // 設定下載按鈕
                         downloadBtn.href = signedUrl;
                         downloadBtn.classList.remove('disabled');
 
-                        // 建立 iframe 預覽
                         const iframe = document.createElement('iframe');
-                        iframe.src = signedUrl + "#toolbar=0"; // 嘗試隱藏工具列
+                        iframe.src = signedUrl + "#toolbar=0"; 
                         iframe.id = "pdfPreviewFrame";
                         iframe.type = "application/pdf";
                         
                         pdfPlaceholder.style.display = 'none';
-                        pdfContainer.appendChild(iframe);
+                        container.appendChild(iframe);
                     }
                 } else {
-                    pdfPlaceholder.innerHTML = '<span class="text-muted"><i class="fas fa-file-excel fa-2x mb-2"></i><br>此紀錄未上傳任何證據檔案</span>';
+                    pdfPlaceholder.innerHTML = '<span class="text-muted"><i class="fas fa-file-excel fa-2x mb-2"></i><br>此紀錄無證據檔案<br>(Folder ID: ' + (data.attachment_folder_id || '無') + ')</span>';
                     downloadBtn.classList.add('disabled');
                 }
 
