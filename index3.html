@@ -11,21 +11,20 @@
 
     <style>
         /* =========================================
-           統一頁首/頁尾 CSS 設定 (內頁專用 / 高度統一版)
+           統一頁首/頁尾 CSS 設定
            ========================================= */
         html, body {
             height: 100%;
         }
 
         body {
-            display: flex; /* 確保 Flex 佈局生效 */
+            display: flex;
             flex-direction: column;
             min-height: 100vh;
-            background-color: #f8f9fa; /* 預設背景色 */
+            background-color: #f8f9fa;
             font-family: 'Segoe UI', 'Microsoft JhengHei', sans-serif;
         }
 
-        /* 內容區塊自動撐開 */
         .container, .main-content, .container-fluid {
             flex: 1;
         }
@@ -33,7 +32,7 @@
         /* 頁首設定 */
         .navbar {
             background-color: #202124 !important;
-            min-height: 85px; /* 統一高度為 85px */
+            min-height: 85px;
             color: #fff;
             flex-shrink: 0;
         }
@@ -46,22 +45,19 @@
             font-size: 0.9rem;
             letter-spacing: 0.5px;
             display: flex;
-            flex-direction: column; /* 垂直排列 */
+            flex-direction: column;
             align-items: center;
             justify-content: center;
             margin-top: auto;
             padding: 15px 0;
-            min-height: 85px; /* 雙行高度 */
+            min-height: 85px;
         }
 
-        /* =========================================
-           PDCA 字卡與主色調設定
-           ========================================= */
+        /* PDCA 字卡與主色調 */
         :root { 
-            --theme-color: #198754; /* Check 階段 - 使用綠色 (管理者/稽核) */
+            --theme-color: #198754; 
         }
 
-        /* PDCA 字卡 (白色區塊) 設定 */
         .instruction-box {
             background-color: #fff;
             border-left: 5px solid var(--theme-color);
@@ -71,16 +67,13 @@
             box-shadow: 0 2px 5px rgba(0,0,0,0.05);
         }
 
-        /* PDCA 字卡標題設定 */
         .instruction-title {
             color: var(--theme-color);
             font-weight: 700;
             margin-bottom: 10px;
         }
 
-        /* =========================================
-           Google 搜尋風格特製樣式 (WesmartAI)
-           ========================================= */
+        /* Google 搜尋風格 */
         .search-container {
             max-width: 800px;
             margin: 0 auto;
@@ -94,7 +87,7 @@
             margin-bottom: 30px;
             letter-spacing: -2px;
             color: #444;
-            font-family: 'Product Sans', Arial, sans-serif; /* 嘗試模仿 Google 字體 */
+            font-family: 'Product Sans', Arial, sans-serif;
         }
         
         .google-logo span { display: inline-block; }
@@ -106,8 +99,8 @@
         .search-card {
             background: white;
             padding: 30px;
-            border-radius: 24px; /* 更圓潤的邊角 */
-            box-shadow: 0 4px 6px rgba(32,33,36,0.28); /* Google 風格陰影 */
+            border-radius: 24px;
+            box-shadow: 0 4px 6px rgba(32,33,36,0.28);
             transition: all 0.3s;
         }
 
@@ -115,11 +108,6 @@
             box-shadow: 0 4px 12px rgba(32,33,36,0.38);
         }
 
-        .form-floating > label {
-            font-size: 0.9rem;
-        }
-        
-        /* 結果表格樣式 */
         .result-table th {
             background-color: #f1f3f4;
             color: #202124;
@@ -136,6 +124,34 @@
             justify-content: center;
             flex-direction: column;
         }
+
+        /* 詳細資料 Modal 樣式 */
+        .modal-header {
+            background-color: #202124;
+            color: white;
+        }
+        .info-label {
+            font-weight: bold;
+            color: #5f6368;
+            margin-bottom: 2px;
+        }
+        .info-value {
+            margin-bottom: 12px;
+            color: #202124;
+        }
+        .audit-note-box {
+            background-color: #fff3cd;
+            border: 1px solid #ffecb5;
+            padding: 10px;
+            border-radius: 4px;
+            margin-top: 10px;
+        }
+        #pdfPreviewFrame {
+            width: 100%;
+            height: 500px;
+            border: 1px solid #dee2e6;
+            border-radius: 4px;
+        }
     </style>
 </head>
 <body>
@@ -146,27 +162,12 @@
                 <i class="fas fa-shield-alt me-2"></i>
                 OHSMS 職安管理系統
             </a>
-    
             <div class="d-flex align-items-center">
-                <span class="text-white me-3 small" id="header-date">
-                    <i class="fas fa-spinner fa-spin"></i>
-                </span>
-                
-                <span class="text-white me-4 small border-start ps-3 border-secondary" id="header-clock" style="opacity: 0.9;">
-                    --:--
-                </span>
-             
-                <span class="text-white me-4 fw-bold" id="header-user">
-                    Hi! 使用者
-                </span>
-                
-                <a class="btn btn-outline-light btn-sm me-2" href="dashboard.html">
-                    <i class="fas fa-reply me-1"></i>回到儀表板
-                </a>
-                
-                <button class="btn btn-outline-light btn-sm" onclick="logoutSystem()">
-                    <i class="fas fa-sign-out-alt me-1"></i>登出
-                </button>
+                <span class="text-white me-3 small" id="header-date"><i class="fas fa-spinner fa-spin"></i></span>
+                <span class="text-white me-4 small border-start ps-3 border-secondary" id="header-clock" style="opacity: 0.9;">--:--</span>
+                <span class="text-white me-4 fw-bold" id="header-user">Hi! 使用者</span>
+                <a class="btn btn-outline-light btn-sm me-2" href="dashboard.html"><i class="fas fa-reply me-1"></i>回到儀表板</a>
+                <button class="btn btn-outline-light btn-sm" onclick="logoutSystem()"><i class="fas fa-sign-out-alt me-1"></i>登出</button>
             </div>
         </div>
     </nav>
@@ -201,14 +202,12 @@
                                 <label for="searchYear"><i class="far fa-calendar-alt me-1"></i>年度 (西元)</label>
                             </div>
                         </div>
-
                         <div class="col-md-6">
                             <div class="form-floating">
                                 <input type="text" class="form-control" id="searchCompany" placeholder="公司名稱或統編">
                                 <label for="searchCompany"><i class="fas fa-building me-1"></i>公司名稱 / 統編</label>
                             </div>
                         </div>
-
                         <div class="col-md-3">
                             <div class="form-floating">
                                 <input type="text" class="form-control" id="searchConsultant" placeholder="顧問姓名">
@@ -216,7 +215,6 @@
                             </div>
                         </div>
                     </div>
-
                     <div class="mt-4 d-flex justify-content-center gap-3">
                         <button type="submit" class="btn btn-primary px-4 py-2">
                             <i class="fas fa-search me-1"></i> 搜尋軌跡
@@ -244,7 +242,7 @@
                             <th scope="col">企業名稱</th>
                             <th scope="col">統一編號</th>
                             <th scope="col">負責顧問</th>
-                            <th scope="col">操作</th>
+                            <th scope="col" class="text-center">操作</th>
                         </tr>
                     </thead>
                     <tbody id="resultBody">
@@ -272,42 +270,96 @@
         <div class="fw-bold text-dark">正在搜尋資料庫...</div>
     </div>
 
+    <div class="modal fade" id="detailModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-xl"> <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title"><i class="fas fa-file-contract me-2"></i>服務軌跡詳情與證據預覽</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="row">
+                        <div class="col-lg-4 border-end">
+                            <h6 class="text-primary fw-bold mb-3 border-bottom pb-2">
+                                <i class="fas fa-info-circle me-1"></i>執行細節 (5W1H)
+                            </h6>
+
+                            <div class="info-label">Who (執行者/對象)</div>
+                            <div class="info-value" id="modalWho"></div>
+
+                            <div class="info-label">When (時間)</div>
+                            <div class="info-value" id="modalWhen"></div>
+
+                            <div class="info-label">Where (地點/公司)</div>
+                            <div class="info-value" id="modalWhere"></div>
+
+                            <div class="info-label">What (執行項目)</div>
+                            <div class="info-value text-dark bg-light p-2 rounded" id="modalWhat"></div>
+
+                            <div class="mt-3 info-label text-danger">Audit Note (稽核備註)</div>
+                            <div class="audit-note-box" id="modalNote">
+                                <span class="text-muted">無備註</span>
+                            </div>
+                        </div>
+
+                        <div class="col-lg-8">
+                            <h6 class="text-primary fw-bold mb-3 border-bottom pb-2">
+                                <i class="fas fa-paperclip me-1"></i>證據檔案預覽 (Evidence Preview)
+                            </h6>
+                            <div id="pdfContainer" class="text-center">
+                                <div class="text-muted py-5" id="pdfPlaceholder">
+                                    <i class="fas fa-spinner fa-spin fa-2x mb-2"></i><br>讀取中...
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer bg-light">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">關閉</button>
+                    <a href="#" id="downloadBtn" class="btn btn-primary" target="_blank" download>
+                        <i class="fas fa-download me-1"></i>下載檔案
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
     <script>
         // ==========================================
         // 1. Supabase 初始化
         // ==========================================
         const SUPABASE_URL = 'https://yhehfucgemxnfrdvpdhw.supabase.co';
-        const SUPABASE_KEY = 'sb_publishable_52emtU-9l-SDxcJTWVTPTA_Yu6qEogh';
-        
-        // [修正] 改名為 supabaseClient 以避免與 SDK 全域變數衝突
+        const SUPABASE_KEY = 'sb_publishable_52emtU-9l-SDxcJTWVTPTA_Yu6qEogh'; // 這是公開 Key
         const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+        
+        // Modal 實例
+        let detailModal;
 
-        // ==========================================
-        // 2. 頁首/頁尾與系統功能
-        // ==========================================
         document.addEventListener('DOMContentLoaded', function() {
-            // 時鐘
+            // 初始化 Modal
+            detailModal = new bootstrap.Modal(document.getElementById('detailModal'));
+
+            // 時鐘與日期 (保留既有功能)
             setInterval(() => {
                 const now = new Date();
                 const clockEl = document.getElementById('header-clock');
                 if(clockEl) clockEl.textContent = now.toLocaleTimeString('zh-TW', { hour12: false });
             }, 1000);
 
-            // 日期
             const dateEl = document.getElementById('header-date');
             if(dateEl) {
                 const now = new Date();
                 const days = ['日', '一', '二', '三', '四', '五', '六'];
-                const formattedDate = `${now.getFullYear()}/${now.getMonth() + 1}/${now.getDate()}(${days[now.getDay()]})`;
-                dateEl.innerHTML = `<i class="far fa-calendar-alt me-1"></i>今日是 ${formattedDate}`;
+                dateEl.innerHTML = `<i class="far fa-calendar-alt me-1"></i>今日是 ${now.getFullYear()}/${now.getMonth() + 1}/${now.getDate()}(${days[now.getDay()]})`;
             }
 
-            // 使用者名稱
             const userName = sessionStorage.getItem('currentUserName');
             const userEl = document.getElementById('header-user');
             if(userEl && userName) userEl.innerText = `Hi! ${userName}`;
         });
 
+        // 登出
         function logoutSystem() {
             if(confirm('確定要登出系統嗎？')) {
                 sessionStorage.clear();
@@ -315,6 +367,7 @@
             }
         }
 
+        // 重置搜尋
         function resetSearch() {
             document.getElementById('searchForm').reset();
             document.getElementById('resultArea').style.display = 'none';
@@ -322,48 +375,36 @@
         }
 
         // ==========================================
-        // 3. 搜尋邏輯 (核心功能)
+        // 2. 搜尋主邏輯
         // ==========================================
         async function performSearch() {
             const year = document.getElementById('searchYear').value.trim();
             const companyQuery = document.getElementById('searchCompany').value.trim();
             const consultant = document.getElementById('searchConsultant').value.trim();
-
-            // 顯示 Loading
             const loading = document.getElementById('loadingOverlay');
+
             loading.style.display = 'flex';
             document.getElementById('resultArea').style.display = 'none';
             document.getElementById('noDataMessage').style.display = 'none';
 
             try {
-                // [修正] 使用 supabaseClient 進行查詢
+                // 查詢 evidence 及其關聯
                 let query = supabaseClient
                     .from('evidence')
                     .select(`
-                        id, 
-                        visit_date, 
-                        service_year,
-                        workplaces!inner (
-                            companies!inner (name, tax_id)
-                        ),
+                        id, visit_date, service_year,
+                        workplaces!inner ( companies!inner (name, tax_id) ),
                         medical_staff (name)
-                    `);
+                    `)
+                    .order('visit_date', { ascending: false }); // 依照日期降冪
 
-                // 條件 1: 年份 (資料庫需支援西元格式，或此處直接傳入使用者輸入的值)
-                if (year) {
-                    query = query.eq('service_year', year);
-                }
+                if (year) query = query.eq('service_year', year);
 
                 const { data, error } = await query;
-
                 if (error) throw error;
 
-                // ==========================================
-                // 前端二次過濾 (處理跨表複雜搜尋)
-                // ==========================================
+                // 前端過濾 (公司與顧問)
                 let filteredData = data;
-
-                // 過濾公司 (名稱 OR 統編)
                 if (companyQuery) {
                     const q = companyQuery.toLowerCase();
                     filteredData = filteredData.filter(item => {
@@ -372,8 +413,6 @@
                         return compName.toLowerCase().includes(q) || taxId.includes(q);
                     });
                 }
-
-                // 過濾顧問
                 if (consultant) {
                     const q = consultant.toLowerCase();
                     filteredData = filteredData.filter(item => {
@@ -386,12 +425,13 @@
 
             } catch (err) {
                 console.error('搜尋失敗:', err);
-                alert('搜尋發生錯誤，請檢查 console (F12)。');
+                alert('搜尋發生錯誤，請檢查 console。');
             } finally {
                 loading.style.display = 'none';
             }
         }
 
+        // 渲染列表
         function renderResults(data) {
             const tbody = document.getElementById('resultBody');
             const resultArea = document.getElementById('resultArea');
@@ -399,7 +439,6 @@
             const countBadge = document.getElementById('resultCount');
 
             tbody.innerHTML = '';
-
             if (!data || data.length === 0) {
                 noDataMsg.style.display = 'block';
                 return;
@@ -409,11 +448,12 @@
             countBadge.textContent = `${data.length} 筆`;
 
             data.forEach((item, index) => {
-                const companyName = item.workplaces?.companies?.name || '<span class="text-muted">未知</span>';
+                const companyName = item.workplaces?.companies?.name || '未知';
                 const taxId = item.workplaces?.companies?.tax_id || '-';
-                const staffName = item.medical_staff?.name || '<span class="text-muted">未指派</span>';
+                const staffName = item.medical_staff?.name || '未指派';
                 const date = item.visit_date || '-';
 
+                // [修正] 按鈕現在會呼叫 openDetailModal 並傳入 ID
                 const row = `
                     <tr>
                         <th scope="row">${index + 1}</th>
@@ -422,8 +462,8 @@
                         <td class="fw-bold text-primary">${companyName}</td>
                         <td><span class="badge bg-light text-dark border">${taxId}</span></td>
                         <td><i class="fas fa-user-tie me-1 text-secondary"></i>${staffName}</td>
-                        <td>
-                            <button class="btn btn-sm btn-outline-info" title="檢視詳情">
+                        <td class="text-center">
+                            <button class="btn btn-sm btn-outline-info" title="檢視詳情與證據" onclick="openDetailModal('${item.id}')">
                                 <i class="fas fa-eye"></i>
                             </button>
                         </td>
@@ -431,6 +471,100 @@
                 `;
                 tbody.innerHTML += row;
             });
+        }
+
+        // ==========================================
+        // 3. 詳細資料 Modal 邏輯 (包含檔案預覽)
+        // ==========================================
+        async function openDetailModal(evidenceId) {
+            // 顯示 Modal (並先清空舊資料)
+            document.getElementById('modalWho').innerText = '讀取中...';
+            document.getElementById('pdfPlaceholder').style.display = 'block';
+            document.getElementById('pdfPlaceholder').innerHTML = '<i class="fas fa-spinner fa-spin fa-2x mb-2"></i><br>正在讀取資料庫與檔案...';
+            
+            // 移除舊的 iframe
+            const container = document.getElementById('pdfContainer');
+            const oldIframe = container.querySelector('iframe');
+            if(oldIframe) oldIframe.remove();
+            
+            detailModal.show();
+
+            try {
+                // 步驟 1: 查詢單筆詳細資料 (包含 5W1H 欄位: start_time, end_time, execution_items, audit_note, file_url)
+                const { data, error } = await supabaseClient
+                    .from('evidence')
+                    .select(`
+                        id, visit_date, start_time, end_time, execution_items, audit_note, file_url,
+                        workplaces ( companies (name) ),
+                        medical_staff (name)
+                    `)
+                    .eq('id', evidenceId)
+                    .single();
+
+                if (error) throw error;
+
+                // 步驟 2: 填入文字資料 (5W1H)
+                const staffName = data.medical_staff?.name || '未指派';
+                const compName = data.workplaces?.companies?.name || '未知企業';
+                const timeRange = `${data.start_time || '--:--'} ~ ${data.end_time || '--:--'}`;
+                
+                document.getElementById('modalWho').innerHTML = `<span class="fw-bold">${staffName}</span> (顧問) / ${compName} (客戶)`;
+                document.getElementById('modalWhen').innerText = `${data.visit_date} (${timeRange})`;
+                document.getElementById('modalWhere').innerText = compName;
+                document.getElementById('modalWhat').innerText = data.execution_items || '無執行項目紀錄';
+                
+                const noteEl = document.getElementById('modalNote');
+                if (data.audit_note) {
+                    noteEl.innerHTML = `<i class="fas fa-exclamation-triangle text-warning me-1"></i>${data.audit_note}`;
+                } else {
+                    noteEl.innerHTML = '<span class="text-muted text-success"><i class="fas fa-check-circle me-1"></i>本次服務無特殊稽核異常</span>';
+                }
+
+                // 步驟 3: 處理檔案預覽 (Supabase Storage)
+                const pdfContainer = document.getElementById('pdfContainer');
+                const pdfPlaceholder = document.getElementById('pdfPlaceholder');
+                const downloadBtn = document.getElementById('downloadBtn');
+
+                if (data.file_url) {
+                    // 假設 file_url 儲存的是路徑 (如 "folder/file.pdf")
+                    // 使用 createSignedUrl 產生臨時連結 (有效期 60 分鐘)
+                    // 若您的 Bucket 是 Public，可改用 getPublicUrl
+                    const { data: fileData, error: fileError } = await supabaseClient
+                        .storage
+                        .from('evidence') // Bucket 名稱
+                        .createSignedUrl(data.file_url, 3600); // 3600秒 = 1小時
+
+                    if (fileError) {
+                        console.error('檔案連結生成失敗:', fileError);
+                        pdfPlaceholder.innerHTML = '<span class="text-danger"><i class="fas fa-times-circle"></i> 無法讀取檔案 (權限或路徑錯誤)</span>';
+                        downloadBtn.classList.add('disabled');
+                    } else {
+                        // 成功取得連結
+                        const signedUrl = fileData.signedUrl;
+                        
+                        // 設定下載按鈕
+                        downloadBtn.href = signedUrl;
+                        downloadBtn.classList.remove('disabled');
+
+                        // 建立 iframe 預覽
+                        const iframe = document.createElement('iframe');
+                        iframe.src = signedUrl + "#toolbar=0"; // 嘗試隱藏工具列
+                        iframe.id = "pdfPreviewFrame";
+                        iframe.type = "application/pdf";
+                        
+                        pdfPlaceholder.style.display = 'none';
+                        pdfContainer.appendChild(iframe);
+                    }
+                } else {
+                    pdfPlaceholder.innerHTML = '<span class="text-muted"><i class="fas fa-file-excel fa-2x mb-2"></i><br>此紀錄未上傳任何證據檔案</span>';
+                    downloadBtn.classList.add('disabled');
+                }
+
+            } catch (err) {
+                console.error('詳細資料讀取失敗:', err);
+                alert('讀取失敗，請稍後再試。');
+                detailModal.hide();
+            }
         }
     </script>
 </body>
