@@ -330,7 +330,7 @@
                     <div class="col-lg-4">
                         <div class="d-grid gap-2 mb-4">
                             <button class="btn btn-warning fw-bold py-2 text-dark" onclick="openRecordModal()">
-                                <i class="fas fa-plus me-2"></i>新增服務歷程
+                                <i class="fas fa-plus me-2"></i>新增服務歷程 (母案)
                             </button>
                         </div>
 
@@ -343,7 +343,7 @@
                                     <input type="file" id="file-record" hidden accept=".csv, .xlsx, .xls" onchange="handleFileSelect(this, 'record')">
                                 </div>
                                 <div class="mt-2 text-end">
-                                    <small class="text-muted d-block mb-1"><i class="fas fa-info-circle"></i> 匯入僅需日期與事項，時間請手動補登</small>
+                                    <small class="text-muted d-block mb-1"><i class="fas fa-info-circle"></i> 匯入支援：公司/顧問/日期/時間/事項</small>
                                     <a href="#" class="small text-decoration-none" onclick="downloadTemplate('record')"><i class="fas fa-download me-1"></i>下載範本</a>
                                 </div>
                             </div>
@@ -528,8 +528,9 @@
                                 </select>
                             </div>
                             <div class="col-md-6">
-                                <label class="form-label fw-bold small"立案日期 *</label>
-                                <input type="date" class="form-control" id="record-date" required>
+                                <label class="form-label fw-bold small">服務日期</label>
+                                <input type="date" class="form-control" id="record-date">
+                                <div class="form-text small text-primary">(建立母案時可免填)</div>
                             </div>
                         </div>
 
@@ -915,9 +916,14 @@
                 const staffName = r.medical_staff?.name || '<span class="text-muted">未知顧問</span>';
                 const timeStr = (r.start_time && r.end_time) ? `${r.start_time.slice(0,5)} ~ ${r.end_time.slice(0,5)}` : '-';
                 
+                // 判斷是否為母案 (無日期)
+                const dateDisplay = r.visit_date 
+                    ? `<span class="font-monospace">${r.visit_date}</span>` 
+                    : `<span class="badge bg-secondary">📅 年度母案 (未定)</span>`;
+
                 return `
                 <tr>
-                    <td class="font-monospace">${r.visit_date}</td>
+                    <td>${dateDisplay}</td>
                     <td class="fw-bold">${compName}</td>
                     <td>${staffName}</td>
                     <td class="small">${timeStr}</td>
@@ -933,7 +939,7 @@
 
             document.getElementById('recordForm').reset();
             document.getElementById('record-id').value = '';
-            document.getElementById('recordModalTitle').innerText = '新增服務歷程';
+            document.getElementById('recordModalTitle').innerText = '新增服務歷程 (母案)';
             document.getElementById('btn-delete-record').style.display = 'none'; // 新增模式隱藏刪除
             new bootstrap.Modal(document.getElementById('recordModal')).show();
         }
@@ -942,12 +948,27 @@
              const coSelect = document.getElementById('record-company');
              const staffSelect = document.getElementById('record-consultant');
              
-             // 讀取公司
-             const { data: companies } = await supabaseClient.from('companies').select('id, name').eq('is_active', true).order('name');
-             coSelect.innerHTML = '<option value="">請選擇...</option>' + companies.map(c => `<option value="${c.id}">${c.name}</option>`).join('');
+             // 修正：移除 .eq('is_active', true)，顯示所有公司
+             const { data: companies } = await supabaseClient
+                 .from('companies')
+                 .select('id, name, is_active') // 多選取 is_active 以便識別
+                 .order('is_active', {ascending: false}) // 服務中的排前面
+                 .order('name');
+                 
+             coSelect.innerHTML = '<option value="">請選擇...</option>' + 
+                 companies.map(c => {
+                     // 若已過期，在名稱後標註
+                     const suffix = c.is_active ? '' : ' (已結案)';
+                     return `<option value="${c.id}">${c.name}${suffix}</option>`;
+                 }).join('');
  
-             // 讀取顧問
-             const { data: staffs } = await supabaseClient.from('medical_staff').select('id, name').eq('is_active', true).order('name');
+             // 讀取顧問 (顧問通常建議維持只顯示在職中，若需顯示全部也可比照辦理)
+             const { data: staffs } = await supabaseClient
+                 .from('medical_staff')
+                 .select('id, name')
+                 .eq('is_active', true) 
+                 .order('name');
+                 
              staffSelect.innerHTML = '<option value="">請選擇...</option>' + staffs.map(s => `<option value="${s.id}">${s.name}</option>`).join('');
         }
         
@@ -971,7 +992,7 @@
             }
 
             document.getElementById('record-consultant').value = data.consultant_id;
-            document.getElementById('record-date').value = data.visit_date;
+            document.getElementById('record-date').value = data.visit_date || ''; // 若為 null 則填空
             document.getElementById('record-start').value = data.start_time || '';
             document.getElementById('record-end').value = data.end_time || '';
             document.getElementById('record-items').value = data.execution_items || '';
@@ -981,16 +1002,23 @@
             new bootstrap.Modal(document.getElementById('recordModal')).show();
         }
 
+        // ==========================================
+        // ★ 重點修正：儲存邏輯 (允許日期為空)
+        // ==========================================
         async function saveRecord() {
             const id = document.getElementById('record-id').value;
             const companyId = document.getElementById('record-company').value;
             const consultantId = document.getElementById('record-consultant').value;
-            const visitDate = document.getElementById('record-date').value;
+            
+            // 取得日期值 (可能是空字串)
+            const visitDateRaw = document.getElementById('record-date').value;
+            
             const startTime = document.getElementById('record-start').value || null;
             const endTime = document.getElementById('record-end').value || null;
             const items = document.getElementById('record-items').value || null;
 
-            if(!companyId || !consultantId || !visitDate) return alert('公司、顧問與日期為必填');
+            // 1. 必填檢查：只檢查公司與顧問
+            if(!companyId || !consultantId) return alert('公司與顧問為必填欄位 (日期可保留空白作為母案)');
 
             // 取得 workplaceId
             const { data: wpData, error: wpError } = await supabaseClient.from('workplaces').select('id').eq('company_id', companyId).limit(1);
@@ -999,12 +1027,21 @@
                 return alert('錯誤：該公司尚未建立作業場所 (Workplace)。請先至公司資料建立場所。');
             }
             const workplaceId = wpData[0].id;
-            const year = new Date(visitDate).getFullYear();
+
+            // 2. 日期與年份邏輯處理
+            let visitDate = null;
+            let year = null;
+
+            if (visitDateRaw) {
+                visitDate = visitDateRaw;
+                year = new Date(visitDateRaw).getFullYear();
+            }
+            // 若 visitDateRaw 為空，visitDate 與 year 保持 null (符合您的需求)
 
             const payload = {
                 workplace_id: workplaceId,
-                visit_date: visitDate,
-                service_year: year,
+                visit_date: visitDate,   // 若無日期則存 null
+                service_year: year,      // 若無日期則存 null (不要預設當前年)
                 consultant_id: consultantId,
                 start_time: startTime,
                 end_time: endTime,
@@ -1022,7 +1059,7 @@
 
             if(error) alert('儲存失敗: ' + error.message);
             else {
-                alert('✅ 儲存成功！');
+                alert('✅ 儲存成功！' + (!visitDate ? ' (已建立母案)' : ''));
                 bootstrap.Modal.getInstance(document.getElementById('recordModal')).hide();
                 loadRecords();
             }
@@ -1048,7 +1085,10 @@
         // ==========================================
         // 4. 匯入功能 (Excel Import) - 修正版
         // ==========================================
-// 修正版：下載範本 (支援動態撈取已建檔公司 + 完整欄位)
+        let pendingImportData = [];
+        let pendingImportType = '';
+
+        // 修正版：下載範本 (支援動態撈取已建檔公司 + 完整欄位)
         async function downloadTemplate(type) {
             let csvContent = "\uFEFF"; // 加入 BOM 解決 Excel 中文亂碼
 
@@ -1062,7 +1102,122 @@
                 csvContent += "李小美,護理人員,全職,0987654321,nurse@test.com,2024-05-20";
                 triggerDownload(csvContent, 'staff_import_template.csv');
 
-} else if (type === 'record') {
+            } else if (type === 'record') {
+                // ==========================================
+                // 重點修正：動態撈取資料庫公司 + 完整欄位
+                // ==========================================
+                try {
+                    // 1. 抓取所有已經建立場所 (Workplace) 的公司
+                    const { data: wpData, error } = await supabaseClient
+                        .from('workplaces')
+                        .select('companies (name)')
+                        .order('created_at', { ascending: false });
+
+                    if (error) throw error;
+
+                    // 2. 取出不重複的公司名稱 (使用 Set 去重)
+                    // 過濾掉無效資料
+                    const companyNames = [...new Set(wpData.map(item => item.companies?.name).filter(n => n))];
+
+                    // 3. 設定完整標題 (對應 Modal 所有欄位)
+                    // 順序：公司 | 顧問 | 日期 | 開始時間 | 結束時間 | 事項
+                    csvContent += "公司名稱,顧問姓名,服務日期(YYYY-MM-DD),開始時間(HH:mm),結束時間(HH:mm),執行事項\n";
+
+                    if (companyNames.length === 0) {
+                        // 若無資料，給一行範例
+                        csvContent += "範例公司,王顧問,,09:00,12:00,建立母案";
+                    } else {
+                        // 4. 為每一間公司產生一行預填列
+                        companyNames.forEach(name => {
+                            // 只填第一欄，其他留空給使用者填
+                            csvContent += `${name},,,,,\n`;
+                        });
+                    }
+
+                    triggerDownload(csvContent, 'service_record_template_full.csv');
+
+                } catch (e) {
+                    console.error(e);
+                    alert('產生範本失敗: ' + e.message);
+                }
+            }
+        }
+
+        // 輔助函式：觸發下載
+        function triggerDownload(content, filename) {
+            const encodedUri = encodeURI("data:text/csv;charset=utf-8," + content);
+            const link = document.createElement("a");
+            link.setAttribute("href", encodedUri);
+            link.setAttribute("download", filename);
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+
+        function handleFileSelect(input, type) {
+            const file = input.files[0];
+            if(!file) return;
+            
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const data = new Uint8Array(e.target.result);
+                const workbook = XLSX.read(data, {type: 'array'});
+                const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+                const jsonData = XLSX.utils.sheet_to_json(firstSheet, {header: 1}); 
+                
+                jsonData.shift(); // 移除標題
+                parseAndImportData(jsonData, type);
+                input.value = ''; 
+            };
+            reader.readAsArrayBuffer(file);
+        }
+
+        async function parseAndImportData(rows, type) {
+            pendingImportType = type;
+            pendingImportData = []; // 清空待匯入陣列
+            const previewArea = document.getElementById('import-preview-area');
+            let html = '<table class="table table-sm table-bordered table-hover"><thead><tr class="table-secondary">';
+
+            // 開啟預覽視窗
+            const modal = new bootstrap.Modal(document.getElementById('importModal'));
+            modal.show();
+
+            try {
+                if(type === 'company') {
+                    html += '<th>統編</th><th>名稱</th><th>地址</th><th>聯絡人</th><th>狀態</th><th>開始日</th><th>結束日</th></tr></thead><tbody>';
+                    rows.forEach(row => {
+                        if(!row[0]) return; 
+                        const taxId = row[0]; const name = row[1]; const address = row[2];
+                        const contact = row[3]; const phone = row[4];   
+                        const startDate = formatDate(row[5]); const endDate = formatDate(row[6]);
+                        
+                        let isActive = true;
+                        if(endDate && endDate < new Date().toISOString().split('T')[0]) isActive = false;
+
+                        pendingImportData.push({
+                            tax_id: String(taxId).trim(), name: String(name).trim(), address: String(address || ''),
+                            contact_person: contact, phone: String(phone || ''),
+                            contract_start_date: startDate, contract_end_date: endDate,
+                            is_active: isActive, created_by: sessionStorage.getItem('currentUserId')
+                        });
+                        html += `<tr><td>${taxId}</td><td>${name}</td><td>${address||''}</td><td>${contact||''}</td><td>${isActive?'Y':'N'}</td><td>${startDate||''}</td><td>${endDate||''}</td></tr>`;
+                    });
+
+                } else if (type === 'staff') {
+                    html += '<th>姓名</th><th>角色</th><th>職務</th><th>Email</th><th>入職日</th></tr></thead><tbody>';
+                    rows.forEach(row => {
+                        if(!row[0]) return;
+                        const name = row[0]; const role = row[1] || '護理人員'; const type = row[2] || '兼職';
+                        const phone = row[3]; const email = row[4]; const onboard = formatDate(row[5]);
+                        pendingImportData.push({
+                            name: String(name).trim(), role: role, employment_type: type,
+                            phone: String(phone || ''), email: email, onboard_date: onboard,
+                            is_active: true, created_by: sessionStorage.getItem('currentUserId')
+                        });
+                        html += `<tr><td>${name}</td><td>${role}</td><td>${type}</td><td>${email||''}</td><td>${onboard||''}</td></tr>`;
+                    });
+
+                } else if (type === 'record') {
                     // ==========================================
                     // 修正重點：配合新範本，讀取 6 個欄位 (含時間)
                     // ==========================================
@@ -1096,8 +1251,6 @@
                         const date = formatDate(row[2]);     // Col 2: 日期
                         
                         // 新增時間讀取 (Excel 可能讀成小數點或字串，簡單處理轉字串)
-                        // 注意：這裡假設 Excel 格式正確，若讀出來是 0.375 (9點) 這種 Excel 時間格式，可能需要額外處理
-                        // 目前先以文字格式讀取 HH:mm
                         const startTime = row[3] ? String(row[3]).trim() : null; // Col 3: 開始時間
                         const endTime = row[4] ? String(row[4]).trim() : null;   // Col 4: 結束時間
                         const items = row[5] ? String(row[5]).trim() : null;     // Col 5: 事項
@@ -1146,153 +1299,6 @@
                     });
                 }
 
-        // 輔助函式：觸發下載 (為了讓非同步邏輯更乾淨，獨立出來)
-        function triggerDownload(content, filename) {
-            const encodedUri = encodeURI("data:text/csv;charset=utf-8," + content);
-            const link = document.createElement("a");
-            link.setAttribute("href", encodedUri);
-            link.setAttribute("download", filename);
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
-        }
-
-        function handleFileSelect(input, type) {
-            const file = input.files[0];
-            if(!file) return;
-            
-            const reader = new FileReader();
-            reader.onload = function(e) {
-                const data = new Uint8Array(e.target.result);
-                const workbook = XLSX.read(data, {type: 'array'});
-                const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
-                const jsonData = XLSX.utils.sheet_to_json(firstSheet, {header: 1}); 
-                
-                jsonData.shift(); // 移除標題
-                parseAndImportData(jsonData, type);
-                input.value = ''; 
-            };
-            reader.readAsArrayBuffer(file);
-        }
-
-async function parseAndImportData(rows, type) {
-            pendingImportType = type;
-            pendingImportData = []; // 清空待匯入陣列
-            const previewArea = document.getElementById('import-preview-area');
-            let html = '<table class="table table-sm table-bordered table-hover"><thead><tr class="table-secondary">';
-
-            // 開啟預覽視窗
-            const modal = new bootstrap.Modal(document.getElementById('importModal'));
-            modal.show();
-
-            try {
-                if(type === 'company') {
-                    html += '<th>統編</th><th>名稱</th><th>地址</th><th>聯絡人</th><th>狀態</th><th>開始日</th><th>結束日</th></tr></thead><tbody>';
-                    rows.forEach(row => {
-                        if(!row[0]) return; 
-                        const taxId = row[0]; const name = row[1]; const address = row[2];
-                        const contact = row[3]; const phone = row[4];   
-                        const startDate = formatDate(row[5]); const endDate = formatDate(row[6]);
-                        
-                        let isActive = true;
-                        if(endDate && endDate < new Date().toISOString().split('T')[0]) isActive = false;
-
-                        pendingImportData.push({
-                            tax_id: String(taxId).trim(), name: String(name).trim(), address: String(address || ''),
-                            contact_person: contact, phone: String(phone || ''),
-                            contract_start_date: startDate, contract_end_date: endDate,
-                            is_active: isActive, created_by: sessionStorage.getItem('currentUserId')
-                        });
-                        html += `<tr><td>${taxId}</td><td>${name}</td><td>${address||''}</td><td>${contact||''}</td><td>${isActive?'Y':'N'}</td><td>${startDate||''}</td><td>${endDate||''}</td></tr>`;
-                    });
-
-                } else if (type === 'staff') {
-                    html += '<th>姓名</th><th>角色</th><th>職務</th><th>Email</th><th>入職日</th></tr></thead><tbody>';
-                    rows.forEach(row => {
-                        if(!row[0]) return;
-                        const name = row[0]; const role = row[1] || '護理人員'; const type = row[2] || '兼職';
-                        const phone = row[3]; const email = row[4]; const onboard = formatDate(row[5]);
-                        pendingImportData.push({
-                            name: String(name).trim(), role: role, employment_type: type,
-                            phone: String(phone || ''), email: email, onboard_date: onboard,
-                            is_active: true, created_by: sessionStorage.getItem('currentUserId')
-                        });
-                        html += `<tr><td>${name}</td><td>${role}</td><td>${type}</td><td>${email||''}</td><td>${onboard||''}</td></tr>`;
-                    });
-
-                } else if (type === 'record') {
-                    // ★ 修正重點：歷程匯入邏輯
-                    html += '<th>公司名稱</th><th>顧問姓名</th><th>服務日期</th><th>對應狀態</th></tr></thead><tbody>';
-                    
-                    previewArea.innerHTML = '<div class="text-center p-3"><span class="spinner-border text-primary"></span> 正在核對公司與顧問資料庫...</div>';
-                    
-                    // 1. 抓取所有公司 (含 Workplace ID) 與 顧問
-                    const { data: allCompanies } = await supabaseClient.from('companies').select('id, name, workplaces(id)');
-                    const { data: allStaff } = await supabaseClient.from('medical_staff').select('id, name');
-
-                    // 2. 建立對照表 (Map) - 移除空白並轉小寫以增加對應成功率
-                    const compMap = {}; 
-                    if(allCompanies) {
-                        allCompanies.forEach(c => {
-                            // 只要該公司有任一 workplace，就抓第1個當作匯入目標
-                            if(c.workplaces && c.workplaces.length > 0) {
-                                compMap[c.name.trim()] = c.workplaces[0].id;
-                            }
-                        });
-                    }
-                    const staffMap = {};
-                    if(allStaff) {
-                        allStaff.forEach(s => {
-                            staffMap[s.name.trim()] = s.id;
-                        });
-                    }
-
-                    // 3. 逐行比對
-                    rows.forEach(row => {
-                        if(!row[0]) return; // 跳過空行
-                        const cName = String(row[0]).trim(); // Excel 公司名
-                        const sName = String(row[1]).trim(); // Excel 顧問名
-                        const date = formatDate(row[2]);
-                        const items = row[3]; 
-
-                        const wpId = compMap[cName]; // 查找 ID
-                        const stId = staffMap[sName]; // 查找 ID
-                        const year = date ? new Date(date).getFullYear() : null;
-
-                        // ★ 判定：公司有ID 且 顧問有ID 且 日期有效 -> 放入 pendingImportData
-                        if(wpId && stId && date) {
-                             pendingImportData.push({
-                                workplace_id: wpId, 
-                                consultant_id: stId, 
-                                visit_date: date,
-                                service_year: year, 
-                                execution_items: items,
-                                created_by: sessionStorage.getItem('currentUserId')
-                            });
-                            // 顯示綠色 OK
-                            html += `<tr class="table-success">
-                                <td>${cName}</td>
-                                <td>${sName}</td>
-                                <td>${date}</td>
-                                <td><span class="badge bg-success">可匯入</span></td>
-                            </tr>`;
-                        } else {
-                            // 顯示紅色 錯誤原因
-                            let errorMsg = [];
-                            if(!wpId) errorMsg.push("公司未建立或無場所");
-                            if(!stId) errorMsg.push("無此顧問");
-                            if(!date) errorMsg.push("日期格式錯");
-                            
-                            html += `<tr class="table-danger">
-                                <td>${cName}</td>
-                                <td>${sName}</td>
-                                <td>${date || '-'}</td>
-                                <td><span class="badge bg-danger">${errorMsg.join(', ')}</span></td>
-                            </tr>`;
-                        }
-                    });
-                }
-
                 html += '</tbody></table>';
                 
                 // 顯示統計資訊
@@ -1325,16 +1331,16 @@ async function parseAndImportData(rows, type) {
             return strVal;
         }
 
-document.getElementById('btn-confirm-import').addEventListener('click', async function() {
+        // ==========================================
+        // 修正：匯入按鈕監聽 (加入自動建立場所邏輯)
+        // ==========================================
+        document.getElementById('btn-confirm-import').addEventListener('click', async function() {
             const btn = this;
             btn.disabled = true;
             btn.innerText = '匯入中...';
 
             try {
                 if(pendingImportType === 'company') {
-                    // ==========================================
-                    // 修正：匯入公司時，同步建立 Workplace (場所)
-                    // ==========================================
                     
                     // 1. 寫入公司資料，並取得回傳的 ID (加上 .select())
                     const { data: companies, error } = await supabaseClient
@@ -1379,7 +1385,6 @@ document.getElementById('btn-confirm-import').addEventListener('click', async fu
                     if(error) throw error;
 
                 } else if(pendingImportType === 'record') {
-                    // ★ 注意：若您上一動作已建立 'evidence' 表，請將下方的 'service_records' 改為 'evidence'
                     const { error } = await supabaseClient.from('service_records').insert(pendingImportData);
                     if(error) throw error;
                 }
