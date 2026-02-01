@@ -700,51 +700,85 @@
             new bootstrap.Modal(document.getElementById('companyModal')).show();
         }
 
+// ==========================================
+        // 1. 新增/編輯 公司 (修改版：同步建立母案)
+        // ==========================================
         async function saveCompany() {
-            const id = document.getElementById('company-id').value; 
+            const id = document.getElementById('company-id').value;
+            const taxId = document.getElementById('company-tax-id').value.trim();
+            const name = document.getElementById('company-name').value.trim();
+            const serviceYear = document.getElementById('company-year').value || 2025;
+            
+            if (!taxId || !name) return alert('統編與名稱為必填');
+
             const payload = {
-                tax_id: document.getElementById('company-tax-id').value,
-                name: document.getElementById('company-name').value,
-                address: document.getElementById('company-address').value,
-                contact_person: document.getElementById('company-contact').value,
-                phone: document.getElementById('company-phone').value,
-                contract_start_date: document.getElementById('contract-start').value || null,
-                contract_end_date: document.getElementById('contract-end').value || null,
-                is_active: document.getElementById('contract-active').checked,
-                updated_by: sessionStorage.getItem('currentUserId')
+                tax_id: taxId,
+                name: name,
+                address: document.getElementById('company-address').value.trim(),
+                contact_person: document.getElementById('company-contact').value.trim(),
+                phone: document.getElementById('company-phone').value.trim(),
+                service_year: parseInt(serviceYear),
+                created_by: sessionStorage.getItem('currentUserId') // 記錄建立者
             };
 
-            if(!payload.tax_id || !payload.name) return alert('統編與名稱為必填');
+            try {
+                // A. 寫入公司資料
+                let companyId = id;
+                if (id) {
+                    // 編輯模式
+                    const { error } = await supabaseClient.from('companies').update(payload).eq('id', id);
+                    if (error) throw error;
+                } else {
+                    // 新增模式
+                    // 1. 先建立公司
+                    const { data: newComp, error } = await supabaseClient
+                        .from('companies')
+                        .insert(payload)
+                        .select()
+                        .single();
+                    
+                    if (error) throw error;
+                    companyId = newComp.id;
 
-            let error;
-            let newCompanyId = id;
+                    // 2. ★同步自動建立：預設作業場所 (Workplace)
+                    const { data: newWp, error: wpError } = await supabaseClient
+                        .from('workplaces')
+                        .insert({
+                            company_id: companyId,
+                            department_name: '全廠', // 預設名稱
+                            created_by: sessionStorage.getItem('currentUserId')
+                        })
+                        .select()
+                        .single();
 
-            if(id) {
-                ({ error } = await supabaseClient.from('companies').update(payload).eq('id', id));
-            } else {
-                payload.created_by = sessionStorage.getItem('currentUserId');
-                const { data, error: insertError } = await supabaseClient.from('companies').insert(payload).select('id').single();
-                error = insertError;
-                
-                if (!error && data) {
-                    newCompanyId = data.id;
-                    const { error: wpError } = await supabaseClient.from('workplaces').insert({
-                        company_id: newCompanyId,
-                        department_name: '全廠',
-                        hazard_type: '無',
-                        hazard_count: 0,
-                        created_by: sessionStorage.getItem('currentUserId')
-                    });
-                    if (wpError) console.error('自動建立場所失敗:', wpError);
+                    if (wpError) console.warn('自動建立場所失敗:', wpError.message);
+                    
+                    // 3. ★同步自動建立：年度服務母案 (Service Record)
+                    if (newWp) {
+                        const { error: recError } = await supabaseClient
+                            .from('service_records')
+                            .insert({
+                                workplace_id: newWp.id,
+                                visit_date: `${serviceYear}-01-01`, // 預設為該年 1/1
+                                service_year: serviceYear,
+                                execution_items: '年度服務計畫母案 (系統自動建立)', // 標記來源
+                                process_desc: '待指派顧問',
+                                created_by: sessionStorage.getItem('currentUserId')
+                            });
+                        if (recError) console.warn('自動建立母案失敗:', recError.message);
+                    }
                 }
-            }
 
-            if(error) {
-                alert('儲存失敗: ' + error.message);
-            } else {
-                alert('✅ 儲存成功！' + (!id ? '(已自動建立預設作業場所)' : ''));
+                alert('✅ 儲存成功！(已同步建立作業場所與年度母案)');
                 bootstrap.Modal.getInstance(document.getElementById('companyModal')).hide();
                 loadCompanies();
+                
+                // 若是在第三分頁，也順便重整一下
+                loadRecords(); 
+
+            } catch (err) {
+                console.error(err);
+                alert('❌ 儲存失敗: ' + err.message);
             }
         }
 
@@ -1251,39 +1285,153 @@
             return strVal;
         }
 
+// ==========================================
+        // ★ 匯入執行邏輯 (修改版：匯入公司時自動產生母案)
+        // ==========================================
         document.getElementById('btn-confirm-import').addEventListener('click', async function() {
             const btn = this;
+            
+            if (!pendingImportData || pendingImportData.length === 0) {
+                alert('沒有可匯入的資料');
+                return;
+            }
+
+            const originalText = btn.innerHTML;
             btn.disabled = true;
-            btn.innerText = '匯入中...';
+            btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>處理中...';
+
+            let successCount = 0;
+            let errorCount = 0;
+            let errorLog = [];
 
             try {
+                // ------------------------------------------------
+                // 1. 公司匯入 (同時建立 Workplace + Service Record)
+                // ------------------------------------------------
                 if(pendingImportType === 'company') {
-                    const { error } = await supabaseClient.from('companies').upsert(pendingImportData, { onConflict: 'tax_id' });
-                    if(error) throw error;
-                } else if(pendingImportType === 'staff') {
-                    const { error } = await supabaseClient.from('medical_staff').insert(pendingImportData);
-                    if(error) throw error;
-                } else if(pendingImportType === 'record') {
-                    const { error } = await supabaseClient.from('service_records').insert(pendingImportData);
-                    if(error) throw error;
+                    for (let item of pendingImportData) {
+                        const payload = {
+                            tax_id: (item.tax_id || item.統一編號 || '').toString().trim(),
+                            name: (item.name || item.事業單位名稱 || item.公司名稱 || '').trim(),
+                            address: item.address || item.公司地址 || item.地址,
+                            contact_person: item.contact_person || item.聯絡人,
+                            phone: item.phone || item.電話,
+                            service_year: item.service_year || 2025, // 若 CSV 沒年份，預設 2025
+                            created_by: sessionStorage.getItem('currentUserId')
+                        };
+
+                        if(!payload.tax_id || !payload.name) continue;
+
+                        // A. 寫入/更新 公司
+                        // 注意：使用 upsert 會覆蓋舊資料。為了確保能拿到 ID，我們需要 select
+                        const { data: compData, error } = await supabaseClient
+                            .from('companies')
+                            .upsert(payload, { onConflict: 'tax_id' })
+                            .select()
+                            .single();
+                        
+                        if (error) {
+                            errorCount++;
+                            errorLog.push(`統編 ${payload.tax_id}: ${error.message}`);
+                            continue;
+                        }
+
+                        // 成功寫入公司後，檢查是否需要補建「場所」與「母案」
+                        successCount++;
+                        const companyId = compData.id;
+                        const sYear = payload.service_year;
+
+                        // B. 檢查/建立 Workplace (全廠)
+                        let workplaceId = null;
+                        const { data: wpData } = await supabaseClient
+                            .from('workplaces')
+                            .select('id')
+                            .eq('company_id', companyId)
+                            .limit(1);
+
+                        if (wpData && wpData.length > 0) {
+                            workplaceId = wpData[0].id; // 已存在，沿用
+                        } else {
+                            // 不存在，新增
+                            const { data: newWp } = await supabaseClient
+                                .from('workplaces')
+                                .insert({
+                                    company_id: companyId,
+                                    department_name: '全廠',
+                                    created_by: sessionStorage.getItem('currentUserId')
+                                })
+                                .select().single();
+                            if (newWp) workplaceId = newWp.id;
+                        }
+
+                        // C. 檢查/建立 Service Record (年度母案)
+                        if (workplaceId) {
+                            // 檢查該場所今年是否已有母案 (避免重複匯入時重複建立)
+                            const { count } = await supabaseClient
+                                .from('service_records')
+                                .select('*', { count: 'exact', head: true })
+                                .eq('workplace_id', workplaceId)
+                                .eq('service_year', sYear);
+                            
+                            if (count === 0) {
+                                await supabaseClient.from('service_records').insert({
+                                    workplace_id: workplaceId,
+                                    visit_date: `${sYear}-01-01`, // 母案預設日期
+                                    service_year: sYear,
+                                    execution_items: '年度服務計畫母案 (匯入自動建立)',
+                                    process_desc: '待指派顧問',
+                                    consultant_id: null, // 暫空，待派工
+                                    created_by: sessionStorage.getItem('currentUserId')
+                                });
+                            }
+                        }
+                    }
+                    loadCompanies(); // 刷新公司列表
+                    loadRecords();   // 刷新紀錄列表 (因為我們剛剛自動偷加了)
+                } 
+                // ------------------------------------------------
+                // 2. 顧問匯入 (保持不變)
+                // ------------------------------------------------
+                else if(pendingImportType === 'staff') {
+                    for (let item of pendingImportData) {
+                        const payload = {
+                            name: (item.name || item.姓名 || item.顧問姓名 || '').trim(),
+                            role: item.role || 'consultant',
+                            phone: item.phone || item.電話,
+                            email: item.email || item.信箱,
+                            is_active: true
+                        };
+                        if(!payload.name) continue;
+
+                        const { error } = await supabaseClient.from('medical_staff').insert(payload);
+                        if(error) { errorCount++; errorLog.push(error.message); } else successCount++;
+                    }
+                    loadStaff();
+                } 
+                // ------------------------------------------------
+                // 3. 服務紀錄匯入 (★已取消，改為自動同步)
+                // ------------------------------------------------
+                else if(pendingImportType === 'record') {
+                    alert('⚠️ 提示：服務歷程現在會隨「公司主檔」建立時自動產生母案，無需單獨匯入。');
+                    // 不執行任何動作
                 }
 
-                alert('✅ 匯入成功！');
-                bootstrap.Modal.getInstance(document.getElementById('importModal')).hide();
+                // 結尾處理
+                let msg = `處理完成！\n成功: ${successCount} 筆`;
+                if(errorCount > 0) msg += `\n失敗: ${errorCount} 筆`;
+                alert(msg);
                 
-                if(pendingImportType === 'company') loadCompanies();
-                else if(pendingImportType === 'staff') loadStaff();
-                else loadRecords();
+                const modal = bootstrap.Modal.getInstance(document.getElementById('importModal'));
+                if(modal) modal.hide();
 
             } catch(e) {
                 console.error(e);
-                alert('❌ 匯入發生錯誤: ' + e.message);
+                alert('系統錯誤: ' + e.message);
             } finally {
                 btn.disabled = false;
-                btn.innerText = '確認匯入';
+                btn.innerHTML = originalText;
             }
         });
-
     </script>
 </body>
 </html>
