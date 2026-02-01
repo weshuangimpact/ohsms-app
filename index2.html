@@ -263,7 +263,7 @@
                     <div class="alert alert-info small mb-0">
                         <i class="fas fa-save me-1"></i> 
                         <strong>證據保全：</strong><br>
-                        系統將自動合併所有附件為單一 PDF (Evidence)，並封存至正式資料庫 (Service Records) 作為評鑑證據。
+                        系統將自動合併所有附件為單一 PDF (Evidence)，並封存至正式資料庫 (Evidence Table) 作為評鑑證據。
                     </div>
                 </div>
                 <div class="modal-footer bg-light">
@@ -442,8 +442,9 @@
             const tbody = document.getElementById('pendingTableBody');
             
             try {
+                // 修改 1: 讀取 'evidence' 表而非 'service_records' 來計算已核定數量
                 const { count: approvedCount, error: err1 } = await supabaseClient
-                    .from('service_records')
+                    .from('evidence')
                     .select('*', { count: 'exact', head: true })
                     .eq('service_year', year);
 
@@ -784,8 +785,9 @@
                     .eq('id', id);
                 if (updateError) throw updateError;
 
+                // 修改 2: 結案寫入 'evidence' 表而非 'service_records'
                 const { error: insertError } = await supabaseClient
-                    .from('service_records')
+                    .from('evidence')
                     .insert({
                         workplace_id: record.workplace_id,
                         visit_date: record.visit_date,
