@@ -451,7 +451,6 @@
                 const staffName = item.medical_staff?.name || '未指派';
                 const date = item.visit_date || '-';
 
-                // 注意：這裡將 id 傳入 openDetailModal
                 const row = `
                     <tr>
                         <th scope="row">${index + 1}</th>
@@ -519,18 +518,17 @@
                 }
 
                 // ==========================================
-                // 步驟 2: 智慧檔案搜尋 (修正重點)
+                // 步驟 2: 智慧檔案搜尋 ([修正] 路徑順序)
                 // ==========================================
                 let targetFilePath = data.file_url;
                 
                 // 如果 file_url 是空的，但有 attachment_folder_id，則嘗試去 Bucket 找
                 if (!targetFilePath && data.attachment_folder_id) {
-                    console.log("未發現直接連結，嘗試搜尋資料夾:", data.attachment_folder_id);
                     
-                    // 根據截圖，結構為: [FolderID] -> [Year] -> [File]
-                    // 組合搜尋路徑
-                    const searchPath = `${data.attachment_folder_id}/${data.service_year}`;
-                    
+                    // [修正] 結構為: Year/FolderID (例: 2026/1ef7f429...)
+                    const searchPath = `${data.service_year}/${data.attachment_folder_id}`;
+                    console.log("嘗試搜尋資料夾:", searchPath);
+
                     // 使用 Storage List API 列出檔案
                     const { data: fileList, error: listError } = await supabaseClient
                         .storage
@@ -543,7 +541,7 @@
                         const targetFile = pdfFile || fileList[0];
                         
                         if (targetFile) {
-                            // 組合完整路徑: FolderID/Year/FileName
+                            // 組合完整路徑: Year/FolderID/FileName
                             targetFilePath = `${searchPath}/${targetFile.name}`;
                             console.log("自動找到檔案:", targetFilePath);
                         }
