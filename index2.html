@@ -715,8 +715,7 @@
 
             new bootstrap.Modal(document.getElementById('approvalModal')).show();
         }
-
-        async function performFinalApproval() {
+async function performFinalApproval() {
             const id = document.getElementById('approve-target-id').value;
             const type = document.getElementById('approve-type').value;
             const comment = document.getElementById('approve-comment').value.trim();
@@ -766,13 +765,14 @@
                 const timestamp = Date.now();
                 const targetPath = `${year}/${id}/Evidence_Final_${timestamp}.pdf`; 
 
+                let evidenceFileUrl = null;
                 if (finalPdfBlob) {
-                    // ★ 修正：將上傳目標改為 'evidence' Bucket
                     const { error: uploadError } = await supabaseClient.storage
                         .from('evidence')
                         .upload(targetPath, finalPdfBlob, { upsert: true });
                     
                     if (uploadError) throw new Error("證據檔案上傳失敗: " + uploadError.message);
+                    evidenceFileUrl = targetPath;
                 }
 
                 const { error: updateError } = await supabaseClient
@@ -796,7 +796,9 @@
                         consultant_id: record.consultant_id,
                         is_special_case: (type === 'special'),
                         audit_note: comment,
-                        attachment_folder_id: fileSourceId 
+                        attachment_folder_id: fileSourceId,
+                        file_url: evidenceFileUrl,
+                        additional_appendices: record.attachment_files // ★ 將 staging 的 attachment_files 直接寫入 evidence 的 additional_appendices
                     });
                 
                 if (insertError) throw new Error("寫入正式資料庫失敗: " + insertError.message);
@@ -813,51 +815,6 @@
                 btn.disabled = false;
                 btn.innerText = originalBtnText;
             }
-        }
-
-        function toggleOtherReason() {
-            const isChecked = document.getElementById('reason3').checked;
-            document.getElementById('reason-other-text').style.display = isChecked ? 'block' : 'none';
-        }
-
-        function openReviewEmailModal(id) {
-            const record = currentStagingData.find(r => r.id === id);
-            if(!record) return;
-            document.getElementById('email-target-id').value = id;
-            document.getElementById('email-consultant-name').value = record.medical_staff?.name || '';
-            document.getElementById('email-consultant-addr').innerText = record.medical_staff?.email || '無 Email 資料';
-            document.querySelectorAll('.preview-name').forEach(el => el.innerText = record.medical_staff?.name || 'XXX');
-            new bootstrap.Modal(document.getElementById('reviewEmailModal')).show();
-        }
-
-        function sendReviewEmail() {
-            const name = document.getElementById('email-consultant-name').value;
-            const email = document.getElementById('email-consultant-addr').innerText;
-            const deadline = document.getElementById('email-deadline').value;
-            let reasons = [];
-            if(document.getElementById('reason1').checked) reasons.push("附件錯置");
-            if(document.getElementById('reason2').checked) reasons.push("缺件");
-            if(document.getElementById('reason3').checked) reasons.push("其他原因：" + (document.getElementById('reason-other-text').value.trim() || '未說明'));
-            if(reasons.length === 0) return alert('請至少勾選一項原因');
-            alert(`[系統模擬發信]\n目標：${email}\n內容：\n親愛的 ${name} 顧問，您的送審案件因以下原因：\n${reasons.join('、')}\n需要補正。請於 ${deadline} 天內，盡速完成，以利結案。`);
-            bootstrap.Modal.getInstance(document.getElementById('reviewEmailModal')).hide();
-        }
-
-        function openReminderModal(id) {
-            const record = currentStagingData.find(r => r.id === id);
-            if(!record) return;
-            document.getElementById('remind-target-id').value = id;
-            document.getElementById('remind-consultant-name').value = record.medical_staff?.name || '';
-            document.getElementById('remind-consultant-addr').innerText = record.medical_staff?.email || '無 Email 資料';
-            document.querySelectorAll('.remind-preview-name').forEach(el => el.innerText = record.medical_staff?.name || 'XXX');
-            new bootstrap.Modal(document.getElementById('reminderEmailModal')).show();
-        }
-
-        function sendReminderEmail() {
-            const name = document.getElementById('remind-consultant-name').value;
-            const email = document.getElementById('remind-consultant-addr').innerText;
-            alert(`[系統模擬發信]\n目標：${email}\n內容：\n親愛的 ${name} 顧問 您的案件尚未結案 請盡速補齊附件 以利結案`);
-            bootstrap.Modal.getInstance(document.getElementById('reminderEmailModal')).hide();
         }
     </script>
 </body>
