@@ -1062,46 +1062,89 @@
                 csvContent += "李小美,護理人員,全職,0987654321,nurse@test.com,2024-05-20";
                 triggerDownload(csvContent, 'staff_import_template.csv');
 
-            } else if (type === 'record') {
-                // ==========================================
-                // 重點修正：動態撈取資料庫公司 + 完整欄位
-                // ==========================================
-                try {
-                    // 1. 抓取所有已經建立場所 (Workplace) 的公司
-                    const { data: wpData, error } = await supabaseClient
-                        .from('workplaces')
-                        .select('companies (name)')
-                        .order('created_at', { ascending: false });
+} else if (type === 'record') {
+                    // ==========================================
+                    // 修正重點：配合新範本，讀取 6 個欄位 (含時間)
+                    // ==========================================
+                    html += '<th>公司名稱</th><th>顧問姓名</th><th>日期</th><th>時間</th><th>事項</th><th>狀態</th></tr></thead><tbody>';
+                    
+                    previewArea.innerHTML = '<div class="text-center p-3"><span class="spinner-border text-primary"></span> 正在核對公司與顧問資料庫...</div>';
+                    
+                    // 1. 準備對照表
+                    const { data: allCompanies } = await supabaseClient.from('companies').select('id, name, workplaces(id)');
+                    const { data: allStaff } = await supabaseClient.from('medical_staff').select('id, name');
 
-                    if (error) throw error;
-
-                    // 2. 取出不重複的公司名稱 (使用 Set 去重)
-                    // 過濾掉無效資料
-                    const companyNames = [...new Set(wpData.map(item => item.companies?.name).filter(n => n))];
-
-                    // 3. 設定完整標題 (對應 Modal 所有欄位)
-                    // 順序：公司 | 顧問 | 日期 | 開始時間 | 結束時間 | 事項
-                    csvContent += "公司名稱,顧問姓名,立案日期(YYYY-MM-DD),開始時間(HH:mm),結束時間(HH:mm),執行事項\n";
-
-                    if (companyNames.length === 0) {
-                        // 若無資料，給一行範例
-                        csvContent += "範例公司,王顧問,,09:00,12:00,建立母案";
-                    } else {
-                        // 4. 為每一間公司產生一行預填列
-                        companyNames.forEach(name => {
-                            // 只填第一欄，其他留空給使用者填
-                            csvContent += `${name},,,,,\n`;
+                    const compMap = {}; 
+                    if(allCompanies) {
+                        allCompanies.forEach(c => {
+                            if(c.workplaces && c.workplaces.length > 0) compMap[c.name.trim()] = c.workplaces[0].id;
+                        });
+                    }
+                    const staffMap = {};
+                    if(allStaff) {
+                        allStaff.forEach(s => {
+                            staffMap[s.name.trim()] = s.id;
                         });
                     }
 
-                    triggerDownload(csvContent, 'service_record_template_full.csv');
+                    // 2. 逐行讀取 (注意欄位索引變化)
+                    rows.forEach(row => {
+                        if(!row[0]) return; 
+                        
+                        const cName = String(row[0]).trim(); // Col 0: 公司
+                        const sName = String(row[1]).trim(); // Col 1: 顧問
+                        const date = formatDate(row[2]);     // Col 2: 日期
+                        
+                        // 新增時間讀取 (Excel 可能讀成小數點或字串，簡單處理轉字串)
+                        // 注意：這裡假設 Excel 格式正確，若讀出來是 0.375 (9點) 這種 Excel 時間格式，可能需要額外處理
+                        // 目前先以文字格式讀取 HH:mm
+                        const startTime = row[3] ? String(row[3]).trim() : null; // Col 3: 開始時間
+                        const endTime = row[4] ? String(row[4]).trim() : null;   // Col 4: 結束時間
+                        const items = row[5] ? String(row[5]).trim() : null;     // Col 5: 事項
 
-                } catch (e) {
-                    console.error(e);
-                    alert('產生範本失敗: ' + e.message);
+                        const wpId = compMap[cName];
+                        const stId = staffMap[sName];
+                        const year = date ? new Date(date).getFullYear() : null;
+
+                        if(wpId && stId) {
+                             pendingImportData.push({
+                                workplace_id: wpId, 
+                                consultant_id: stId, 
+                                visit_date: date,     
+                                service_year: year,
+                                start_time: startTime, // 寫入開始時間
+                                end_time: endTime,     // 寫入結束時間
+                                execution_items: items,
+                                created_by: sessionStorage.getItem('currentUserId')
+                            });
+                            
+                            const timeDisplay = (startTime && endTime) ? `${startTime}~${endTime}` : '-';
+                            const dateDisplay = date ? date : '<span class="text-muted fst-italic">母案</span>';
+                            
+                            html += `<tr class="table-success">
+                                <td>${cName}</td>
+                                <td>${sName}</td>
+                                <td>${dateDisplay}</td>
+                                <td>${timeDisplay}</td>
+                                <td>${items || ''}</td>
+                                <td><span class="badge bg-success">OK</span></td>
+                            </tr>`;
+                        } else {
+                            let errorMsg = [];
+                            if(!wpId) errorMsg.push("無場所");
+                            if(!stId) errorMsg.push("無顧問");
+                            
+                            html += `<tr class="table-danger">
+                                <td>${cName}</td>
+                                <td>${sName}</td>
+                                <td>${date || '-'}</td>
+                                <td>-</td>
+                                <td>${items || ''}</td>
+                                <td><span class="badge bg-danger">${errorMsg.join(', ')}</span></td>
+                            </tr>`;
+                        }
+                    });
                 }
-            }
-        }
 
         // 輔助函式：觸發下載 (為了讓非同步邏輯更乾淨，獨立出來)
         function triggerDownload(content, filename) {
