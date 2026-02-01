@@ -10,9 +10,78 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 
     <style>
-        :root { --primary-bg: #f4f6f9; --theme-color: #4f46e5; }
-        body { background-color: var(--primary-bg); font-family: 'Segoe UI', 'Microsoft JhengHei', sans-serif; display: none; }
-        
+        /* =========================================
+           1. 統一頁首/頁尾 CSS 設定 (內頁專用 / 高度統一版)
+           ========================================= */
+        :root { 
+            --primary-bg: #f4f6f9; 
+            --theme-color: #4f46e5; /* 基本資料建立主色調 */
+        }
+
+        html, body {
+            height: 100%;
+        }
+
+        body {
+            display: none; /* 權限檢查前隱藏，檢查通過後改為 flex */
+            flex-direction: column;
+            min-height: 100vh;
+            background-color: var(--primary-bg);
+            font-family: 'Segoe UI', 'Microsoft JhengHei', sans-serif;
+        }
+
+        /* 內容區塊自動撐開 */
+        .container, .main-content, .container-fluid {
+            flex: 1;
+        }
+
+        /* 頁首設定 */
+        .navbar {
+            background-color: #202124 !important;
+            min-height: 85px; /* 統一高度 */
+            color: #fff;
+            flex-shrink: 0;
+        }
+
+        /* 頁尾設定 */
+        footer {
+            background-color: #202124 !important;
+            color: #fff;
+            flex-shrink: 0;
+            font-size: 0.9rem;
+            letter-spacing: 0.5px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            margin-top: auto;
+            padding: 15px 0;
+            min-height: 85px;
+        }
+
+        /* =========================================
+           2. PDCA 字卡與標題 CSS
+           ========================================= */
+        /* PDCA 字卡 (白色區塊) 設定 */
+        .instruction-box {
+            background-color: #fff;
+            border-left: 5px solid var(--theme-color);
+            padding: 20px 25px;
+            border-radius: 4px;
+            margin-bottom: 30px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+        }
+
+        /* PDCA 字卡標題設定 */
+        .instruction-title {
+            color: var(--theme-color);
+            font-weight: 700;
+            margin-bottom: 10px;
+        }
+
+        /* =========================================
+           3. 本頁特定樣式 (保留原功能)
+           ========================================= */
         .section-title { border-left: 5px solid var(--theme-color); padding-left: 15px; margin-bottom: 20px; }
         .card-header { background-color: white; border-bottom: 1px solid #f0f0f0; }
         .table th { font-weight: 600; color: #555; background-color: #f8f9fa; white-space: nowrap; }
@@ -31,34 +100,59 @@
                 window.location.href = 'dashboard.html';
                 return;
             }
-            document.body.style.display = 'block';
+            // 權限通過，顯示頁面 (使用 Flex 佈局以配合 Sticky Footer)
+            document.body.style.display = 'flex';
         });
     </script>
 </head>
 <body>
 
-    <nav class="navbar navbar-expand-lg navbar-dark bg-dark py-3 mb-4">
-        <div class="container-fluid px-4">
-            <a class="navbar-brand fw-bold" href="dashboard.html"><i class="fas fa-shield-alt me-2"></i>OHSMS</a>
+    <nav class="navbar navbar-expand-lg navbar-dark px-4">
+        <div class="container-fluid d-flex justify-content-between align-items-center p-0">
+            <a class="navbar-brand d-flex align-items-center fw-bold" href="dashboard.html">
+                <i class="fas fa-shield-alt me-2"></i>
+                OHSMS 職安管理系統
+            </a>
+
             <div class="d-flex align-items-center">
-                <span class="text-light small me-3">系統管理後台</span>
-                <a href="dashboard.html" class="btn btn-outline-light btn-sm"><i class="fas fa-arrow-left me-1"></i> 返回儀表板</a>
+                <span class="text-white me-3 small" id="header-date">
+                    <i class="fas fa-spinner fa-spin"></i>
+                </span>
+                
+                <span class="text-white me-4 small border-start ps-3 border-secondary" id="header-clock" style="opacity: 0.9;">
+                    --:--
+                </span>
+             
+                <span class="text-white me-4 fw-bold" id="header-user">
+                    Hi! 使用者
+                </span>
+                
+                <a class="btn btn-outline-light btn-sm me-2" href="dashboard.html">
+                    <i class="fas fa-reply me-1"></i>回到儀表板
+                </a>
+                
+                <button class="btn btn-outline-light btn-sm" onclick="logoutSystem()">
+                    <i class="fas fa-sign-out-alt me-1"></i>登出
+                </button>
             </div>
         </div>
     </nav>
 
     <div class="container-fluid px-4 pb-5">
         
-        <div class="d-flex justify-content-between align-items-center mb-4">
-            <div>
-                <h4 class="fw-bold text-dark"><i class="fas fa-database me-2 text-primary"></i>基本資料建立</h4>
-                <p class="text-muted mb-0 small">
-                    <span class="badge bg-primary bg-opacity-10 text-primary me-2">5W1H 設計精神</span>
-                    透過系統化連結 <strong>顧問(Who)</strong>、<strong>時間(When)</strong>、<strong>場所(Where)</strong> 與 <strong>事項(What)</strong>，確保服務歷程具備 <strong>完整可追溯性(How)</strong> 與 <strong>法規依據(Why)</strong>。
-                </p>
-            </div>
+        <div class="mt-4 mb-4">
+            <h2 class="fw-bold text-dark mb-1">基本資料建立 (5W1H)</h2>
+            <p class="text-secondary">建立人、事、時、地、物的基礎關聯資料庫</p>
         </div>
 
+        <div class="instruction-box">
+            <div class="instruction-title">
+                <i class="fas fa-database me-2"></i>設計理念：5W1H 核心架構 —— 確保完整追溯性
+            </div>
+            <p class="mb-0 text-dark" style="line-height: 1.6;">
+                透過系統化連結 <strong>顧問(Who)</strong>、<strong>時間(When)</strong>、<strong>場所(Where)</strong> 與 <strong>事項(What)</strong>，確保服務歷程具備 <strong>完整可追溯性(How)</strong> 與 <strong>法規依據(Why)</strong>。此模組為系統運作之基石，請務必確保資料正確性。
+            </p>
+        </div>
         <ul class="nav nav-pills mb-4" id="pills-tab" role="tablist">
             <li class="nav-item" role="presentation">
                 <button class="nav-link active" id="pills-company-tab" data-bs-toggle="pill" data-bs-target="#pills-company" type="button" role="tab">1. 客戶公司主檔</button>
@@ -270,6 +364,13 @@
 
         </div>
     </div>
+
+    <footer>
+        <div class="mb-1">可信智慧整合有限公司 42917004</div>
+        <div class="small opacity-75" style="font-family: 'Segoe UI', sans-serif; letter-spacing: 1px;">
+            WesmartAI , Making Trust Transparent.
+        </div>
+    </footer>
 
     <div class="modal fade" id="companyModal" tabindex="-1">
         <div class="modal-dialog">
@@ -493,11 +594,42 @@
         const SUPABASE_KEY = 'sb_publishable_52emtU-9l-SDxcJTWVTPTA_Yu6qEogh';
         const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
+        // 4. 統一頁首頁尾邏輯 + 原本資料載入
         document.addEventListener('DOMContentLoaded', () => {
+            // 時鐘
+            setInterval(() => {
+                const now = new Date();
+                const clockEl = document.getElementById('header-clock');
+                if(clockEl) clockEl.textContent = now.toLocaleTimeString('zh-TW', { hour12: false });
+            }, 1000);
+
+            // 日期
+            const dateEl = document.getElementById('header-date');
+            if(dateEl) {
+                const now = new Date();
+                const days = ['日', '一', '二', '三', '四', '五', '六'];
+                const formattedDate = `${now.getFullYear()}/${now.getMonth() + 1}/${now.getDate()}(${days[now.getDay()]})`;
+                dateEl.innerHTML = `<i class="far fa-calendar-alt me-1"></i>今日是 ${formattedDate}`;
+            }
+
+            // 使用者名稱
+            const userName = sessionStorage.getItem('currentUserName');
+            const userEl = document.getElementById('header-user');
+            if(userEl && userName) userEl.innerText = `Hi! ${userName}`;
+
+            // 執行資料載入
             loadCompanies();
             loadStaff();
-            loadRecords(); // 載入歷程
+            loadRecords(); 
         });
+
+        // 登出功能
+        function logoutSystem() {
+            if(confirm('確定要登出系統嗎？')) {
+                sessionStorage.clear();
+                window.location.href = 'login.html';
+            }
+        }
 
         // ==========================================
         // 1. 公司主檔邏輯
