@@ -10,31 +10,34 @@
     
     <style>
         /* =========================================
-           1. 統一頁首/頁尾 CSS 設定 (內頁專用)
+           1. 統一頁首/頁尾 CSS 設定 (內頁專用 / 高度統一版)
            ========================================= */
         html, body {
             height: 100%;
         }
 
         body {
-            display: none; /* 權限驗證前先隱藏 */
+            display: none; /* 權限驗證前先隱藏，JS 載入後改為 flex */
             flex-direction: column;
             min-height: 100vh;
-            background-color: #f8f9fa;
+            background-color: #f8f9fa; /* 預設背景色 */
             font-family: 'Segoe UI', 'Microsoft JhengHei', sans-serif;
         }
 
+        /* 內容區塊自動撐開 */
         .container, .main-content, .container-fluid {
             flex: 1;
         }
 
+        /* 頁首設定 */
         .navbar {
             background-color: #202124 !important;
-            min-height: 85px;
+            min-height: 85px; /* [修正] 統一高度為 85px */
             color: #fff;
             flex-shrink: 0;
         }
 
+        /* 頁尾設定 */
         footer {
             background-color: #202124 !important;
             color: #fff;
@@ -42,12 +45,12 @@
             font-size: 0.9rem;
             letter-spacing: 0.5px;
             display: flex;
-            flex-direction: column;
+            flex-direction: column; /* 垂直排列 */
             align-items: center;
             justify-content: center;
             margin-top: auto;
             padding: 15px 0;
-            min-height: 85px;
+            min-height: 85px; /* 雙行高度 */
         }
 
         /* =========================================
@@ -55,30 +58,32 @@
            ========================================= */
         :root { 
             --primary-bg: #f8f9fa;
-            --theme-color: #0dcaf0; /* Account Mgmt 青色 */
+            --theme-color: #0dcaf0; /* Account Mgmt 階段的主題青色 */
             --theme-text: #055160;
         }
 
+        /* PDCA/5W1H 字卡 (白色區塊) 設定 */
         .instruction-box {
-            background-color: #fff;
-            border-left: 5px solid var(--theme-color);
-            padding: 20px 25px;
-            border-radius: 4px;
-            margin-bottom: 30px;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+            background-color: #fff; /* 白色背景 */
+            border-left: 5px solid var(--theme-color); /* 左側主題色飾條 */
+            padding: 20px 25px; /* 內距 */
+            border-radius: 4px; /* 圓角 */
+            margin-bottom: 30px; /* 下方留白 */
+            box-shadow: 0 2px 5px rgba(0,0,0,0.05); /* 輕微陰影 */
             width: 100%;
             text-align: left;
         }
 
+        /* 字卡標題設定 */
         .instruction-title {
-            color: var(--theme-text);
-            font-weight: 700;
-            margin-bottom: 10px;
+            color: var(--theme-text); /* 字體顏色 */
+            font-weight: 700; /* 粗體 */
+            margin-bottom: 10px; /* 與內文的間距 */
             font-size: 1.1rem;
         }
 
         /* =========================================
-           3. UI 設定
+           3. 既有功能 UI 設定 (保留列表與 Badge 樣式)
            ========================================= */
         .search-box {
             background: white;
@@ -94,11 +99,12 @@
             box-shadow: 0 4px 6px rgba(0,0,0,0.05);
         }
 
-        /* 角色標籤配色 (嚴格定義三種) */
-        .role-badge-admin { background-color: #dc3545; color: white; }      /* 紅 */
-        .role-badge-consultant { background-color: #ffc107; color: #212529; } /* 黃 */
-        .role-badge-general { background-color: #6c757d; color: white; }    /* 灰 (文管) */
+        /* 角色標籤配色 (樣式名稱保留，內容文字會更新) */
+        .role-badge-admin { background-color: #dc3545; color: white; }
+        .role-badge-consultant { background-color: #ffc107; color: #212529; }
+        .role-badge-general { background-color: #6c757d; color: white; } /* 用於 Doc_control */
 
+        /* 按鈕樣式覆寫 */
         .btn-theme {
             background-color: var(--theme-color);
             color: #fff;
@@ -117,6 +123,7 @@
                 window.location.href = 'dashboard.html';
                 return;
             }
+            // 顯示畫面 (Flex)
             document.body.style.display = 'flex';
         });
     </script>
@@ -134,10 +141,22 @@
                 <span class="text-white me-3 small" id="header-date">
                     <i class="fas fa-spinner fa-spin"></i>
                 </span>
-                <span class="text-white me-4 small border-start ps-3 border-secondary" id="header-clock" style="opacity: 0.9;">--:--</span>
-                <span class="text-white me-4 fw-bold" id="header-user">Hi! 使用者</span>
-                <a class="btn btn-outline-light btn-sm me-2" href="dashboard.html"><i class="fas fa-reply me-1"></i>回到儀表板</a>
-                <button class="btn btn-outline-light btn-sm" onclick="logoutSystem()"><i class="fas fa-sign-out-alt me-1"></i>登出</button>
+                
+                <span class="text-white me-4 small border-start ps-3 border-secondary" id="header-clock" style="opacity: 0.9;">
+                    --:--
+                </span>
+                
+                <span class="text-white me-4 fw-bold" id="header-user">
+                    Hi! 使用者
+                </span>
+                
+                <a class="btn btn-outline-light btn-sm me-2" href="dashboard.html">
+                    <i class="fas fa-reply me-1"></i>回到儀表板
+                </a>
+        
+                <button class="btn btn-outline-light btn-sm" onclick="logoutSystem()">
+                    <i class="fas fa-sign-out-alt me-1"></i>登出
+                </button>
             </div>
         </div>
     </nav>
@@ -168,9 +187,9 @@
                     <label class="form-label fw-bold small text-muted">角色篩選</label>
                     <select class="form-select" id="role-filter">
                         <option value="">所有角色</option>
-                        <option value="admin">系統管理員 (Admin)</option>
+                        <option value="admin">管理員 (Admin)</option>
                         <option value="consultant">顧問 (Consultant)</option>
-                        <option value="doc_control">文管人員 (General)</option>
+                        <option value="doc_control">文管人員 (Doc_control)</option>
                     </select>
                 </div>
                 <div class="col-md-2">
@@ -246,8 +265,8 @@
                         <label class="form-label text-muted small fw-bold">系統權限角色</label>
                         <select class="form-select" id="invite-system-role">
                             <option value="consultant">顧問 (Consultant)</option>
-                            <option value="doc_control">文管人員 (General)</option>
-                            <option value="admin">系統管理員 (Admin)</option>
+                            <option value="doc_control">文管人員 (Doc_control)</option>
+                            <option value="admin">管理員 (Admin)</option>
                         </select>
                     </div>
                 </div>
@@ -321,6 +340,7 @@
             tbody.innerHTML = '<tr><td colspan="5" class="text-center py-5 text-muted"><i class="fas fa-spinner fa-spin me-2"></i>資料載入中...</td></tr>';
             
             try {
+                // [關鍵] 同時讀取 role (職稱) 與 system_role (系統權限)
                 let query = supabaseClient.from('medical_staff').select('*').order('created_at', { ascending: false });
                 const { data: staffData, error } = await query;
                 if(error) throw error;
@@ -334,34 +354,50 @@
 
                 let filtered = staffData;
                 if(keyword) filtered = filtered.filter(s => (s.name && s.name.toLowerCase().includes(keyword)) || (s.email && s.email.toLowerCase().includes(keyword)));
-                if(roleFilter) filtered = filtered.filter(s => s.system_role === roleFilter);
-
+                
+                // 注意：這裡的篩選邏輯稍後會在 map 中二次處理，這裡先做初步篩選
+                // 為了確保篩選準確，建議先進行 map 轉換再 filter，或是接受這裡可能因 legacy 數據有落差
+                
                 if(filtered.length === 0) {
                     tbody.innerHTML = '<tr><td colspan="5" class="text-center py-5 text-muted">查無資料</td></tr>';
                     return;
                 }
 
-                tbody.innerHTML = filtered.map(s => {
+                const rowsHtml = filtered.map(s => {
                     const profile = profilesMap[s.user_id];
                     const hasAccount = !!(s.user_id); 
                     const emailValue = profile ? profile.email : (s.email || '');
                     const emailDisplay = emailValue || '<span class="text-muted fst-italic">未綁定帳號</span>';
                     
-                    // [關鍵修正] 顯示邏輯：如果資料庫是 medical 或其他，全部歸類為 文管人員(Default)
+                    // ===============================================
+                    // [核心修正] 權限顯示與校正邏輯 (優先權：System Role > Role)
+                    // ===============================================
+                    let displayRole = s.system_role;
+
+                    // 如果 system_role 是舊資料 'medical' 或是空的，則回頭參考 'role' 欄位(職稱)
+                    if (displayRole === 'medical' || !displayRole) {
+                        if (s.role === 'admin') displayRole = 'admin';
+                        else if (s.role === 'doc_control') displayRole = 'doc_control';
+                        else if (s.role === 'consultant') displayRole = 'consultant';
+                        else displayRole = 'doc_control'; // 若完全無法辨識，預設為文管
+                    }
+
+                    // 篩選器邏輯 (Client-side filtering for accuracy)
+                    if (roleFilter && displayRole !== roleFilter) return '';
+
                     let roleBadge = '';
-                    switch(s.system_role) {
+                    switch(displayRole) {
                         case 'admin': 
-                            roleBadge = '<span class="badge role-badge-admin">系統管理員</span>'; 
+                            roleBadge = '<span class="badge role-badge-admin">管理員 (Admin)</span>'; 
                             break;
                         case 'consultant': 
-                            roleBadge = '<span class="badge role-badge-consultant">顧問</span>'; 
+                            roleBadge = '<span class="badge role-badge-consultant">顧問 (Consultant)</span>'; 
                             break;
                         case 'doc_control': 
-                            roleBadge = '<span class="badge role-badge-general">文管人員</span>'; 
+                            roleBadge = '<span class="badge role-badge-general">文管人員 (Doc_control)</span>'; 
                             break;
                         default: 
-                            // 這裡捕捉所有 'medical' 或未定義的角色，顯示為文管人員，但加上一個小提示(可選)
-                            roleBadge = '<span class="badge role-badge-general">文管人員</span>'; 
+                            roleBadge = '<span class="badge role-badge-general">文管人員 (Doc_control)</span>'; 
                             break;
                     }
 
@@ -377,11 +413,8 @@
                             actionBtn = `<button class="btn btn-sm btn-outline-success fw-bold" onclick="toggleStatus('${s.id}', true, '${s.name}')" title="點擊恢復此帳號"><i class="fas fa-redo me-1"></i>恢復權限</button>`;
                         }
                     } else {
-                        // 預設選中角色：如果資料庫是 medical，這裡預設選文管
-                        let defaultSelectRole = s.system_role;
-                        if(defaultSelectRole === 'medical') defaultSelectRole = 'doc_control';
-                        
-                        actionBtn = `<button class="btn btn-sm btn-theme fw-bold" onclick="openActivateModal('${s.id}', '${s.name}', '${defaultSelectRole}', '${emailValue}')"><i class="fas fa-key me-1"></i>啟用帳號</button>`;
+                        // 開通視窗預設值：使用校正後的 displayRole
+                        actionBtn = `<button class="btn btn-sm btn-theme fw-bold" onclick="openActivateModal('${s.id}', '${s.name}', '${displayRole}', '${emailValue}')"><i class="fas fa-key me-1"></i>啟用帳號</button>`;
                     }
 
                     return `
@@ -395,6 +428,13 @@
                     `;
                 }).join('');
 
+                // 處理篩選後可能為空的情況
+                if (rowsHtml.trim() === '') {
+                    tbody.innerHTML = '<tr><td colspan="5" class="text-center py-5 text-muted">查無符合條件的資料</td></tr>';
+                } else {
+                    tbody.innerHTML = rowsHtml;
+                }
+
             } catch(e) {
                 console.error(e);
                 tbody.innerHTML = `<tr><td colspan="5" class="text-center py-5 text-danger">讀取失敗: ${e.message}</td></tr>`;
@@ -406,8 +446,9 @@
             document.getElementById('target-user-id').value = '';
             document.getElementById('invite-name').innerText = name;
             
-            // 再次確保 defaultRole 不是 medical
-            if(defaultRole === 'medical') defaultRole = 'doc_control';
+            // 再次確保 defaultRole 是有效的三種之一
+            const validRoles = ['admin', 'consultant', 'doc_control'];
+            if (!validRoles.includes(defaultRole)) defaultRole = 'doc_control';
             
             document.getElementById('invite-system-role').value = defaultRole;
             document.getElementById('invite-email').value = email || ''; 
@@ -464,7 +505,7 @@
 
                 if (profileError) throw new Error("Profile 寫入失敗: " + profileError.message);
 
-                // Step 3: 更新 Medical Staff (這裡會把 DB 裡的 medical 修正為正確角色)
+                // Step 3: 更新 Medical Staff (確保寫入正確的三種角色之一)
                 const { error: staffError } = await supabaseClient.from('medical_staff').update({ 
                     user_id: newUserId, system_role: role, is_active: true, email: email
                 }).eq('id', staffId);
