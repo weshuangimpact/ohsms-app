@@ -365,7 +365,7 @@
                 // 模擬 AI 思考延遲
                 await new Promise(r => setTimeout(r, 600));
 
-                // 搜尋證據庫 (從 service_records 改為 evidence)
+                // 搜尋證據庫 (從 evidence 表)
                 const results = await searchRecords(query);
                 
                 removeTyping(typingId);
@@ -410,16 +410,7 @@
             }
         }
 
-        // 修改：改為搜尋 evidence 資料表
         async function searchRecords(keyword) {
-            // 模糊搜尋邏輯：先撈取大致符合的資料
-            // 由於 Supabase 關聯搜尋限制，這裡做簡單處理：撈取符合的 evidence，並關聯公司名稱
-            
-            // 1. 嘗試搜尋公司名稱 (需透過關聯) - Supabase 對於 Nested Filter 支援有限，
-            // 這裡簡化為：搜尋 evidence 的文字欄位，或者列出最近的資料供前端過濾 (若資料量大需改用 Edge Functions)
-            // 為了演示，我們改為搜尋 evidence 自身的欄位 (audit_note, execution_items) 
-            // 若要搜尋公司名，建議在 evidence 建立時 redundant 存入 company_name，或是在此處先搜公司ID。
-
             // 方案：先搜公司 ID
             let companyIds = [];
             if (keyword) {
@@ -427,9 +418,9 @@
                 if (comps) companyIds = comps.map(c => c.id);
             }
             
-            // 建立查詢
+            // 建立查詢 (target: evidence table)
             let query = supabaseClient
-                .from('evidence') // ★ 修改點：資料來源改為 evidence
+                .from('evidence') 
                 .select(`
                     *,
                     workplaces!inner (
@@ -443,28 +434,15 @@
 
             // 如果有關鍵字
             if (keyword) {
-                // 組合過濾條件：(審核備註 含 關鍵字) OR (執行事項 含 關鍵字) OR (屬於該公司)
-                // Supabase JS 的 OR 語法較複雜，這裡使用簡單邏輯
-                if (companyIds.length > 0) {
-                    // 如果有搜到公司，優先顯示該公司的證據
-                    // 為了簡化，這裡僅過濾 Workplace 的 Company ID (需透過 Workplace 反查)
-                    // 由於 Supabase 關聯過濾限制，這裡採用 Post-Filter (前端過濾) 或是簡單的文字欄位搜尋
-                    // 暫時僅搜尋 audit_note 或 execution_items
-                    query = query.or(`audit_note.ilike.%${keyword}%,execution_items.ilike.%${keyword}%`);
-                } else {
-                     query = query.or(`audit_note.ilike.%${keyword}%,execution_items.ilike.%${keyword}%`);
-                }
+                query = query.or(`audit_note.ilike.%${keyword}%,execution_items.ilike.%${keyword}%`);
             }
 
             const { data, error } = await query;
             
             if (error) throw error;
             
-            // 若關鍵字是公司名，且前面 SQL 沒濾到 (因為只濾了文字欄位)，這裡補救
-            // 但標準做法是建議 evidence 表也存 company_name 以利搜尋
             if (keyword && data) {
                 const lowerKey = keyword.toLowerCase();
-                // 混合排序：命中公司名的排前面
                 return data.sort((a, b) => {
                     const nameA = a.workplaces?.companies?.name || '';
                     const nameB = b.workplaces?.companies?.name || '';
@@ -477,7 +455,7 @@
             return data || [];
         }
 
-        // 修改：調閱 evidence 詳細資料
+        // 修改：調閱 evidence 詳細資料 (含 Paper Sheet 樣式)
         async function openEvidence(id) {
             const newWin = window.open('', '_blank');
             if(!newWin) return alert('請允許開啟彈跳視窗');
@@ -486,7 +464,7 @@
 
             try {
                 const { data: rec, error } = await supabaseClient
-                    .from('evidence') // ★ 修改點：資料來源改為 evidence
+                    .from('evidence')
                     .select(`
                         *,
                         workplaces (
@@ -500,8 +478,7 @@
                 if (error) throw error;
 
                 // 準備檔案連結
-                let filesHtml = '<div class="alert alert-secondary">無附件</div>';
-                let linksHtml = '';
+                let attachmentsHtml = '<div class="alert alert-secondary">無附件</div>';
 
                 // 1. 檢查 Evidence_Final PDF (位於 storage: evidence/{year}/{id}/Evidence_Final_*.pdf)
                 // ★ 修正：將 Bucket 從 service-records 改為 evidence
@@ -517,13 +494,13 @@
                             const lastPdf = pdfs[0];
                             const { data: pubUrl } = supabaseClient.storage.from('evidence').getPublicUrl(`${path}/${lastPdf.name}`);
                             
-                            filesHtml = `
+                            attachmentsHtml = `
                                 <div class="card mb-3 border-success">
                                     <div class="card-header bg-success text-white">
                                         <i class="fas fa-file-pdf me-2"></i>正式結案證據 (Final Evidence)
                                     </div>
                                     <div class="card-body">
-                                        <iframe src="${pubUrl.publicUrl}#toolbar=0" style="width:100%; height:500px; border:none;"></iframe>
+                                        <iframe src="${pubUrl.publicUrl}#toolbar=0" style="width:100%; height:600px; border:none;"></iframe>
                                     </div>
                                     <div class="card-footer bg-white text-end">
                                         <a href="${pubUrl.publicUrl}" target="_blank" class="btn btn-sm btn-success">
@@ -536,66 +513,83 @@
                     }
                 }
 
-                // 2. 原始附件 (若有 attachment_folder_id 指向 staging)
-                if (rec.attachment_folder_id) {
-                     // 這裡可以選擇是否要列出原始圖檔，若已有 Final PDF 通常可省略，或列為參考
-                     // linksHtml = ...
-                }
+                const companyName = rec.workplaces?.companies?.name || '未知公司';
 
+                // 產生 Paper Sheet 樣式 HTML
                 const finalHtml = `
                     <!DOCTYPE html>
                     <html lang="zh-TW">
                     <head>
-                        <title>證據調閱: ${rec.workplaces?.companies?.name}</title>
+                        <title>證據調閱: ${companyName}</title>
                         <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
                         <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+                        <style>
+                            body { background: #e9ecef; padding: 20px; font-family: 'Segoe UI', sans-serif; }
+                            .paper-sheet {
+                                background: white;
+                                max-width: 900px;
+                                margin: 0 auto;
+                                padding: 40px;
+                                box-shadow: 0 0 15px rgba(0,0,0,0.1);
+                                position: relative;
+                                overflow: hidden;
+                                min-height: 80vh;
+                            }
+                            .watermark {
+                                position: absolute;
+                                top: 50%;
+                                left: 50%;
+                                transform: translate(-50%, -50%) rotate(-30deg);
+                                font-size: 6rem;
+                                color: rgba(0,0,0,0.03);
+                                font-weight: bold;
+                                pointer-events: none;
+                                white-space: nowrap;
+                                user-select: none;
+                            }
+                        </style>
                     </head>
-                    <body class="bg-light">
-                        <div class="container py-4">
-                            <div class="d-flex justify-content-between align-items-center mb-4">
-                                <h3 class="fw-bold"><i class="fas fa-search me-2"></i>證據調閱明細</h3>
-                                <button onclick="window.close()" class="btn btn-secondary">關閉視窗</button>
-                            </div>
-
-                            <div class="card shadow-sm mb-4">
-                                <div class="card-body">
-                                    <div class="row g-3">
-                                        <div class="col-md-4">
-                                            <label class="text-muted small">事業單位</label>
-                                            <div class="fw-bold fs-5">${rec.workplaces?.companies?.name}</div>
-                                            <small>${rec.workplaces?.companies?.tax_id || ''}</small>
-                                        </div>
-                                        <div class="col-md-4">
-                                            <label class="text-muted small">執行顧問</label>
-                                            <div class="fw-bold">${rec.medical_staff?.name}</div>
-                                        </div>
-                                        <div class="col-md-4">
-                                            <label class="text-muted small">服務日期/時間</label>
-                                            <div class="fw-bold">${rec.visit_date || '未設定'}</div>
-                                            <small>${rec.start_time || ''} ~ ${rec.end_time || ''}</small>
-                                        </div>
-                                        <div class="col-12">
-                                            <label class="text-muted small">執行事項 / 摘要</label>
-                                            <div class="bg-light p-2 rounded">${rec.execution_items || rec.process_desc || '無紀錄'}</div>
-                                        </div>
-                                    </div>
-                                    <div class="mt-3 border-top pt-2">
-                                        <label class="text-muted small me-2">案件狀態：</label>
-                                        ${rec.is_special_case 
-                                            ? '<span class="badge bg-warning text-dark">特案允許結案</span>' 
-                                            : '<span class="badge bg-success">標準合規結案</span>'}
-                                    </div>
+                    <body>
+                        <div class="paper-sheet">
+                            <div class="watermark">${companyName} 原始資料</div>
+                            
+                            <div class="border-bottom pb-3 mb-4 d-flex justify-content-between align-items-center">
+                                <div>
+                                    <h4 class="fw-bold text-primary mb-1"><i class="fas fa-folder-open me-2"></i>原始佐證資料調閱</h4>
+                                    <span class="text-muted small">Evidence ID: ${rec.id}</span>
                                 </div>
-                                ${rec.audit_note ? `<hr><small class="text-muted d-block ps-3">審核備註 (Audit Note)</small><div class="text-dark ps-3 pb-3">${rec.audit_note}</div>` : ''}
+                                <div class="text-end">
+                                    ${rec.is_special_case 
+                                        ? '<span class="badge bg-warning text-dark fs-6">特案允許結案</span>' 
+                                        : '<span class="badge bg-success fs-6">標準合規結案</span>'}
+                                </div>
                             </div>
 
-                            ${linksHtml}
+                            <div class="row g-3 mb-4">
+                                <div class="col-md-4">
+                                    <label class="text-muted small">事業單位</label>
+                                    <div class="fw-bold">${companyName}</div>
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="text-muted small">執行顧問</label>
+                                    <div class="fw-bold">${rec.medical_staff?.name}</div>
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="text-muted small">歸檔年度/日期</label>
+                                    <div class="fw-bold">${rec.service_year} / ${rec.visit_date}</div>
+                                </div>
+                                <div class="col-12">
+                                    <label class="text-muted small">執行事項摘要</label>
+                                    <div class="bg-light p-2 rounded border">${rec.execution_items || '無紀錄'}</div>
+                                </div>
+                                ${rec.audit_note ? `<div class="col-12"><label class="text-muted small">審核備註</label><div class="text-danger small">${rec.audit_note}</div></div>` : ''}
+                            </div>
 
-                            <h4 class="fw-bold mb-3"><i class="fas fa-folder-open me-2"></i>原始佐證資料 (Evidence)</h4>
-                            ${filesHtml}
+                            <h5 class="fw-bold mb-3 border-start border-4 border-primary ps-2">佐證附件 (Evidence)</h5>
+                            ${attachmentsHtml}
 
-                            <div class="text-center text-muted mt-5 pt-3 border-top small">
-                                <i class="fas fa-shield-alt me-1"></i> OHSMS Secure Audit System | Generated at ${new Date().toLocaleString()}
+                            <div class="text-center mt-5 text-muted small border-top pt-3">
+                                <i class="fas fa-shield-alt me-1"></i> OHSMS Secure Storage Access | Generated at ${new Date().toLocaleString()}
                             </div>
                         </div>
                     </body>
