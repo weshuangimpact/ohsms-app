@@ -86,9 +86,6 @@
         /* =========================================
            3. 既有功能 UI 設定 (保留 AI 搜尋介面等)
            ========================================= */
-        /* [修正] 移除原本的 max-width: 1200px 限制，讓版面全寬 */
-        /* .main-content { max-width: 1200px; margin: 0 auto; width: 100%; padding: 2rem; } */
-
         /* Robot Icon */
         .robot-wrapper {
             width: 100px; height: 100px; background-color: var(--theme-light);
@@ -245,17 +242,16 @@
         // 統一頁首與系統初始化邏輯
         // ==========================================
         document.addEventListener('DOMContentLoaded', function() {
-            // 1. 顯示畫面 (Flex 佈局)
+            // 1. 顯示畫面
             document.body.style.display = 'flex';
 
-            // 2. 啟動時鐘
+            // 2. 啟動時鐘與日期
             setInterval(() => {
                 const now = new Date();
                 const clockEl = document.getElementById('header-clock');
                 if(clockEl) clockEl.textContent = now.toLocaleTimeString('zh-TW', { hour12: false });
             }, 1000);
 
-            // 3. 設定日期
             const dateEl = document.getElementById('header-date');
             if(dateEl) {
                 const now = new Date();
@@ -264,13 +260,12 @@
                 dateEl.innerHTML = `<i class="far fa-calendar-alt me-1"></i>今日是 ${formattedDate}`;
             }
 
-            // 4. 讀取使用者名稱
+            // 3. 讀取使用者名稱
             const userName = sessionStorage.getItem('currentUserName') || '使用者';
             const userEl = document.getElementById('header-user');
             if(userEl) userEl.innerText = `Hi! ${userName}`;
         });
 
-        // 統一登出功能
         function logoutSystem() {
             if(confirm('確定要登出系統嗎？')) {
                 sessionStorage.clear();
@@ -279,16 +274,15 @@
         }
 
         // ==========================================
-        // 原有功能邏輯 (保持不變)
+        // 核心邏輯 (與 Colab 測試 100% 同步)
         // ==========================================
         const SUPABASE_URL = 'https://yhehfucgemxnfrdvpdhw.supabase.co';
         const SUPABASE_KEY = 'sb_publishable_52emtU-9l-SDxcJTWVTPTA_Yu6qEogh'; 
         const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
         
-        // [修改] 將原先的 'service-records' 改為 'evidence'
         const TARGET_BUCKET = 'evidence';
 
-        // 綁定 Enter 鍵觸發搜尋
+        // 綁定 Enter 鍵
         ['searchYear', 'searchCompany', 'searchConsultant'].forEach(id => {
             const el = document.getElementById(id);
             if(el) {
@@ -298,9 +292,6 @@
             }
         });
 
-        // ==========================================
-        // 1. 搜尋邏輯
-        // ==========================================
         async function executeSearch() {
             const yearKey = document.getElementById('searchYear').value.trim();
             const compKey = document.getElementById('searchCompany').value.trim().toLowerCase();
@@ -309,34 +300,49 @@
             const container = document.getElementById('resultsArea');
             const loader = document.getElementById('loading');
             
-            if(!yearKey && !compKey && !consKey) {
-                return alert("請至少輸入一個搜尋條件 (年份、公司或顧問)");
-            }
-
             container.innerHTML = '';
             loader.style.display = 'block';
 
             try {
-                // [修改] 資料表名稱改為 evidence
+                console.log("開始執行搜尋 (比照 Colab 邏輯)...");
+
+                // ★重點修正：比照 Colab 成功的 Select 語法
+                // 1. 使用 evidence 表
+                // 2. 移除所有 !inner (強制使用 Left Join，避免過濾掉任何資料)
+                // 3. 欄位結構與 Python script 完全一致
                 const { data, error } = await supabaseClient
-                    .from('evidence') 
+                    .from('evidence')
                     .select(`
-                        id, visit_date, service_year,
-                        attachment_folder_id, attachment_files,
-                        is_special_case, audit_note,
-                        created_by, created_at,
-                        medical_staff (name), 
-                        workplaces!inner (
-                            companies!inner (name, tax_id)
+                        id, 
+                        visit_date, 
+                        service_year,
+                        attachment_folder_id, 
+                        attachment_files,
+                        is_special_case, 
+                        audit_note,
+                        created_by, 
+                        created_at,
+                        medical_staff ( name ),
+                        workplaces (
+                            id,
+                            companies ( name, tax_id )
                         )
                     `)
                     .order('visit_date', { ascending: false })
                     .limit(100);
 
-                if(error) throw error;
+                if(error) {
+                    console.error("Supabase API Error:", error);
+                    throw error;
+                }
+
+                console.log(`查詢成功，原始筆數: ${data.length}`, data);
 
                 const filtered = data.filter(r => {
                     const rYear = (r.service_year || '').toString();
+                    
+                    // ★重點修正：更安全的 Optional Chaining (?.), 防止 JS 報錯
+                    // 即使資料庫關聯為 null，這裡也不會壞掉，而是回傳空字串
                     const rCompName = (r.workplaces?.companies?.name || '').toLowerCase();
                     const rTaxId = (r.workplaces?.companies?.tax_id || '');
                     const rConsName = (r.medical_staff?.name || '').toLowerCase();
@@ -356,12 +362,16 @@
                 }
 
                 container.innerHTML = filtered.map(rec => {
-                    const company = rec.workplaces?.companies?.name || '未知公司';
-                    const consultant = rec.medical_staff?.name || '未知顧問';
+                    // ★重點修正：處理關聯可能為 null 的情況
+                    const company = rec.workplaces?.companies?.name || '<span class="text-muted fst-italic">公司資料關聯遺失</span>';
+                    const consultant = rec.medical_staff?.name || '<span class="text-muted">未知顧問</span>';
                     const isSpecial = rec.is_special_case;
                     
+                    // 將資料編碼傳遞給彈跳視窗
                     const recordJson = encodeURIComponent(JSON.stringify(rec));
-                    const companyEnc = encodeURIComponent(company);
+                    // 確保公司名稱如果是 HTML 字串，要清理一下再傳，避免標題壞掉
+                    const cleanCompName = company.includes('<') ? '未知公司' : company;
+                    const companyEnc = encodeURIComponent(cleanCompName);
 
                     return `
                         <div class="result-card" onclick="openFullReport('${recordJson}', '${companyEnc}')">
@@ -386,12 +396,12 @@
             } catch (err) {
                 loader.style.display = 'none';
                 console.error(err);
-                container.innerHTML = `<div class="alert alert-danger">資料讀取錯誤: ${err.message}</div>`;
+                container.innerHTML = `<div class="alert alert-danger">資料讀取錯誤: ${err.message}<br><small>請按 F12 查看詳細錯誤</small></div>`;
             }
         }
 
         // ==========================================
-        // 2. 開啟新分頁報表
+        // 報表開啟邏輯 (保持不變)
         // ==========================================
         async function openFullReport(recordJson, companyEnc) {
             const rec = JSON.parse(decodeURIComponent(recordJson));
@@ -469,7 +479,7 @@
                 }
 
                 const folderId = rec.attachment_folder_id || rec.id; 
-                // 這裡會使用修改後的 TARGET_BUCKET ('evidence')
+                // 使用 evidence bucket
                 const storagePath = `${rec.service_year}/${folderId}`;
                 
                 const { data: fileList, error: storageError } = await supabaseClient
@@ -490,7 +500,6 @@
                     for(const f of fileList) {
                         if(f.name === '.emptyFolderPlaceholder') continue;
                         
-                        // 這裡也會使用修改後的 TARGET_BUCKET
                         const { data } = supabaseClient.storage.from(TARGET_BUCKET).getPublicUrl(`${storagePath}/${f.name}`);
                         const url = data.publicUrl;
                         const isMain = f.name.startsWith('Evidence_Final');
