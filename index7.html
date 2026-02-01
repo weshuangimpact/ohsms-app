@@ -1251,189 +1251,39 @@
             return strVal;
         }
 
-// ==========================================
-        // ★ 實現您想法的完整匯入邏輯 ★
-        // 1. 公司：優先比對統編 (若有)，其次比對名稱
-        // 2. 顧問：先將「姓名」翻譯成「ID」再寫入
-        // ==========================================
         document.getElementById('btn-confirm-import').addEventListener('click', async function() {
             const btn = this;
-            
-            // 防呆：沒資料不執行
-            if (!pendingImportData || pendingImportData.length === 0) {
-                alert('沒有可匯入的資料');
-                return;
-            }
-
-            const originalText = btn.innerHTML;
             btn.disabled = true;
-            btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>資料轉譯與寫入中...';
-
-            let successCount = 0;
-            let errorCount = 0;
-            let errorLog = [];
+            btn.innerText = '匯入中...';
 
             try {
-                // ------------------------------------------------
-                // 針對「服務紀錄 (Record)」的特殊處理邏輯
-                // ------------------------------------------------
-                if(pendingImportType === 'record') {
-                    
-                    // 【步驟一】建立「翻譯對照表」 (Mapping Map)
-                    // 這是為了把 Excel 的「中文名稱」轉成資料庫的「UUID」
-                    const { data: allCompanies } = await supabaseClient.from('companies').select('id, name, tax_id');
-                    const { data: allStaff } = await supabaseClient.from('medical_staff').select('id, name');
-                    
-                    // 製作公司查表 (支援 統編 與 名稱 兩種查法)
-                    const compMap = {}; 
-                    if(allCompanies) {
-                        allCompanies.forEach(c => {
-                            compMap[c.name.trim()] = c.id;      // 讓程式看得懂「味之愛...」
-                            if(c.tax_id) compMap[c.tax_id.trim()] = c.id; // 讓程式看得懂「統編」
-                        });
-                    }
-                    
-                    // 製作顧問查表
-                    const staffMap = {}; 
-                    if(allStaff) {
-                        allStaff.forEach(s => {
-                            staffMap[s.name.trim()] = s.id;     // 讓程式看得懂「王志明」
-                        });
-                    }
-
-                    // 【步驟二】開始逐筆「翻譯」並「寫入」
-                    for (let i = 0; i < pendingImportData.length; i++) {
-                        const row = pendingImportData[i];
-
-                        // 1. 取得 Excel 裡的原始資料
-                        const cName = (row.company_name || row.公司名稱 || '').trim(); // 例如：味之愛
-                        const cTax  = (row.tax_id || row.統編 || '').toString().trim();
-                        const sName = (row.consultant_name || row.顧問姓名 || '').trim(); // 例如：王志明
-
-                        // 2. 【核心邏輯】比對公司 ID
-                        // 優先查統編，沒統編查名稱
-                        let targetCompId = compMap[cTax] || compMap[cName];
-                        
-                        if (!targetCompId) {
-                            errorCount++;
-                            errorLog.push(`第 ${i+1} 筆失敗: 資料庫找不到公司「${cName || cTax}」，請先建立公司主檔。`);
-                            continue; // 跳過這筆，繼續下一筆
-                        }
-
-                        // 3. 【核心邏輯】比對顧問 ID
-                        let targetStaffId = staffMap[sName]; 
-                        // 若找不到顧問，targetStaffId 會是 undefined (資料庫允許空值則沒問題)
-
-                        // 4. 【核心邏輯】取得作業場所 (Workplace)
-                        // 因為紀錄是掛在「場所」下，不是「公司」下，所以要多這一層轉換
-                        let targetWorkplaceId = null;
-                        
-                        // 先查該公司有無場所
-                        const { data: wpData } = await supabaseClient
-                            .from('workplaces')
-                            .select('id')
-                            .eq('company_id', targetCompId)
-                            .limit(1);
-
-                        if (wpData && wpData.length > 0) {
-                            targetWorkplaceId = wpData[0].id;
-                        } else {
-                            // 沒場所 -> 自動幫他建一個「全廠」
-                            const { data: newWp } = await supabaseClient
-                                .from('workplaces')
-                                .insert({
-                                    company_id: targetCompId,
-                                    department_name: '全廠',
-                                    created_by: sessionStorage.getItem('currentUserId')
-                                })
-                                .select()
-                                .single();
-                            if(newWp) targetWorkplaceId = newWp.id;
-                        }
-
-                        // 5. 準備寫入資料
-                        const todayStr = new Date().toISOString().split('T')[0];
-                        const visitDate = row.visit_date || row.service_date || row.日期 || todayStr;
-
-                        const payload = {
-                            workplace_id: targetWorkplaceId, // 這是轉換後的 UUID
-                            consultant_id: targetStaffId,    // 這是轉換後的 UUID
-                            visit_date: visitDate,
-                            service_year: new Date(visitDate).getFullYear(),
-                            execution_items: row.execution_items || row.執行事項 || '一般訪視',
-                            process_desc: '批次匯入資料',
-                            created_by: sessionStorage.getItem('currentUserId')
-                        };
-
-                        const { error } = await supabaseClient.from('service_records').insert(payload);
-
-                        if(error) {
-                            errorCount++;
-                            errorLog.push(`第 ${i+1} 筆寫入失敗: ${error.message}`);
-                        } else {
-                            successCount++;
-                        }
-                    }
-                    loadRecords(); // 匯入完成後刷新列表
-                }
-                // ------------------------------------------------
-                // 其他類型 (公司、顧問) 的簡單匯入邏輯
-                // ------------------------------------------------
-                else if(pendingImportType === 'company') {
-                     for (let item of pendingImportData) {
-                        const payload = {
-                            tax_id: (item.tax_id || item.統一編號 || '').toString().trim(),
-                            name: (item.name || item.公司名稱 || '').trim(),
-                            address: item.address || item.地址,
-                            contact_person: item.contact_person || item.聯絡人,
-                            phone: item.phone || item.電話,
-                            service_year: item.service_year || 2025,
-                            created_by: sessionStorage.getItem('currentUserId')
-                        };
-                        if(!payload.tax_id || !payload.name) continue;
-                        const { error } = await supabaseClient.from('companies').upsert(payload, { onConflict: 'tax_id' });
-                        if(error) { errorCount++; errorLog.push(error.message); } else successCount++;
-                    }
-                    loadCompanies();
-                } 
-                else if(pendingImportType === 'staff') {
-                     for (let item of pendingImportData) {
-                        const payload = {
-                            name: (item.name || item.姓名 || item.顧問姓名 || '').trim(),
-                            role: item.role || 'consultant',
-                            phone: item.phone || item.電話,
-                            email: item.email || item.信箱,
-                            is_active: true
-                        };
-                        if(!payload.name) continue;
-                        const { error } = await supabaseClient.from('medical_staff').insert(payload);
-                        if(error) { errorCount++; errorLog.push(error.message); } else successCount++;
-                    }
-                    loadStaff();
+                if(pendingImportType === 'company') {
+                    const { error } = await supabaseClient.from('companies').upsert(pendingImportData, { onConflict: 'tax_id' });
+                    if(error) throw error;
+                } else if(pendingImportType === 'staff') {
+                    const { error } = await supabaseClient.from('medical_staff').insert(pendingImportData);
+                    if(error) throw error;
+                } else if(pendingImportType === 'record') {
+                    const { error } = await supabaseClient.from('service_records').insert(pendingImportData);
+                    if(error) throw error;
                 }
 
-                // ------------------------------------------------
-                // 匯入結果報告
-                // ------------------------------------------------
-                let msg = `匯入作業結束。\n成功: ${successCount} 筆`;
-                if(errorCount > 0) {
-                    msg += `\n失敗: ${errorCount} 筆\n(前3筆錯誤: ${errorLog.slice(0,3).join('; ')}...)`;
-                    console.warn('匯入詳細錯誤:', errorLog);
-                }
-                alert(msg);
+                alert('✅ 匯入成功！');
+                bootstrap.Modal.getInstance(document.getElementById('importModal')).hide();
                 
-                // 關閉視窗
-                const modal = bootstrap.Modal.getInstance(document.getElementById('importModal'));
-                if(modal) modal.hide();
+                if(pendingImportType === 'company') loadCompanies();
+                else if(pendingImportType === 'staff') loadStaff();
+                else loadRecords();
 
             } catch(e) {
                 console.error(e);
-                alert('系統錯誤: ' + e.message);
+                alert('❌ 匯入發生錯誤: ' + e.message);
             } finally {
                 btn.disabled = false;
-                btn.innerHTML = originalText;
+                btn.innerText = '確認匯入';
             }
         });
+
     </script>
 </body>
 </html>
