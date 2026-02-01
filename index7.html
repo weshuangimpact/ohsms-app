@@ -1048,26 +1048,67 @@
         // ==========================================
         // 4. 匯入功能 (Excel Import) - 修正版
         // ==========================================
-        let pendingImportData = [];
-        let pendingImportType = '';
+// 修正版：下載範本 (支援動態撈取已建檔公司 + 完整欄位)
+        async function downloadTemplate(type) {
+            let csvContent = "\uFEFF"; // 加入 BOM 解決 Excel 中文亂碼
 
-        function downloadTemplate(type) {
-            let csvContent = "data:text/csv;charset=utf-8,\uFEFF";
             if(type === 'company') {
                 csvContent += "統一編號,事業單位名稱,公司地址,聯絡人,電話,合約開始日期(YYYY-MM-DD),合約結束日期(YYYY-MM-DD)\n";
                 csvContent += "85204196,範例公司,台北市信義區忠孝東路一段1號,王大明,0912345678,2025-01-01,2025-12-31";
+                triggerDownload(csvContent, 'company_import_template.csv');
+
             } else if (type === 'staff') {
                 csvContent += "姓名,身分角色(醫師/護理人員/顧問),職務型態(全職/兼職),電話,Email,入職日期(YYYY-MM-DD)\n";
                 csvContent += "李小美,護理人員,全職,0987654321,nurse@test.com,2024-05-20";
+                triggerDownload(csvContent, 'staff_import_template.csv');
+
             } else if (type === 'record') {
-                // 移除時間欄位
-                csvContent += "公司名稱,顧問姓名,服務日期(YYYY-MM-DD),執行事項\n";
-                csvContent += "範例公司,王顧問,2025-06-15,噪音檢測";
+                // ==========================================
+                // 重點修正：動態撈取資料庫公司 + 完整欄位
+                // ==========================================
+                try {
+                    // 1. 抓取所有已經建立場所 (Workplace) 的公司
+                    const { data: wpData, error } = await supabaseClient
+                        .from('workplaces')
+                        .select('companies (name)')
+                        .order('created_at', { ascending: false });
+
+                    if (error) throw error;
+
+                    // 2. 取出不重複的公司名稱 (使用 Set 去重)
+                    // 過濾掉無效資料
+                    const companyNames = [...new Set(wpData.map(item => item.companies?.name).filter(n => n))];
+
+                    // 3. 設定完整標題 (對應 Modal 所有欄位)
+                    // 順序：公司 | 顧問 | 日期 | 開始時間 | 結束時間 | 事項
+                    csvContent += "公司名稱,顧問姓名,服務日期(YYYY-MM-DD),開始時間(HH:mm),結束時間(HH:mm),執行事項\n";
+
+                    if (companyNames.length === 0) {
+                        // 若無資料，給一行範例
+                        csvContent += "範例公司,王顧問,,09:00,12:00,建立母案";
+                    } else {
+                        // 4. 為每一間公司產生一行預填列
+                        companyNames.forEach(name => {
+                            // 只填第一欄，其他留空給使用者填
+                            csvContent += `${name},,,,,\n`;
+                        });
+                    }
+
+                    triggerDownload(csvContent, 'service_record_template_full.csv');
+
+                } catch (e) {
+                    console.error(e);
+                    alert('產生範本失敗: ' + e.message);
+                }
             }
-            const encodedUri = encodeURI(csvContent);
+        }
+
+        // 輔助函式：觸發下載 (為了讓非同步邏輯更乾淨，獨立出來)
+        function triggerDownload(content, filename) {
+            const encodedUri = encodeURI("data:text/csv;charset=utf-8," + content);
             const link = document.createElement("a");
             link.setAttribute("href", encodedUri);
-            link.setAttribute("download", `${type}_import_template.csv`);
+            link.setAttribute("download", filename);
             document.body.appendChild(link);
             link.click();
             document.body.removeChild(link);
