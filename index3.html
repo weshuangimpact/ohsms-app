@@ -284,6 +284,8 @@
         const SUPABASE_URL = 'https://yhehfucgemxnfrdvpdhw.supabase.co';
         const SUPABASE_KEY = 'sb_publishable_52emtU-9l-SDxcJTWVTPTA_Yu6qEogh'; 
         const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+        
+        // [修改] 將原先的 'service-records' 改為 'evidence'
         const TARGET_BUCKET = 'evidence';
 
         // 綁定 Enter 鍵觸發搜尋
@@ -315,8 +317,9 @@
             loader.style.display = 'block';
 
             try {
+                // [修改] 資料表名稱改為 evidence
                 const { data, error } = await supabaseClient
-                    .from('service_records')
+                    .from('evidence') 
                     .select(`
                         id, visit_date, service_year,
                         attachment_folder_id, attachment_files,
@@ -466,6 +469,7 @@
                 }
 
                 const folderId = rec.attachment_folder_id || rec.id; 
+                // 這裡會使用修改後的 TARGET_BUCKET ('evidence')
                 const storagePath = `${rec.service_year}/${folderId}`;
                 
                 const { data: fileList, error: storageError } = await supabaseClient
@@ -486,6 +490,7 @@
                     for(const f of fileList) {
                         if(f.name === '.emptyFolderPlaceholder') continue;
                         
+                        // 這裡也會使用修改後的 TARGET_BUCKET
                         const { data } = supabaseClient.storage.from(TARGET_BUCKET).getPublicUrl(`${storagePath}/${f.name}`);
                         const url = data.publicUrl;
                         const isMain = f.name.startsWith('Evidence_Final');
