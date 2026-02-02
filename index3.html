@@ -409,7 +409,7 @@
         }
 
         // ==========================================
-        // 3. 全新功能：開啟新分頁 (含互動式儲存)
+        // 3. 全新功能：開啟新分頁 (含互動式儲存 + 寄送通知)
         // ==========================================
         async function openEvidenceTab(evidenceId) {
             const newWindow = window.open('', '_blank');
@@ -432,8 +432,7 @@
             `);
 
             try {
-                // 1. 查詢 Evidence 詳細資料 (包含新欄位 review_date, audit_note, additional_appendices)
-                // 注意：若資料庫尚未新增 review_date，此查詢可能會報錯或忽略該欄位，請務必確認已執行 SQL。
+                // 1. 查詢詳細資料 (新增查詢顧問 email)
                 const { data, error } = await supabaseClient
                     .from('evidence')
                     .select(`
@@ -441,22 +440,25 @@
                         audit_note, review_date,
                         file_url, attachment_folder_id, service_year, additional_appendices,
                         workplaces ( companies (name) ),
-                        medical_staff (name)
+                        medical_staff (name, email) 
                     `)
                     .eq('id', evidenceId)
                     .single();
 
                 if (error) throw error;
 
-                // 2. 準備基本資料
+                // 2. 變數準備
                 const staffName = data.medical_staff?.name || '未指派';
+                const staffEmail = data.medical_staff?.email || ''; // 取得顧問 Email
                 const compName = data.workplaces?.companies?.name || '未知企業';
                 const timeRange = `${data.start_time || '--:--'} ~ ${data.end_time || '--:--'}`;
                 const fullDate = `${data.visit_date} (${timeRange})`;
                 const items = data.execution_items || '無執行項目紀錄';
                 
+                // 產生補件連結 (此處假設您之後會建立 consultant_reply.html)
+                const replyLink = window.location.origin + '/consultant_reply.html?id=' + evidenceId;
+
                 // 3. 處理 Appendices (一般 Q 類附件)
-                // 從 additional_appendices 過濾出非改善紀錄的檔案
                 let appendicesHtml = '';
                 let existingAppendices = data.additional_appendices || [];
                 if (!Array.isArray(existingAppendices)) existingAppendices = [];
@@ -481,8 +483,8 @@
                 }
 
                 // 4. 準備評鑑資料
-                const reviewDateVal = data.review_date || ''; // 讀取資料庫
-                const reviewCommentVal = data.audit_note || ''; // 讀取資料庫
+                const reviewDateVal = data.review_date || ''; 
+                const reviewCommentVal = data.audit_note || ''; 
 
                 // 5. 處理改善紀錄列表 HTML
                 let improvementHtml = '';
@@ -523,7 +525,7 @@
                     previewContent = `<div style="color:#aaa;text-align:center;padding-top:20%;font-size:1.2rem;">此紀錄無證據檔案<br><span style="font-size:0.9rem">(Folder ID: ${data.attachment_folder_id || '無'})</span></div>`;
                 }
 
-                // 7. 構建 HTML (包含 Script 處理儲存與上傳)
+                // 7. 構建 HTML (包含 Script 處理儲存與上傳、通知)
                 const finalHtml = `
                     <!DOCTYPE html>
                     <html lang="zh-TW">
@@ -573,7 +575,7 @@
                                 font-size: 1.1rem; 
                                 color: #0d6efd; 
                                 font-weight: bold; 
-                                margin-top: 25px;
+                                margin-top: 25px; 
                                 margin-bottom: 15px; 
                                 border-bottom: 2px solid #0d6efd; 
                                 padding-bottom: 5px; 
@@ -582,6 +584,15 @@
                             /* 表單控制項樣式 */
                             .form-control-sm { border-radius: 2px; }
                             .btn-action { margin-top: 5px; width: 100%; font-size: 0.85rem; }
+
+                            /* 通知區塊樣式 */
+                            .notify-box {
+                                background: #e3f2fd; 
+                                border: 1px solid #bbdefb; 
+                                padding: 10px; 
+                                border-radius: 4px; 
+                                margin-bottom: 20px;
+                            }
                         </style>
                     </head>
                     <body>
@@ -630,8 +641,19 @@
                                         </button>
                                     </div>
 
+                                    <div class="info-group notify-box">
+                                        <span class="label text-primary"><i class="fas fa-paper-plane me-1"></i> 通知顧問補件</span>
+                                        <div class="small text-muted mb-2">產生連結並開啟郵件軟體通知顧問。</div>
+                                        <div class="input-group input-group-sm mb-2">
+                                            <input type="text" class="form-control" value="${staffEmail}" readonly title="顧問 Email">
+                                        </div>
+                                        <button class="btn btn-outline-primary btn-sm w-100" onclick="sendNotification()">
+                                            <i class="fas fa-envelope me-1"></i> 寄送改善通知信
+                                        </button>
+                                    </div>
+
+                                    <div class="section-title">改善紀錄 (上傳疊加)</div>
                                     <div class="info-group">
-                                        <span class="label">改善紀錄 (上傳疊加)</span>
                                         <div style="background:#f8f9fa; border:1px dashed #ced4da; padding:10px; border-radius:4px; margin-bottom:10px;">
                                             <div id="improvementList">${improvementHtml}</div>
                                         </div>
@@ -659,9 +681,12 @@
                             const SUPABASE_KEY = '${SUPABASE_KEY}';
                             const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
                             const evidenceId = '${evidenceId}';
-                            let currentAppendices = ${JSON.stringify(existingAppendices)};
                             const serviceYear = '${data.service_year || "2026"}';
                             const folderId = '${data.attachment_folder_id || "temp"}';
+                            const consultantEmail = '${staffEmail}';
+                            const clientName = '${compName}';
+                            const replyUrl = '${replyLink}';
+                            let currentAppendices = ${JSON.stringify(existingAppendices)};
 
                             // 1. 儲存評鑑紀錄 (日期與意見)
                             async function saveReviewRecord() {
@@ -691,7 +716,27 @@
                                 }
                             }
 
-                            // 2. 上傳改善紀錄並疊加
+                            // 2. 寄送通知信 (Mailto)
+                            function sendNotification() {
+                                if(!consultantEmail) {
+                                    alert('系統查無此顧問的 Email，無法寄送。');
+                                    return;
+                                }
+                                
+                                const subject = encodeURIComponent(\`[OHSMS通知] 請針對 \${clientName} 服務紀錄進行改善補件\`);
+                                const body = encodeURIComponent(
+                                    \`顧問您好：\\n\\n\` +
+                                    \`關於 \${clientName} 的服務紀錄 (ID: \${evidenceId})，經評鑑審查後有部分事項需要您協助補件或說明。\\n\\n\` +
+                                    \`請登入系統並點擊以下連結查看審查意見與上傳改善紀錄：\\n\` +
+                                    \`\${replyUrl}\\n\\n\` +
+                                    \`謝謝。\`
+                                );
+
+                                // 開啟預設郵件軟體
+                                window.location.href = \`mailto:\${consultantEmail}?subject=\${subject}&body=\${body}\`;
+                            }
+
+                            // 3. 上傳改善紀錄並疊加
                             async function uploadImprovement() {
                                 const dateInput = document.getElementById('impDate');
                                 const fileInput = document.getElementById('impFile');
