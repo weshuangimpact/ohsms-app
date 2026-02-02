@@ -1,27 +1,27 @@
 <!DOCTYPE html>
 <html lang="zh-TW">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>服務執行歷程管理 (Plan/Do) | OHSMS</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
-    
-    <style>
-        /* =========================================
-           1. 統一頁首/頁尾 CSS 設定 (內頁專用 / 高度統一版)
-           ========================================= */
-        html, body {
-            height: 100%;
-        }
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>服務執行歷程管理 (Plan/Do) | OHSMS</title>
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+<link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
 
-        body {
-            display: none; /* 權限驗證前先隱藏，JS 載入後改為 flex */
-            flex-direction: column;
-            min-height: 100vh;
-            background-color: #f8f9fa; /* 預設背景色 */
-            font-family: 'Segoe UI', 'Microsoft JhengHei', sans-serif;
-        }
+<style>
+/* =========================================
+          1. 統一頁首/頁尾 CSS 設定 (內頁專用 / 高度統一版)
+          ========================================= */
+html, body {
+height: 100%;
+}
+
+body {
+display: none; /* 權限驗證前先隱藏，JS 載入後改為 flex */
+flex-direction: column;
+min-height: 100vh;
+background-color: #f8f9fa; /* 預設背景色 */
+font-family: 'Segoe UI', 'Microsoft JhengHei', sans-serif;
+}
 
 /* 內容區塊自動撐開 */
         .container, .main-content {
@@ -31,755 +31,756 @@
             padding-right: 1.5rem !important;
         }
 
-        /* 頁首設定 */
-        .navbar {
-            background-color: #202124 !important;
-            min-height: 85px; /* [修正] 統一高度為 85px */
-            color: #fff;
-            flex-shrink: 0;
-        }
+/* 頁首設定 */
+.navbar {
+background-color: #202124 !important;
+min-height: 85px; /* [修正] 統一高度為 85px */
+color: #fff;
+flex-shrink: 0;
+}
 
-        /* 頁尾設定 */
-        footer {
-            background-color: #202124 !important;
-            color: #fff;
-            flex-shrink: 0;
-            font-size: 0.9rem;
-            letter-spacing: 0.5px;
-            display: flex;
-            flex-direction: column; /* 垂直排列 */
-            align-items: center;
-            justify-content: center;
-            margin-top: auto;
-            padding: 15px 0;
-            min-height: 85px; /* 雙行高度 */
-        }
+/* 頁尾設定 */
+footer {
+background-color: #202124 !important;
+color: #fff;
+flex-shrink: 0;
+font-size: 0.9rem;
+letter-spacing: 0.5px;
+display: flex;
+flex-direction: column; /* 垂直排列 */
+align-items: center;
+justify-content: center;
+margin-top: auto;
+padding: 15px 0;
+min-height: 85px; /* 雙行高度 */
+}
 
-        /* =========================================
-           2. 統一標題與字卡 CSS 設定 (Plan Blue)
-           ========================================= */
-        :root { 
-            --theme-color: #0d6efd; /* Plan 階段的主題藍色 */
-            --theme-light: #e7f1ff;
-        }
+/* =========================================
+          2. 統一標題與字卡 CSS 設定 (Plan Blue)
+          ========================================= */
+:root { 
+--theme-color: #0d6efd; /* Plan 階段的主題藍色 */
+--theme-light: #e7f1ff;
+}
 
-        /* PDCA 字卡 (白色區塊) 設定 */
-        .instruction-box {
-            background-color: #fff; /* 白色背景 */
-            border-left: 5px solid var(--theme-color); /* 左側藍色飾條 */
-            padding: 20px 25px; /* 內距 */
-            border-radius: 4px; /* 圓角 */
-            margin-bottom: 30px; /* 下方留白 */
-            box-shadow: 0 2px 5px rgba(0,0,0,0.05); /* 輕微陰影 */
-            width: 100%;
-            text-align: left;
-        }
+/* PDCA 字卡 (白色區塊) 設定 */
+.instruction-box {
+background-color: #fff; /* 白色背景 */
+border-left: 5px solid var(--theme-color); /* 左側藍色飾條 */
+padding: 20px 25px; /* 內距 */
+border-radius: 4px; /* 圓角 */
+margin-bottom: 30px; /* 下方留白 */
+box-shadow: 0 2px 5px rgba(0,0,0,0.05); /* 輕微陰影 */
+width: 100%;
+text-align: left;
+}
 
-        /* PDCA 字卡標題設定 */
-        .instruction-title {
-            color: var(--theme-color); /* 字體顏色跟隨主題色 */
-            font-weight: 700; /* 粗體 */
-            margin-bottom: 10px; /* 與內文的間距 */
-        }
+/* PDCA 字卡標題設定 */
+.instruction-title {
+color: var(--theme-color); /* 字體顏色跟隨主題色 */
+font-weight: 700; /* 粗體 */
+margin-bottom: 10px; /* 與內文的間距 */
+}
 
-        /* =========================================
-           3. 既有功能 UI 設定 (保留不變)
-           ========================================= */
-        .card-body { padding: 0 !important; }
-        .section-title { border-left: 5px solid var(--theme-color); padding-left: 15px; margin-bottom: 20px; }
-        .card-header { background-color: white; border-bottom: 1px solid #f0f0f0; }
-        
-        /* 步驟指示器 */
-        .step-indicator { display: flex; justify-content: space-between; margin-bottom: 30px; position: relative; max-width: 600px; margin-left: auto; margin-right: auto;}
-        .step-indicator::before { content: ''; position: absolute; top: 15px; left: 0; right: 0; height: 2px; background: #e0e0e0; z-index: 0; }
-        .step-item { position: relative; z-index: 1; background: #f8f9fa; padding: 0 10px; text-align: center; color: #999; font-weight: 600; }
-        .step-item.active { color: var(--theme-color); }
-        .step-circle { width: 32px; height: 32px; background: #e0e0e0; color: #fff; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 8px; font-weight: bold; transition: all 0.3s; }
-        .step-item.active .step-circle { background: var(--theme-color); box-shadow: 0 0 0 5px rgba(13, 110, 253, 0.2); }
-        .step-item.completed .step-circle { background: #198754; }
+/* =========================================
+          3. 既有功能 UI 設定 (保留不變)
+          ========================================= */
+.card-body { padding: 0 !important; }
+.section-title { border-left: 5px solid var(--theme-color); padding-left: 15px; margin-bottom: 20px; }
+.card-header { background-color: white; border-bottom: 1px solid #f0f0f0; }
 
-        /* 紀錄卡片 */
-        .record-card { cursor: pointer; border: 1px solid #eee; transition: all 0.2s; background: #fff;}
-        .record-card:hover, .record-card.selected { border-color: var(--theme-color); background-color: var(--theme-light); }
+/* 步驟指示器 */
+.step-indicator { display: flex; justify-content: space-between; margin-bottom: 30px; position: relative; max-width: 600px; margin-left: auto; margin-right: auto;}
+.step-indicator::before { content: ''; position: absolute; top: 15px; left: 0; right: 0; height: 2px; background: #e0e0e0; z-index: 0; }
+.step-item { position: relative; z-index: 1; background: #f8f9fa; padding: 0 10px; text-align: center; color: #999; font-weight: 600; }
+.step-item.active { color: var(--theme-color); }
+.step-circle { width: 32px; height: 32px; background: #e0e0e0; color: #fff; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 8px; font-weight: bold; transition: all 0.3s; }
+.step-item.active .step-circle { background: var(--theme-color); box-shadow: 0 0 0 5px rgba(13, 110, 253, 0.2); }
+.step-item.completed .step-circle { background: #198754; }
 
-        /* 檢查清單 */
-        .check-list-group .list-group-item { border: 1px solid #eee; margin-bottom: 8px; border-radius: 6px !important; transition: background 0.2s; padding: 12px 15px; }
-        .check-list-group .list-group-item:hover { background-color: #f8f9fa; }
-        .form-check-input:checked + .form-check-label { color: var(--theme-color); font-weight: bold; }
+/* 紀錄卡片 */
+.record-card { cursor: pointer; border: 1px solid #eee; transition: all 0.2s; background: #fff;}
+.record-card:hover, .record-card.selected { border-color: var(--theme-color); background-color: var(--theme-light); }
 
-        .item-actions { display: none; align-items: center; gap: 8px; margin-left: auto; }
-        .item-actions.visible { display: flex; }
-        
-        /* 備註欄樣式 */
-        .remark-box {
-            border: 2px dashed #cbd5e1;
-            background-color: #f8fafc;
-            border-radius: 6px;
-            padding: 15px;
-            margin-bottom: 20px;
-        }
-    </style>
+/* 檢查清單 */
+.check-list-group .list-group-item { border: 1px solid #eee; margin-bottom: 8px; border-radius: 6px !important; transition: background 0.2s; padding: 12px 15px; }
+.check-list-group .list-group-item:hover { background-color: #f8f9fa; }
+.form-check-input:checked + .form-check-label { color: var(--theme-color); font-weight: bold; }
 
-    <script>
-        // 權限檢查
-        if (!sessionStorage.getItem('currentUserId')) { window.location.href = 'login.html'; }
-    </script>
+.item-actions { display: none; align-items: center; gap: 8px; margin-left: auto; }
+.item-actions.visible { display: flex; }
+
+/* 備註欄樣式 */
+.remark-box {
+border: 2px dashed #cbd5e1;
+background-color: #f8fafc;
+border-radius: 6px;
+padding: 15px;
+margin-bottom: 20px;
+}
+</style>
+
+<script>
+// 權限檢查
+if (!sessionStorage.getItem('currentUserId')) { window.location.href = 'login.html'; }
+</script>
 </head>
 <body>
 
 <nav class="navbar navbar-expand-lg navbar-dark px-4">
-        <div class="container-fluid d-flex justify-content-between align-items-center p-0">
-            <a class="navbar-brand d-flex align-items-center fw-bold" href="dashboard.html">
-                <i class="fas fa-shield me-2"></i>
-                OHSMS 職安管理系統
-            </a>
+<div class="container-fluid d-flex justify-content-between align-items-center p-0">
+<a class="navbar-brand d-flex align-items-center fw-bold" href="dashboard.html">
+<i class="fas fa-shield-alt me-2"></i>
+OHSMS 職安管理系統
+</a>
 
-            <div class="d-flex align-items-center">
-                <span class="text-white me-3 small" id="header-date">
-                    <i class="fas fa-spinner fa-spin"></i>
-                </span>
-                
-                <span class="text-white me-4 small border-start ps-3 border-secondary" id="header-clock" style="opacity: 0.9;">
-                    --:--
-                </span>
-                
-                <span class="text-white me-4 fw-bold" id="header-user">
-                    Hi! 使用者
-                </span>
-                
-                <a class="btn btn-outline-light btn-sm me-2" href="dashboard.html">
-                    <i class="fas fa-reply me-1"></i>回到儀表板
-                </a>
-                
-                <button class="btn btn-outline-light btn-sm" onclick="logoutSystem()">
-                    <i class="fas fa-sign-out-alt me-1"></i>登出
-                </button>
-            </div>
-        </div>
-    </nav>
+<div class="d-flex align-items-center">
+<span class="text-white me-3 small" id="header-date">
+<i class="fas fa-spinner fa-spin"></i>
+</span>
 
-    <div class="container main-content pb-5 mt-4">
-        
-        <div class="mb-4">
-            <h2 class="fw-bold text-dark mb-1">服務執行歷程管理 (Plan & Do)</h2>
-            <p class="text-secondary">Plan & Do 階段：建立基準與服務歷程及完整執行紀錄</p>
-        </div>
+<span class="text-white me-4 small border-start ps-3 border-secondary" id="header-clock" style="opacity: 0.9;">
+--:--
+</span>
 
-        <div class="card-body p-0">
-            
-            <div class="instruction-box">
-                <div class="instruction-title">
-                    <i class="fas fa-clipboard-list me-2"></i>PDCA 設計理念：Plan (計畫) —— 基準確立與歷史繼承
-                </div>
-                <p class="mb-0 text-dark" style="line-height: 1.6;">
-                    本模組貫徹「基準建檔」(Plan) 與「執行留痕」(Do) 之雙重核心，透過嚴謹的版本控制與補件機制，完整串聯從規劃到現場服務的數位證據鏈，確保資料具備不可否認性。
-                </p>
-            </div>
+<span class="text-white me-4 fw-bold" id="header-user">
+Hi! 使用者
+</span>
 
-            <div class="step-indicator px-5">
-                <div class="step-item active" id="step1-indicator"><div class="step-circle">1</div><div>選擇案件</div></div>
-                <div class="step-item" id="step2-indicator"><div class="step-circle">2</div><div>執行紀錄與上傳</div></div>
-                <div class="step-item" id="step3-indicator"><div class="step-circle">3</div><div>完成送審</div></div>
-            </div>
+<a class="btn btn-outline-light btn-sm me-2" href="dashboard.html">
+<i class="fas fa-reply me-1"></i>回到儀表板
+</a>
 
-            <hr class="my-4">
+<button class="btn btn-outline-light btn-sm" onclick="logoutSystem()">
+<i class="fas fa-sign-out-alt me-1"></i>登出
+</button>
+</div>
+</div>
+</nav>
 
-            <div id="step1-content">
-                <div class="row g-4">
-                    <div class="col-lg-4">
-                        <div class="card h-100 p-4 border-0 shadow-sm">
-                            <h5 class="section-title">搜尋條件</h5>
-                            <p class="text-muted small mb-3">請輸入條件搜尋您名下的服務案件。</p>
-                            <div class="mb-3">
-                                <label class="form-label fw-bold small">服務年份 (選填)</label>
-                                <input type="text" class="form-control" id="search-year" placeholder="例如：2026">
-                            </div>
-                            <div class="mb-3">
-                                <label class="form-label fw-bold small">公司統編 (選填)</label>
-                                <input type="text" class="form-control" id="search-tax-id" placeholder="請輸入 8 碼統編">
-                            </div>
-                            <div class="d-grid mt-4">
-                                <button class="btn btn-primary" onclick="searchRecords()"><i class="fas fa-search me-2"></i>查詢案件</button>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="col-lg-8">
-                        <div class="card h-100 p-4 border-0 shadow-sm">
-                            <h5 class="section-title">案件列表</h5>
-                            <div id="records-container" class="row g-3" style="max-height: 500px; overflow-y: auto;">
-                                <div class="text-center text-muted py-5"><i class="fas fa-search fa-3x mb-3 text-light"></i><p>請設定左側條件並點擊查詢</p></div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
+<div class="container main-content pb-5 mt-4">
 
-            <div id="step2-content" style="display: none;">
-                <div class="card p-4 mb-4 border-0 shadow-sm">
-                    <div class="d-flex justify-content-between align-items-center mb-3">
-                        <h5 class="section-title mb-0">上傳服務執行紀錄</h5>
-                        <button class="btn btn-outline-secondary btn-sm" onclick="backToStep1()"><i class="fas fa-sync-alt me-1"></i> 重選案件</button>
-                    </div>
+<div class="mb-4">
+<h2 class="fw-bold text-dark mb-1">服務執行歷程管理 (Plan & Do)</h2>
+<p class="text-secondary">Plan & Do 階段：建立基準與服務歷程及完整執行紀錄</p>
+</div>
 
-                    <div class="alert alert-light border-start border-4 border-primary mb-3 bg-light">
-                        <div class="row align-items-center gy-2">
-                            <div class="col-lg-4">
-                                <i class="fas fa-info-circle text-primary me-2 fa-lg"></i>
-                                <strong>當前案件：</strong> <span id="current-company-name" class="fw-bold text-dark me-2"></span>
-                                <span class="badge bg-secondary" id="current-year-badge"></span>
-                            </div>
-                            
-                            <div class="col-lg-3">
-                                <div class="input-group input-group-sm">
-                                    <span class="input-group-text bg-white text-primary border-primary fw-bold"><i class="fas fa-list-ul me-2"></i>事項</span>
-                                    <select class="form-select border-primary" id="service-type-select" onchange="toggleServiceTypeOther()">
-                                        <option value="" disabled selected>請選擇執行事項...</option>
-                                        <option value="勞工身心健康管理">勞工身心健康管理</option>
-                                        <option value="職業病預防">職業病預防</option>
-                                        <option value="臨場健康服務">臨場健康服務</option>
-                                        <option value="健康促進規劃">健康促進規劃</option>
-                                        <option value="other">其他 (可填寫)</option>
-                                    </select>
-                                </div>
-                                <input type="text" class="form-control form-control-sm mt-1 border-primary" id="service-type-other" style="display:none;" placeholder="請輸入其他事項">
-                            </div>
+<div class="card-body p-0">
 
-                            <div class="col-lg-5">
-                                <div class="d-flex gap-2 flex-wrap"> 
-                                    <div class="input-group input-group-sm" style="width: 150px;">
-                                        <span class="input-group-text bg-primary text-white border-primary"><i class="far fa-calendar-check"></i></span>
-                                        <input type="date" class="form-control border-primary" id="execution-date">
-                                    </div>
-                                    <div class="input-group input-group-sm" style="flex-grow: 1; min-width: 220px;">
-                                        <span class="input-group-text bg-primary text-white border-primary"><i class="far fa-clock"></i></span>
-                                        <input type="time" class="form-control border-primary" id="start-time">
-                                        <span class="input-group-text border-primary">~</span>
-                                        <input type="time" class="form-control border-primary" id="end-time">
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
+<div class="instruction-box">
+<div class="instruction-title">
+<i class="fas fa-clipboard-list me-2"></i>PDCA 設計理念：Plan (計畫) —— 基準確立與歷史繼承
+</div>
+<p class="mb-0 text-dark" style="line-height: 1.6;">
+本模組貫徹「基準建檔」(Plan) 與「執行留痕」(Do) 之雙重核心，透過嚴謹的版本控制與補件機制，完整串聯從規劃到現場服務的數位證據鏈，確保資料具備不可否認性。
+</p>
+</div>
 
-                    <div class="remark-box">
-                        <label for="service-remark" class="form-label fw-bold text-dark small"><i class="fas fa-sticky-note me-1 text-warning"></i>特殊事項備註 / 允許結案理由 (選填)</label>
-                        <textarea class="form-control" id="service-remark" rows="2" placeholder="例如：因工廠文件管制 9-1 無法提供，故缺件... (此欄位可作為特案結案之依據)"></textarea>
-                    </div>
+<div class="step-indicator px-5">
+<div class="step-item active" id="step1-indicator"><div class="step-circle">1</div><div>選擇案件</div></div>
+<div class="step-item" id="step2-indicator"><div class="step-circle">2</div><div>執行紀錄與上傳</div></div>
+<div class="step-item" id="step3-indicator"><div class="step-circle">3</div><div>完成送審</div></div>
+</div>
 
-                    <form id="execution-form">
-                        <h6 class="fw-bold mb-3"><i class="fas fa-check-square me-2 text-primary"></i>(必要) 勞工健康服務執行紀錄項目</h6>
-                        <p class="text-muted small">請勾選本次服務所執行的項目，並直接上傳附件。系統將自動處理檔名以符合資料庫規範。</p>
-                        <div class="list-group check-list-group mb-4" id="checkbox-list"></div>
-                        <div class="d-flex justify-content-end gap-2 pt-3 border-top mt-4">
-                            <button type="button" class="btn btn-primary px-4 fw-bold" id="btn-submit" onclick="submitRecord()"><i class="fas fa-save me-1"></i> 存檔送審</button>
-                        </div>
-                    </form>
-                </div>
-            </div>
-        </div>
-    </div>
+<hr class="my-4">
 
-    <div class="modal fade" id="actionChoiceModal" tabindex="-1">
-        <div class="modal-dialog modal-dialog-centered">
-            <div class="modal-content">
-                <div class="modal-header bg-primary text-white">
-                    <h5 class="modal-title"><i class="fas fa-code-branch me-2"></i>選擇作業模式</h5>
-                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
-                </div>
-                <div class="modal-body">
-                    <div class="alert alert-warning border-warning">
-                        <i class="fas fa-exclamation-triangle me-1"></i> 
-                        系統檢測到此母案下已有 <strong>待審核 (Pending)</strong> 的服務紀錄。
-                    </div>
-                    <p class="mb-3">請問您是要「修改」剛才送審的案件，還是要「新增」另一筆不同日期的服務？</p>
-                    
-                    <div class="list-group mb-3" id="pending-list-group">
-                        </div>
+<div id="step1-content">
+<div class="row g-4">
+<div class="col-lg-4">
+<div class="card h-100 p-4 border-0 shadow-sm">
+<h5 class="section-title">搜尋條件</h5>
+<p class="text-muted small mb-3">請輸入條件搜尋您名下的服務案件。</p>
+<div class="mb-3">
+<label class="form-label fw-bold small">服務年份 (選填)</label>
+<input type="text" class="form-control" id="search-year" placeholder="例如：2026">
+</div>
+<div class="mb-3">
+<label class="form-label fw-bold small">公司統編 (選填)</label>
+<input type="text" class="form-control" id="search-tax-id" placeholder="請輸入 8 碼統編">
+</div>
+<div class="d-grid mt-4">
+<button class="btn btn-primary" onclick="searchRecords()"><i class="fas fa-search me-2"></i>查詢案件</button>
+</div>
+</div>
+</div>
+<div class="col-lg-8">
+<div class="card h-100 p-4 border-0 shadow-sm">
+<h5 class="section-title">案件列表</h5>
+<div id="records-container" class="row g-3" style="max-height: 500px; overflow-y: auto;">
+<div class="text-center text-muted py-5"><i class="fas fa-search fa-3x mb-3 text-light"></i><p>請設定左側條件並點擊查詢</p></div>
+</div>
+</div>
+</div>
+</div>
+</div>
 
-                    <div class="d-grid">
-                        <button class="btn btn-outline-primary fw-bold" id="btn-create-new">
-                            <i class="fas fa-plus-circle me-2"></i>新增另一筆服務紀錄 (New)
-                        </button>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
+<div id="step2-content" style="display: none;">
+<div class="card p-4 mb-4 border-0 shadow-sm">
+<div class="d-flex justify-content-between align-items-center mb-3">
+<h5 class="section-title mb-0">上傳服務執行紀錄</h5>
+<button class="btn btn-outline-secondary btn-sm" onclick="backToStep1()"><i class="fas fa-sync-alt me-1"></i> 重選案件</button>
+</div>
 
-    <footer>
+<div class="alert alert-light border-start border-4 border-primary mb-3 bg-light">
+<div class="row align-items-center gy-2">
+<div class="col-lg-4">
+<i class="fas fa-info-circle text-primary me-2 fa-lg"></i>
+<strong>當前案件：</strong> <span id="current-company-name" class="fw-bold text-dark me-2"></span>
+<span class="badge bg-secondary" id="current-year-badge"></span>
+</div>
+
+<div class="col-lg-3">
+<div class="input-group input-group-sm">
+<span class="input-group-text bg-white text-primary border-primary fw-bold"><i class="fas fa-list-ul me-2"></i>事項</span>
+<select class="form-select border-primary" id="service-type-select" onchange="toggleServiceTypeOther()">
+<option value="" disabled selected>請選擇執行事項...</option>
+<option value="勞工身心健康管理">勞工身心健康管理</option>
+<option value="職業病預防">職業病預防</option>
+<option value="臨場健康服務">臨場健康服務</option>
+<option value="健康促進規劃">健康促進規劃</option>
+<option value="other">其他 (可填寫)</option>
+</select>
+</div>
+<input type="text" class="form-control form-control-sm mt-1 border-primary" id="service-type-other" style="display:none;" placeholder="請輸入其他事項">
+</div>
+
+<div class="col-lg-5">
+<div class="d-flex gap-2 flex-wrap"> 
+<div class="input-group input-group-sm" style="width: 150px;">
+<span class="input-group-text bg-primary text-white border-primary"><i class="far fa-calendar-check"></i></span>
+<input type="date" class="form-control border-primary" id="execution-date">
+</div>
+<div class="input-group input-group-sm" style="flex-grow: 1; min-width: 220px;">
+<span class="input-group-text bg-primary text-white border-primary"><i class="far fa-clock"></i></span>
+<input type="time" class="form-control border-primary" id="start-time">
+<span class="input-group-text border-primary">~</span>
+<input type="time" class="form-control border-primary" id="end-time">
+</div>
+</div>
+</div>
+</div>
+</div>
+
+<div class="remark-box">
+<label for="service-remark" class="form-label fw-bold text-dark small"><i class="fas fa-sticky-note me-1 text-warning"></i>特殊事項備註 / 允許結案理由 (選填)</label>
+<textarea class="form-control" id="service-remark" rows="2" placeholder="例如：因工廠文件管制 9-1 無法提供，故缺件... (此欄位可作為特案結案之依據)"></textarea>
+</div>
+
+<form id="execution-form">
+<h6 class="fw-bold mb-3"><i class="fas fa-check-square me-2 text-primary"></i>(必要) 勞工健康服務執行紀錄項目</h6>
+<p class="text-muted small">請勾選本次服務所執行的項目，並直接上傳附件。系統將自動處理檔名以符合資料庫規範。</p>
+<div class="list-group check-list-group mb-4" id="checkbox-list"></div>
+<div class="d-flex justify-content-end gap-2 pt-3 border-top mt-4">
+<button type="button" class="btn btn-primary px-4 fw-bold" id="btn-submit" onclick="submitRecord()"><i class="fas fa-save me-1"></i> 存檔送審</button>
+</div>
+</form>
+</div>
+</div>
+</div>
+</div>
+
+<div class="modal fade" id="actionChoiceModal" tabindex="-1">
+<div class="modal-dialog modal-dialog-centered">
+<div class="modal-content">
+<div class="modal-header bg-primary text-white">
+<h5 class="modal-title"><i class="fas fa-code-branch me-2"></i>選擇作業模式</h5>
+<button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+</div>
+<div class="modal-body">
+<div class="alert alert-warning border-warning">
+<i class="fas fa-exclamation-triangle me-1"></i> 
+系統檢測到此母案下已有 <strong>待審核 (Pending)</strong> 的服務紀錄。
+</div>
+<p class="mb-3">請問您是要「修改」剛才送審的案件，還是要「新增」另一筆不同日期的服務？</p>
+
+<div class="list-group mb-3" id="pending-list-group">
+</div>
+
+<div class="d-grid">
+<button class="btn btn-outline-primary fw-bold" id="btn-create-new">
+<i class="fas fa-plus-circle me-2"></i>新增另一筆服務紀錄 (New)
+</button>
+</div>
+</div>
+</div>
+</div>
+</div>
+
+<footer>
+        <div class="mb-1">可信智慧整合有限公司 42917004 &nbsp;|&nbsp; 服務專線：0912-310570</div>
         <div class="mb-1">可信智慧整合有限公司 42917004</div>
-        <div class="small opacity-75" style="font-family: 'Segoe UI', sans-serif; letter-spacing: 1px;">
-            WesmartAI , Making Trust Transparent.
-        </div>
-    </footer>
+<div class="small opacity-75" style="font-family: 'Segoe UI', sans-serif; letter-spacing: 1px;">
+WesmartAI , Making Trust Transparent.
+</div>
+</footer>
 
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    
-    <script>
-        // ==========================================
-        // 統一頁首與系統初始化邏輯
-        // ==========================================
-        document.addEventListener('DOMContentLoaded', function() {
-            // 1. 顯示畫面 (Flex 佈局)
-            document.body.style.display = 'flex';
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
-            // 2. 啟動時鐘
-            setInterval(() => {
-                const now = new Date();
-                const clockEl = document.getElementById('header-clock');
-                if(clockEl) clockEl.textContent = now.toLocaleTimeString('zh-TW', { hour12: false });
-            }, 1000);
+<script>
+// ==========================================
+// 統一頁首與系統初始化邏輯
+// ==========================================
+document.addEventListener('DOMContentLoaded', function() {
+// 1. 顯示畫面 (Flex 佈局)
+document.body.style.display = 'flex';
 
-            // 3. 設定日期 (格式：2026/1/31(六))
-            const dateEl = document.getElementById('header-date');
-            if(dateEl) {
-                const now = new Date();
-                const days = ['日', '一', '二', '三', '四', '五', '六'];
-                const formattedDate = `${now.getFullYear()}/${now.getMonth() + 1}/${now.getDate()}(${days[now.getDay()]})`;
-                dateEl.innerHTML = `<i class="far fa-calendar-alt me-1"></i>今日是 ${formattedDate}`;
-            }
+// 2. 啟動時鐘
+setInterval(() => {
+const now = new Date();
+const clockEl = document.getElementById('header-clock');
+if(clockEl) clockEl.textContent = now.toLocaleTimeString('zh-TW', { hour12: false });
+}, 1000);
 
-            // 4. 讀取使用者名稱
-            const userName = sessionStorage.getItem('currentUserName');
-            const userEl = document.getElementById('header-user');
-            if(userEl && userName) userEl.innerText = `Hi! ${userName}`;
-        });
+// 3. 設定日期 (格式：2026/1/31(六))
+const dateEl = document.getElementById('header-date');
+if(dateEl) {
+const now = new Date();
+const days = ['日', '一', '二', '三', '四', '五', '六'];
+const formattedDate = `${now.getFullYear()}/${now.getMonth() + 1}/${now.getDate()}(${days[now.getDay()]})`;
+dateEl.innerHTML = `<i class="far fa-calendar-alt me-1"></i>今日是 ${formattedDate}`;
+}
 
-        // 統一登出功能
-        function logoutSystem() {
-            if(confirm('確定要登出系統嗎？')) {
-                sessionStorage.clear();
-                window.location.href = 'login.html';
-            }
-        }
+// 4. 讀取使用者名稱
+const userName = sessionStorage.getItem('currentUserName');
+const userEl = document.getElementById('header-user');
+if(userEl && userName) userEl.innerText = `Hi! ${userName}`;
+});
 
-        // ==========================================
-        // 原有功能邏輯 (保持不變)
-        // ==========================================
-        const SUPABASE_URL = 'https://yhehfucgemxnfrdvpdhw.supabase.co';
-        const SUPABASE_KEY = 'sb_publishable_52emtU-9l-SDxcJTWVTPTA_Yu6qEogh';
-        const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-        const BUCKET_NAME = 'staging'; 
-        
-        let currentRecordId = null; // 母案 ID
-        let currentStagingId = null; // 暫存案 ID (同時也是資料夾名稱)
-        let currentUserId = sessionStorage.getItem('currentUserId'); 
+// 統一登出功能
+function logoutSystem() {
+if(confirm('確定要登出系統嗎？')) {
+sessionStorage.clear();
+window.location.href = 'login.html';
+}
+}
 
-        const checklistItems = [
-            { id: "main", code: "A", text: "勞工健康服務執行紀錄表 (執行當日紀錄主檔)" },
-            { id: "9-1", code: "B", text: "9-1 勞工體格（健康）檢查結果之分析與評估、健康管理及資料保存。" },
-            { id: "9-2", code: "C", text: "9-2 協助雇主選配勞工從事適當之工作。" },
-            { id: "9-3", code: "D", text: "9-3 辦理健康檢查結果異常者之追蹤管理及健康指導。" },
-            { id: "9-4", code: "E", text: "9-4 辦理未滿十八歲勞工、有母性健康危害之虞之勞工、職業傷病勞工與職業健康相關高風險勞工之評估及個案管理。" },
-            { id: "9-5", code: "F", text: "9-5 職業衛生或職業健康之相關研究報告及傷害、疾病紀錄之保存。" },
-            { id: "9-6", code: "G", text: "9-6 勞工之健康教育、衛生指導、身心健康保護、健康促進等措施之策劃及實施。" },
-            { id: "9-7", code: "H", text: "9-7 工作相關傷病之預防、健康諮詢與急救及緊急處置。" },
-            { id: "9-8", code: "I", text: "9-8 定期向雇主報告及勞工健康服務之建議。" },
-            { id: "11-1", code: "J", text: "11-1 辨識與評估工作場所環境、作業及組織內部影響勞工身心健康之危害因子，並提出改善措施之建議。" },
-            { id: "11-2", code: "K", text: "11-2 提出作業環境安全衛生設施改善規劃之建議。" },
-            { id: "11-3", code: "L", text: "11-3 調查勞工健康情形與作業之關連性，並採取必要之預防及健康促進措施。" },
-            { id: "11-4", code: "M", text: "11-4 提供復工勞工之職能評估、職務再設計或調整之諮詢及建議。" },
-            { id: "11-5", code: "N", text: "11-5 其他經中央主管機關指定公告者。" },
-            { id: "12", code: "O", text: "12 訂定勞工健康服務計畫，據以執行，每年評估成效及檢討。" },
-            { id: "13", code: "P", text: "13 訂定勞工健康管理方案，據以辦理，每年評估成效及檢討。" },
-            { id: "other", code: "Q", text: "其他附件 (Q)" }
-        ];
+// ==========================================
+// 原有功能邏輯 (保持不變)
+// ==========================================
+const SUPABASE_URL = 'https://yhehfucgemxnfrdvpdhw.supabase.co';
+const SUPABASE_KEY = 'sb_publishable_52emtU-9l-SDxcJTWVTPTA_Yu6qEogh';
+const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+const BUCKET_NAME = 'staging'; 
 
-        document.addEventListener('DOMContentLoaded', () => { renderChecklist(); });
+let currentRecordId = null; // 母案 ID
+let currentStagingId = null; // 暫存案 ID (同時也是資料夾名稱)
+let currentUserId = sessionStorage.getItem('currentUserId'); 
 
-        function renderChecklist() {
-            const container = document.getElementById('checkbox-list');
-            container.innerHTML = checklistItems.map(item => {
-                const acceptType = item.id === 'other' ? '*/*' : '.pdf';
-                const fileTypeMsg = item.id === 'other' ? '支援所有格式' : '限 PDF';
-                return `
-                <div class="list-group-item d-flex align-items-center justify-content-between p-3" id="item-row-${item.id}">
-                    <div class="d-flex align-items-center gap-3" style="flex: 1;">
-                        <input class="form-check-input flex-shrink-0" type="checkbox" name="service-item" value="${item.id}" data-code="${item.code}" id="cb-${item.id}" style="font-size: 1.3em;" onchange="toggleItemAction('${item.id}')">
-                        <label class="form-check-label stretched-link pt-1" for="cb-${item.id}" style="cursor:pointer;">
-                            <span class="badge bg-light text-dark border me-2 fw-bold" style="width: 25px;">${item.code}</span>
-                            ${item.text}
-                        </label>
-                    </div>
-                    <div class="item-actions" id="action-${item.id}">
-                        <span class="me-2 small" id="file-info-${item.id}"></span>
-                        <input type="file" id="file-input-${item.id}" hidden accept="${acceptType}" onchange="handleItemFileUpload('${item.id}', '${item.code}', this)">
-                        <button type="button" class="btn btn-sm btn-outline-primary" id="btn-upload-${item.id}" onclick="triggerItemUpload('${item.id}')" style="position: relative; z-index: 2;">
-                            <i class="fas fa-cloud-upload-alt me-1"></i> 上傳 <small class="ms-1 text-muted" style="font-size:0.7em;">(${fileTypeMsg})</small>
-                        </button>
-                        <div class="btn-group btn-group-sm" id="btn-group-${item.id}" style="display:none; position: relative; z-index: 2;">
-                            <a href="#" target="_blank" class="btn btn-outline-info" id="btn-preview-${item.id}" title="預覽"><i class="fas fa-eye"></i></a>
-                            <button type="button" class="btn btn-outline-secondary" onclick="triggerItemUpload('${item.id}')" title="更換"><i class="fas fa-sync-alt"></i></button>
-                            <button type="button" class="btn btn-outline-danger" onclick="handleItemFileDelete('${item.id}', '${item.code}')" title="刪除"><i class="fas fa-trash-alt"></i></button>
-                        </div>
-                        <div id="spinner-${item.id}" style="display:none;" class="text-primary ms-2"><span class="spinner-border spinner-border-sm"></span></div>
-                    </div>
-                </div>`;
-            }).join('');
-        }
+const checklistItems = [
+{ id: "main", code: "A", text: "勞工健康服務執行紀錄表 (執行當日紀錄主檔)" },
+{ id: "9-1", code: "B", text: "9-1 勞工體格（健康）檢查結果之分析與評估、健康管理及資料保存。" },
+{ id: "9-2", code: "C", text: "9-2 協助雇主選配勞工從事適當之工作。" },
+{ id: "9-3", code: "D", text: "9-3 辦理健康檢查結果異常者之追蹤管理及健康指導。" },
+{ id: "9-4", code: "E", text: "9-4 辦理未滿十八歲勞工、有母性健康危害之虞之勞工、職業傷病勞工與職業健康相關高風險勞工之評估及個案管理。" },
+{ id: "9-5", code: "F", text: "9-5 職業衛生或職業健康之相關研究報告及傷害、疾病紀錄之保存。" },
+{ id: "9-6", code: "G", text: "9-6 勞工之健康教育、衛生指導、身心健康保護、健康促進等措施之策劃及實施。" },
+{ id: "9-7", code: "H", text: "9-7 工作相關傷病之預防、健康諮詢與急救及緊急處置。" },
+{ id: "9-8", code: "I", text: "9-8 定期向雇主報告及勞工健康服務之建議。" },
+{ id: "11-1", code: "J", text: "11-1 辨識與評估工作場所環境、作業及組織內部影響勞工身心健康之危害因子，並提出改善措施之建議。" },
+{ id: "11-2", code: "K", text: "11-2 提出作業環境安全衛生設施改善規劃之建議。" },
+{ id: "11-3", code: "L", text: "11-3 調查勞工健康情形與作業之關連性，並採取必要之預防及健康促進措施。" },
+{ id: "11-4", code: "M", text: "11-4 提供復工勞工之職能評估、職務再設計或調整之諮詢及建議。" },
+{ id: "11-5", code: "N", text: "11-5 其他經中央主管機關指定公告者。" },
+{ id: "12", code: "O", text: "12 訂定勞工健康服務計畫，據以執行，每年評估成效及檢討。" },
+{ id: "13", code: "P", text: "13 訂定勞工健康管理方案，據以辦理，每年評估成效及檢討。" },
+{ id: "other", code: "Q", text: "其他附件 (Q)" }
+];
 
-        function toggleItemAction(itemId) {
-            const cb = document.getElementById(`cb-${itemId}`);
-            const actionDiv = document.getElementById(`action-${itemId}`);
-            if (cb.checked) actionDiv.classList.add('visible');
-            else actionDiv.classList.remove('visible');
-        }
-        function triggerItemUpload(itemId) { document.getElementById(`file-input-${itemId}`).click(); }
+document.addEventListener('DOMContentLoaded', () => { renderChecklist(); });
 
-        function toggleServiceTypeOther() {
-            const select = document.getElementById('service-type-select');
-            const otherInput = document.getElementById('service-type-other');
-            if(select.value === 'other') {
-                otherInput.style.display = 'block';
-                otherInput.focus();
-            } else {
-                otherInput.style.display = 'none';
-                otherInput.value = '';
-            }
-        }
+function renderChecklist() {
+const container = document.getElementById('checkbox-list');
+container.innerHTML = checklistItems.map(item => {
+const acceptType = item.id === 'other' ? '*/*' : '.pdf';
+const fileTypeMsg = item.id === 'other' ? '支援所有格式' : '限 PDF';
+return `
+               <div class="list-group-item d-flex align-items-center justify-content-between p-3" id="item-row-${item.id}">
+                   <div class="d-flex align-items-center gap-3" style="flex: 1;">
+                       <input class="form-check-input flex-shrink-0" type="checkbox" name="service-item" value="${item.id}" data-code="${item.code}" id="cb-${item.id}" style="font-size: 1.3em;" onchange="toggleItemAction('${item.id}')">
+                       <label class="form-check-label stretched-link pt-1" for="cb-${item.id}" style="cursor:pointer;">
+                           <span class="badge bg-light text-dark border me-2 fw-bold" style="width: 25px;">${item.code}</span>
+                           ${item.text}
+                       </label>
+                   </div>
+                   <div class="item-actions" id="action-${item.id}">
+                       <span class="me-2 small" id="file-info-${item.id}"></span>
+                       <input type="file" id="file-input-${item.id}" hidden accept="${acceptType}" onchange="handleItemFileUpload('${item.id}', '${item.code}', this)">
+                       <button type="button" class="btn btn-sm btn-outline-primary" id="btn-upload-${item.id}" onclick="triggerItemUpload('${item.id}')" style="position: relative; z-index: 2;">
+                           <i class="fas fa-cloud-upload-alt me-1"></i> 上傳 <small class="ms-1 text-muted" style="font-size:0.7em;">(${fileTypeMsg})</small>
+                       </button>
+                       <div class="btn-group btn-group-sm" id="btn-group-${item.id}" style="display:none; position: relative; z-index: 2;">
+                           <a href="#" target="_blank" class="btn btn-outline-info" id="btn-preview-${item.id}" title="預覽"><i class="fas fa-eye"></i></a>
+                           <button type="button" class="btn btn-outline-secondary" onclick="triggerItemUpload('${item.id}')" title="更換"><i class="fas fa-sync-alt"></i></button>
+                           <button type="button" class="btn btn-outline-danger" onclick="handleItemFileDelete('${item.id}', '${item.code}')" title="刪除"><i class="fas fa-trash-alt"></i></button>
+                       </div>
+                       <div id="spinner-${item.id}" style="display:none;" class="text-primary ms-2"><span class="spinner-border spinner-border-sm"></span></div>
+                   </div>
+               </div>`;
+}).join('');
+}
 
-        // ==========================================
-        // 核心上傳 Logic 
-        // ==========================================
-        async function handleItemFileUpload(itemId, code, input) {
-            if (!input.files || !input.files[0]) return;
-            const file = input.files[0];
-            
-            document.getElementById(`btn-upload-${itemId}`).style.display = 'none';
-            document.getElementById(`btn-group-${itemId}`).style.display = 'none';
-            document.getElementById(`spinner-${itemId}`).style.display = 'block';
+function toggleItemAction(itemId) {
+const cb = document.getElementById(`cb-${itemId}`);
+const actionDiv = document.getElementById(`action-${itemId}`);
+if (cb.checked) actionDiv.classList.add('visible');
+else actionDiv.classList.remove('visible');
+}
+function triggerItemUpload(itemId) { document.getElementById(`file-input-${itemId}`).click(); }
 
-            try {
-                const timestamp = Date.now();
-                const fileExt = file.name.split('.').pop() || 'dat'; 
-                const finalFileName = `${code}_${timestamp}.${fileExt}`;
-                
-                const filePath = `${currentStagingId}/${finalFileName}`;
+function toggleServiceTypeOther() {
+const select = document.getElementById('service-type-select');
+const otherInput = document.getElementById('service-type-other');
+if(select.value === 'other') {
+otherInput.style.display = 'block';
+otherInput.focus();
+} else {
+otherInput.style.display = 'none';
+otherInput.value = '';
+}
+}
 
-                // 刪除該暫存 ID 資料夾下的舊檔
-                await deleteFileByPrefix(currentStagingId, `${code}_`);
+// ==========================================
+// 核心上傳 Logic 
+// ==========================================
+async function handleItemFileUpload(itemId, code, input) {
+if (!input.files || !input.files[0]) return;
+const file = input.files[0];
 
-                const { error } = await supabaseClient.storage.from(BUCKET_NAME).upload(filePath, file, { upsert: true });
-                if (error) throw error;
+document.getElementById(`btn-upload-${itemId}`).style.display = 'none';
+document.getElementById(`btn-group-${itemId}`).style.display = 'none';
+document.getElementById(`spinner-${itemId}`).style.display = 'block';
 
-                updateItemUI(itemId, code, finalFileName, file.name, true);
+try {
+const timestamp = Date.now();
+const fileExt = file.name.split('.').pop() || 'dat'; 
+const finalFileName = `${code}_${timestamp}.${fileExt}`;
 
-            } catch (e) {
-                console.error(e);
-                alert('上傳失敗: ' + e.message);
-                updateItemUI(itemId, code, null, null, false);
-            } finally {
-                document.getElementById(`spinner-${itemId}`).style.display = 'none';
-                input.value = ''; 
-            }
-        }
+const filePath = `${currentStagingId}/${finalFileName}`;
 
-        async function handleItemFileDelete(itemId, code) {
-            if(!confirm('確定要刪除此附件嗎？')) return;
-            document.getElementById(`spinner-${itemId}`).style.display = 'block';
-            document.getElementById(`btn-group-${itemId}`).style.display = 'none';
-            try {
-                await deleteFileByPrefix(currentStagingId, `${code}_`);
-                updateItemUI(itemId, code, null, null, false); 
-            } catch (e) {
-                alert('刪除失敗: ' + e.message);
-                document.getElementById(`btn-group-${itemId}`).style.display = 'flex'; 
-            } finally {
-                document.getElementById(`spinner-${itemId}`).style.display = 'none';
-            }
-        }
+// 刪除該暫存 ID 資料夾下的舊檔
+await deleteFileByPrefix(currentStagingId, `${code}_`);
 
-        async function deleteFileByPrefix(folderId, prefix) {
-            const { data: files } = await supabaseClient.storage.from(BUCKET_NAME).list(`${folderId}`);
-            if (files && files.length > 0) {
-                const targetFiles = files.filter(f => f.name.startsWith(prefix));
-                if (targetFiles.length > 0) {
-                    const pathsToRemove = targetFiles.map(f => `${folderId}/${f.name}`);
-                    await supabaseClient.storage.from(BUCKET_NAME).remove(pathsToRemove);
-                }
-            }
-        }
+const { error } = await supabaseClient.storage.from(BUCKET_NAME).upload(filePath, file, { upsert: true });
+if (error) throw error;
 
-        function updateItemUI(itemId, code, fullFileName, originalName, hasFile) {
-            const uploadBtn = document.getElementById(`btn-upload-${itemId}`);
-            const btnGroup = document.getElementById(`btn-group-${itemId}`);
-            const previewBtn = document.getElementById(`btn-preview-${itemId}`);
-            const fileInfo = document.getElementById(`file-info-${itemId}`);
-            
-            if (hasFile && fullFileName) {
-                uploadBtn.style.display = 'none';
-                btnGroup.style.display = 'flex';
-                
-                const { data } = supabaseClient.storage.from(BUCKET_NAME).getPublicUrl(`${currentStagingId}/${fullFileName}`);
-                previewBtn.href = data.publicUrl;
-                
-                let displayName = originalName || fullFileName;
-                const shortName = displayName.length > 20 ? displayName.substring(0, 17) + '...' : displayName;
+updateItemUI(itemId, code, finalFileName, file.name, true);
 
-                fileInfo.innerHTML = `<span class="badge bg-success me-1">已存</span> <span class="text-muted font-monospace small" title="${displayName}">${shortName}</span>`;
-            } else {
-                uploadBtn.style.display = 'inline-block';
-                btnGroup.style.display = 'none';
-                fileInfo.innerHTML = '';
-            }
-        }
+} catch (e) {
+console.error(e);
+alert('上傳失敗: ' + e.message);
+updateItemUI(itemId, code, null, null, false);
+} finally {
+document.getElementById(`spinner-${itemId}`).style.display = 'none';
+input.value = ''; 
+}
+}
 
-        // ==========================================
-        // 搜尋與選取邏輯
-        // ==========================================
-        async function searchRecords() {
-            const year = document.getElementById('search-year').value.trim();
-            const taxId = document.getElementById('search-tax-id').value.trim();
-            const container = document.getElementById('records-container');
-            container.innerHTML = '<div class="text-center py-5"><div class="spinner-border text-primary"></div><p class="mt-2">查詢中...</p></div>';
-            try {
-                const { data: profileData } = await supabaseClient.from('profiles').select('email').eq('id', currentUserId).single();
-                if (!profileData) throw new Error('無法識別使用者身分');
-                const { data: staffData } = await supabaseClient.from('medical_staff').select('id').eq('email', profileData.email).single();
-                if (!staffData) { container.innerHTML = '<div class="text-center text-muted py-5"><i class="fas fa-user-slash fa-3x mb-3"></i><p>尚未連結顧問身分。</p></div>'; return; }
-                
-                let query = supabaseClient.from('service_records').select(`id, visit_date, service_year, execution_items, workplaces!inner(id, companies!inner(name, tax_id))`).eq('consultant_id', staffData.id).order('visit_date', { ascending: false });
-                if (year) query = query.eq('service_year', year);
-                if (taxId) query = query.eq('workplaces.companies.tax_id', taxId);
-                
-                const { data, error } = await query;
-                if (error) throw error;
-                if (!data || data.length === 0) { container.innerHTML = '<div class="text-center text-muted py-5"><i class="fas fa-folder-open fa-3x mb-3"></i><p>查無符合條件的案件。</p></div>'; return; }
-                
-                container.innerHTML = data.map(record => {
-                    return `<div class="col-12"><div class="record-card p-3 rounded d-flex justify-content-between align-items-center" onclick="handleCardClick('${record.id}')"><div><div class="fw-bold text-dark fs-5 mb-1">${record.workplaces.companies.name} <span class="badge bg-light text-muted fw-normal border ms-2">${record.workplaces.companies.tax_id}</span></div><div class="text-muted small"><i class="far fa-calendar-alt me-1"></i> ${record.visit_date || '預定日期未定'}</div></div><div class="text-end"><div class="small text-primary mt-1">選取此案 <i class="fas fa-chevron-right"></i></div></div></div></div>`;
-                }).join('');
-            } catch (err) { container.innerHTML = `<div class="alert alert-danger">錯誤: ${err.message}</div>`; }
-        }
+async function handleItemFileDelete(itemId, code) {
+if(!confirm('確定要刪除此附件嗎？')) return;
+document.getElementById(`spinner-${itemId}`).style.display = 'block';
+document.getElementById(`btn-group-${itemId}`).style.display = 'none';
+try {
+await deleteFileByPrefix(currentStagingId, `${code}_`);
+updateItemUI(itemId, code, null, null, false); 
+} catch (e) {
+alert('刪除失敗: ' + e.message);
+document.getElementById(`btn-group-${itemId}`).style.display = 'flex'; 
+} finally {
+document.getElementById(`spinner-${itemId}`).style.display = 'none';
+}
+}
 
-        async function handleCardClick(motherId) {
-            currentRecordId = motherId;
-            const { data: pendingItems, error } = await supabaseClient
-                .from('service_record_staging')
-                .select('id, service_date, service_type')
-                .eq('origin_record_id', motherId)
-                .eq('status', 'pending')
-                .order('created_at', { ascending: false });
+async function deleteFileByPrefix(folderId, prefix) {
+const { data: files } = await supabaseClient.storage.from(BUCKET_NAME).list(`${folderId}`);
+if (files && files.length > 0) {
+const targetFiles = files.filter(f => f.name.startsWith(prefix));
+if (targetFiles.length > 0) {
+const pathsToRemove = targetFiles.map(f => `${folderId}/${f.name}`);
+await supabaseClient.storage.from(BUCKET_NAME).remove(pathsToRemove);
+}
+}
+}
 
-            if (error) { console.error(error); return alert('檢查暫存資料失敗'); }
+function updateItemUI(itemId, code, fullFileName, originalName, hasFile) {
+const uploadBtn = document.getElementById(`btn-upload-${itemId}`);
+const btnGroup = document.getElementById(`btn-group-${itemId}`);
+const previewBtn = document.getElementById(`btn-preview-${itemId}`);
+const fileInfo = document.getElementById(`file-info-${itemId}`);
 
-            if (pendingItems && pendingItems.length > 0) {
-                showActionChoiceModal(pendingItems);
-            } else {
-                initStep2(null);
-            }
-        }
+if (hasFile && fullFileName) {
+uploadBtn.style.display = 'none';
+btnGroup.style.display = 'flex';
 
-        function showActionChoiceModal(items) {
-            const listGroup = document.getElementById('pending-list-group');
-            listGroup.innerHTML = items.map(item => `
-                <button type="button" class="list-group-item list-group-item-action d-flex justify-content-between align-items-center" onclick="initStep2('${item.id}')">
-                    <div>
-                        <div class="fw-bold text-primary">修改送審案件</div>
-                        <small class="text-muted">日期：${item.service_date} | 類型：${item.service_type || '未指定'}</small>
-                    </div>
-                    <i class="fas fa-edit text-secondary"></i>
-                </button>
-            `).join('');
-            
-            const btnNew = document.getElementById('btn-create-new');
-            btnNew.onclick = () => {
-                bootstrap.Modal.getInstance(document.getElementById('actionChoiceModal')).hide();
-                initStep2(null); 
-            };
+const { data } = supabaseClient.storage.from(BUCKET_NAME).getPublicUrl(`${currentStagingId}/${fullFileName}`);
+previewBtn.href = data.publicUrl;
 
-            new bootstrap.Modal(document.getElementById('actionChoiceModal')).show();
-        }
+let displayName = originalName || fullFileName;
+const shortName = displayName.length > 20 ? displayName.substring(0, 17) + '...' : displayName;
 
-        async function initStep2(stagingId) {
-            const modalEl = document.getElementById('actionChoiceModal');
-            const modal = bootstrap.Modal.getInstance(modalEl);
-            if (modal) modal.hide();
+fileInfo.innerHTML = `<span class="badge bg-success me-1">已存</span> <span class="text-muted font-monospace small" title="${displayName}">${shortName}</span>`;
+} else {
+uploadBtn.style.display = 'inline-block';
+btnGroup.style.display = 'none';
+fileInfo.innerHTML = '';
+}
+}
 
-            if (!stagingId) {
-                currentStagingId = crypto.randomUUID();
-            } else {
-                currentStagingId = stagingId;
-            }
+// ==========================================
+// 搜尋與選取邏輯
+// ==========================================
+async function searchRecords() {
+const year = document.getElementById('search-year').value.trim();
+const taxId = document.getElementById('search-tax-id').value.trim();
+const container = document.getElementById('records-container');
+container.innerHTML = '<div class="text-center py-5"><div class="spinner-border text-primary"></div><p class="mt-2">查詢中...</p></div>';
+try {
+const { data: profileData } = await supabaseClient.from('profiles').select('email').eq('id', currentUserId).single();
+if (!profileData) throw new Error('無法識別使用者身分');
+const { data: staffData } = await supabaseClient.from('medical_staff').select('id').eq('email', profileData.email).single();
+if (!staffData) { container.innerHTML = '<div class="text-center text-muted py-5"><i class="fas fa-user-slash fa-3x mb-3"></i><p>尚未連結顧問身分。</p></div>'; return; }
 
-            document.querySelectorAll('input[type="checkbox"]').forEach(cb => cb.checked = false);
-            document.querySelectorAll('.item-actions').forEach(el => el.classList.remove('visible'));
-            document.getElementById('service-type-select').value = "";
-            toggleServiceTypeOther();
-            document.getElementById('service-remark').value = ""; 
-            document.getElementById('execution-date').value = "";
-            document.getElementById('start-time').value = "";
-            document.getElementById('end-time').value = "";
+let query = supabaseClient.from('service_records').select(`id, visit_date, service_year, execution_items, workplaces!inner(id, companies!inner(name, tax_id))`).eq('consultant_id', staffData.id).order('visit_date', { ascending: false });
+if (year) query = query.eq('service_year', year);
+if (taxId) query = query.eq('workplaces.companies.tax_id', taxId);
 
-            checklistItems.forEach(item => updateItemUI(item.id, item.code, null, null, false));
+const { data, error } = await query;
+if (error) throw error;
+if (!data || data.length === 0) { container.innerHTML = '<div class="text-center text-muted py-5"><i class="fas fa-folder-open fa-3x mb-3"></i><p>查無符合條件的案件。</p></div>'; return; }
 
-            const { data: motherData } = await supabaseClient.from('service_records').select(`*, workplaces(companies(name))`).eq('id', currentRecordId).single();
-            document.getElementById('current-company-name').innerText = motherData.workplaces.companies.name;
-            document.getElementById('current-year-badge').innerText = (motherData.service_year || '') + ' 年度 (母案)';
+container.innerHTML = data.map(record => {
+return `<div class="col-12"><div class="record-card p-3 rounded d-flex justify-content-between align-items-center" onclick="handleCardClick('${record.id}')"><div><div class="fw-bold text-dark fs-5 mb-1">${record.workplaces.companies.name} <span class="badge bg-light text-muted fw-normal border ms-2">${record.workplaces.companies.tax_id}</span></div><div class="text-muted small"><i class="far fa-calendar-alt me-1"></i> ${record.visit_date || '預定日期未定'}</div></div><div class="text-end"><div class="small text-primary mt-1">選取此案 <i class="fas fa-chevron-right"></i></div></div></div></div>`;
+}).join('');
+} catch (err) { container.innerHTML = `<div class="alert alert-danger">錯誤: ${err.message}</div>`; }
+}
 
-            const { data: files } = await supabaseClient.storage.from(BUCKET_NAME).list(`${currentStagingId}`);
-            
-            if (stagingId) {
-                await loadStagingData(stagingId);
-            }
-            
-            if (files && files.length > 0) {
-                files.forEach(file => {
-                    const parts = file.name.split('_');
-                    if (parts.length >= 2) { 
-                        const code = parts[0];
-                        const targetItem = checklistItems.find(i => i.code === code);
-                        if (targetItem) {
-                            const cb = document.getElementById(`cb-${targetItem.id}`);
-                            if(cb) {
-                                cb.checked = true;
-                                toggleItemAction(targetItem.id);
-                                updateItemUI(targetItem.id, code, file.name, null, true);
-                            }
-                        }
-                    }
-                });
-            }
+async function handleCardClick(motherId) {
+currentRecordId = motherId;
+const { data: pendingItems, error } = await supabaseClient
+.from('service_record_staging')
+.select('id, service_date, service_type')
+.eq('origin_record_id', motherId)
+.eq('status', 'pending')
+.order('created_at', { ascending: false });
 
-            document.getElementById('step1-content').style.display = 'none';
-            document.getElementById('step2-content').style.display = 'block';
-            updateStepIndicator(2);
-        }
+if (error) { console.error(error); return alert('檢查暫存資料失敗'); }
 
-        async function loadStagingData(stagingId) {
-            const { data, error } = await supabaseClient.from('service_record_staging').select('*').eq('id', stagingId).single();
-            if(error) { alert('讀取暫存資料失敗'); return; }
+if (pendingItems && pendingItems.length > 0) {
+showActionChoiceModal(pendingItems);
+} else {
+initStep2(null);
+}
+}
 
-            document.getElementById('execution-date').value = data.visit_date || data.service_date || '';
-            document.getElementById('start-time').value = data.start_time || '';
-            document.getElementById('end-time').value = data.end_time || '';
-            
-            const select = document.getElementById('service-type-select');
-            const otherInput = document.getElementById('service-type-other');
-            const savedType = data.service_type;
-            const options = Array.from(select.options).map(o => o.value);
-            
-            if (options.includes(savedType) && savedType !== 'other') {
-                select.value = savedType;
-                otherInput.style.display = 'none';
-            } else {
-                select.value = 'other';
-                otherInput.style.display = 'block';
-                otherInput.value = savedType || '';
-            }
+function showActionChoiceModal(items) {
+const listGroup = document.getElementById('pending-list-group');
+listGroup.innerHTML = items.map(item => `
+               <button type="button" class="list-group-item list-group-item-action d-flex justify-content-between align-items-center" onclick="initStep2('${item.id}')">
+                   <div>
+                       <div class="fw-bold text-primary">修改送審案件</div>
+                       <small class="text-muted">日期：${item.service_date} | 類型：${item.service_type || '未指定'}</small>
+                   </div>
+                   <i class="fas fa-edit text-secondary"></i>
+               </button>
+           `).join('');
 
-            if (data.service_desc) {
-                try {
-                    const descObj = JSON.parse(data.service_desc);
-                    if (descObj.items && Array.isArray(descObj.items)) {
-                        descObj.items.forEach(itemId => {
-                            const cb = document.getElementById(`cb-${itemId}`);
-                            if(cb) { cb.checked = true; toggleItemAction(itemId); }
-                        });
-                    }
-                    if (descObj.user_remark) {
-                        document.getElementById('service-remark').value = descObj.user_remark;
-                    }
-                } catch(e) { console.error('JSON parse error', e); }
-            }
-        }
+const btnNew = document.getElementById('btn-create-new');
+btnNew.onclick = () => {
+bootstrap.Modal.getInstance(document.getElementById('actionChoiceModal')).hide();
+initStep2(null); 
+};
 
-        function backToStep1() {
-            document.getElementById('step2-content').style.display = 'none';
-            document.getElementById('step1-content').style.display = 'block';
-            updateStepIndicator(1);
-            searchRecords(); 
-        }
+new bootstrap.Modal(document.getElementById('actionChoiceModal')).show();
+}
 
-        function updateStepIndicator(step) {
-            document.querySelectorAll('.step-item').forEach((el, index) => {
-                el.classList.remove('active', 'completed');
-                if (index + 1 === step) el.classList.add('active');
-                if (index + 1 < step) el.classList.add('completed');
-            });
-        }
+async function initStep2(stagingId) {
+const modalEl = document.getElementById('actionChoiceModal');
+const modal = bootstrap.Modal.getInstance(modalEl);
+if (modal) modal.hide();
 
-        async function submitRecord() {
-            if (!currentRecordId) return;
-            const btn = document.getElementById('btn-submit');
-            btn.disabled = true;
-            btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> 處理中...';
-            try {
-                const selectedItems = [];
-                document.querySelectorAll('input[name="service-item"]:checked').forEach(cb => { selectedItems.push(cb.value); });
-                const visitDate = document.getElementById('execution-date').value;
-                const startTime = document.getElementById('start-time').value;
-                const endTime = document.getElementById('end-time').value;
-                const remark = document.getElementById('service-remark').value.trim(); 
-                
-                const serviceTypeSelect = document.getElementById('service-type-select');
-                let serviceType = serviceTypeSelect.value;
-                if (!serviceType) throw new Error("請選擇【執行事項】。");
-                if (serviceType === 'other') {
-                    const otherVal = document.getElementById('service-type-other').value.trim();
-                    if (!otherVal) throw new Error("選擇「其他」時，請輸入具體事項內容。");
-                    serviceType = otherVal;
-                }
+if (!stagingId) {
+currentStagingId = crypto.randomUUID();
+} else {
+currentStagingId = stagingId;
+}
 
-                if (selectedItems.length === 0) throw new Error("請至少勾選一項執行紀錄項目 (A~Q)。");
-                if (!visitDate) throw new Error("請填寫實際執行日期。");
+document.querySelectorAll('input[type="checkbox"]').forEach(cb => cb.checked = false);
+document.querySelectorAll('.item-actions').forEach(el => el.classList.remove('visible'));
+document.getElementById('service-type-select').value = "";
+toggleServiceTypeOther();
+document.getElementById('service-remark').value = ""; 
+document.getElementById('execution-date').value = "";
+document.getElementById('start-time').value = "";
+document.getElementById('end-time').value = "";
 
-                const { data: files } = await supabaseClient.storage.from(BUCKET_NAME).list(`${currentStagingId}`);
-                let attachments = [];
-                if(files) {
-                    attachments = files.map(f => ({
-                        name: f.name,
-                        path: `${currentStagingId}/${f.name}`,
-                        size: f.metadata.size,
-                        type: f.metadata.mimetype
-                    }));
-                }
+checklistItems.forEach(item => updateItemUI(item.id, item.code, null, null, false));
 
-                const { data: profile } = await supabaseClient.auth.getUser();
-                const userId = profile.user.id;
-                
-                const { data: recordData } = await supabaseClient.from('service_records').select('workplace_id, consultant_id, service_year').eq('id', currentRecordId).single();
+const { data: motherData } = await supabaseClient.from('service_records').select(`*, workplaces(companies(name))`).eq('id', currentRecordId).single();
+document.getElementById('current-company-name').innerText = motherData.workplaces.companies.name;
+document.getElementById('current-year-badge').innerText = (motherData.service_year || '') + ' 年度 (母案)';
 
-                const payload = {
-                    id: currentStagingId, 
-                    origin_record_id: currentRecordId,
-                    workplace_id: recordData.workplace_id,
-                    submitter_id: userId,
-                    consultant_id: recordData.consultant_id,
-                    service_year: recordData.service_year,
-                    
-                    service_date: visitDate, 
-                    visit_date: visitDate,   
-                    start_time: startTime,
-                    end_time: endTime,
-                    
-                    service_type: serviceType, 
-                    service_desc: JSON.stringify({
-                        items: selectedItems,
-                        note: '由顧問端上傳之執行紀錄',
-                        user_remark: remark 
-                    }),
-                    attachment_files: attachments,
-                    status: 'pending',
-                    updated_at: new Date()
-                };
+const { data: files } = await supabaseClient.storage.from(BUCKET_NAME).list(`${currentStagingId}`);
 
-                const { error } = await supabaseClient.from('service_record_staging').upsert(payload);
+if (stagingId) {
+await loadStagingData(stagingId);
+}
 
-                if (error) throw error;
+if (files && files.length > 0) {
+files.forEach(file => {
+const parts = file.name.split('_');
+if (parts.length >= 2) { 
+const code = parts[0];
+const targetItem = checklistItems.find(i => i.code === code);
+if (targetItem) {
+const cb = document.getElementById(`cb-${targetItem.id}`);
+if(cb) {
+cb.checked = true;
+toggleItemAction(targetItem.id);
+updateItemUI(targetItem.id, code, file.name, null, true);
+}
+}
+}
+});
+}
 
-                alert('✅ 存檔成功！資料已送出待審核。');
-                backToStep1();
+document.getElementById('step1-content').style.display = 'none';
+document.getElementById('step2-content').style.display = 'block';
+updateStepIndicator(2);
+}
 
-            } catch (err) {
-                alert('❌ 錯誤：' + err.message);
-                console.error(err);
-            } finally {
-                btn.disabled = false;
-                btn.innerHTML = '<i class="fas fa-save me-1"></i> 存檔送審';
-            }
-        }
-    </script>
+async function loadStagingData(stagingId) {
+const { data, error } = await supabaseClient.from('service_record_staging').select('*').eq('id', stagingId).single();
+if(error) { alert('讀取暫存資料失敗'); return; }
+
+document.getElementById('execution-date').value = data.visit_date || data.service_date || '';
+document.getElementById('start-time').value = data.start_time || '';
+document.getElementById('end-time').value = data.end_time || '';
+
+const select = document.getElementById('service-type-select');
+const otherInput = document.getElementById('service-type-other');
+const savedType = data.service_type;
+const options = Array.from(select.options).map(o => o.value);
+
+if (options.includes(savedType) && savedType !== 'other') {
+select.value = savedType;
+otherInput.style.display = 'none';
+} else {
+select.value = 'other';
+otherInput.style.display = 'block';
+otherInput.value = savedType || '';
+}
+
+if (data.service_desc) {
+try {
+const descObj = JSON.parse(data.service_desc);
+if (descObj.items && Array.isArray(descObj.items)) {
+descObj.items.forEach(itemId => {
+const cb = document.getElementById(`cb-${itemId}`);
+if(cb) { cb.checked = true; toggleItemAction(itemId); }
+});
+}
+if (descObj.user_remark) {
+document.getElementById('service-remark').value = descObj.user_remark;
+}
+} catch(e) { console.error('JSON parse error', e); }
+}
+}
+
+function backToStep1() {
+document.getElementById('step2-content').style.display = 'none';
+document.getElementById('step1-content').style.display = 'block';
+updateStepIndicator(1);
+searchRecords(); 
+}
+
+function updateStepIndicator(step) {
+document.querySelectorAll('.step-item').forEach((el, index) => {
+el.classList.remove('active', 'completed');
+if (index + 1 === step) el.classList.add('active');
+if (index + 1 < step) el.classList.add('completed');
+});
+}
+
+async function submitRecord() {
+if (!currentRecordId) return;
+const btn = document.getElementById('btn-submit');
+btn.disabled = true;
+btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> 處理中...';
+try {
+const selectedItems = [];
+document.querySelectorAll('input[name="service-item"]:checked').forEach(cb => { selectedItems.push(cb.value); });
+const visitDate = document.getElementById('execution-date').value;
+const startTime = document.getElementById('start-time').value;
+const endTime = document.getElementById('end-time').value;
+const remark = document.getElementById('service-remark').value.trim(); 
+
+const serviceTypeSelect = document.getElementById('service-type-select');
+let serviceType = serviceTypeSelect.value;
+if (!serviceType) throw new Error("請選擇【執行事項】。");
+if (serviceType === 'other') {
+const otherVal = document.getElementById('service-type-other').value.trim();
+if (!otherVal) throw new Error("選擇「其他」時，請輸入具體事項內容。");
+serviceType = otherVal;
+}
+
+if (selectedItems.length === 0) throw new Error("請至少勾選一項執行紀錄項目 (A~Q)。");
+if (!visitDate) throw new Error("請填寫實際執行日期。");
+
+const { data: files } = await supabaseClient.storage.from(BUCKET_NAME).list(`${currentStagingId}`);
+let attachments = [];
+if(files) {
+attachments = files.map(f => ({
+name: f.name,
+path: `${currentStagingId}/${f.name}`,
+size: f.metadata.size,
+type: f.metadata.mimetype
+}));
+}
+
+const { data: profile } = await supabaseClient.auth.getUser();
+const userId = profile.user.id;
+
+const { data: recordData } = await supabaseClient.from('service_records').select('workplace_id, consultant_id, service_year').eq('id', currentRecordId).single();
+
+const payload = {
+id: currentStagingId, 
+origin_record_id: currentRecordId,
+workplace_id: recordData.workplace_id,
+submitter_id: userId,
+consultant_id: recordData.consultant_id,
+service_year: recordData.service_year,
+
+service_date: visitDate, 
+visit_date: visitDate,   
+start_time: startTime,
+end_time: endTime,
+
+service_type: serviceType, 
+service_desc: JSON.stringify({
+items: selectedItems,
+note: '由顧問端上傳之執行紀錄',
+user_remark: remark 
+}),
+attachment_files: attachments,
+status: 'pending',
+updated_at: new Date()
+};
+
+const { error } = await supabaseClient.from('service_record_staging').upsert(payload);
+
+if (error) throw error;
+
+alert('✅ 存檔成功！資料已送出待審核。');
+backToStep1();
+
+} catch (err) {
+alert('❌ 錯誤：' + err.message);
+console.error(err);
+} finally {
+btn.disabled = false;
+btn.innerHTML = '<i class="fas fa-save me-1"></i> 存檔送審';
+}
+}
+</script>
 </body>
 </html>
