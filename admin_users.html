@@ -405,17 +405,47 @@
                         ? '<span class="badge bg-success bg-opacity-10 text-success">在職 (Active)</span>' 
                         : '<span class="badge bg-secondary">已停用 (Inactive)</span>';
 
-                    let actionBtn = '';
-                    if (hasAccount) {
-                        if (s.is_active) {
-                            actionBtn = `<button class="btn btn-sm btn-outline-danger fw-bold" onclick="toggleStatus('${s.id}', false, '${s.name}')" title="點擊停用此帳號"><i class="fas fa-ban me-1"></i>停用權限</button>`;
-                        } else {
-                            actionBtn = `<button class="btn btn-sm btn-outline-success fw-bold" onclick="toggleStatus('${s.id}', true, '${s.name}')" title="點擊恢復此帳號"><i class="fas fa-redo me-1"></i>恢復權限</button>`;
-                        }
-                    } else {
-                        // 開通視窗預設值：使用校正後的 displayRole
-                        actionBtn = `<button class="btn btn-sm btn-theme fw-bold" onclick="openActivateModal('${s.id}', '${s.name}', '${displayRole}', '${emailValue}')"><i class="fas fa-key me-1"></i>啟用帳號</button>`;
-                    }
+let actionBtn = '';
+let notifyBtn = '';
+
+// 只要有 email，就允許發送「開通通知」
+if (emailValue) {
+    notifyBtn = `
+        <button class="btn btn-sm btn-outline-primary fw-bold ms-2"
+            onclick="sendActivateNotice('${emailValue}', '${s.name}')">
+            <i class="fas fa-paper-plane me-1"></i>開通通知
+        </button>
+    `;
+}
+
+if (hasAccount) {
+    if (s.is_active) {
+        actionBtn = `
+            <button class="btn btn-sm btn-outline-danger fw-bold"
+                onclick="toggleStatus('${s.id}', false, '${s.name}')">
+                <i class="fas fa-ban me-1"></i>停用權限
+            </button>
+            ${notifyBtn}
+        `;
+    } else {
+        actionBtn = `
+            <button class="btn btn-sm btn-outline-success fw-bold"
+                onclick="toggleStatus('${s.id}', true, '${s.name}')">
+                <i class="fas fa-redo me-1"></i>恢復權限
+            </button>
+            ${notifyBtn}
+        `;
+    }
+} else {
+    actionBtn = `
+        <button class="btn btn-sm btn-theme fw-bold"
+            onclick="openActivateModal('${s.id}', '${s.name}', '${displayRole}', '${emailValue}')">
+            <i class="fas fa-key me-1"></i>啟用帳號
+        </button>
+        ${notifyBtn}
+    `;
+}
+
 
                     return `
                         <tr>
@@ -525,6 +555,51 @@
             }
         }
 
+        async function sendActivateNotice(email, name) {
+    if (!confirm(`確定要發送【開通通知】給 ${name} (${email}) 嗎？`)) return;
+
+    try {
+        const { data: sessionData } = await supabaseClient.auth.getSession();
+        const accessToken = sessionData.session?.access_token;
+
+        if (!accessToken) {
+            alert('❌ 無法取得登入憑證，請重新登入');
+            return;
+        }
+
+        const res = await fetch(
+            'https://yhehfucgemxnfrdvpdhw.supabase.co/functions/v1/send-email',
+            {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${accessToken}`
+                },
+                body: JSON.stringify({
+                    type: 'activate',
+                    email: email,
+                    data: {
+                        name: name,
+                        email: email
+                    }
+                })
+            }
+        );
+
+        if (!res.ok) {
+            const text = await res.text();
+            throw new Error(text || '寄送失敗');
+        }
+
+        alert(`✅ 已成功發送開通通知給 ${email}`);
+
+    } catch (err) {
+        console.error(err);
+        alert(`❌ 發送失敗：${err.message}`);
+    }
+}
+
+        
         async function toggleStatus(staffId, isActive, name) {
             const actionName = isActive ? "恢復權限" : "停用權限";
             if (!confirm(`確定要對「${name}」執行【${actionName}】嗎？`)) return;
