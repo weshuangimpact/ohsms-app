@@ -11,7 +11,7 @@
 
     <style>
         /* =========================================
-           統一頁首/頁尾 CSS 設定 (維持原樣)
+           統一頁首/頁尾 CSS 設定
            ========================================= */
         html, body {
             height: 100%;
@@ -73,9 +73,9 @@
             margin-bottom: 10px;
         }
 
-        /* Google 搜尋風格 - 修正版 */
+        /* Google 搜尋風格 */
         .search-container {
-            width: 100%; /* 全寬 */
+            width: 100%;
             margin-bottom: 30px;
             text-align: center;
         }
@@ -95,13 +95,12 @@
         .g-yellow { color: #FBBC05; }
         .g-green { color: #34A853; }
 
-        /* Google Style Search Bar */
         .google-search-bar {
             background: white;
             border: 1px solid #dfe1e5;
-            border-radius: 50px; /* 膠囊狀 */
+            border-radius: 50px;
             box-shadow: 0 1px 6px rgba(32,33,36,0.1);
-            max-width: 900px; /* 搜尋框本身置中且有寬度限制，較美觀 */
+            max-width: 900px;
             margin: 0 auto;
             display: flex;
             align-items: center;
@@ -123,12 +122,10 @@
             background: transparent;
         }
         
-        /* 移除原本的 Input focus 樣式 */
         .search-input:focus {
             box-shadow: none; 
         }
 
-        /* 搜尋按鈕 */
         .btn-search-icon {
             background-color: #4285f4;
             color: white;
@@ -146,7 +143,6 @@
             background-color: #357ae8;
         }
 
-        /* 垂直分隔線 */
         .vertical-divider {
             width: 1px;
             height: 25px;
@@ -214,15 +210,10 @@
             <form id="searchForm" onsubmit="event.preventDefault(); performSearch();">
                 <div class="google-search-bar">
                     <input type="number" class="search-input" id="searchYear" placeholder="年度 (西元)" min="2020" max="2050" style="width: 120px;">
-                    
                     <div class="vertical-divider"></div>
-                    
                     <input type="text" class="search-input" id="searchCompany" placeholder="公司名稱 / 統編" style="flex: 1;">
-                    
                     <div class="vertical-divider"></div>
-                    
                     <input type="text" class="search-input" id="searchConsultant" placeholder="顧問姓名" style="width: 150px;">
-                    
                     <button type="submit" class="btn-search-icon" title="搜尋軌跡">
                         <i class="fas fa-search"></i>
                     </button>
@@ -253,8 +244,7 @@
                             <th scope="col" class="text-center">操作</th>
                         </tr>
                     </thead>
-                    <tbody id="resultBody">
-                        </tbody>
+                    <tbody id="resultBody"></tbody>
                 </table>
             </div>
         </div>
@@ -419,7 +409,7 @@
         }
 
         // ==========================================
-        // 3. 全新功能：開啟新分頁顯示詳情與證據
+        // 3. 全新功能：開啟新分頁 (含互動式儲存)
         // ==========================================
         async function openEvidenceTab(evidenceId) {
             const newWindow = window.open('', '_blank');
@@ -435,98 +425,82 @@
                 <body style="display:flex;justify-content:center;align-items:center;height:100vh;background:#f8f9fa;font-family:sans-serif;">
                     <div style="text-align:center;">
                         <div style="font-size:24px;margin-bottom:10px;">資料讀取中...</div>
-                        <div style="color:#666;">正在從資料庫取得完整證據與核定紀錄</div>
+                        <div style="color:#666;">正在從資料庫取得完整證據與評鑑紀錄</div>
                     </div>
                 </body>
                 </html>
             `);
 
             try {
-                // 1. 查詢 Evidence 詳細資料
-                const evidencePromise = supabaseClient
+                // 1. 查詢 Evidence 詳細資料 (包含新欄位 review_date, audit_note, additional_appendices)
+                // 注意：若資料庫尚未新增 review_date，此查詢可能會報錯或忽略該欄位，請務必確認已執行 SQL。
+                const { data, error } = await supabaseClient
                     .from('evidence')
                     .select(`
-                        id, visit_date, start_time, end_time, execution_items, audit_note, 
+                        id, visit_date, start_time, end_time, execution_items, 
+                        audit_note, review_date,
                         file_url, attachment_folder_id, service_year, additional_appendices,
                         workplaces ( companies (name) ),
                         medical_staff (name)
                     `)
                     .eq('id', evidenceId)
                     .single();
-                
-                // 2. 查詢 Service Record Staging 核定紀錄
-                const stagingPromise = supabaseClient
-                    .from('service_record_staging')
-                    .select('reviewer_name, review_time, admin_comment')
-                    .eq('id', evidenceId) 
-                    .maybeSingle();
 
-                const [evidenceResult, stagingResult] = await Promise.all([evidencePromise, stagingPromise]);
+                if (error) throw error;
 
-                if (evidenceResult.error) throw evidenceResult.error;
-                const data = evidenceResult.data;
-                const stagingData = stagingResult.data; // 可能為 null
-
-                // 3. 準備基本資料
+                // 2. 準備基本資料
                 const staffName = data.medical_staff?.name || '未指派';
                 const compName = data.workplaces?.companies?.name || '未知企業';
                 const timeRange = `${data.start_time || '--:--'} ~ ${data.end_time || '--:--'}`;
                 const fullDate = `${data.visit_date} (${timeRange})`;
                 const items = data.execution_items || '無執行項目紀錄';
                 
-                // 4. Appendices 篩選 (只顯示 Q 類附件)
+                // 3. 處理 Appendices (一般 Q 類附件)
+                // 從 additional_appendices 過濾出非改善紀錄的檔案
                 let appendicesHtml = '';
-                if (data.additional_appendices && Array.isArray(data.additional_appendices) && data.additional_appendices.length > 0) {
-                    const filteredDocs = data.additional_appendices.filter(f => {
-                        const name = f.name || '';
-                        return name.toUpperCase().startsWith('Q') || name.toUpperCase().includes('_Q_');
-                    });
+                let existingAppendices = data.additional_appendices || [];
+                if (!Array.isArray(existingAppendices)) existingAppendices = [];
 
-                    if (filteredDocs.length > 0) {
-                        appendicesHtml = filteredDocs.map((file, idx) => {
-                            let fName = file.name || `附件 Q-${idx + 1}`;
-                            let fUrl = file.signedUrl || file.url || (typeof file === 'string' ? file : '#');
-                            if (!fUrl.startsWith('http') && fUrl !== '#') fUrl = '#';
-                            return `<div style="margin-bottom:4px;"><a href="${fUrl}" target="_blank" style="color:#0d6efd;text-decoration:none;"><i class="fas fa-paperclip me-1"></i>${fName}</a></div>`;
-                        }).join('');
-                    } else {
-                        appendicesHtml = '<span class="text-muted small">無 Q 類附件</span>';
-                    }
+                const standardDocs = existingAppendices.filter(f => f.type !== 'improvement');
+                const improvementDocs = existingAppendices.filter(f => f.type === 'improvement');
+
+                // 顯示 Q 類附件 (過濾標準同前)
+                const qDocs = standardDocs.filter(f => {
+                    const name = f.name || '';
+                    return name.toUpperCase().startsWith('Q') || name.toUpperCase().includes('_Q_');
+                });
+
+                if (qDocs.length > 0) {
+                    appendicesHtml = qDocs.map((file, idx) => {
+                        let fName = file.name || `附件 Q-${idx + 1}`;
+                        let fUrl = file.signedUrl || file.url || '#';
+                        return `<div style="margin-bottom:4px;"><a href="${fUrl}" target="_blank" style="color:#0d6efd;text-decoration:none;"><i class="fas fa-paperclip me-1"></i>${fName}</a></div>`;
+                    }).join('');
                 } else {
-                    appendicesHtml = '<span class="text-muted small">無附件</span>';
+                    appendicesHtml = '<span class="text-muted small">無 Q 類附件</span>';
                 }
 
-                // 5. 修改重點 3: 評鑑審查紀錄 (取代原本的 Audit Note 樣式)
-                let auditHtml = '';
-                
-                // 取得核定資料
-                const reviewer = stagingData?.reviewer_name || '-';
-                const rTime = stagingData?.review_time ? new Date(stagingData.review_time).toLocaleString() : '-';
-                const adminComment = stagingData?.admin_comment || '<span class="text-muted">尚無委員意見</span>';
+                // 4. 準備評鑑資料
+                const reviewDateVal = data.review_date || ''; // 讀取資料庫
+                const reviewCommentVal = data.audit_note || ''; // 讀取資料庫
 
-                auditHtml = `
-                    <div class="audit-section">
-                        <div style="margin-bottom:15px;">
-                            <label style="font-weight:bold; color:#5f6368; font-size:0.9rem; margin-bottom:5px; display:block;">委員意見欄</label>
-                            <div style="background:#fff3cd; color:#856404; padding:10px; border-radius:4px; border:1px solid #ffeeba;">
-                                ${adminComment}
-                            </div>
-                        </div>
+                // 5. 處理改善紀錄列表 HTML
+                let improvementHtml = '';
+                if (improvementDocs.length > 0) {
+                    improvementHtml = improvementDocs.map(doc => {
+                        return `
+                        <div style="background:#fff; border:1px solid #dee2e6; padding:8px; margin-bottom:5px; border-radius:4px; font-size:0.9rem;">
+                            <span class="badge bg-success" style="margin-right:5px;">${doc.date}</span>
+                            <a href="${doc.url || '#'}" target="_blank" style="text-decoration:none; color:#198754;">
+                                <i class="fas fa-link me-1"></i>${doc.name}
+                            </a>
+                        </div>`;
+                    }).join('');
+                } else {
+                    improvementHtml = '<div class="text-muted small">尚未建立改善紀錄</div>';
+                }
 
-                        <div style="margin-bottom:15px;">
-                            <label style="font-weight:bold; color:#5f6368; font-size:0.9rem; margin-bottom:5px; display:block;">改善紀錄 (追蹤)</label>
-                            <div style="background:#f8f9fa; border:1px dashed #ced4da; padding:10px; border-radius:4px; min-height:60px; color:#6c757d; font-size:0.9rem;">
-                                尚未建立改善紀錄
-                            </div>
-                        </div>
-                        
-                        <div style="border-top:1px solid #eee; padding-top:8px; font-size:0.85rem; color:#888; text-align:right;">
-                            核定者：${reviewer} | 核定時間：${rTime}
-                        </div>
-                    </div>
-                `;
-
-                // 6. 處理檔案預覽連結
+                // 6. 檔案預覽 (右側)
                 let targetFilePath = data.file_url;
                 if (!targetFilePath && data.attachment_folder_id) {
                     const searchPath = `${data.service_year}/${data.attachment_folder_id}`;
@@ -549,7 +523,7 @@
                     previewContent = `<div style="color:#aaa;text-align:center;padding-top:20%;font-size:1.2rem;">此紀錄無證據檔案<br><span style="font-size:0.9rem">(Folder ID: ${data.attachment_folder_id || '無'})</span></div>`;
                 }
 
-                // 7. 構建 HTML
+                // 7. 構建 HTML (包含 Script 處理儲存與上傳)
                 const finalHtml = `
                     <!DOCTYPE html>
                     <html lang="zh-TW">
@@ -557,6 +531,8 @@
                         <meta charset="UTF-8">
                         <title>證據詳情 | ${compName}</title>
                         <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+                        <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+                        <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"><\/script>
                         <style>
                             body, html { margin: 0; padding: 0; height: 100%; overflow: hidden; font-family: 'Segoe UI', sans-serif; }
                             .layout-container { display: flex; height: 100vh; }
@@ -593,7 +569,6 @@
                             .label { font-weight: bold; color: #5f6368; display: block; margin-bottom: 4px; font-size: 0.9rem; }
                             .value { color: #202124; background: #f8f9fa; padding: 8px 10px; border-radius: 4px; border: 1px solid #eee; }
                             
-                            /* 藍色分隔線標題 */
                             .section-title { 
                                 font-size: 1.1rem; 
                                 color: #0d6efd; 
@@ -603,6 +578,10 @@
                                 border-bottom: 2px solid #0d6efd; 
                                 padding-bottom: 5px; 
                             }
+                            
+                            /* 表單控制項樣式 */
+                            .form-control-sm { border-radius: 2px; }
+                            .btn-action { margin-top: 5px; width: 100%; font-size: 0.85rem; }
                         </style>
                     </head>
                     <body>
@@ -630,7 +609,6 @@
                                     </div>
 
                                     <div class="section-title">佐證資料與備註</div>
-                                    
                                     <div class="info-group">
                                         <div class="value" style="background:transparent; border:none; padding-left:0;">
                                             ${appendicesHtml}
@@ -640,14 +618,149 @@
                                     <div class="section-title">評鑑審查紀錄</div>
                                     
                                     <div class="info-group">
-                                        ${auditHtml}
+                                        <span class="label">評鑑日期</span>
+                                        <input type="date" id="reviewDate" class="form-control form-control-sm" value="${reviewDateVal}">
                                     </div>
+
+                                    <div class="info-group">
+                                        <span class="label">委員意見欄</span>
+                                        <textarea id="reviewComment" class="form-control form-control-sm" rows="3" placeholder="請輸入委員意見...">${reviewCommentVal}</textarea>
+                                        <button class="btn btn-primary btn-sm btn-action" onclick="saveReviewRecord()">
+                                            <i class="fas fa-save me-1"></i> 儲存評鑑紀錄
+                                        </button>
+                                    </div>
+
+                                    <div class="info-group">
+                                        <span class="label">改善紀錄 (上傳疊加)</span>
+                                        <div style="background:#f8f9fa; border:1px dashed #ced4da; padding:10px; border-radius:4px; margin-bottom:10px;">
+                                            <div id="improvementList">${improvementHtml}</div>
+                                        </div>
+                                        
+                                        <div style="border-top:1px solid #eee; padding-top:10px;">
+                                            <label class="small text-muted mb-1">新增改善紀錄:</label>
+                                            <input type="date" id="impDate" class="form-control form-control-sm mb-2">
+                                            <input type="file" id="impFile" class="form-control form-control-sm mb-2">
+                                            <button class="btn btn-success btn-sm btn-action" onclick="uploadImprovement()">
+                                                <i class="fas fa-upload me-1"></i> 上傳並新增
+                                            </button>
+                                            <div id="uploadStatus" class="small mt-2 text-danger"></div>
+                                        </div>
+                                    </div>
+
                                 </div>
                             </div>
                             <div class="preview-area">
                                 ${previewContent}
                             </div>
                         </div>
+
+                        <script>
+                            const SUPABASE_URL = '${SUPABASE_URL}';
+                            const SUPABASE_KEY = '${SUPABASE_KEY}';
+                            const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+                            const evidenceId = '${evidenceId}';
+                            let currentAppendices = ${JSON.stringify(existingAppendices)};
+                            const serviceYear = '${data.service_year || "2026"}';
+                            const folderId = '${data.attachment_folder_id || "temp"}';
+
+                            // 1. 儲存評鑑紀錄 (日期與意見)
+                            async function saveReviewRecord() {
+                                const date = document.getElementById('reviewDate').value;
+                                const comment = document.getElementById('reviewComment').value;
+                                const btn = document.querySelector('button[onclick="saveReviewRecord()"]');
+                                
+                                btn.disabled = true;
+                                btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 儲存中...';
+
+                                try {
+                                    const { error } = await supabase
+                                        .from('evidence')
+                                        .update({ 
+                                            review_date: date || null, 
+                                            audit_note: comment 
+                                        })
+                                        .eq('id', evidenceId);
+
+                                    if(error) throw error;
+                                    alert('評鑑紀錄已儲存！');
+                                } catch(e) {
+                                    alert('儲存失敗：' + e.message);
+                                } finally {
+                                    btn.disabled = false;
+                                    btn.innerHTML = '<i class="fas fa-save me-1"></i> 儲存評鑑紀錄';
+                                }
+                            }
+
+                            // 2. 上傳改善紀錄並疊加
+                            async function uploadImprovement() {
+                                const dateInput = document.getElementById('impDate');
+                                const fileInput = document.getElementById('impFile');
+                                const statusDiv = document.getElementById('uploadStatus');
+                                
+                                if(!dateInput.value || fileInput.files.length === 0) {
+                                    statusDiv.textContent = '請選擇日期與檔案';
+                                    return;
+                                }
+
+                                statusDiv.textContent = '上傳中...';
+                                const file = fileInput.files[0];
+                                const fileName = 'IMP_' + Date.now() + '_' + file.name;
+                                const filePath = serviceYear + '/' + folderId + '/' + fileName;
+
+                                try {
+                                    // A. 上傳檔案
+                                    const { data: uploadData, error: uploadError } = await supabase.storage
+                                        .from('evidence')
+                                        .upload(filePath, file);
+                                    
+                                    if(uploadError) throw uploadError;
+
+                                    // B. 取得連結
+                                    const { data: urlData } = supabase.storage
+                                        .from('evidence')
+                                        .getPublicUrl(filePath);
+                                    
+                                    // C. 更新 JSONB
+                                    const newRecord = {
+                                        type: 'improvement',
+                                        date: dateInput.value,
+                                        name: file.name,
+                                        url: urlData.publicUrl
+                                    };
+
+                                    const newAppendices = [...currentAppendices, newRecord];
+
+                                    const { error: dbError } = await supabase
+                                        .from('evidence')
+                                        .update({ additional_appendices: newAppendices })
+                                        .eq('id', evidenceId);
+
+                                    if(dbError) throw dbError;
+
+                                    // D. 更新畫面
+                                    currentAppendices = newAppendices;
+                                    const listHtml = newAppendices
+                                        .filter(x => x.type === 'improvement')
+                                        .map(doc => \`
+                                            <div style="background:#fff; border:1px solid #dee2e6; padding:8px; margin-bottom:5px; border-radius:4px; font-size:0.9rem;">
+                                                <span class="badge bg-success" style="margin-right:5px;">\${doc.date}</span>
+                                                <a href="\${doc.url}" target="_blank" style="text-decoration:none; color:#198754;">
+                                                    <i class="fas fa-link me-1"></i>\${doc.name}
+                                                </a>
+                                            </div>\`)
+                                        .join('');
+                                    
+                                    document.getElementById('improvementList').innerHTML = listHtml;
+                                    statusDiv.textContent = '';
+                                    fileInput.value = ''; // 清空
+                                    alert('改善紀錄新增成功！');
+
+                                } catch(e) {
+                                    statusDiv.textContent = '錯誤：' + e.message;
+                                    console.error(e);
+                                }
+                            }
+                        <\/script>
                     </body>
                     </html>
                 `;
