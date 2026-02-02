@@ -514,7 +514,6 @@ async function directActivateUser() {
                 // ==========================================
                 btn.innerHTML = '<i class="fas fa-envelope fa-spin"></i> 執行 Step 3: 寄送通知信...';
                 
-                // 這裡就是您原本缺少的關鍵程式碼
                 const { error: mailError } = await supabaseClient.functions.invoke('send-email', {
                     body: { 
                         type: 'activate', 
@@ -522,7 +521,7 @@ async function directActivateUser() {
                         data: { 
                             name: name, 
                             email: email,
-                            password: password // 這裡會傳送前端輸入框的值 (12345678)
+                            password: password // 這裡傳送的是前端輸入框的值 (預設 12345678)
                         } 
                     }
                 });
