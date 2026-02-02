@@ -386,7 +386,6 @@
         // 3. 全新功能：開啟新分頁顯示詳情與證據
         // ==========================================
         async function openEvidenceTab(evidenceId) {
-            // 立即開啟新視窗，避免瀏覽器攔截彈出視窗
             const newWindow = window.open('', '_blank');
             if (!newWindow) {
                 alert('您的瀏覽器封鎖了彈出視窗，請允許開啟以檢視詳情。');
@@ -400,15 +399,15 @@
                 <body style="display:flex;justify-content:center;align-items:center;height:100vh;background:#f8f9fa;font-family:sans-serif;">
                     <div style="text-align:center;">
                         <div style="font-size:24px;margin-bottom:10px;">資料讀取中...</div>
-                        <div style="color:#666;">正在從資料庫取得完整證據檔案</div>
+                        <div style="color:#666;">正在從資料庫取得完整證據與核定紀錄</div>
                     </div>
                 </body>
                 </html>
             `);
 
             try {
-                // 1. 查詢詳細資料
-                const { data, error } = await supabaseClient
+                // 1. 查詢 Evidence 詳細資料
+                const evidencePromise = supabaseClient
                     .from('evidence')
                     .select(`
                         id, visit_date, start_time, end_time, execution_items, audit_note, 
@@ -418,33 +417,73 @@
                     `)
                     .eq('id', evidenceId)
                     .single();
+                
+                // 2. 查詢 Service Record Staging 核定紀錄 (假設 ID 相同)
+                const stagingPromise = supabaseClient
+                    .from('service_record_staging')
+                    .select('reviewer_name, review_time, admin_comment')
+                    .eq('id', evidenceId) 
+                    .maybeSingle();
 
-                if (error) throw error;
+                const [evidenceResult, stagingResult] = await Promise.all([evidencePromise, stagingPromise]);
 
-                // 2. 準備資料
+                if (evidenceResult.error) throw evidenceResult.error;
+                const data = evidenceResult.data;
+                const stagingData = stagingResult.data; // 可能為 null
+
+                // 3. 準備基本資料
                 const staffName = data.medical_staff?.name || '未指派';
                 const compName = data.workplaces?.companies?.name || '未知企業';
                 const timeRange = `${data.start_time || '--:--'} ~ ${data.end_time || '--:--'}`;
                 const fullDate = `${data.visit_date} (${timeRange})`;
                 const items = data.execution_items || '無執行項目紀錄';
                 
-                // Appendices HTML
-                let appendicesHtml = '<span class="text-muted">無</span>';
+                // 4. Appendices 篩選 (只顯示 Q 類附件) & 移除標題
+                let appendicesHtml = '';
                 if (data.additional_appendices && Array.isArray(data.additional_appendices) && data.additional_appendices.length > 0) {
-                    appendicesHtml = data.additional_appendices.map((file, idx) => {
-                        let fName = file.name || `附件 ${idx + 1}`;
-                        let fUrl = file.signedUrl || file.url || (typeof file === 'string' ? file : '#');
-                        if (!fUrl.startsWith('http') && fUrl !== '#') fUrl = '#';
-                        return `<div style="margin-bottom:4px;"><a href="${fUrl}" target="_blank" style="color:#0d6efd;text-decoration:none;">📎 ${fName}</a></div>`;
-                    }).join('');
+                    // 篩選邏輯：檔名包含 'Q' 或以 'Q' 開頭 (不區分大小寫)
+                    const filteredDocs = data.additional_appendices.filter(f => {
+                        const name = f.name || '';
+                        return name.toUpperCase().startsWith('Q') || name.toUpperCase().includes('_Q_');
+                    });
+
+                    if (filteredDocs.length > 0) {
+                        appendicesHtml = filteredDocs.map((file, idx) => {
+                            let fName = file.name || `附件 Q-${idx + 1}`;
+                            let fUrl = file.signedUrl || file.url || (typeof file === 'string' ? file : '#');
+                            if (!fUrl.startsWith('http') && fUrl !== '#') fUrl = '#';
+                            return `<div style="margin-bottom:4px;"><a href="${fUrl}" target="_blank" style="color:#0d6efd;text-decoration:none;"><i class="fas fa-paperclip me-1"></i>${fName}</a></div>`;
+                        }).join('');
+                    } else {
+                        appendicesHtml = '<span class="text-muted small">無 Q 類附件</span>';
+                    }
+                } else {
+                    appendicesHtml = '<span class="text-muted small">無附件</span>';
                 }
 
-                // Audit Note
-                let noteHtml = data.audit_note 
-                    ? `<div style="background:#fff3cd; color:#856404; padding:10px; border-radius:4px; border:1px solid #ffeeba;">⚠️ ${data.audit_note}</div>`
-                    : `<div style="color:#198754;">✔ 本次服務無特殊稽核異常</div>`;
+                // 5. 核定紀錄 (管理者核定紀錄)
+                let auditHtml = '';
+                if (stagingData) {
+                    const reviewer = stagingData.reviewer_name || '系統自動';
+                    const rTime = stagingData.review_time ? new Date(stagingData.review_time).toLocaleString() : '未紀錄時間';
+                    const rNote = stagingData.admin_comment || '無備註';
+                    
+                    auditHtml = `
+                        <div style="background:#fff8e1; border:1px solid #ffe082; padding:12px; border-radius:6px;">
+                            <div style="margin-bottom:6px;"><strong><i class="fas fa-user-check me-1"></i>核定者：</strong> ${reviewer}</div>
+                            <div style="margin-bottom:6px;"><strong><i class="far fa-clock me-1"></i>核定時間：</strong> ${rTime}</div>
+                            <div><strong><i class="far fa-comment-dots me-1"></i>核定備註：</strong> ${rNote}</div>
+                        </div>
+                    `;
+                } else {
+                    auditHtml = `
+                        <div style="background:#f8f9fa; border:1px solid #dee2e6; padding:12px; border-radius:6px; color:#6c757d;">
+                            <i class="fas fa-info-circle me-1"></i> 查無 service_record_staging 核定紀錄
+                        </div>
+                    `;
+                }
 
-                // 3. 處理檔案連結 (Signed URL)
+                // 6. 處理檔案預覽連結
                 let targetFilePath = data.file_url;
                 if (!targetFilePath && data.attachment_folder_id) {
                     const searchPath = `${data.service_year}/${data.attachment_folder_id}`;
@@ -459,7 +498,6 @@
                 if (targetFilePath) {
                     const { data: fileData } = await supabaseClient.storage.from('evidence').createSignedUrl(targetFilePath, 3600);
                     if (fileData?.signedUrl) {
-                        // 使用 embed 或 iframe 預覽
                         previewContent = `<iframe src="${fileData.signedUrl}#toolbar=0" style="width:100%; height:100%; border:none;" title="Evidence Preview"></iframe>`;
                     } else {
                         previewContent = `<div style="color:white;text-align:center;padding-top:20%;">無法取得檔案簽署連結</div>`;
@@ -468,7 +506,7 @@
                     previewContent = `<div style="color:#aaa;text-align:center;padding-top:20%;font-size:1.2rem;">此紀錄無證據檔案<br><span style="font-size:0.9rem">(Folder ID: ${data.attachment_folder_id || '無'})</span></div>`;
                 }
 
-                // 4. 構建新頁面 HTML (Flex Layout: Left 25%, Right 75%)
+                // 7. 構建 HTML
                 const finalHtml = `
                     <!DOCTYPE html>
                     <html lang="zh-TW">
@@ -508,11 +546,20 @@
                                 position: relative;
                             }
 
-                            /* 標籤樣式 */
                             .info-group { margin-bottom: 20px; }
                             .label { font-weight: bold; color: #5f6368; display: block; margin-bottom: 4px; font-size: 0.9rem; }
                             .value { color: #202124; background: #f8f9fa; padding: 8px 10px; border-radius: 4px; border: 1px solid #eee; }
-                            .section-title { font-size: 1.1rem; color: #0d6efd; font-weight: bold; margin-bottom: 15px; border-bottom: 2px solid #0d6efd; padding-bottom: 5px; }
+                            
+                            /* 藍色分隔線標題 */
+                            .section-title { 
+                                font-size: 1.1rem; 
+                                color: #0d6efd; 
+                                font-weight: bold; 
+                                margin-top: 25px;
+                                margin-bottom: 15px; 
+                                border-bottom: 2px solid #0d6efd; 
+                                padding-bottom: 5px; 
+                            }
                         </style>
                     </head>
                     <body>
@@ -539,16 +586,17 @@
                                         <div class="value" style="background:#e8f0fe; border-color:#d2e3fc;">${items}</div>
                                     </div>
 
-                                    <div class="section-title" style="margin-top:30px;">佐證資料與備註</div>
+                                    <div class="section-title">佐證資料與備註</div>
                                     
                                     <div class="info-group">
-                                        <span class="label">Appendices (附件)</span>
-                                        <div class="value" style="background:transparent; border:none; padding-left:0;">${appendicesHtml}</div>
+                                        <div class="value" style="background:transparent; border:none; padding-left:0;">
+                                            ${appendicesHtml}
+                                        </div>
                                     </div>
                                     
                                     <div class="info-group">
-                                        <span class="label">Audit Note (稽核備註)</span>
-                                        ${noteHtml}
+                                        <span class="label">管理者核定紀錄</span>
+                                        ${auditHtml}
                                     </div>
                                 </div>
                             </div>
@@ -560,14 +608,13 @@
                     </html>
                 `;
 
-                // 寫入最終內容
                 newWindow.document.open();
                 newWindow.document.write(finalHtml);
                 newWindow.document.close();
 
             } catch (err) {
                 console.error(err);
-                newWindow.document.body.innerHTML = `<h3 style="color:red;text-align:center;margin-top:50px;">讀取資料發生錯誤，請關閉後重試。</h3>`;
+                newWindow.document.body.innerHTML = `<h3 style="color:red;text-align:center;margin-top:50px;">讀取資料發生錯誤，請關閉後重試。<br><small>${err.message}</small></h3>`;
             }
         }
     </script>
