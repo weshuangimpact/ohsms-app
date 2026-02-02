@@ -425,6 +425,107 @@
         let currentStagingData = []; 
         let currentReviewId = null; 
 
+function openReviewEmailModal(id) {
+    const record = currentStagingData.find(r => r.id === id);
+    if (!record) return alert('資料不存在');
+
+    document.getElementById('email-target-id').value = id;
+    document.getElementById('email-consultant-name').value = record.medical_staff?.name || '';
+    document.getElementById('email-consultant-addr').innerText = record.medical_staff?.email || '';
+
+    document.querySelector('.preview-name').innerText = record.medical_staff?.name || '顧問';
+
+    // 重置表單（允許重複發送）
+    document.querySelectorAll('#reviewEmailModal input[type=checkbox]').forEach(cb => cb.checked = false);
+    document.getElementById('reason-other-text').value = '';
+    document.getElementById('reason-other-text').style.display = 'none';
+    document.getElementById('email-deadline').value = 3;
+
+    new bootstrap.Modal(document.getElementById('reviewEmailModal')).show();
+}
+function openReminderModal(id) {
+    const record = currentStagingData.find(r => r.id === id);
+    if (!record) return alert('資料不存在');
+
+    document.getElementById('remind-target-id').value = id;
+    document.getElementById('remind-consultant-name').value = record.medical_staff?.name || '';
+    document.getElementById('remind-consultant-addr').innerText = record.medical_staff?.email || '';
+    document.querySelector('.remind-preview-name').innerText = record.medical_staff?.name || '顧問';
+
+    new bootstrap.Modal(document.getElementById('reminderEmailModal')).show();
+}
+async function sendReviewEmail() {
+    const id = document.getElementById('email-target-id').value;
+    const record = currentStagingData.find(r => r.id === id);
+    if (!record) return alert('資料錯誤');
+
+    const checked = Array.from(document.querySelectorAll('#reviewEmailModal input[type=checkbox]:checked'))
+        .map(cb => cb.value);
+
+    const otherText = document.getElementById('reason-other-text').value.trim();
+    const deadlineDays = parseInt(document.getElementById('email-deadline').value, 10) || 3;
+
+    if (checked.length === 0 && !otherText) {
+        return alert('請至少勾選一項補件原因或填寫其他說明');
+    }
+
+    const { data: sessionData } = await supabaseClient.auth.getSession();
+    const token = sessionData.session?.access_token;
+    if (!token) return alert('登入狀態失效');
+
+    await fetch(`${SUPABASE_URL}/functions/v1/send-email`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+            type: 'review_notice',
+            email: record.medical_staff.email,
+            data: {
+                consultant_name: record.medical_staff.name,
+                company_name: record.workplaces?.companies?.name || '',
+                missing_items: checked,
+                other_note: otherText,
+                deadline_days: deadlineDays
+            }
+        })
+    });
+
+    alert('✅ 審查補件通知已發送（可重複發送）');
+    bootstrap.Modal.getInstance(document.getElementById('reviewEmailModal')).hide();
+}
+async function sendReminderEmail() {
+    const id = document.getElementById('remind-target-id').value;
+    const record = currentStagingData.find(r => r.id === id);
+    if (!record) return alert('資料錯誤');
+
+    const { data: sessionData } = await supabaseClient.auth.getSession();
+    const token = sessionData.session?.access_token;
+    if (!token) return alert('登入狀態失效');
+
+    await fetch(`${SUPABASE_URL}/functions/v1/send-email`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+            type: 'reminder_notice',
+            email: record.medical_staff.email,
+            data: {
+                consultant_name: record.medical_staff.name,
+                company_name: record.workplaces?.companies?.name || '',
+                deadline_days: 2
+            }
+        })
+    });
+
+    alert('✅ 催收通知已發送（可重複發送）');
+    bootstrap.Modal.getInstance(document.getElementById('reminderEmailModal')).hide();
+}
+
+        
         function initChart() {
             const ctx = document.getElementById('rateChart').getContext('2d');
             rateChart = new Chart(ctx, {
