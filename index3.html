@@ -1,293 +1,575 @@
 <!DOCTYPE html>
 <html lang="zh-TW">
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>OHSMS | 服務軌跡管理 (index3)</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OHSMS 歷史軌跡搜尋</title>
+    
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Source+Sans+Pro:300,400,400i,700&display=fallback">
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/admin-lte@3.2/dist/css/adminlte.min.css">
-  
-  <style>
-    /* 自定義樣式 - 維持原有 UI 風格 */
-    .content-wrapper { background-color: #f4f6f9; }
-    .card-primary:not(.card-outline) > .card-header { background-color: #007bff; }
-    .table td, .table th { vertical-align: middle; }
-  </style>
-</head>
-<body class="hold-transition sidebar-mini">
-<div class="wrapper">
+    <style>
+        /* =========================================
+           統一頁首/頁尾 CSS 設定 (維持原樣)
+           ========================================= */
+        html, body {
+            height: 100%;
+        }
 
-  <nav class="main-header navbar navbar-expand navbar-white navbar-light">
-    <ul class="navbar-nav">
-      <li class="nav-item">
-        <a class="nav-link" data-widget="pushmenu" href="#" role="button"><i class="fas fa-bars"></i></a>
-      </li>
-      <li class="nav-item d-none d-sm-inline-block">
-        <a href="#" class="nav-link">首頁</a>
-      </li>
-    </ul>
-  </nav>
-
-  <aside class="main-sidebar sidebar-dark-primary elevation-4">
-    <a href="#" class="brand-link">
-      <span class="brand-text font-weight-light">OHSMS 系統</span>
-    </a>
-    <div class="sidebar">
-      <nav class="mt-2">
-        <ul class="nav nav-pills nav-sidebar flex-column" data-widget="treeview" role="menu">
-          <li class="nav-item">
-            <a href="#" class="nav-link active">
-              <i class="nav-icon fas fa-file-medical-alt"></i>
-              <p>服務軌跡管理</p>
-            </a>
-          </li>
-        </ul>
-      </nav>
-    </div>
-  </aside>
-
-  <div class="content-wrapper">
-    <div class="content-header">
-      <div class="container-fluid">
-        <div class="row mb-2">
-          <div class="col-sm-6">
-            <h1 class="m-0">服務軌跡列表</h1>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <div class="content">
-      <div class="container-fluid">
-        <div class="card">
-          <div class="card-header border-0">
-            <h3 class="card-title">最新服務紀錄</h3>
-            <div class="card-tools">
-              <a href="#" class="btn btn-tool btn-sm"><i class="fas fa-download"></i></a>
-              <a href="#" class="btn btn-tool btn-sm"><i class="fas fa-bars"></i></a>
-            </div>
-          </div>
-          <div class="card-body table-responsive p-0">
-            <table class="table table-striped table-valign-middle">
-              <thead>
-              <tr>
-                <th>日期</th>
-                <th>客戶名稱</th>
-                <th>執行項目</th>
-                <th>狀態</th>
-                <th>操作</th>
-              </tr>
-              </thead>
-              <tbody id="serviceTableBody">
-                </tbody>
-            </table>
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <footer class="main-footer">
-    <strong>Copyright &copy; 2026 <a href="#">OHSMS</a>.</strong> All rights reserved.
-  </footer>
-
-</div>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/4.6.1/js/bootstrap.bundle.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/admin-lte@3.2/dist/js/adminlte.min.js"></script>
-
-<script>
-  // 模擬後端資料 (包含佐證資料與核定紀錄)
-  const serviceData = [
-    {
-      id: 1,
-      date: "2026-01-01",
-      client: "創思數位科技工作室",
-      consultant: "可信顧問",
-      location: "創思數位科技工作室",
-      item: "無執行項目紀錄",
-      status: '<span class="badge badge-success">已核定</span>',
-      evidenceFile: "https://via.placeholder.com/800x1100.png?text=Evidence+Preview+Document", // 模擬證據圖片/PDF URL
-      appendices: "Q_17699633025.pdf",
-      reviewerLogs: [
-        { reviewer: "系統紀錄", action: "自動歸檔", time: "2026-01-01 10:00" },
-        { reviewer: "Admin", action: "確認無誤", time: "2026-01-02 09:30" }
-      ]
-    },
-    {
-      id: 2,
-      date: "2026-01-15",
-      client: "爆彈汽水有限公司",
-      consultant: "資深顧問 A",
-      location: "線上會議",
-      item: "年度風險評估",
-      status: '<span class="badge badge-warning">審核中</span>',
-      evidenceFile: "https://via.placeholder.com/800x1100.png?text=Risk+Assessment+Report",
-      appendices: "Risk_Report_v1.pdf",
-      reviewerLogs: []
-    }
-  ];
-
-  // 初始化表格
-  $(document).ready(function() {
-    const tableBody = $('#serviceTableBody');
-    serviceData.forEach(item => {
-      const row = `
-        <tr>
-          <td>${item.date}</td>
-          <td>${item.client}</td>
-          <td>${item.item}</td>
-          <td>${item.status}</td>
-          <td>
-            <a href="#" class="text-primary" onclick="openEvidenceTab(${item.id})">
-              <i class="fas fa-search"></i> 檢視詳情
-            </a>
-          </td>
-        </tr>
-      `;
-      tableBody.append(row);
-    });
-  });
-
-  /**
-   * 核心功能：開啟新分頁顯示詳情與證據
-   * Layout: 左側 (25%) 5W1H + 紀錄, 右側 (75%) 證據預覽
-   */
-  function openEvidenceTab(id) {
-    const data = serviceData.find(d => d.id === id);
-    if (!data) return;
-
-    // 構建核定紀錄 HTML
-    let logsHtml = '';
-    if (data.reviewerLogs && data.reviewerLogs.length > 0) {
-      data.reviewerLogs.forEach(log => {
-        logsHtml += `
-          <div class="log-item">
-            <div class="log-header"><strong><i class="fas fa-user-check"></i> ${log.reviewer}</strong> <span class="text-muted" style="float:right; font-size:0.85em;">${log.time}</span></div>
-            <div class="log-body">${log.action}</div>
-          </div>
-        `;
-      });
-    } else {
-      logsHtml = '<p class="text-muted">尚無核定紀錄</p>';
-    }
-
-    // 構建新分頁的 HTML 內容
-    const pageContent = `
-      <!DOCTYPE html>
-      <html lang="zh-TW">
-      <head>
-        <meta charset="utf-8">
-        <title>服務軌跡詳情與證據預覽 - ${data.client}</title>
-        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
-        <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/admin-lte@3.2/dist/css/adminlte.min.css">
-        <style>
-          body, html { height: 100%; margin: 0; padding: 0; overflow: hidden; font-family: 'Source Sans Pro', sans-serif; background: #f4f6f9; }
-          .main-container { display: flex; height: 100vh; width: 100%; }
-          
-          /* 左側 25% - 詳情區 */
-          .details-panel { 
-            width: 25%; 
-            height: 100%; 
-            background: #fff; 
-            border-right: 1px solid #dee2e6; 
-            display: flex; 
-            flex-direction: column;
-            z-index: 10;
-            box-shadow: 2px 0 5px rgba(0,0,0,0.05);
-          }
-          .details-header { padding: 15px; background: #007bff; color: white; border-bottom: 1px solid #006fe6; }
-          .details-content { flex: 1; padding: 20px; overflow-y: auto; }
-          
-          /* 右側 75% - 證據預覽區 */
-          .evidence-panel { 
-            width: 75%; 
-            height: 100%; 
-            background: #525659; /* 深色背景適合閱讀文件 */
+        body {
             display: flex;
+            flex-direction: column;
+            min-height: 100vh;
+            background-color: #f8f9fa;
+            font-family: 'Segoe UI', 'Microsoft JhengHei', sans-serif;
+        }
+
+        .container, .main-content, .container-fluid {
+            flex: 1;
+        }
+
+        /* 頁首設定 */
+        .navbar {
+            background-color: #202124 !important;
+            min-height: 85px;
+            color: #fff;
+            flex-shrink: 0;
+        }
+
+        /* 頁尾設定 */
+        footer {
+            background-color: #202124 !important;
+            color: #fff;
+            flex-shrink: 0;
+            font-size: 0.9rem;
+            letter-spacing: 0.5px;
+            display: flex;
+            flex-direction: column;
             align-items: center;
             justify-content: center;
-            position: relative;
-          }
-          
-          /* 預覽 iframe/image 樣式 */
-          .evidence-frame { width: 100%; height: 100%; border: none; }
-          
-          /* 細節項目樣式 */
-          .info-group { margin-bottom: 20px; }
-          .info-label { font-weight: bold; color: #495057; display: block; margin-bottom: 5px; }
-          .info-value { color: #212529; background: #f8f9fa; padding: 8px 12px; border-radius: 4px; border: 1px solid #efefef; }
-          .log-item { background: #fdfdfd; border-left: 3px solid #17a2b8; padding: 10px; margin-bottom: 10px; border-radius: 2px; border: 1px solid #eee; border-left-width: 3px; }
-          
-          /* 模擬標籤 */
-          .section-title { 
-            font-size: 1.1em; 
-            font-weight: bold; 
-            border-bottom: 2px solid #007bff; 
-            padding-bottom: 5px; 
-            margin-top: 20px; 
-            margin-bottom: 15px; 
-            color: #007bff;
-          }
-        </style>
-      </head>
-      <body>
-        <div class="main-container">
-          <div class="details-panel">
-            <div class="details-header">
-              <h5 class="m-0"><i class="fas fa-info-circle"></i> 服務軌跡詳情</h5>
-            </div>
-            <div class="details-content">
-              <div class="info-group">
-                <span class="info-label text-primary">Who (執行者/對象)</span>
-                <div class="info-value">${data.consultant} / ${data.client}</div>
-              </div>
-              <div class="info-group">
-                <span class="info-label text-primary">When (時間)</span>
-                <div class="info-value">${data.date}</div>
-              </div>
-              <div class="info-group">
-                <span class="info-label text-primary">Where (地點)</span>
-                <div class="info-value">${data.location}</div>
-              </div>
-              <div class="info-group">
-                <span class="info-label text-primary">What (執行項目)</span>
-                <div class="info-value">${data.item}</div>
-              </div>
-              
-              <div class="info-group">
-                <span class="info-label text-primary">其他佐證資料 (Appendices)</span>
-                <div class="info-value">
-                  <a href="#" target="_blank"><i class="fas fa-paperclip"></i> ${data.appendices}</a>
-                </div>
-              </div>
+            margin-top: auto;
+            padding: 15px 0;
+            min-height: 85px;
+        }
 
-              <div class="section-title">管理者核定紀錄</div>
-              <div class="logs-container">
-                ${logsHtml}
-              </div>
-            </div>
-          </div>
+        /* PDCA 字卡與主色調 */
+        :root { 
+            --theme-color: #198754; 
+        }
 
-          <div class="evidence-panel">
-            <iframe src="${data.evidenceFile}" class="evidence-frame" title="Evidence Preview"></iframe>
-          </div>
+        .instruction-box {
+            background-color: #fff;
+            border-left: 5px solid var(--theme-color);
+            padding: 20px 25px;
+            border-radius: 4px;
+            margin-bottom: 30px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+        }
+
+        .instruction-title {
+            color: var(--theme-color);
+            font-weight: 700;
+            margin-bottom: 10px;
+        }
+
+        /* Google 搜尋風格 */
+        .search-container {
+            max-width: 800px;
+            margin: 0 auto;
+            text-align: center;
+            padding: 40px 20px;
+        }
+
+        .google-logo {
+            font-size: 3rem;
+            font-weight: bold;
+            margin-bottom: 30px;
+            letter-spacing: -2px;
+            color: #444;
+            font-family: 'Product Sans', Arial, sans-serif;
+        }
+        
+        .google-logo span { display: inline-block; }
+        .g-blue { color: #4285F4; }
+        .g-red { color: #EA4335; }
+        .g-yellow { color: #FBBC05; }
+        .g-green { color: #34A853; }
+
+        .search-card {
+            background: white;
+            padding: 30px;
+            border-radius: 24px;
+            box-shadow: 0 4px 6px rgba(32,33,36,0.28);
+            transition: all 0.3s;
+        }
+
+        .search-card:hover {
+            box-shadow: 0 4px 12px rgba(32,33,36,0.38);
+        }
+
+        .result-table th {
+            background-color: #f1f3f4;
+            color: #202124;
+            font-weight: 600;
+        }
+        
+        .loading-overlay {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(255,255,255,0.8);
+            z-index: 9999;
+            align-items: center;
+            justify-content: center;
+            flex-direction: column;
+        }
+    </style>
+</head>
+<body>
+
+    <nav class="navbar navbar-expand-lg navbar-dark px-4">
+        <div class="container-fluid d-flex justify-content-between align-items-center p-0">
+            <a class="navbar-brand d-flex align-items-center fw-bold" href="dashboard.html">
+                <i class="fas fa-shield-alt me-2"></i>
+                OHSMS 職安管理系統
+            </a>
+            <div class="d-flex align-items-center">
+                <span class="text-white me-3 small" id="header-date"><i class="fas fa-spinner fa-spin"></i></span>
+                <span class="text-white me-4 small border-start ps-3 border-secondary" id="header-clock" style="opacity: 0.9;">--:--</span>
+                <span class="text-white me-4 fw-bold" id="header-user">Hi! 使用者</span>
+                <a class="btn btn-outline-light btn-sm me-2" href="dashboard.html"><i class="fas fa-reply me-1"></i>回到儀表板</a>
+                <button class="btn btn-outline-light btn-sm" onclick="logoutSystem()"><i class="fas fa-sign-out-alt me-1"></i>登出</button>
+            </div>
         </div>
-      </body>
-      </html>
-    `;
+    </nav>
 
-    // 開啟新分頁並寫入內容
-    const newWindow = window.open('', '_blank');
-    if (newWindow) {
-      newWindow.document.write(pageContent);
-      newWindow.document.close(); // 確保瀏覽器完成渲染
-    } else {
-      alert('請允許開啟彈出式視窗以檢視詳情。');
-    }
-  }
-</script>
+    <div class="container main-content mt-4">
+        
+        <div class="mb-4">
+            <h2 class="fw-bold text-dark mb-1">歷史軌跡搜尋 (Check)</h2>
+            <p class="text-secondary">Check 階段：服務數據查核與完整性驗證</p>
+        </div>
+        
+        <div class="instruction-box">
+            <div class="instruction-title">
+                <i class="fas fa-search-location me-2"></i>PDCA 設計理念：Check (查核) —— 數據溯源與勾稽
+            </div>
+            <p class="mb-0 text-dark" style="line-height: 1.6;">
+                本模組支援多維度交叉檢索，允許管理者針對「時間軸(Year)」、「服務對象(Company)」與「執行者(Consultant)」進行動態篩選。透過即時調閱 Supabase 底層證據表(Evidence Table)，實現數據的透明化檢視與履歷勾稽。
+            </p>
+        </div>
+
+        <div class="search-container">
+            <div class="google-logo">
+                <span class="g-blue">W</span><span class="g-red">e</span><span class="g-yellow">s</span><span class="g-blue">m</span><span class="g-green">a</span><span class="g-red">r</span><span class="g-blue">t</span><span class="g-green">A</span><span class="g-red">I</span>
+            </div>
+
+            <div class="search-card">
+                <form id="searchForm" onsubmit="event.preventDefault(); performSearch();">
+                    <div class="row g-2 align-items-center">
+                        <div class="col-md-3">
+                            <div class="form-floating">
+                                <input type="number" class="form-control" id="searchYear" placeholder="2026" min="2020" max="2050">
+                                <label for="searchYear"><i class="far fa-calendar-alt me-1"></i>年度 (西元)</label>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="form-floating">
+                                <input type="text" class="form-control" id="searchCompany" placeholder="公司名稱或統編">
+                                <label for="searchCompany"><i class="fas fa-building me-1"></i>公司名稱 / 統編</label>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="form-floating">
+                                <input type="text" class="form-control" id="searchConsultant" placeholder="顧問姓名">
+                                <label for="searchConsultant"><i class="fas fa-user-md me-1"></i>顧問姓名</label>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="mt-4 d-flex justify-content-center gap-3">
+                        <button type="submit" class="btn btn-primary px-4 py-2">
+                            <i class="fas fa-search me-1"></i> 搜尋軌跡
+                        </button>
+                        <button type="button" class="btn btn-light border px-4 py-2" onclick="resetSearch()">
+                            清除條件
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <div id="resultArea" class="mt-5 mb-5" style="display: none;">
+            <h5 class="fw-bold border-bottom pb-2 mb-3">
+                <i class="fas fa-list-ul me-2"></i>搜尋結果 
+                <span class="badge bg-secondary ms-2" id="resultCount">0 筆</span>
+            </h5>
+            <div class="table-responsive bg-white rounded shadow-sm p-3">
+                <table class="table table-hover result-table align-middle">
+                    <thead>
+                        <tr>
+                            <th scope="col">#</th>
+                            <th scope="col">服務日期</th>
+                            <th scope="col">年度</th>
+                            <th scope="col">企業名稱</th>
+                            <th scope="col">統一編號</th>
+                            <th scope="col">負責顧問</th>
+                            <th scope="col" class="text-center">操作</th>
+                        </tr>
+                    </thead>
+                    <tbody id="resultBody">
+                        </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div id="noDataMessage" class="text-center mt-5 text-muted" style="display: none;">
+            <i class="fas fa-inbox fa-3x mb-3 opacity-25"></i>
+            <p>找不到符合條件的服務軌跡。</p>
+        </div>
+
+    </div>
+
+    <footer>
+        <div class="mb-1">可信智慧整合有限公司 42917004</div>
+        <div class="small opacity-75" style="font-family: 'Segoe UI', sans-serif; letter-spacing: 1px;">
+            WesmartAI , Making Trust Transparent.
+        </div>
+    </footer>
+
+    <div class="loading-overlay" id="loadingOverlay">
+        <div class="spinner-border text-primary mb-3" role="status" style="width: 3rem; height: 3rem;"></div>
+        <div class="fw-bold text-dark">正在搜尋資料庫...</div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
+    <script>
+        // ==========================================
+        // 1. Supabase 初始化
+        // ==========================================
+        const SUPABASE_URL = 'https://yhehfucgemxnfrdvpdhw.supabase.co';
+        const SUPABASE_KEY = 'sb_publishable_52emtU-9l-SDxcJTWVTPTA_Yu6qEogh';
+        const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+        
+        document.addEventListener('DOMContentLoaded', function() {
+            // 時鐘與日期
+            setInterval(() => {
+                const now = new Date();
+                const clockEl = document.getElementById('header-clock');
+                if(clockEl) clockEl.textContent = now.toLocaleTimeString('zh-TW', { hour12: false });
+            }, 1000);
+
+            const dateEl = document.getElementById('header-date');
+            if(dateEl) {
+                const now = new Date();
+                const days = ['日', '一', '二', '三', '四', '五', '六'];
+                dateEl.innerHTML = `<i class="far fa-calendar-alt me-1"></i>今日是 ${now.getFullYear()}/${now.getMonth() + 1}/${now.getDate()}(${days[now.getDay()]})`;
+            }
+
+            const userName = sessionStorage.getItem('currentUserName');
+            const userEl = document.getElementById('header-user');
+            if(userEl && userName) userEl.innerText = `Hi! ${userName}`;
+        });
+
+        // 登出
+        function logoutSystem() {
+            if(confirm('確定要登出系統嗎？')) {
+                sessionStorage.clear();
+                window.location.href = 'login.html';
+            }
+        }
+
+        // 重置搜尋
+        function resetSearch() {
+            document.getElementById('searchForm').reset();
+            document.getElementById('resultArea').style.display = 'none';
+            document.getElementById('noDataMessage').style.display = 'none';
+        }
+
+        // ==========================================
+        // 2. 搜尋主邏輯
+        // ==========================================
+        async function performSearch() {
+            const year = document.getElementById('searchYear').value.trim();
+            const companyQuery = document.getElementById('searchCompany').value.trim();
+            const consultant = document.getElementById('searchConsultant').value.trim();
+            const loading = document.getElementById('loadingOverlay');
+
+            loading.style.display = 'flex';
+            document.getElementById('resultArea').style.display = 'none';
+            document.getElementById('noDataMessage').style.display = 'none';
+
+            try {
+                let query = supabaseClient
+                    .from('evidence')
+                    .select(`
+                        id, visit_date, service_year,
+                        workplaces!inner ( companies!inner (name, tax_id) ),
+                        medical_staff (name)
+                    `)
+                    .order('visit_date', { ascending: false });
+
+                if (year) query = query.eq('service_year', year);
+
+                const { data, error } = await query;
+                if (error) throw error;
+
+                let filteredData = data;
+                if (companyQuery) {
+                    const q = companyQuery.toLowerCase();
+                    filteredData = filteredData.filter(item => {
+                        const compName = item.workplaces?.companies?.name || '';
+                        const taxId = item.workplaces?.companies?.tax_id || '';
+                        return compName.toLowerCase().includes(q) || taxId.includes(q);
+                    });
+                }
+                if (consultant) {
+                    const q = consultant.toLowerCase();
+                    filteredData = filteredData.filter(item => {
+                        const staffName = item.medical_staff?.name || '';
+                        return staffName.toLowerCase().includes(q);
+                    });
+                }
+
+                renderResults(filteredData);
+
+            } catch (err) {
+                console.error('搜尋失敗:', err);
+                alert('搜尋發生錯誤，請檢查 console。');
+            } finally {
+                loading.style.display = 'none';
+            }
+        }
+
+        function renderResults(data) {
+            const tbody = document.getElementById('resultBody');
+            const resultArea = document.getElementById('resultArea');
+            const noDataMsg = document.getElementById('noDataMessage');
+            const countBadge = document.getElementById('resultCount');
+
+            tbody.innerHTML = '';
+            if (!data || data.length === 0) {
+                noDataMsg.style.display = 'block';
+                return;
+            }
+
+            resultArea.style.display = 'block';
+            countBadge.textContent = `${data.length} 筆`;
+
+            data.forEach((item, index) => {
+                const companyName = item.workplaces?.companies?.name || '未知';
+                const taxId = item.workplaces?.companies?.tax_id || '-';
+                const staffName = item.medical_staff?.name || '未指派';
+                const date = item.visit_date || '-';
+
+                const row = `
+                    <tr>
+                        <th scope="row">${index + 1}</th>
+                        <td>${date}</td>
+                        <td>${item.service_year}</td>
+                        <td class="fw-bold text-primary">${companyName}</td>
+                        <td><span class="badge bg-light text-dark border">${taxId}</span></td>
+                        <td><i class="fas fa-user-tie me-1 text-secondary"></i>${staffName}</td>
+                        <td class="text-center">
+                            <button class="btn btn-sm btn-outline-info" title="檢視詳情與證據" onclick="openEvidenceTab('${item.id}')">
+                                <i class="fas fa-external-link-alt"></i> 檢視
+                            </button>
+                        </td>
+                    </tr>
+                `;
+                tbody.innerHTML += row;
+            });
+        }
+
+        // ==========================================
+        // 3. 全新功能：開啟新分頁顯示詳情與證據
+        // ==========================================
+        async function openEvidenceTab(evidenceId) {
+            // 立即開啟新視窗，避免瀏覽器攔截彈出視窗
+            const newWindow = window.open('', '_blank');
+            if (!newWindow) {
+                alert('您的瀏覽器封鎖了彈出視窗，請允許開啟以檢視詳情。');
+                return;
+            }
+
+            // 先寫入 Loading 狀態
+            newWindow.document.write(`
+                <html>
+                <head><title>讀取中...</title></head>
+                <body style="display:flex;justify-content:center;align-items:center;height:100vh;background:#f8f9fa;font-family:sans-serif;">
+                    <div style="text-align:center;">
+                        <div style="font-size:24px;margin-bottom:10px;">資料讀取中...</div>
+                        <div style="color:#666;">正在從資料庫取得完整證據檔案</div>
+                    </div>
+                </body>
+                </html>
+            `);
+
+            try {
+                // 1. 查詢詳細資料
+                const { data, error } = await supabaseClient
+                    .from('evidence')
+                    .select(`
+                        id, visit_date, start_time, end_time, execution_items, audit_note, 
+                        file_url, attachment_folder_id, service_year, additional_appendices,
+                        workplaces ( companies (name) ),
+                        medical_staff (name)
+                    `)
+                    .eq('id', evidenceId)
+                    .single();
+
+                if (error) throw error;
+
+                // 2. 準備資料
+                const staffName = data.medical_staff?.name || '未指派';
+                const compName = data.workplaces?.companies?.name || '未知企業';
+                const timeRange = `${data.start_time || '--:--'} ~ ${data.end_time || '--:--'}`;
+                const fullDate = `${data.visit_date} (${timeRange})`;
+                const items = data.execution_items || '無執行項目紀錄';
+                
+                // Appendices HTML
+                let appendicesHtml = '<span class="text-muted">無</span>';
+                if (data.additional_appendices && Array.isArray(data.additional_appendices) && data.additional_appendices.length > 0) {
+                    appendicesHtml = data.additional_appendices.map((file, idx) => {
+                        let fName = file.name || `附件 ${idx + 1}`;
+                        let fUrl = file.signedUrl || file.url || (typeof file === 'string' ? file : '#');
+                        if (!fUrl.startsWith('http') && fUrl !== '#') fUrl = '#';
+                        return `<div style="margin-bottom:4px;"><a href="${fUrl}" target="_blank" style="color:#0d6efd;text-decoration:none;">📎 ${fName}</a></div>`;
+                    }).join('');
+                }
+
+                // Audit Note
+                let noteHtml = data.audit_note 
+                    ? `<div style="background:#fff3cd; color:#856404; padding:10px; border-radius:4px; border:1px solid #ffeeba;">⚠️ ${data.audit_note}</div>`
+                    : `<div style="color:#198754;">✔ 本次服務無特殊稽核異常</div>`;
+
+                // 3. 處理檔案連結 (Signed URL)
+                let targetFilePath = data.file_url;
+                if (!targetFilePath && data.attachment_folder_id) {
+                    const searchPath = `${data.service_year}/${data.attachment_folder_id}`;
+                    const { data: fileList } = await supabaseClient.storage.from('evidence').list(searchPath);
+                    if (fileList && fileList.length > 0) {
+                        const pdfFile = fileList.find(f => f.name.toLowerCase().endsWith('.pdf'));
+                        targetFilePath = `${searchPath}/${pdfFile ? pdfFile.name : fileList[0].name}`;
+                    }
+                }
+
+                let previewContent = '';
+                if (targetFilePath) {
+                    const { data: fileData } = await supabaseClient.storage.from('evidence').createSignedUrl(targetFilePath, 3600);
+                    if (fileData?.signedUrl) {
+                        // 使用 embed 或 iframe 預覽
+                        previewContent = `<iframe src="${fileData.signedUrl}#toolbar=0" style="width:100%; height:100%; border:none;" title="Evidence Preview"></iframe>`;
+                    } else {
+                        previewContent = `<div style="color:white;text-align:center;padding-top:20%;">無法取得檔案簽署連結</div>`;
+                    }
+                } else {
+                    previewContent = `<div style="color:#aaa;text-align:center;padding-top:20%;font-size:1.2rem;">此紀錄無證據檔案<br><span style="font-size:0.9rem">(Folder ID: ${data.attachment_folder_id || '無'})</span></div>`;
+                }
+
+                // 4. 構建新頁面 HTML (Flex Layout: Left 25%, Right 75%)
+                const finalHtml = `
+                    <!DOCTYPE html>
+                    <html lang="zh-TW">
+                    <head>
+                        <meta charset="UTF-8">
+                        <title>證據詳情 | ${compName}</title>
+                        <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+                        <style>
+                            body, html { margin: 0; padding: 0; height: 100%; overflow: hidden; font-family: 'Segoe UI', sans-serif; }
+                            .layout-container { display: flex; height: 100vh; }
+                            
+                            /* 左側 25% */
+                            .sidebar { 
+                                width: 25%; 
+                                background: #fff; 
+                                border-right: 1px solid #dee2e6; 
+                                display: flex; 
+                                flex-direction: column; 
+                                box-shadow: 2px 0 5px rgba(0,0,0,0.1);
+                                z-index: 10;
+                            }
+                            .sidebar-header {
+                                background: #202124;
+                                color: #fff;
+                                padding: 15px 20px;
+                            }
+                            .sidebar-content {
+                                padding: 20px;
+                                overflow-y: auto;
+                                flex: 1;
+                            }
+                            
+                            /* 右側 75% */
+                            .preview-area { 
+                                width: 75%; 
+                                background: #525659; 
+                                position: relative;
+                            }
+
+                            /* 標籤樣式 */
+                            .info-group { margin-bottom: 20px; }
+                            .label { font-weight: bold; color: #5f6368; display: block; margin-bottom: 4px; font-size: 0.9rem; }
+                            .value { color: #202124; background: #f8f9fa; padding: 8px 10px; border-radius: 4px; border: 1px solid #eee; }
+                            .section-title { font-size: 1.1rem; color: #0d6efd; font-weight: bold; margin-bottom: 15px; border-bottom: 2px solid #0d6efd; padding-bottom: 5px; }
+                        </style>
+                    </head>
+                    <body>
+                        <div class="layout-container">
+                            <div class="sidebar">
+                                <div class="sidebar-header">
+                                    <h3 style="margin:0; font-size:1.2rem;"><i class="fas fa-file-contract"></i> 服務軌跡詳情</h3>
+                                </div>
+                                <div class="sidebar-content">
+                                    <div class="info-group">
+                                        <span class="label">Who (執行者/對象)</span>
+                                        <div class="value"><strong>${staffName}</strong> (顧問)<br>${compName}</div>
+                                    </div>
+                                    <div class="info-group">
+                                        <span class="label">When (時間)</span>
+                                        <div class="value">${fullDate}</div>
+                                    </div>
+                                    <div class="info-group">
+                                        <span class="label">Where (地點)</span>
+                                        <div class="value">${compName}</div>
+                                    </div>
+                                    <div class="info-group">
+                                        <span class="label">What (執行項目)</span>
+                                        <div class="value" style="background:#e8f0fe; border-color:#d2e3fc;">${items}</div>
+                                    </div>
+
+                                    <div class="section-title" style="margin-top:30px;">佐證資料與備註</div>
+                                    
+                                    <div class="info-group">
+                                        <span class="label">Appendices (附件)</span>
+                                        <div class="value" style="background:transparent; border:none; padding-left:0;">${appendicesHtml}</div>
+                                    </div>
+                                    
+                                    <div class="info-group">
+                                        <span class="label">Audit Note (稽核備註)</span>
+                                        ${noteHtml}
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="preview-area">
+                                ${previewContent}
+                            </div>
+                        </div>
+                    </body>
+                    </html>
+                `;
+
+                // 寫入最終內容
+                newWindow.document.open();
+                newWindow.document.write(finalHtml);
+                newWindow.document.close();
+
+            } catch (err) {
+                console.error(err);
+                newWindow.document.body.innerHTML = `<h3 style="color:red;text-align:center;margin-top:50px;">讀取資料發生錯誤，請關閉後重試。</h3>`;
+            }
+        }
+    </script>
 </body>
 </html>
