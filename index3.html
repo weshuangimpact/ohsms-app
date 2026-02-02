@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>OHSMS 歷史軌跡搜尋</title>
+    <title>OHSMS 評鑑支援 AI 智慧助理</title>
     
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
@@ -55,7 +55,8 @@
 
         /* PDCA 字卡與主色調 */
         :root { 
-            --theme-color: #198754; 
+            /* 依據指示修改為評鑑支援助理的主色調 (黃色) */
+            --theme-color: #ffc107; 
         }
 
         .instruction-box {
@@ -68,7 +69,7 @@
         }
 
         .instruction-title {
-            color: var(--theme-color);
+            color: #d39e00; /* 黃色文字在白底較難閱讀，稍微調深一點以利閱讀，或維持 var(--theme-color) */
             font-weight: 700;
             margin-bottom: 10px;
         }
@@ -147,16 +148,16 @@
     <div class="container main-content mt-4">
         
         <div class="mb-4">
-            <h2 class="fw-bold text-dark mb-1">歷史軌跡搜尋 (Check)</h2>
-            <p class="text-secondary">Check 階段：服務數據查核與完整性驗證</p>
+            <h2 class="fw-bold text-dark mb-1">OHSMS 評鑑支援 AI 智慧助理 (Evaluation)</h2>
+            <p class="text-secondary">Evaluation 階段：智能輔助與證據鏈建構</p>
         </div>
         
         <div class="instruction-box">
             <div class="instruction-title">
-                <i class="fas fa-search-location me-2"></i>PDCA 設計理念：Check (查核) —— 數據溯源與勾稽
+                <i class="fas fa-clipboard-check me-2"></i>PDCA 設計理念：Evaluation (評鑑) —— 證據鏈完整性
             </div>
             <p class="mb-0 text-dark" style="line-height: 1.6;">
-                本模組支援多維度交叉檢索，允許管理者針對「時間軸(Year)」、「服務對象(Company)」與「執行者(Consultant)」進行動態篩選。透過即時調閱 Supabase 底層證據表(Evidence Table)，實現數據的透明化檢視與履歷勾稽。
+                本模組貫徹5W1H之核心精神，從顧問的服務歷程建立到審核機制的完整建立，透過嚴謹的數位化流程確保資料真實性，藉此建構出符合評鑑需求且具備高度公信力的完整評鑑證據。
             </p>
         </div>
 
@@ -383,7 +384,7 @@
         }
 
         // ==========================================
-        // 3. 全新功能：開啟新分頁顯示詳情與證據
+        // 3. 全新功能：開啟新分頁顯示詳情與證據 (完全保留)
         // ==========================================
         async function openEvidenceTab(evidenceId) {
             const newWindow = window.open('', '_blank');
