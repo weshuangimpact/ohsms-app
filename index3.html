@@ -296,6 +296,11 @@
                             <div class="info-label">What (執行項目)</div>
                             <div class="info-value text-dark bg-light p-2 rounded" id="modalWhat"></div>
 
+                            <div class="mt-3 info-label text-primary">其他佐證資料 (Appendices)</div>
+                            <div class="info-value" id="modalAppendices">
+                                <span class="text-muted">讀取中...</span>
+                            </div>
+
                             <div class="mt-3 info-label text-danger">Audit Note (稽核備註)</div>
                             <div class="audit-note-box" id="modalNote">
                                 <span class="text-muted">無備註</span>
@@ -471,11 +476,12 @@
         }
 
         // ==========================================
-        // 3. 詳細資料 Modal 邏輯 (修正：自動搜尋 Bucket)
+        // 3. 詳細資料 Modal 邏輯
         // ==========================================
         async function openDetailModal(evidenceId) {
             // UI 重置
             document.getElementById('modalWho').innerText = '讀取中...';
+            document.getElementById('modalAppendices').innerHTML = '<span class="text-muted">讀取中...</span>';
             document.getElementById('pdfPlaceholder').style.display = 'block';
             document.getElementById('pdfPlaceholder').innerHTML = '<i class="fas fa-spinner fa-spin fa-2x mb-2"></i><br>正在讀取資料庫與檔案...';
             
@@ -486,12 +492,12 @@
             detailModal.show();
 
             try {
-                // 步驟 1: 查詢單筆詳細資料 (包含 attachment_folder_id)
+                // 步驟 1: 查詢單筆詳細資料 (新增 additional_appendices)
                 const { data, error } = await supabaseClient
                     .from('evidence')
                     .select(`
                         id, visit_date, start_time, end_time, execution_items, audit_note, 
-                        file_url, attachment_folder_id, service_year,
+                        file_url, attachment_folder_id, service_year, additional_appendices,
                         workplaces ( companies (name) ),
                         medical_staff (name)
                     `)
@@ -510,6 +516,26 @@
                 document.getElementById('modalWhere').innerText = compName;
                 document.getElementById('modalWhat').innerText = data.execution_items || '無執行項目紀錄';
                 
+                // 填入其他佐證資料 (Appendices)
+                const appsEl = document.getElementById('modalAppendices');
+                if (data.additional_appendices && Array.isArray(data.additional_appendices) && data.additional_appendices.length > 0) {
+                    let linksHtml = '';
+                    data.additional_appendices.forEach((file, idx) => {
+                        // 支援兩種格式：純字串 URL 或 物件 {name, signedUrl/url}
+                        let fName = file.name || `附件 ${idx + 1}`;
+                        let fUrl = file.signedUrl || file.url || (typeof file === 'string' ? file : '#');
+                        
+                        // 檢查 URL 有效性，若無 http 開頭則視為無效連結
+                        if (!fUrl.startsWith('http') && fUrl !== '#') fUrl = '#';
+
+                        linksHtml += `<div class="mb-1"><a href="${fUrl}" target="_blank" class="text-decoration-none"><i class="fas fa-external-link-alt me-1 small"></i>${fName}</a></div>`;
+                    });
+                    appsEl.innerHTML = linksHtml;
+                } else {
+                    appsEl.innerHTML = '<span class="text-muted">無</span>';
+                }
+
+                // 填入稽核備註
                 const noteEl = document.getElementById('modalNote');
                 if (data.audit_note) {
                     noteEl.innerHTML = `<i class="fas fa-exclamation-triangle text-warning me-1"></i>${data.audit_note}`;
@@ -518,14 +544,13 @@
                 }
 
                 // ==========================================
-                // 步驟 2: 智慧檔案搜尋 ([修正] 路徑順序)
+                // 步驟 2: 智慧檔案搜尋 (PDF 預覽)
                 // ==========================================
                 let targetFilePath = data.file_url;
                 
                 // 如果 file_url 是空的，但有 attachment_folder_id，則嘗試去 Bucket 找
                 if (!targetFilePath && data.attachment_folder_id) {
                     
-                    // [修正] 結構為: Year/FolderID (例: 2026/1ef7f429...)
                     const searchPath = `${data.service_year}/${data.attachment_folder_id}`;
                     console.log("嘗試搜尋資料夾:", searchPath);
 
@@ -545,8 +570,6 @@
                             targetFilePath = `${searchPath}/${targetFile.name}`;
                             console.log("自動找到檔案:", targetFilePath);
                         }
-                    } else {
-                         console.log("資料夾內無檔案或路徑錯誤:", searchPath);
                     }
                 }
 
