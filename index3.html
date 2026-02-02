@@ -140,15 +140,24 @@
             color: #202124;
         }
         .audit-note-box {
-            background-color: #fff3cd;
-            border: 1px solid #ffecb5;
-            padding: 10px;
+            background-color: #f8f9fa;
+            border: 1px solid #dee2e6;
+            padding: 15px;
             border-radius: 4px;
             margin-top: 10px;
         }
+        .audit-row {
+            margin-bottom: 8px;
+            border-bottom: 1px dashed #e9ecef;
+            padding-bottom: 8px;
+        }
+        .audit-row:last-child {
+            border-bottom: none;
+            margin-bottom: 0;
+        }
         #pdfPreviewFrame {
             width: 100%;
-            height: 600px;
+            height: 85vh; /* 加大預覽高度 */
             border: 1px solid #dee2e6;
             border-radius: 4px;
         }
@@ -270,16 +279,16 @@
         <div class="fw-bold text-dark">正在搜尋資料庫...</div>
     </div>
 
-    <div class="modal fade" id="detailModal" tabindex="-1" aria-hidden="true">
-        <div class="modal-dialog modal-xl">
+    <div class="modal fade modal-fullscreen" id="detailModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog">
             <div class="modal-content">
                 <div class="modal-header">
                     <h5 class="modal-title"><i class="fas fa-file-contract me-2"></i>服務軌跡詳情與證據預覽</h5>
                     <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div class="modal-body">
-                    <div class="row">
-                        <div class="col-lg-4 border-end">
+                    <div class="row h-100">
+                        <div class="col-lg-3 border-end h-100 overflow-auto">
                             <h6 class="text-primary fw-bold mb-3 border-bottom pb-2">
                                 <i class="fas fa-info-circle me-1"></i>執行細節 (5W1H)
                             </h6>
@@ -301,17 +310,19 @@
                                 <span class="text-muted">讀取中...</span>
                             </div>
 
-                            <div class="mt-3 info-label text-danger">Audit Note (稽核備註)</div>
-                            <div class="audit-note-box" id="modalNote">
-                                <span class="text-muted">無備註</span>
+                            <div class="mt-4 info-label text-success">
+                                <i class="fas fa-clipboard-check me-1"></i>管理者核定紀錄
+                            </div>
+                            <div class="audit-note-box" id="modalApprovalRecord">
+                                <span class="text-muted">查詢中...</span>
                             </div>
                         </div>
 
-                        <div class="col-lg-8">
+                        <div class="col-lg-9 h-100">
                             <h6 class="text-primary fw-bold mb-3 border-bottom pb-2">
                                 <i class="fas fa-paperclip me-1"></i>證據檔案預覽 (Evidence Preview)
                             </h6>
-                            <div id="pdfContainer" class="text-center">
+                            <div id="pdfContainer" class="text-center h-100">
                                 <div class="text-muted py-5" id="pdfPlaceholder">
                                     <i class="fas fa-spinner fa-spin fa-2x mb-2"></i><br>讀取中...
                                 </div>
@@ -482,6 +493,7 @@
             // UI 重置
             document.getElementById('modalWho').innerText = '讀取中...';
             document.getElementById('modalAppendices').innerHTML = '<span class="text-muted">讀取中...</span>';
+            document.getElementById('modalApprovalRecord').innerHTML = '<span class="text-muted"><i class="fas fa-spinner fa-spin me-1"></i>資料查詢中...</span>';
             document.getElementById('pdfPlaceholder').style.display = 'block';
             document.getElementById('pdfPlaceholder').innerHTML = '<i class="fas fa-spinner fa-spin fa-2x mb-2"></i><br>正在讀取資料庫與檔案...';
             
@@ -492,12 +504,13 @@
             detailModal.show();
 
             try {
-                // 步驟 1: 查詢單筆詳細資料 (新增 additional_appendices)
+                // 步驟 1: 查詢 Evidence 基礎資料
                 const { data, error } = await supabaseClient
                     .from('evidence')
                     .select(`
                         id, visit_date, start_time, end_time, execution_items, audit_note, 
                         file_url, attachment_folder_id, service_year, additional_appendices,
+                        workplace_id, consultant_id,
                         workplaces ( companies (name) ),
                         medical_staff (name)
                     `)
@@ -516,31 +529,88 @@
                 document.getElementById('modalWhere').innerText = compName;
                 document.getElementById('modalWhat').innerText = data.execution_items || '無執行項目紀錄';
                 
-                // 填入其他佐證資料 (Appendices)
+                // ----------------------------------------------------
+                // 填入其他佐證資料 (Appendices) - 僅顯示 Q 開頭
+                // ----------------------------------------------------
                 const appsEl = document.getElementById('modalAppendices');
-                if (data.additional_appendices && Array.isArray(data.additional_appendices) && data.additional_appendices.length > 0) {
-                    let linksHtml = '';
-                    data.additional_appendices.forEach((file, idx) => {
-                        // 支援兩種格式：純字串 URL 或 物件 {name, signedUrl/url}
-                        let fName = file.name || `附件 ${idx + 1}`;
-                        let fUrl = file.signedUrl || file.url || (typeof file === 'string' ? file : '#');
-                        
-                        // 檢查 URL 有效性，若無 http 開頭則視為無效連結
-                        if (!fUrl.startsWith('http') && fUrl !== '#') fUrl = '#';
-
-                        linksHtml += `<div class="mb-1"><a href="${fUrl}" target="_blank" class="text-decoration-none"><i class="fas fa-external-link-alt me-1 small"></i>${fName}</a></div>`;
+                if (data.additional_appendices && Array.isArray(data.additional_appendices)) {
+                    // 過濾 Q 開頭
+                    const qFiles = data.additional_appendices.filter(f => {
+                        const name = f.name || "";
+                        return name.toUpperCase().startsWith('Q');
                     });
-                    appsEl.innerHTML = linksHtml;
+
+                    if (qFiles.length > 0) {
+                        let linksHtml = '';
+                        qFiles.forEach((file, idx) => {
+                            let fName = file.name || `附件 ${idx + 1}`;
+                            let fUrl = file.signedUrl || file.url || (typeof file === 'string' ? file : '#');
+                            
+                            if (!fUrl.startsWith('http') && fUrl !== '#') fUrl = '#';
+                            linksHtml += `<div class="mb-1"><a href="${fUrl}" target="_blank" class="text-decoration-none"><i class="fas fa-external-link-alt me-1 small"></i>${fName}</a></div>`;
+                        });
+                        appsEl.innerHTML = linksHtml;
+                    } else {
+                        appsEl.innerHTML = '<span class="text-muted">無相關附件 (僅顯示 Q 類)</span>';
+                    }
                 } else {
                     appsEl.innerHTML = '<span class="text-muted">無</span>';
                 }
 
-                // 填入稽核備註
-                const noteEl = document.getElementById('modalNote');
-                if (data.audit_note) {
-                    noteEl.innerHTML = `<i class="fas fa-exclamation-triangle text-warning me-1"></i>${data.audit_note}`;
-                } else {
-                    noteEl.innerHTML = '<span class="text-muted text-success"><i class="fas fa-check-circle me-1"></i>本次服務無特殊稽核異常</span>';
+                // ----------------------------------------------------
+                // 查詢管理者核定紀錄 (Query Staging)
+                // ----------------------------------------------------
+                const approvalBox = document.getElementById('modalApprovalRecord');
+                
+                try {
+                    // 使用 workplace_id + visit_date + consultant_id 去 staging 找核定資料
+                    const { data: stagingData, error: stagingError } = await supabaseClient
+                        .from('service_record_staging')
+                        .select('reviewer_id, updated_at, reviewer_comment, status')
+                        .eq('workplace_id', data.workplace_id)
+                        .eq('service_date', data.visit_date) // 注意: staging 用 service_date
+                        .eq('consultant_id', data.consultant_id)
+                        .eq('status', 'approved') // 只找已核定的
+                        .order('updated_at', { ascending: false })
+                        .limit(1)
+                        .single();
+
+                    if (!stagingError && stagingData) {
+                        // 嘗試取得核定者姓名
+                        let reviewerName = stagingData.reviewer_id || '系統紀錄';
+                        if (stagingData.reviewer_id) {
+                            const { data: userData } = await supabaseClient
+                                .from('profiles')
+                                .select('name')
+                                .eq('id', stagingData.reviewer_id)
+                                .single();
+                            if (userData) reviewerName = userData.name;
+                        }
+
+                        // 格式化時間
+                        const approveTime = stagingData.updated_at 
+                            ? new Date(stagingData.updated_at).toLocaleString('zh-TW', {hour12: false}) 
+                            : '無時間紀錄';
+
+                        approvalBox.innerHTML = `
+                            <div class="audit-row">
+                                <span class="fw-bold text-dark">核定者：</span> ${reviewerName}
+                            </div>
+                            <div class="audit-row">
+                                <span class="fw-bold text-dark">核定時間：</span> ${approveTime}
+                            </div>
+                            <div class="audit-row">
+                                <span class="fw-bold text-dark">核定備註：</span><br>
+                                <span class="text-secondary">${stagingData.reviewer_comment || '無備註'}</span>
+                            </div>
+                        `;
+                    } else {
+                        // 查無 staging 紀錄
+                        approvalBox.innerHTML = '<span class="text-muted">無核定紀錄 (原始紀錄可能已被封存)</span>';
+                    }
+                } catch (stgErr) {
+                    console.error("查詢 Staging 失敗:", stgErr);
+                    approvalBox.innerHTML = '<span class="text-muted">無法取得核定資訊</span>';
                 }
 
                 // ==========================================
@@ -548,27 +618,19 @@
                 // ==========================================
                 let targetFilePath = data.file_url;
                 
-                // 如果 file_url 是空的，但有 attachment_folder_id，則嘗試去 Bucket 找
                 if (!targetFilePath && data.attachment_folder_id) {
-                    
                     const searchPath = `${data.service_year}/${data.attachment_folder_id}`;
-                    console.log("嘗試搜尋資料夾:", searchPath);
-
-                    // 使用 Storage List API 列出檔案
+                    
                     const { data: fileList, error: listError } = await supabaseClient
                         .storage
                         .from('evidence')
                         .list(searchPath);
 
                     if (!listError && fileList && fileList.length > 0) {
-                        // 優先找 PDF 檔，若無則取第一個檔案
                         const pdfFile = fileList.find(f => f.name.toLowerCase().endsWith('.pdf'));
                         const targetFile = pdfFile || fileList[0];
-                        
                         if (targetFile) {
-                            // 組合完整路徑: Year/FolderID/FileName
                             targetFilePath = `${searchPath}/${targetFile.name}`;
-                            console.log("自動找到檔案:", targetFilePath);
                         }
                     }
                 }
@@ -581,7 +643,7 @@
                     const { data: fileData, error: fileError } = await supabaseClient
                         .storage
                         .from('evidence')
-                        .createSignedUrl(targetFilePath, 3600); // 1小時有效
+                        .createSignedUrl(targetFilePath, 3600);
 
                     if (fileError) {
                         console.error('簽署連結失敗:', fileError);
