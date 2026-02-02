@@ -460,10 +460,10 @@
             new bootstrap.Modal(document.getElementById('inviteModal')).show();
         }
 
-        async function directActivateUser() {
+async function directActivateUser() {
             const staffId = document.getElementById('target-staff-id').value;
             const email = document.getElementById('invite-email').value.trim();
-            const password = document.getElementById('invite-password').value; // 這裡會抓取預設的 12345678
+            const password = document.getElementById('invite-password').value; 
             const role = document.getElementById('invite-system-role').value;
             const name = document.getElementById('invite-name').innerText;
             
@@ -476,7 +476,7 @@
 
             let newUserId = null;
             try {
-                // Step 1: 建立 Auth 帳號 (使用無狀態 Client)
+                // Step 1: 建立 Auth 帳號
                 const dummyStorage = { getItem: (key) => null, setItem: (key, value) => {}, removeItem: (key) => {} };
                 const tempClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY, {
                     auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false, storage: dummyStorage }
@@ -513,7 +513,9 @@
                 }).eq('id', staffId);
                 if (staffError) throw new Error("名單綁定失敗: " + staffError.message);
 
-                // Step 4: [新增] 呼叫 Edge Function 寄送通知信 (強制使用 12345678)
+                // ==========================================
+                // Step 4: [新增] 呼叫 Edge Function 寄送通知信
+                // ==========================================
                 btn.innerHTML = '<i class="fas fa-envelope fa-spin"></i> 執行 Step 3: 寄送通知信...';
                 
                 const { error: mailError } = await supabaseClient.functions.invoke('send-email', {
@@ -523,9 +525,29 @@
                         data: { 
                             name: name, 
                             email: email,
-                            password: '12345678' // 強制傳送 12345678
+                            password: password // 這裡傳送的是前端輸入框的值 (預設 12345678)
                         } 
                     }
+                });
+
+                if (mailError) {
+                    console.error("信件 API 呼叫失敗", mailError);
+                    alert(`✅ 帳號開通成功！\n(但通知信寄送失敗，請手動通知使用者)\n\nUser ID: ${newUserId}`);
+                } else {
+                    alert(`✅ 帳號開通完整成功！通知信已寄出。\n\nUser ID: ${newUserId}`);
+                }
+
+                bootstrap.Modal.getInstance(document.getElementById('inviteModal')).hide();
+                loadUsers();
+
+            } catch (err) {
+                console.error(err);
+                alert(err.message);
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = originalText;
+            }
+        }
                 });
 
                 if (mailError) {
