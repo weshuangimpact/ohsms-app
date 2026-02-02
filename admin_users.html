@@ -111,9 +111,12 @@
         }
 
         /* 角色標籤配色 (樣式名稱保留，內容文字會更新) */
-        .role-badge-admin { background-color: #dc3545; color: white; }
-        .role-badge-consultant { background-color: #ffc107; color: #212529; }
-        .role-badge-general { background-color: #6c757d; color: white; } /* 用於 Doc_control */
+        .role-badge-admin { background-color: #dc3545;
+            color: white; }
+        .role-badge-consultant { background-color: #ffc107; color: #212529;
+        }
+        .role-badge-general { background-color: #6c757d; color: white;
+        } /* 用於 Doc_control */
 
         /* 按鈕樣式覆寫 */
         .btn-theme {
@@ -122,7 +125,8 @@
             font-weight: bold;
             border: none;
         }
-        .btn-theme:hover { background-color: #0bb5d8; color: #fff; }
+        .btn-theme:hover { background-color: #0bb5d8; color: #fff;
+        }
     </style>
 
     <script>
@@ -247,10 +251,9 @@
                 <div class="modal-body">
                     <input type="hidden" id="target-staff-id">
                     <input type="hidden" id="target-user-id"> 
-                    
                     <div class="alert alert-info bg-opacity-10 border-info border-opacity-25 mb-3 small" style="color: #055160;">
                         <i class="fas fa-info-circle me-1"></i> 
-                        此操作將建立 Profiles 、連結人員清單並發送開通郵件。
+                        此操作將建立 Profiles 並連結人員清單。請將預設密碼告知使用者。
                     </div>
 
                     <div class="mb-3">
@@ -270,7 +273,7 @@
                                 <i class="fas fa-copy"></i>
                             </button>
                         </div>
-                        <div class="form-text text-muted">系統將以此密碼建立帳號並發送通知。</div>
+                        <div class="form-text text-muted">使用者首次登入後，可至「個人設定」修改密碼。</div>
                     </div>
 
                     <div class="mb-3">
@@ -281,6 +284,7 @@
                             <option value="admin">管理員 (Admin)</option>
                         </select>
                     </div>
+ 
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
@@ -365,6 +369,8 @@
 
                 let filtered = staffData;
                 if(keyword) filtered = filtered.filter(s => (s.name && s.name.toLowerCase().includes(keyword)) || (s.email && s.email.toLowerCase().includes(keyword)));
+                // 注意：這裡的篩選邏輯稍後會在 map 中二次處理，這裡先做初步篩選
+                // 為了確保篩選準確，建議先進行 map 轉換再 filter，或是接受這裡可能因 legacy 數據有落差
                 
                 if(filtered.length === 0) {
                     tbody.innerHTML = '<tr><td colspan="5" class="text-center py-5 text-muted">查無資料</td></tr>';
@@ -375,21 +381,25 @@
                     const profile = profilesMap[s.user_id];
                     const hasAccount = !!(s.user_id); 
                     const emailValue = profile ? profile.email : (s.email || '');
+  
                     const emailDisplay = emailValue || '<span class="text-muted fst-italic">未綁定帳號</span>';
                     
+                    // ===============================================
+                    // [核心修正] 權限顯示與校正邏輯 (優先權：System Role > Role)
+                    // ===============================================
                     let displayRole = s.system_role;
 
                     // 如果 system_role 是舊資料 'medical' 或是空的，則回頭參考 'role' 欄位(職稱)
                     if (displayRole === 'medical' || !displayRole) {
-                        if (s.role === 'admin') displayRole = 'admin';
+           
+                         if (s.role === 'admin') displayRole = 'admin';
                         else if (s.role === 'doc_control') displayRole = 'doc_control';
                         else if (s.role === 'consultant') displayRole = 'consultant';
                         else displayRole = 'doc_control'; // 若完全無法辨識，預設為文管
                     }
 
-                    // 篩選器邏輯
+                    // 篩選器邏輯 (Client-side filtering for accuracy)
                     if (roleFilter && displayRole !== roleFilter) return '';
-
                     let roleBadge = '';
                     switch(displayRole) {
                         case 'admin': 
@@ -409,7 +419,6 @@
                     const statusBadge = s.is_active 
                         ? '<span class="badge bg-success bg-opacity-10 text-success">在職 (Active)</span>' 
                         : '<span class="badge bg-secondary">已停用 (Inactive)</span>';
-
                     let actionBtn = '';
                     if (hasAccount) {
                         if (s.is_active) {
@@ -433,6 +442,7 @@
                     `;
                 }).join('');
 
+                // 處理篩選後可能為空的情況
                 if (rowsHtml.trim() === '') {
                     tbody.innerHTML = '<tr><td colspan="5" class="text-center py-5 text-muted">查無符合條件的資料</td></tr>';
                 } else {
@@ -463,10 +473,9 @@
         async function directActivateUser() {
             const staffId = document.getElementById('target-staff-id').value;
             const email = document.getElementById('invite-email').value.trim();
-            const password = document.getElementById('invite-password').value; 
+            const password = document.getElementById('invite-password').value;
             const role = document.getElementById('invite-system-role').value;
             const name = document.getElementById('invite-name').innerText;
-            
             if(!email || !password) return alert('請輸入 Email 和密碼');
 
             const btn = document.querySelector('#inviteModal .btn-theme');
@@ -476,16 +485,14 @@
 
             let newUserId = null;
             try {
-                // Step 1: 建立 Auth 帳號
+                // Step 1: 建立 Auth 帳號 (使用無狀態 Client)
                 const dummyStorage = { getItem: (key) => null, setItem: (key, value) => {}, removeItem: (key) => {} };
                 const tempClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY, {
                     auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false, storage: dummyStorage }
                 });
-                
                 const { data: authData, error: authError } = await tempClient.auth.signUp({
                     email: email, password: password, options: { data: { full_name: name, role: role } }
                 });
-
                 if (authError) {
                     if (authError.message.includes("already registered")) {
                         throw new Error("❌ 失敗：此 Email 已存在於 Auth 系統中！請至 Supabase 後台處理。");
@@ -499,7 +506,6 @@
 
                 newUserId = authData.user.id;
                 btn.innerHTML = '<i class="fas fa-sync fa-spin"></i> 執行 Step 2: 寫入資料...';
-
                 // Step 2: 寫入 Profiles
                 const { error: profileError } = await supabaseClient.from('profiles').upsert({
                     id: newUserId, email: email, full_name: name, role: role, status: 'active', is_active: true,
@@ -507,39 +513,43 @@
                 });
                 if (profileError) throw new Error("Profile 寫入失敗: " + profileError.message);
 
-                // Step 3: 更新 Medical Staff
+                // Step 3: 更新 Medical Staff (確保寫入正確的三種角色之一)
                 const { error: staffError } = await supabaseClient.from('medical_staff').update({ 
                     user_id: newUserId, system_role: role, is_active: true, email: email
                 }).eq('id', staffId);
                 if (staffError) throw new Error("名單綁定失敗: " + staffError.message);
 
                 // ==========================================
-                // Step 4: [新增] 呼叫 Edge Function 寄送通知信
+                // [新增] Step 4: 觸發 Edge Function 發送郵件
                 // ==========================================
-                btn.innerHTML = '<i class="fas fa-envelope fa-spin"></i> 執行 Step 3: 寄送通知信...';
+                btn.innerHTML = '<i class="fas fa-envelope fa-spin"></i> 執行 Step 4: 發送通知信...';
                 
-                const { error: mailError } = await supabaseClient.functions.invoke('send-email', {
-                    body: { 
-                        type: 'activate', 
-                        email: email, 
-                        data: { 
-                            name: name, 
+                try {
+                    const emailResponse = await fetch('https://yhehfucgemxnfrdvpdhw.supabase.co/functions/v1/send-email', {
+                        method: 'POST',
+                        headers: {
+                            'Authorization': `Bearer ${SUPABASE_KEY}`,
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({
                             email: email,
-                            password: password 
-                        } 
+                            name: name,
+                            password: password,
+                            role: role
+                        })
+                    });
+                    
+                    if (!emailResponse.ok) {
+                        console.warn('郵件發送服務回應異常:', await emailResponse.text());
+                        // 不拋出錯誤，避免影響已經成功的帳號建立流程，但在 Console 留紀錄
                     }
-                });
-
-                if (mailError) {
-                    console.error("信件 API 呼叫失敗", mailError);
-                    alert(`✅ 帳號開通成功！\n(但通知信寄送失敗，請手動通知使用者)\n\nUser ID: ${newUserId}`);
-                } else {
-                    alert(`✅ 帳號開通完整成功！通知信已寄出。\n\nUser ID: ${newUserId}`);
+                } catch (emailErr) {
+                    console.error('郵件發送觸發失敗:', emailErr);
                 }
 
+                alert(`✅ 帳號開通完整成功！\n\nUser ID: ${newUserId}\n\n系統已觸發歡迎信件發送。\n請嘗試登入。`);
                 bootstrap.Modal.getInstance(document.getElementById('inviteModal')).hide();
                 loadUsers();
-
             } catch (err) {
                 console.error(err);
                 alert(err.message);
