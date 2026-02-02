@@ -25,7 +25,7 @@
             font-family: 'Segoe UI', 'Microsoft JhengHei', sans-serif;
         }
 
-        .container, .main-content, .container-fluid {
+        .main-content {
             flex: 1;
         }
 
@@ -55,7 +55,6 @@
 
         /* PDCA 字卡與主色調 */
         :root { 
-            /* 依據指示修改為評鑑支援助理的主色調 (黃色) */
             --theme-color: #ffc107; 
         }
 
@@ -69,24 +68,23 @@
         }
 
         .instruction-title {
-            color: #d39e00; /* 黃色文字在白底較難閱讀，稍微調深一點以利閱讀，或維持 var(--theme-color) */
+            color: #d39e00; 
             font-weight: 700;
             margin-bottom: 10px;
         }
 
-        /* Google 搜尋風格 */
+        /* Google 搜尋風格 - 修正版 */
         .search-container {
-            max-width: 800px;
-            margin: 0 auto;
+            width: 100%; /* 全寬 */
+            margin-bottom: 30px;
             text-align: center;
-            padding: 40px 20px;
         }
 
         .google-logo {
-            font-size: 3rem;
+            font-size: 2.5rem;
             font-weight: bold;
-            margin-bottom: 30px;
-            letter-spacing: -2px;
+            margin-bottom: 20px;
+            letter-spacing: -1px;
             color: #444;
             font-family: 'Product Sans', Arial, sans-serif;
         }
@@ -97,16 +95,63 @@
         .g-yellow { color: #FBBC05; }
         .g-green { color: #34A853; }
 
-        .search-card {
+        /* Google Style Search Bar */
+        .google-search-bar {
             background: white;
-            padding: 30px;
-            border-radius: 24px;
-            box-shadow: 0 4px 6px rgba(32,33,36,0.28);
+            border: 1px solid #dfe1e5;
+            border-radius: 50px; /* 膠囊狀 */
+            box-shadow: 0 1px 6px rgba(32,33,36,0.1);
+            max-width: 900px; /* 搜尋框本身置中且有寬度限制，較美觀 */
+            margin: 0 auto;
+            display: flex;
+            align-items: center;
+            padding: 5px 8px 5px 20px;
             transition: all 0.3s;
         }
 
-        .search-card:hover {
-            box-shadow: 0 4px 12px rgba(32,33,36,0.38);
+        .google-search-bar:hover, .google-search-bar:focus-within {
+            box-shadow: 0 1px 6px rgba(32,33,36,0.28);
+            border-color: rgba(223,225,229,0);
+        }
+
+        .search-input {
+            border: none;
+            outline: none;
+            padding: 10px;
+            font-size: 1rem;
+            color: #202124;
+            background: transparent;
+        }
+        
+        /* 移除原本的 Input focus 樣式 */
+        .search-input:focus {
+            box-shadow: none; 
+        }
+
+        /* 搜尋按鈕 */
+        .btn-search-icon {
+            background-color: #4285f4;
+            color: white;
+            border-radius: 50%;
+            width: 45px;
+            height: 45px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border: none;
+            margin-left: 10px;
+            transition: background 0.2s;
+        }
+        .btn-search-icon:hover {
+            background-color: #357ae8;
+        }
+
+        /* 垂直分隔線 */
+        .vertical-divider {
+            width: 1px;
+            height: 25px;
+            background-color: #dfe1e5;
+            margin: 0 10px;
         }
 
         .result-table th {
@@ -145,7 +190,7 @@
         </div>
     </nav>
 
-    <div class="container main-content mt-4">
+    <div class="container-fluid main-content mt-4 px-4">
         
         <div class="mb-4">
             <h2 class="fw-bold text-dark mb-1">OHSMS 評鑑支援 AI 智慧助理 (Evaluation)</h2>
@@ -166,46 +211,36 @@
                 <span class="g-blue">W</span><span class="g-red">e</span><span class="g-yellow">s</span><span class="g-blue">m</span><span class="g-green">a</span><span class="g-red">r</span><span class="g-blue">t</span><span class="g-green">A</span><span class="g-red">I</span>
             </div>
 
-            <div class="search-card">
-                <form id="searchForm" onsubmit="event.preventDefault(); performSearch();">
-                    <div class="row g-2 align-items-center">
-                        <div class="col-md-3">
-                            <div class="form-floating">
-                                <input type="number" class="form-control" id="searchYear" placeholder="2026" min="2020" max="2050">
-                                <label for="searchYear"><i class="far fa-calendar-alt me-1"></i>年度 (西元)</label>
-                            </div>
-                        </div>
-                        <div class="col-md-6">
-                            <div class="form-floating">
-                                <input type="text" class="form-control" id="searchCompany" placeholder="公司名稱或統編">
-                                <label for="searchCompany"><i class="fas fa-building me-1"></i>公司名稱 / 統編</label>
-                            </div>
-                        </div>
-                        <div class="col-md-3">
-                            <div class="form-floating">
-                                <input type="text" class="form-control" id="searchConsultant" placeholder="顧問姓名">
-                                <label for="searchConsultant"><i class="fas fa-user-md me-1"></i>顧問姓名</label>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="mt-4 d-flex justify-content-center gap-3">
-                        <button type="submit" class="btn btn-primary px-4 py-2">
-                            <i class="fas fa-search me-1"></i> 搜尋軌跡
-                        </button>
-                        <button type="button" class="btn btn-light border px-4 py-2" onclick="resetSearch()">
-                            清除條件
-                        </button>
-                    </div>
-                </form>
-            </div>
+            <form id="searchForm" onsubmit="event.preventDefault(); performSearch();">
+                <div class="google-search-bar">
+                    <input type="number" class="search-input" id="searchYear" placeholder="年度 (西元)" min="2020" max="2050" style="width: 120px;">
+                    
+                    <div class="vertical-divider"></div>
+                    
+                    <input type="text" class="search-input" id="searchCompany" placeholder="公司名稱 / 統編" style="flex: 1;">
+                    
+                    <div class="vertical-divider"></div>
+                    
+                    <input type="text" class="search-input" id="searchConsultant" placeholder="顧問姓名" style="width: 150px;">
+                    
+                    <button type="submit" class="btn-search-icon" title="搜尋軌跡">
+                        <i class="fas fa-search"></i>
+                    </button>
+                </div>
+                <div class="mt-2 text-center">
+                    <button type="button" class="btn btn-link text-secondary btn-sm text-decoration-none" onclick="resetSearch()">
+                        <i class="fas fa-times me-1"></i>清除條件
+                    </button>
+                </div>
+            </form>
         </div>
 
-        <div id="resultArea" class="mt-5 mb-5" style="display: none;">
+        <div id="resultArea" class="mt-4 mb-5" style="display: none;">
             <h5 class="fw-bold border-bottom pb-2 mb-3">
                 <i class="fas fa-list-ul me-2"></i>搜尋結果 
                 <span class="badge bg-secondary ms-2" id="resultCount">0 筆</span>
             </h5>
-            <div class="table-responsive bg-white rounded shadow-sm p-3">
+            <div class="table-responsive bg-white rounded shadow-sm p-3 w-100">
                 <table class="table table-hover result-table align-middle">
                     <thead>
                         <tr>
@@ -384,7 +419,7 @@
         }
 
         // ==========================================
-        // 3. 全新功能：開啟新分頁顯示詳情與證據 (完全保留)
+        // 3. 全新功能：開啟新分頁顯示詳情與證據
         // ==========================================
         async function openEvidenceTab(evidenceId) {
             const newWindow = window.open('', '_blank');
@@ -419,7 +454,7 @@
                     .eq('id', evidenceId)
                     .single();
                 
-                // 2. 查詢 Service Record Staging 核定紀錄 (假設 ID 相同)
+                // 2. 查詢 Service Record Staging 核定紀錄
                 const stagingPromise = supabaseClient
                     .from('service_record_staging')
                     .select('reviewer_name, review_time, admin_comment')
@@ -439,10 +474,9 @@
                 const fullDate = `${data.visit_date} (${timeRange})`;
                 const items = data.execution_items || '無執行項目紀錄';
                 
-                // 4. Appendices 篩選 (只顯示 Q 類附件) & 移除標題
+                // 4. Appendices 篩選 (只顯示 Q 類附件)
                 let appendicesHtml = '';
                 if (data.additional_appendices && Array.isArray(data.additional_appendices) && data.additional_appendices.length > 0) {
-                    // 篩選邏輯：檔名包含 'Q' 或以 'Q' 開頭 (不區分大小寫)
                     const filteredDocs = data.additional_appendices.filter(f => {
                         const name = f.name || '';
                         return name.toUpperCase().startsWith('Q') || name.toUpperCase().includes('_Q_');
@@ -462,27 +496,35 @@
                     appendicesHtml = '<span class="text-muted small">無附件</span>';
                 }
 
-                // 5. 核定紀錄 (管理者核定紀錄)
+                // 5. 修改重點 3: 評鑑審查紀錄 (取代原本的 Audit Note 樣式)
                 let auditHtml = '';
-                if (stagingData) {
-                    const reviewer = stagingData.reviewer_name || '系統自動';
-                    const rTime = stagingData.review_time ? new Date(stagingData.review_time).toLocaleString() : '未紀錄時間';
-                    const rNote = stagingData.admin_comment || '無備註';
-                    
-                    auditHtml = `
-                        <div style="background:#fff8e1; border:1px solid #ffe082; padding:12px; border-radius:6px;">
-                            <div style="margin-bottom:6px;"><strong><i class="fas fa-user-check me-1"></i>核定者：</strong> ${reviewer}</div>
-                            <div style="margin-bottom:6px;"><strong><i class="far fa-clock me-1"></i>核定時間：</strong> ${rTime}</div>
-                            <div><strong><i class="far fa-comment-dots me-1"></i>核定備註：</strong> ${rNote}</div>
+                
+                // 取得核定資料
+                const reviewer = stagingData?.reviewer_name || '-';
+                const rTime = stagingData?.review_time ? new Date(stagingData.review_time).toLocaleString() : '-';
+                const adminComment = stagingData?.admin_comment || '<span class="text-muted">尚無委員意見</span>';
+
+                auditHtml = `
+                    <div class="audit-section">
+                        <div style="margin-bottom:15px;">
+                            <label style="font-weight:bold; color:#5f6368; font-size:0.9rem; margin-bottom:5px; display:block;">委員意見欄</label>
+                            <div style="background:#fff3cd; color:#856404; padding:10px; border-radius:4px; border:1px solid #ffeeba;">
+                                ${adminComment}
+                            </div>
                         </div>
-                    `;
-                } else {
-                    auditHtml = `
-                        <div style="background:#f8f9fa; border:1px solid #dee2e6; padding:12px; border-radius:6px; color:#6c757d;">
-                            <i class="fas fa-info-circle me-1"></i> 查無 service_record_staging 核定紀錄
+
+                        <div style="margin-bottom:15px;">
+                            <label style="font-weight:bold; color:#5f6368; font-size:0.9rem; margin-bottom:5px; display:block;">改善紀錄 (追蹤)</label>
+                            <div style="background:#f8f9fa; border:1px dashed #ced4da; padding:10px; border-radius:4px; min-height:60px; color:#6c757d; font-size:0.9rem;">
+                                尚未建立改善紀錄
+                            </div>
                         </div>
-                    `;
-                }
+                        
+                        <div style="border-top:1px solid #eee; padding-top:8px; font-size:0.85rem; color:#888; text-align:right;">
+                            核定者：${reviewer} | 核定時間：${rTime}
+                        </div>
+                    </div>
+                `;
 
                 // 6. 處理檔案預覽連結
                 let targetFilePath = data.file_url;
@@ -595,8 +637,9 @@
                                         </div>
                                     </div>
                                     
+                                    <div class="section-title">評鑑審查紀錄</div>
+                                    
                                     <div class="info-group">
-                                        <span class="label">管理者核定紀錄</span>
                                         ${auditHtml}
                                     </div>
                                 </div>
