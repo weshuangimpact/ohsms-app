@@ -460,7 +460,7 @@
             new bootstrap.Modal(document.getElementById('inviteModal')).show();
         }
 
-async function directActivateUser() {
+        async function directActivateUser() {
             const staffId = document.getElementById('target-staff-id').value;
             const email = document.getElementById('invite-email').value.trim();
             const password = document.getElementById('invite-password').value; 
@@ -525,29 +525,9 @@ async function directActivateUser() {
                         data: { 
                             name: name, 
                             email: email,
-                            password: password // 這裡傳送的是前端輸入框的值 (預設 12345678)
+                            password: password 
                         } 
                     }
-                });
-
-                if (mailError) {
-                    console.error("信件 API 呼叫失敗", mailError);
-                    alert(`✅ 帳號開通成功！\n(但通知信寄送失敗，請手動通知使用者)\n\nUser ID: ${newUserId}`);
-                } else {
-                    alert(`✅ 帳號開通完整成功！通知信已寄出。\n\nUser ID: ${newUserId}`);
-                }
-
-                bootstrap.Modal.getInstance(document.getElementById('inviteModal')).hide();
-                loadUsers();
-
-            } catch (err) {
-                console.error(err);
-                alert(err.message);
-            } finally {
-                btn.disabled = false;
-                btn.innerHTML = originalText;
-            }
-        }
                 });
 
                 if (mailError) {
