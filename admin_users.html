@@ -456,114 +456,148 @@
             new bootstrap.Modal(document.getElementById('inviteModal')).show();
         }
 
+<script>
 async function directActivateUser() {
-            const staffId = document.getElementById('target-staff-id').value;
-            const email = document.getElementById('invite-email').value.trim();
-            const password = document.getElementById('invite-password').value; 
-            const role = document.getElementById('invite-system-role').value;
-            const name = document.getElementById('invite-name').innerText;
-            
-            if(!email || !password) return alert('請輸入 Email 和密碼');
+    const staffId = document.getElementById('target-staff-id').value;
+    const email   = document.getElementById('invite-email').value.trim();
+    const password = document.getElementById('invite-password').value;
+    const role    = document.getElementById('invite-system-role').value;
+    const name    = document.getElementById('invite-name').innerText;
 
-            const btn = document.querySelector('#inviteModal .btn-theme');
-            const originalText = btn.innerHTML;
-            btn.disabled = true;
-            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 執行 Step 1: 建立帳號...';
+    if (!email || !password) {
+        alert('請輸入 Email 與預設密碼');
+        return;
+    }
 
-            let newUserId = null;
-            try {
-                // Step 1: 建立 Auth 帳號
-                const dummyStorage = { getItem: (key) => null, setItem: (key, value) => {}, removeItem: (key) => {} };
-                const tempClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY, {
-                    auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false, storage: dummyStorage }
-                });
-                
-                const { data: authData, error: authError } = await tempClient.auth.signUp({
-                    email: email, password: password, options: { data: { full_name: name, role: role } }
-                });
+    const btn = document.querySelector('#inviteModal .btn-theme');
+    const originalHtml = btn.innerHTML;
+    btn.disabled = true;
 
-                if (authError) {
-                    if (authError.message.includes("already registered")) {
-                        throw new Error("❌ 失敗：此 Email 已存在於 Auth 系統中！請至 Supabase 後台處理。");
-                    }
-                    throw new Error("Auth 建立失敗: " + authError.message);
+    try {
+        /* =================================================
+           Step 1：建立 Supabase Auth 使用者
+           ================================================= */
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 建立帳號中...';
+
+        const dummyStorage = {
+            getItem: () => null,
+            setItem: () => {},
+            removeItem: () => {}
+        };
+
+        const tempClient = supabase.createClient(
+            SUPABASE_URL,
+            SUPABASE_KEY,
+            {
+                auth: {
+                    persistSession: false,
+                    autoRefreshToken: false,
+                    detectSessionInUrl: false,
+                    storage: dummyStorage
                 }
-
-                if (!authData.user || !authData.user.id) {
-                    throw new Error("Auth 請求完成但未回傳 ID。");
-                }
-
-                newUserId = authData.user.id;
-                btn.innerHTML = '<i class="fas fa-sync fa-spin"></i> 執行 Step 2: 寫入資料...';
-
-                // Step 2: 寫入 Profiles
-                const { error: profileError } = await supabaseClient.from('profiles').upsert({
-                    id: newUserId, email: email, full_name: name, role: role, status: 'active', is_active: true,
-                    created_by: (await supabaseClient.auth.getUser()).data.user?.id 
-                });
-                if (profileError) throw new Error("Profile 寫入失敗: " + profileError.message);
-
-                // Step 3: 更新 Medical Staff
-                const { error: staffError } = await supabaseClient.from('medical_staff').update({ 
-                    user_id: newUserId, system_role: role, is_active: true, email: email
-                }).eq('id', staffId);
-                if (staffError) throw new Error("名單綁定失敗: " + staffError.message);
-
-                // ==========================================
-                // Step 4: [新增] 呼叫 Edge Function 寄送通知信
-                // ==========================================
-                btn.innerHTML = '<i class="fas fa-envelope fa-spin"></i> 執行 Step 3: 寄送通知信...';
-                
-                const { error: mailError } = await supabaseClient.functions.invoke('send-email', {
-                    body: { 
-                        type: 'activate', 
-                        email: email, 
-                        data: { 
-                            name: name, 
-                            email: email,
-                            password: password // 這裡傳送的是前端輸入框的值 (預設 12345678)
-                        } 
-                    }
-                });
-
-                if (mailError) {
-                    console.error("信件 API 呼叫失敗", mailError);
-                    alert(`✅ 帳號開通成功！\n(但通知信寄送失敗，請手動通知使用者)\n\nUser ID: ${newUserId}`);
-                } else {
-                    alert(`✅ 帳號開通完整成功！通知信已寄出。\n\nUser ID: ${newUserId}`);
-                }
-
-                bootstrap.Modal.getInstance(document.getElementById('inviteModal')).hide();
-                loadUsers();
-
-            } catch (err) {
-                console.error(err);
-                alert(err.message);
-            } finally {
-                btn.disabled = false;
-                btn.innerHTML = originalText;
             }
+        );
+
+        const { data: authData, error: authError } =
+            await tempClient.auth.signUp({
+                email,
+                password,
+                options: {
+                    data: {
+                        full_name: name,
+                        role: role
+                    }
+                }
+            });
+
+        if (authError) {
+            if (authError.message.includes('already registered')) {
+                throw new Error('此 Email 已存在於系統中，請改用其他信箱或由管理員處理');
+            }
+            throw authError;
         }
 
-        async function toggleStatus(staffId, isActive, name) {
-            const actionName = isActive ? "恢復權限" : "停用權限";
-            if (!confirm(`確定要對「${name}」執行【${actionName}】嗎？`)) return;
+        const newUserId = authData.user?.id;
+        if (!newUserId) throw new Error('建立帳號失敗（未取得 User ID）');
 
-            try {
-                const { error: staffError } = await supabaseClient.from('medical_staff').update({ is_active: isActive }).eq('id', staffId);
-                if (staffError) throw staffError;
+        /* =================================================
+           Step 2：寫入 Profiles
+           ================================================= */
+        btn.innerHTML = '<i class="fas fa-sync fa-spin"></i> 建立使用者資料...';
 
-                const { data: staffData } = await supabaseClient.from('medical_staff').select('user_id').eq('id', staffId).single();
-                if (staffData && staffData.user_id) {
-                    await supabaseClient.from('profiles').update({ is_active: isActive, status: isActive ? 'active' : 'inactive' }).eq('id', staffData.user_id);
+        const { error: profileError } = await supabaseClient
+            .from('profiles')
+            .upsert({
+                id: newUserId,
+                email: email,
+                full_name: name,
+                role: role,
+                status: 'active',
+                is_active: true,
+                created_by: (await supabaseClient.auth.getUser()).data.user?.id
+            });
+
+        if (profileError) throw profileError;
+
+        /* =================================================
+           Step 3：綁定 Medical Staff
+           ================================================= */
+        const { error: staffError } = await supabaseClient
+            .from('medical_staff')
+            .update({
+                user_id: newUserId,
+                system_role: role,
+                is_active: true,
+                email: email
+            })
+            .eq('id', staffId);
+
+        if (staffError) throw staffError;
+
+        /* =================================================
+           Step 4：呼叫 Edge Function 寄送通知信
+           ================================================= */
+        btn.innerHTML = '<i class="fas fa-envelope fa-spin"></i> 寄送通知信...';
+
+        const { error: mailError } =
+            await supabaseClient.functions.invoke('send-email', {
+                body: {
+                    type: 'activate',
+                    email: email,
+                    data: {
+                        name: name,
+                        email: email,
+                        password: password
+                    }
                 }
-                alert(`✅ 已成功${actionName}！`);
-                loadUsers();
-            } catch (err) {
-                console.error(err);
-                alert(`❌ 失敗: ` + err.message);
-            }
+            });
+
+        if (mailError) {
+            console.error('寄信失敗', mailError);
+            alert(
+                `✅ 帳號已成功開通\n\n⚠️ 但通知信寄送失敗，請人工告知使用者\n\nUser ID: ${newUserId}`
+            );
+        } else {
+            alert(
+                `✅ 帳號開通完成\n📧 通知信已成功寄出\n\nUser ID: ${newUserId}`
+            );
         }
-    </script>
+
+        bootstrap.Modal.getInstance(
+            document.getElementById('inviteModal')
+        ).hide();
+
+        loadUsers(); // 原本的列表刷新（保持不變）
+
+    } catch (err) {
+        console.error(err);
+        alert('❌ 開通失敗：' + err.message);
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = originalHtml;
+    }
+}
+</script>
+
 </body>
 </html>
