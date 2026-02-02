@@ -520,39 +520,49 @@
                 if (staffError) throw new Error("名單綁定失敗: " + staffError.message);
 
                 // ==========================================
-                // [新增] Step 4: 觸發 Edge Function 發送郵件
+                // [修正] Step 4: 觸發 Edge Function 發送郵件
                 // ==========================================
                 btn.innerHTML = '<i class="fas fa-envelope fa-spin"></i> 執行 Step 4: 發送通知信...';
                 
-                try {
-                    const emailResponse = await fetch('https://yhehfucgemxnfrdvpdhw.supabase.co/functions/v1/send-email', {
-                        method: 'POST',
-                        headers: {
-                            'Authorization': `Bearer ${SUPABASE_KEY}`,
-                            'Content-Type': 'application/json'
-                        },
-                        body: JSON.stringify({
-                            email: email,
-                            name: name,
-                            password: password,
-                            role: role
-                        })
-                    });
-                    
-                    if (!emailResponse.ok) {
-                        console.warn('郵件發送服務回應異常:', await emailResponse.text());
-                        // 不拋出錯誤，避免影響已經成功的帳號建立流程，但在 Console 留紀錄
-                    }
-                } catch (emailErr) {
-                    console.error('郵件發送觸發失敗:', emailErr);
+                const emailPayload = {
+                    email: email,
+                    name: name,
+                    password: password,
+                    role: role,
+                    user_id: newUserId // [修正] 補上 User ID 以防後端需要
+                };
+
+                const emailResponse = await fetch('https://yhehfucgemxnfrdvpdhw.supabase.co/functions/v1/send-email', {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${SUPABASE_KEY}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(emailPayload)
+                });
+                
+                // [修正] 嚴格檢查回應狀態，若非 OK 或網路中斷，直接拋出錯誤進入 catch
+                if (!emailResponse.ok) {
+                    const errText = await emailResponse.text().catch(() => '無詳細錯誤訊息');
+                    throw new Error(`郵件服務回報錯誤 (Status ${emailResponse.status}): ${errText}`);
                 }
 
-                alert(`✅ 帳號開通完整成功！\n\nUser ID: ${newUserId}\n\n系統已觸發歡迎信件發送。\n請嘗試登入。`);
+                // 若程式執行到此，代表 fetch 成功且回應 OK
+                alert(`✅ 帳號開通完整成功！\n\nUser ID: ${newUserId}\n\n系統已發送歡迎信件。`);
                 bootstrap.Modal.getInstance(document.getElementById('inviteModal')).hide();
                 loadUsers();
+
             } catch (err) {
                 console.error(err);
-                alert(err.message);
+                // [修正] 區分錯誤情境：若帳號已建立但信件失敗，需給予不同提示
+                if (newUserId) {
+                    alert(`⚠️ 警告：帳號已建立 (ID: ${newUserId})，但後續動作失敗。\n\n錯誤原因: ${err.message}\n\n請手動通知使用者密碼，或檢查 Edge Function 日誌。`);
+                    // 雖然信件失敗，但帳號已存在，仍需關閉視窗並重整
+                    bootstrap.Modal.getInstance(document.getElementById('inviteModal')).hide();
+                    loadUsers();
+                } else {
+                    alert(`❌ 建立失敗: ${err.message}`);
+                }
             } finally {
                 btn.disabled = false;
                 btn.innerHTML = originalText;
