@@ -1,539 +1,822 @@
 <!DOCTYPE html>
-<html lang="zh-Hant">
+<html lang="zh-TW">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>OHSMS 評鑑支援 AI 智慧助理 - WesmartAI</title>
+    <title>OHSMS 評鑑支援 AI 智慧助理</title>
+    
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <style>
-        body { background-color: #f8f9fa; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
-        .google-logo { font-size: 2.5rem; font-weight: 500; letter-spacing: -1px; margin-bottom: 2rem; }
-        .g-blue { color: #4285f4; } .g-red { color: #ea4335; } .g-yellow { color: #fbbc05; } .g-green { color: #34a853; }
-        
-        .search-container { max-width: 800px; margin: 0 auto; background: white; padding: 2rem; border-radius: 24px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); }
-        .search-inputs .form-control, .search-inputs .form-select { border-radius: 8px; border: 1px solid #dfe1e5; padding: 0.75rem 1rem; }
-        .search-inputs .form-control:focus, .search-inputs .form-select:focus { box-shadow: 0 1px 6px rgba(32,33,36,.28); border-color: transparent; }
-        
-        .result-card { background: white; border-radius: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); margin-top: 1.5rem; overflow: hidden; }
-        .table-responsive { max-height: 60vh; overflow-y: auto; }
-        thead th { background-color: #f8f9fa; position: sticky; top: 0; z-index: 1; border-bottom: 2px solid #dee2e6; }
-        
-        /* 隱藏捲軸但保留功能 */
-        .table-responsive::-webkit-scrollbar { width: 6px; height: 6px; }
-        .table-responsive::-webkit-scrollbar-thumb { background-color: #ced4da; border-radius: 3px; }
 
-        #loadingOverlay {
-            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(255, 255, 255, 0.8); z-index: 9999;
-            display: none; justify-content: center; align-items: center;
+    <style>
+        /* =========================================
+           統一頁首/頁尾 CSS 設定
+           ========================================= */
+        html, body {
+            height: 100%;
         }
 
-        .status-badge { font-size: 0.85em; padding: 0.35em 0.65em; border-radius: 4px; }
-        .badge-verified { background-color: #e6f4ea; color: #137333; }
-        .badge-pending { background-color: #fef7e0; color: #b06000; }
+        body {
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
+            background-color: #f8f9fa;
+            font-family: 'Segoe UI', 'Microsoft JhengHei', sans-serif;
+        }
 
-        .modal-xl { max-width: 90vw; }
-        .evidence-preview-frame { width: 100%; height: 75vh; border: none; background: #f1f3f4; border-radius: 8px;}
+        .main-content {
+            flex: 1;
+        }
+
+        /* 頁首設定 */
+        .navbar {
+            background-color: #202124 !important;
+            min-height: 85px;
+            color: #fff;
+            flex-shrink: 0;
+        }
+
+        /* 頁尾設定 */
+        footer {
+            background-color: #202124 !important;
+            color: #fff;
+            flex-shrink: 0;
+            font-size: 0.9rem;
+            letter-spacing: 0.5px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            margin-top: auto;
+            padding: 15px 0;
+            min-height: 85px;
+        }
+
+        /* PDCA 字卡與主色調 (黃色) */
+        :root { 
+            --theme-color: #ffc107; 
+        }
+
+        .instruction-box {
+            background-color: #fff;
+            border-left: 5px solid var(--theme-color);
+            padding: 20px 25px;
+            border-radius: 4px;
+            margin-bottom: 30px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+        }
+
+        .instruction-title {
+            color: #d39e00; 
+            font-weight: 700;
+            margin-bottom: 10px;
+        }
+
+        /* Google 搜尋風格 */
+        .search-container {
+            width: 100%;
+            margin-bottom: 30px;
+            text-align: center;
+        }
+
+        .google-logo {
+            font-size: 2.5rem;
+            font-weight: bold;
+            margin-bottom: 20px;
+            letter-spacing: -1px;
+            color: #444;
+            font-family: 'Product Sans', Arial, sans-serif;
+        }
         
-        .review-history-item { border-left: 3px solid #dee2e6; padding-left: 1rem; margin-bottom: 1rem; }
-        .review-history-item .timestamp { font-size: 0.8rem; color: #6c757d; }
+        .google-logo span { display: inline-block; }
+        .g-blue { color: #4285F4; }
+        .g-red { color: #EA4335; }
+        .g-yellow { color: #FBBC05; }
+        .g-green { color: #34A853; }
+
+        .google-search-bar {
+            background: white;
+            border: 1px solid #dfe1e5;
+            border-radius: 50px;
+            box-shadow: 0 1px 6px rgba(32,33,36,0.1);
+            max-width: 900px;
+            margin: 0 auto;
+            display: flex;
+            align-items: center;
+            padding: 5px 8px 5px 20px;
+            transition: all 0.3s;
+        }
+
+        .google-search-bar:hover, .google-search-bar:focus-within {
+            box-shadow: 0 1px 6px rgba(32,33,36,0.28);
+            border-color: rgba(223,225,229,0);
+        }
+
+        .search-input {
+            border: none;
+            outline: none;
+            padding: 10px;
+            font-size: 1rem;
+            color: #202124;
+            background: transparent;
+        }
+        
+        .search-input:focus {
+            box-shadow: none; 
+        }
+
+        .btn-search-icon {
+            background-color: #4285f4;
+            color: white;
+            border-radius: 50%;
+            width: 45px;
+            height: 45px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border: none;
+            margin-left: 10px;
+            transition: background 0.2s;
+        }
+        .btn-search-icon:hover {
+            background-color: #357ae8;
+        }
+
+        .vertical-divider {
+            width: 1px;
+            height: 25px;
+            background-color: #dfe1e5;
+            margin: 0 10px;
+        }
+
+        .result-table th {
+            background-color: #f1f3f4;
+            color: #202124;
+            font-weight: 600;
+        }
+        
+        .loading-overlay {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(255,255,255,0.8);
+            z-index: 9999;
+            align-items: center;
+            justify-content: center;
+            flex-direction: column;
+        }
+
+        /* 審查紀錄 Modal 的自訂樣式 */
+        .review-row {
+            transition: all 0.3s;
+        }
+        .review-row:hover {
+            background-color: #f0f4f8 !important;
+        }
+        .review-row.readonly-row {
+            background-color: #e9ecef !important;
+            opacity: 0.85;
+        }
     </style>
 </head>
 <body>
 
-    <nav class="navbar navbar-expand-lg navbar-light bg-white border-bottom fixed-top">
-        <div class="container-fluid">
-            <span class="navbar-brand mb-0 h1 d-flex align-items-center">
-                <i class="fas fa-shield-alt g-blue me-2"></i> WesmartAI 評鑑系統
-            </span>
+    <nav class="navbar navbar-expand-lg navbar-dark px-4">
+        <div class="container-fluid d-flex justify-content-between align-items-center p-0">
+        <a class="navbar-brand d-flex align-items-center fw-bold" href="dashboard.html">
+            <i class="fas fa-shield me-2"></i>
+            OHSMS 職安管理系統
+        </a>
             <div class="d-flex align-items-center">
-                <span class="me-3 text-muted" id="userCredits">讀取額度...</span>
-                <span class="me-3 fw-bold" id="userName">管理者</span>
-                <button class="btn btn-outline-secondary btn-sm" onclick="logout()">登出</button>
+                <span class="text-white me-3 small" id="header-date"><i class="fas fa-spinner fa-spin"></i></span>
+                <span class="text-white me-4 small border-start ps-3 border-secondary" id="header-clock" style="opacity: 0.9;">--:--</span>
+                <span class="text-white me-4 fw-bold" id="header-user">Hi! 使用者</span>
+                <a class="btn btn-outline-light btn-sm me-2" href="dashboard.html"><i class="fas fa-reply me-1"></i>回到儀表板</a>
+                <button class="btn btn-outline-light btn-sm" onclick="logoutSystem()"><i class="fas fa-sign-out-alt me-1"></i>登出</button>
             </div>
         </div>
     </nav>
 
-    <div id="loadingOverlay">
-        <div class="spinner-border g-blue" style="width: 3rem; height: 3rem;" role="status">
-            <span class="visually-hidden">Loading...</span>
-        </div>
-    </div>
-
-    <div class="container" style="margin-top: 80px; padding-bottom: 2rem;">
+    <div class="container-fluid main-content mt-4 px-4">
         
-        <div class="text-center mt-5 mb-4">
-            <h1 class="google-logo">
-                <span class="g-blue">W</span><span class="g-red">e</span><span class="g-yellow">s</span><span class="g-blue">m</span><span class="g-green">a</span><span class="g-red">r</span><span class="g-yellow">t</span>AI
-            </h1>
-            <p class="text-muted">OHSMS 評鑑支援 AI 智慧助理 - 證據檢索</p>
+        <div class="mb-4">
+            <h2 class="fw-bold text-dark mb-1">評鑑支援 AI 智慧助理 (Evaluation)</h2>
+            <p class="text-secondary">AI 智能輔助與證據鏈建構與即時互動式評鑑改善流程</p>
+        </div>
+        
+        <div class="instruction-box">
+            <div class="instruction-title">
+                <i class="fas fa-clipboard-check me-2"></i>5W1H 設計理念：建構完整服務執行歷程證據鏈
+            </div>
+            <p class="mb-0 text-dark" style="line-height: 1.6;">
+                本模組結合AI智能輔助，深度貫徹評鑑制度之證據鏈建構精神。透過嚴謹的數位化流程確保資料真實性，並導入即時互動式評鑑改善流程，將審查機制與補件回覆無縫串聯，藉此建構出符合評鑑需求且具備高度公信力的完整動態證據。
+            </p>
         </div>
 
         <div class="search-container">
-            <div class="row g-3 search-inputs">
-                <div class="col-md-3">
-                    <label class="form-label text-muted small mb-1">評鑑年度</label>
-                    <select id="searchYear" class="form-select">
-                        <option value="113">113 年度</option>
-                        <option value="114" selected>114 年度</option>
-                        <option value="115">115 年度</option>
-                    </select>
-                </div>
-                <div class="col-md-5">
-                    <label class="form-label text-muted small mb-1">企業關鍵字 (名稱或統編)</label>
-                    <input type="text" id="searchCompany" class="form-control" placeholder="例如：台積電 或 22099131">
-                </div>
-                <div class="col-md-4">
-                    <label class="form-label text-muted small mb-1">負責醫護顧問</label>
-                    <input type="text" id="searchConsultant" class="form-control" placeholder="例如：陳大文">
-                </div>
-                <div class="col-12 text-center mt-4">
-                    <button class="btn btn-primary px-5 py-2 rounded-pill shadow-sm" onclick="executeSearch()" id="btnSearch">
-                        <i class="fas fa-search me-2"></i>開始檢索
+            <div class="google-logo">
+                <span class="g-blue">W</span><span class="g-red">e</span><span class="g-yellow">s</span><span class="g-blue">m</span><span class="g-green">a</span><span class="g-red">r</span><span class="g-blue">t</span><span class="g-green">A</span><span class="g-red">I</span>
+            </div>
+
+            <form id="searchForm" onsubmit="event.preventDefault(); performSearch();">
+                <div class="google-search-bar">
+                    <input type="number" class="search-input" id="searchYear" placeholder="年度 (西元)" min="2020" max="2050" style="width: 120px;">
+                    <div class="vertical-divider"></div>
+                    <input type="text" class="search-input" id="searchCompany" placeholder="公司名稱 / 統編" style="flex: 1;">
+                    <div class="vertical-divider"></div>
+                    <input type="text" class="search-input" id="searchConsultant" placeholder="顧問姓名" style="width: 150px;">
+                    <button type="submit" class="btn-search-icon" title="搜尋軌跡">
+                        <i class="fas fa-search"></i>
                     </button>
                 </div>
+                <div class="mt-2 text-center">
+                    <button type="button" class="btn btn-link text-secondary btn-sm text-decoration-none" onclick="resetSearch()">
+                        <i class="fas fa-times me-1"></i>清除條件
+                    </button>
+                </div>
+            </form>
+        </div>
+
+        <div id="resultArea" class="mt-4 mb-5" style="display: none;">
+            <h5 class="fw-bold border-bottom pb-2 mb-3">
+                <i class="fas fa-list-ul me-2"></i>搜尋結果 
+                <span class="badge bg-secondary ms-2" id="resultCount">0 筆</span>
+            </h5>
+            <div class="table-responsive bg-white rounded shadow-sm p-3 w-100">
+                <table class="table table-hover result-table align-middle">
+                    <thead>
+                        <tr>
+                            <th scope="col">#</th>
+                            <th scope="col">服務日期</th>
+                            <th scope="col">年度</th>
+                            <th scope="col">企業名稱</th>
+                            <th scope="col">統一編號</th>
+                            <th scope="col">負責顧問</th>
+                            <th scope="col" class="text-center">操作</th>
+                        </tr>
+                    </thead>
+                    <tbody id="resultBody"></tbody>
+                </table>
             </div>
         </div>
 
-        <div id="resultContainer" class="d-none">
-            <div class="d-flex justify-content-between align-items-center mt-5 mb-2">
-                <h5 class="text-muted mb-0">檢索結果：共找到 <span id="resultCount" class="fw-bold text-dark">0</span> 筆證據鏈結</h5>
-                <button class="btn btn-sm btn-outline-success"><i class="fas fa-file-export me-1"></i>匯出評鑑報表</button>
-            </div>
-            
-            <div class="result-card p-0">
-                <div class="table-responsive">
-                    <table class="table table-hover align-middle mb-0" id="evidenceTable">
-                        <thead>
-                            <tr>
-                                <th width="12%">評鑑編號</th>
-                                <th width="18%">事業單位</th>
-                                <th width="15%">證據主題 (What)</th>
-                                <th width="12%">執行時間 (When)</th>
-                                <th width="10%">負責顧問 (Who)</th>
-                                <th width="10%">狀態</th>
-                                <th width="23%">評鑑操作</th>
-                            </tr>
-                        </thead>
-                        <tbody id="evidenceBody">
-                            </tbody>
-                    </table>
-                </div>
-            </div>
+        <div id="noDataMessage" class="text-center mt-5 text-muted" style="display: none;">
+            <i class="fas fa-inbox fa-3x mb-3 opacity-25"></i>
+            <p>找不到符合條件的服務軌跡。</p>
         </div>
 
     </div>
 
-    <div class="modal fade" id="revisionModal" tabindex="-1" aria-hidden="true">
-        <div class="modal-dialog modal-dialog-centered">
-            <div class="modal-content border-0 shadow-lg">
-                <div class="modal-header bg-warning text-dark border-0">
-                    <h5 class="modal-title"><i class="fas fa-envelope me-2"></i>發送評鑑補件通知</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+    <footer>
+        <div class="mb-1">可信智慧整合有限公司 42917004</div>
+        <div class="small opacity-75" style="font-family: 'Segoe UI', sans-serif; letter-spacing: 1px;">
+            WesmartAI , Making Trust Transparent.
+        </div>
+    </footer>
+
+    <div class="modal fade" id="reviewModal" tabindex="-1" aria-labelledby="reviewModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header bg-primary text-white">
+                    <h5 class="modal-title" id="reviewModalLabel"><i class="fas fa-clipboard-check me-2"></i>評鑑審查紀錄</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div class="modal-body bg-light">
-                    <p class="text-muted small mb-3">系統將發送以下補件內容至負責顧問的電子信箱。</p>
-                    
-                    <div class="card border-0 shadow-sm mb-3">
-                        <div class="card-body">
-                            <h6 class="card-title text-primary"><i class="fas fa-user-tie me-1"></i>收件顧問資訊</h6>
-                            <div class="mb-1"><strong>姓名：</strong><span id="rev-consultant-name">-</span></div>
-                            <div><strong>信箱：</strong><span id="rev-consultant-email" class="text-muted">-</span></div>
-                        </div>
+                    <div class="alert alert-info py-2 px-3 mb-3 d-flex justify-content-between align-items-center">
+                        <span id="reviewCompanyInfo" class="fw-bold">--</span>
+                        <span class="badge bg-secondary">唯讀存檔原則：儲存後不可變更</span>
                     </div>
 
-                    <div class="card border-0 shadow-sm mb-3">
-                        <div class="card-body">
-                            <h6 class="card-title text-info"><i class="fas fa-file-alt me-1"></i>待補件證據資訊</h6>
-                            <div class="mb-1"><strong>事業單位：</strong><span id="rev-workplace-name">-</span></div>
-                            <div><strong>證據主題：</strong><span id="rev-evidence-topic">-</span></div>
+                    <div id="reviewContainer">
                         </div>
-                    </div>
 
-                    <div class="card border-0 shadow-sm">
-                        <div class="card-body">
-                            <h6 class="card-title text-danger"><i class="fas fa-exclamation-triangle me-1"></i>審查紀錄 (補件原因)</h6>
-                            <div id="rev-history-list" class="mt-2" style="max-height: 150px; overflow-y: auto;">
-                                </div>
-                        </div>
+                    <div class="text-center mt-3">
+                        <button type="button" class="btn btn-outline-secondary" onclick="addReviewRow()">
+                            <i class="fas fa-plus-circle me-1"></i>新增一筆紀錄
+                        </button>
                     </div>
-
-                    <input type="hidden" id="rev-evidence-id">
                 </div>
-                <div class="modal-footer border-0">
+                <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
-                    <button type="button" class="btn btn-warning" onclick="confirmSendRevision()" id="btnSendRevision">
-                        <i class="fas fa-paper-plane me-1"></i>確認發送
-                    </button>
+                    <button type="button" class="btn btn-primary px-4" onclick="confirmSaveReview()"><i class="fas fa-save me-2"></i>確認儲存</button>
                 </div>
             </div>
         </div>
     </div>
 
-    <div class="modal fade" id="reviewModal" tabindex="-1" aria-hidden="true">
-        <div class="modal-dialog modal-dialog-centered">
-            <div class="modal-content border-0 shadow-lg">
-                <div class="modal-header bg-light border-0">
-                    <h5 class="modal-title"><i class="fas fa-clipboard-check text-primary me-2"></i>評鑑審查紀錄</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                </div>
-                <div class="modal-body">
-                    <input type="hidden" id="reviewEvidenceId">
-                    <div id="reviewHistory" class="mb-4">
-                        <h6 class="text-muted mb-3">歷史審查紀錄：</h6>
-                        <div id="historyList"></div>
-                    </div>
-                    <hr>
-                    <div class="form-group">
-                        <label class="form-label fw-bold">新增審查備註 (此紀錄一經儲存將不可變更)</label>
-                        <textarea id="newReviewText" class="form-control" rows="3" placeholder="請輸入本次審查發現之缺失或建議..."></textarea>
-                    </div>
-                </div>
-                <div class="modal-footer border-0 bg-light">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">關閉</button>
-                    <button type="button" class="btn btn-primary" onclick="saveReview()"><i class="fas fa-save me-1"></i>確認存檔</button>
-                </div>
-            </div>
-        </div>
+    <div class="loading-overlay" id="loadingOverlay">
+        <div class="spinner-border text-primary mb-3" role="status" style="width: 3rem; height: 3rem;"></div>
+        <div class="fw-bold text-dark">處理中...</div>
     </div>
 
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 
     <script>
-        // Supabase 設定 (需填入您的實際金鑰)
-        const supabaseUrl = 'https://yhehfucgemxnfrdvpdhw.supabase.co';
-        const supabaseKey = 'YOUR_SUPABASE_ANON_KEY'; // 在實際環境中請使用您的 KEY
-        const supabase = window.supabase.createClient(supabaseUrl, supabaseKey);
+        // ==========================================
+        // 1. Supabase 初始化
+        // ==========================================
+        const SUPABASE_URL = 'https://yhehfucgemxnfrdvpdhw.supabase.co';
+        const SUPABASE_KEY = 'sb_publishable_52emtU-9l-SDxcJTWVTPTA_Yu6qEogh';
+        const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+        
+        document.addEventListener('DOMContentLoaded', function() {
+            // 時鐘與日期
+            setInterval(() => {
+                const now = new Date();
+                const clockEl = document.getElementById('header-clock');
+                if(clockEl) clockEl.textContent = now.toLocaleTimeString('zh-TW', { hour12: false });
+            }, 1000);
 
-        // 初始化
-        document.addEventListener('DOMContentLoaded', () => {
-            // 權限檢查 (簡易版)
-            const userData = sessionStorage.getItem('wesmart_user');
-            if(!userData) {
-                // 開發測試暫時略過導向，正式機需開啟
-                // window.location.href = 'index.html'; 
-            } else {
-                const user = JSON.parse(userData);
-                document.getElementById('userName').innerText = user.name;
-                document.getElementById('userCredits').innerText = `剩餘 AI 額度: ${user.credits || '無限'}`;
+            const dateEl = document.getElementById('header-date');
+            if(dateEl) {
+                const now = new Date();
+                const days = ['日', '一', '二', '三', '四', '五', '六'];
+                dateEl.innerHTML = `<i class="far fa-calendar-alt me-1"></i>今日是 ${now.getFullYear()}/${now.getMonth() + 1}/${now.getDate()}(${days[now.getDay()]})`;
             }
+
+            const userName = sessionStorage.getItem('currentUserName');
+            const userEl = document.getElementById('header-user');
+            if(userEl && userName) userEl.innerText = `Hi! ${userName}`;
         });
 
         // 登出
-        function logout() {
-            sessionStorage.removeItem('wesmart_user');
-            window.location.href = 'index.html';
-        }
-
-        // 顯示載入遮罩
-        function toggleLoading(show) {
-            document.getElementById('loadingOverlay').style.display = show ? 'flex' : 'none';
-        }
-
-        // 執行檢索
-        async function executeSearch() {
-            toggleLoading(true);
-            const year = document.getElementById('searchYear').value;
-            const companyKw = document.getElementById('searchCompany').value.trim();
-            const consultantKw = document.getElementById('searchConsultant').value.trim();
-
-            try {
-                // 模擬 Supabase 複雜查詢：先撈 Evidence，再關聯 Workplaces 與 Medical_staff
-                let query = supabase
-                    .from('evidence')
-                    .select(`
-                        id,
-                        evidence_topic,
-                        execution_date,
-                        status,
-                        created_at,
-                        workplaces!inner ( name, tax_id ),
-                        medical_staff!inner ( name, email )
-                    `)
-                    .eq('evidence_year', year);
-
-                // 若有填寫統編/名稱
-                if (companyKw) {
-                    query = query.or(`name.ilike.%${companyKw}%,tax_id.ilike.%${companyKw}%`, { foreignTable: 'workplaces' });
-                }
-
-                // 若有填寫顧問名稱
-                if (consultantKw) {
-                    query = query.ilike('medical_staff.name', `%${consultantKw}%`);
-                }
-
-                const { data, error } = await query;
-
-                if (error) throw error;
-
-                renderTable(data);
-                
-                // 顯示結果區塊
-                document.getElementById('resultContainer').classList.remove('d-none');
-                document.getElementById('resultCount').innerText = data.length;
-
-            } catch (err) {
-                console.error(err);
-                alert('檢索發生錯誤，請檢查資料庫連線或權限。');
-            } finally {
-                toggleLoading(false);
+        function logoutSystem() {
+            if(confirm('確定要登出系統嗎？')) {
+                sessionStorage.clear();
+                window.location.href = 'login.html';
             }
         }
 
-        // 渲染表格
-        function renderTable(data) {
-            const tbody = document.getElementById('evidenceBody');
-            tbody.innerHTML = '';
+        // 重置搜尋
+        function resetSearch() {
+            document.getElementById('searchForm').reset();
+            document.getElementById('resultArea').style.display = 'none';
+            document.getElementById('noDataMessage').style.display = 'none';
+        }
 
-            if (data.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="7" class="text-center py-5 text-muted"><i class="fas fa-inbox fa-3x mb-3 d-block"></i>查無符合條件之證據資料。</td></tr>`;
+        // ==========================================
+        // 2. 搜尋主邏輯
+        // ==========================================
+        async function performSearch() {
+            const year = document.getElementById('searchYear').value.trim();
+            const companyQuery = document.getElementById('searchCompany').value.trim();
+            const consultant = document.getElementById('searchConsultant').value.trim();
+            const loading = document.getElementById('loadingOverlay');
+
+            loading.style.display = 'flex';
+            document.getElementById('resultArea').style.display = 'none';
+            document.getElementById('noDataMessage').style.display = 'none';
+
+            try {
+                let query = supabaseClient
+                    .from('evidence')
+                    .select(`
+                        id, visit_date, service_year,
+                        workplaces!inner ( companies!inner (name, tax_id) ),
+                        medical_staff (name)
+                    `)
+                    .order('visit_date', { ascending: false });
+
+                if (year) query = query.eq('service_year', year);
+
+                const { data, error } = await query;
+                if (error) throw error;
+
+                let filteredData = data;
+                if (companyQuery) {
+                    const q = companyQuery.toLowerCase();
+                    filteredData = filteredData.filter(item => {
+                        const compName = item.workplaces?.companies?.name || '';
+                        const taxId = item.workplaces?.companies?.tax_id || '';
+                        return compName.toLowerCase().includes(q) || taxId.includes(q);
+                    });
+                }
+                if (consultant) {
+                    const q = consultant.toLowerCase();
+                    filteredData = filteredData.filter(item => {
+                        const staffName = item.medical_staff?.name || '';
+                        return staffName.toLowerCase().includes(q);
+                    });
+                }
+
+                renderResults(filteredData);
+
+            } catch (err) {
+                console.error('搜尋失敗:', err);
+                alert('搜尋發生錯誤，請檢查 console。');
+            } finally {
+                loading.style.display = 'none';
+            }
+        }
+
+        function renderResults(data) {
+            const tbody = document.getElementById('resultBody');
+            const resultArea = document.getElementById('resultArea');
+            const noDataMsg = document.getElementById('noDataMessage');
+            const countBadge = document.getElementById('resultCount');
+
+            tbody.innerHTML = '';
+            if (!data || data.length === 0) {
+                noDataMsg.style.display = 'block';
                 return;
             }
 
-            data.forEach(row => {
-                // 狀態 Badge 轉換
-                let statusBadge = '';
-                if (row.status === 'verified') statusBadge = '<span class="status-badge badge-verified"><i class="fas fa-check-circle me-1"></i>已認證</span>';
-                else if (row.status === 'pending') statusBadge = '<span class="status-badge badge-pending"><i class="fas fa-hourglass-half me-1"></i>待補件</span>';
-                else statusBadge = `<span class="status-badge bg-secondary text-white">${row.status}</span>`;
+            resultArea.style.display = 'block';
+            countBadge.textContent = `${data.length} 筆`;
 
-                const tr = document.createElement('tr');
-                tr.innerHTML = `
-                    <td class="text-muted font-monospace small">${row.id.substring(0,8).toUpperCase()}</td>
-                    <td class="fw-bold text-dark">${row.workplaces.name} <br><small class="text-muted fw-normal">統編: ${row.workplaces.tax_id}</small></td>
-                    <td>${row.evidence_topic}</td>
-                    <td>${row.execution_date}</td>
-                    <td>${row.medical_staff.name}</td>
-                    <td>${statusBadge}</td>
-                    <td>
-                        <div class="btn-group" role="group">
-                            <button class="btn btn-sm btn-outline-primary" onclick="viewEvidence('${row.id}')" title="檢視"><i class="fas fa-eye"></i></button>
-                            <button class="btn btn-sm btn-outline-success" onclick="openReviewModal('${row.id}')" title="審查備註"><i class="fas fa-clipboard-check"></i></button>
-                            <button class="btn btn-sm btn-outline-warning" onclick="sendRevisionNotice('${row.id}')" title="補件通知"><i class="fas fa-envelope"></i> 補件</button>
-                        </div>
-                    </td>
+            data.forEach((item, index) => {
+                const companyName = item.workplaces?.companies?.name || '未知';
+                const taxId = item.workplaces?.companies?.tax_id || '-';
+                const staffName = item.medical_staff?.name || '未指派';
+                const date = item.visit_date || '-';
+
+                // 修改：為「評鑑審查紀錄」按鈕綁定 onclick 事件
+                const row = `
+                    <tr>
+                        <th scope="row">${index + 1}</th>
+                        <td>${date}</td>
+                        <td>${item.service_year}</td>
+                        <td class="fw-bold text-primary">${companyName}</td>
+                        <td><span class="badge bg-light text-dark border">${taxId}</span></td>
+                        <td><i class="fas fa-user-tie me-1 text-secondary"></i>${staffName}</td>
+                        <td class="text-center" style="white-space: nowrap;">
+                            <div class="btn-group" role="group">
+                                <button class="btn btn-sm btn-outline-info" title="檢視詳情與證據" onclick="openEvidenceTab('${item.id}')">
+                                    <i class="fas fa-external-link-alt"></i> 執行歷程檢視
+                                </button>
+                                <button class="btn btn-sm btn-outline-primary" title="評鑑審查紀錄" onclick="openReviewModal('${item.id}', '${companyName}')">
+                                    <i class="fas fa-clipboard-check"></i> 評鑑審查紀錄
+                                </button>
+                                <button class="btn btn-sm btn-outline-warning" title="評鑑補件通知">
+                                    <i class="fas fa-paper-plane"></i> 評鑑補件通知
+                                </button>
+                                <button class="btn btn-sm btn-outline-success" title="評鑑改善紀錄">
+                                    <i class="fas fa-file-signature"></i> 評鑑改善紀錄
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
                 `;
-                tbody.appendChild(tr);
+                tbody.innerHTML += row;
             });
         }
 
-        // 檢視單一證據 (另開分頁純前端預覽)
-        function viewEvidence(id) {
-            // 實務上會導向一個唯讀的 Evidence View 頁面
-            window.open(`preview_evidence.html?id=${id}`, '_blank');
-        }
-
-        // -------------------------
-        // 評鑑審查紀錄 (Modal) 邏輯
-        // -------------------------
-        let reviewModal;
-        let revisionModal;
-        
-        document.addEventListener('DOMContentLoaded', () => {
-            // 初始化原有的 Review Modal
-            reviewModal = new bootstrap.Modal(document.getElementById('reviewModal'));
-            // 初始化新增的 Revision Modal
-            revisionModal = new bootstrap.Modal(document.getElementById('revisionModal'));
-        });
-
-        async function openReviewModal(id) {
-            document.getElementById('reviewEvidenceId').value = id;
-            document.getElementById('newReviewText').value = '';
-            const historyList = document.getElementById('historyList');
-            historyList.innerHTML = '<div class="text-center"><div class="spinner-border spinner-border-sm text-primary"></div> 載入中...</div>';
-            reviewModal.show();
-
-            try {
-                // 抓取現有審查紀錄 (JSONB 欄位)
-                const { data, error } = await supabase
-                    .from('evidence')
-                    .select('evaluation_reviews')
-                    .eq('id', id)
-                    .single();
-
-                if (error) throw error;
-
-                historyList.innerHTML = '';
-                const reviews = data.evaluation_reviews || [];
-
-                if (reviews.length === 0) {
-                    historyList.innerHTML = '<span class="text-muted small">尚無審查紀錄。</span>';
-                } else {
-                    reviews.forEach(rev => {
-                        const item = document.createElement('div');
-                        item.className = 'review-history-item';
-                        item.innerHTML = `
-                            <div class="timestamp"><i class="far fa-clock me-1"></i>${rev.timestamp} - ${rev.reviewer}</div>
-                            <div class="mt-1 text-dark">${rev.content}</div>
-                        `;
-                        historyList.appendChild(item);
-                    });
-                }
-            } catch (err) {
-                console.error(err);
-                historyList.innerHTML = '<span class="text-danger small">讀取失敗。</span>';
-            }
-        }
-
-        async function saveReview() {
-            const id = document.getElementById('reviewEvidenceId').value;
-            const content = document.getElementById('newReviewText').value.trim();
-
-            if (!content) {
-                alert('請輸入審查備註內容。');
+        // ==========================================
+        // 3. 開啟新分頁 (純預覽功能)
+        // ==========================================
+        async function openEvidenceTab(evidenceId) {
+            const newWindow = window.open('', '_blank');
+            if (!newWindow) {
+                alert('您的瀏覽器封鎖了彈出視窗，請允許開啟以檢視詳情。');
                 return;
             }
 
-            toggleLoading(true);
+            // 先寫入 Loading 狀態
+            newWindow.document.write(`
+                <html>
+                <head><title>讀取中...</title></head>
+                <body style="display:flex;justify-content:center;align-items:center;height:100vh;background:#f8f9fa;font-family:sans-serif;">
+                    <div style="text-align:center;">
+                        <div style="font-size:24px;margin-bottom:10px;">資料讀取中...</div>
+                        <div style="color:#666;">正在從資料庫取得完整證據紀錄</div>
+                    </div>
+                </body>
+                </html>
+            `);
 
             try {
-                // 1. 先取得舊紀錄
-                const { data: oldData, error: fetchErr } = await supabase
-                    .from('evidence')
-                    .select('evaluation_reviews')
-                    .eq('id', id)
-                    .single();
-
-                if (fetchErr) throw fetchErr;
-
-                const currentReviews = oldData.evaluation_reviews || [];
-
-                // 2. 新增紀錄 (寫入當前時間與管理者名稱)
-                const newReview = {
-                    timestamp: new Date().toLocaleString('zh-TW'),
-                    reviewer: JSON.parse(sessionStorage.getItem('wesmart_user'))?.name || '系統管理員',
-                    content: content
-                };
-
-                currentReviews.push(newReview);
-
-                // 3. 更新回資料庫 (一經寫入前端即不提供修改，落實不可變更原則)
-                const { error: updateErr } = await supabase
-                    .from('evidence')
-                    .update({ evaluation_reviews: currentReviews, status: 'pending' }) // 自動改為待補件狀態
-                    .eq('id', id);
-
-                if (updateErr) throw updateErr;
-
-                alert('審查備註已存檔，證據狀態已變更為「待補件」。');
-                reviewModal.hide();
-                executeSearch(); // 刷新表格狀態
-
-            } catch (err) {
-                console.error(err);
-                alert('存檔失敗。');
-            } finally {
-                toggleLoading(false);
-            }
-        }
-
-        // -------------------------
-        // 評鑑補件通知 (Modal + Edge Function) 邏輯
-        // -------------------------
-        async function sendRevisionNotice(id) {
-            toggleLoading(true);
-            
-            try {
-                // 1. 抓取所需關聯資料 (顧問信箱、單位名稱、證據名稱、審查紀錄)
-                const { data, error } = await supabase
+                // 1. 查詢詳細資料
+                const { data, error } = await supabaseClient
                     .from('evidence')
                     .select(`
-                        id,
-                        evidence_topic,
-                        evaluation_reviews,
-                        workplaces!inner ( name ),
-                        medical_staff!inner ( name, email )
+                        id, visit_date, start_time, end_time, execution_items, 
+                        file_url, attachment_folder_id, service_year, additional_appendices,
+                        workplaces ( companies (name) ),
+                        medical_staff (name) 
                     `)
-                    .eq('id', id)
+                    .eq('id', evidenceId)
                     .single();
 
                 if (error) throw error;
 
-                // 2. 填入 Modal 內容
-                document.getElementById('rev-evidence-id').value = data.id;
-                document.getElementById('rev-consultant-name').innerText = data.medical_staff.name;
-                document.getElementById('rev-consultant-email').innerText = data.medical_staff.email;
-                document.getElementById('rev-workplace-name').innerText = data.workplaces.name;
-                document.getElementById('rev-evidence-topic').innerText = data.evidence_topic;
-
-                // 3. 處理審查紀錄清單
-                const historyList = document.getElementById('rev-history-list');
-                historyList.innerHTML = '';
-                const reviews = data.evaluation_reviews || [];
+                // 2. 變數準備
+                const staffName = data.medical_staff?.name || '未指派';
+                const compName = data.workplaces?.companies?.name || '未知企業';
+                const timeRange = `${data.start_time || '--:--'} ~ ${data.end_time || '--:--'}`;
+                const fullDate = `${data.visit_date} (${timeRange})`;
+                const items = data.execution_items || '無執行項目紀錄';
                 
-                if (reviews.length === 0) {
-                    historyList.innerHTML = '<span class="text-muted small">此證據目前尚無填寫審查紀錄，請先填寫審查紀錄後再發送補件通知。</span>';
-                    document.getElementById('btnSendRevision').disabled = true;
+                // 3. 處理 Appendices (一般 Q 類附件)
+                let appendicesHtml = '';
+                let existingAppendices = data.additional_appendices || [];
+                if (!Array.isArray(existingAppendices)) existingAppendices = [];
+
+                const standardDocs = existingAppendices.filter(f => f.type !== 'improvement');
+
+                // 顯示 Q 類附件
+                const qDocs = standardDocs.filter(f => {
+                    const name = f.name || '';
+                    return name.toUpperCase().startsWith('Q') || name.toUpperCase().includes('_Q_');
+                });
+
+                if (qDocs.length > 0) {
+                    appendicesHtml = qDocs.map((file, idx) => {
+                        let fName = file.name || `附件 Q-${idx + 1}`;
+                        let fUrl = file.signedUrl || file.url || '#';
+                        return `<div style="margin-bottom:4px;"><a href="${fUrl}" target="_blank" style="color:#0d6efd;text-decoration:none;"><i class="fas fa-paperclip me-1"></i>${fName}</a></div>`;
+                    }).join('');
                 } else {
-                    reviews.forEach(rev => {
-                        const item = document.createElement('div');
-                        item.className = 'review-history-item mb-2';
-                        item.innerHTML = `
-                            <div class="timestamp"><i class="far fa-clock me-1"></i>${rev.timestamp}</div>
-                            <div class="mt-1 text-dark fw-bold">${rev.content}</div>
-                        `;
-                        historyList.appendChild(item);
-                    });
-                    document.getElementById('btnSendRevision').disabled = false;
+                    appendicesHtml = '<span class="text-muted small">無 Q 類附件</span>';
                 }
 
-                // 4. 開啟 Modal
-                revisionModal.show();
+                // 4. 檔案預覽 (右側)
+                let targetFilePath = data.file_url;
+                if (!targetFilePath && data.attachment_folder_id) {
+                    const searchPath = `${data.service_year}/${data.attachment_folder_id}`;
+                    const { data: fileList } = await supabaseClient.storage.from('evidence').list(searchPath);
+                    if (fileList && fileList.length > 0) {
+                        const pdfFile = fileList.find(f => f.name.toLowerCase().endsWith('.pdf'));
+                        targetFilePath = `${searchPath}/${pdfFile ? pdfFile.name : fileList[0].name}`;
+                    }
+                }
+
+                let previewContent = '';
+                if (targetFilePath) {
+                    const { data: fileData } = await supabaseClient.storage.from('evidence').createSignedUrl(targetFilePath, 3600);
+                    if (fileData?.signedUrl) {
+                        previewContent = `<iframe src="${fileData.signedUrl}#toolbar=0" style="width:100%; height:100%; border:none;" title="Evidence Preview"></iframe>`;
+                    } else {
+                        previewContent = `<div style="color:white;text-align:center;padding-top:20%;">無法取得檔案簽署連結</div>`;
+                    }
+                } else {
+                    previewContent = `<div style="color:#aaa;text-align:center;padding-top:20%;font-size:1.2rem;">此紀錄無證據檔案<br><span style="font-size:0.9rem">(Folder ID: ${data.attachment_folder_id || '無'})</span></div>`;
+                }
+
+                // 5. 構建 HTML (純預覽 UI)
+                const finalHtml = `
+                    <!DOCTYPE html>
+                    <html lang="zh-TW">
+                    <head>
+                        <meta charset="UTF-8">
+                        <title>證據詳情 | ${compName}</title>
+                        <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+                        <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+                        <style>
+                            body, html { margin: 0; padding: 0; height: 100%; overflow: hidden; font-family: 'Segoe UI', sans-serif; }
+                            .layout-container { display: flex; height: 100vh; }
+                            
+                            /* 左側 25% */
+                            .sidebar { 
+                                width: 25%; 
+                                background: #fff; 
+                                border-right: 1px solid #dee2e6; 
+                                display: flex; 
+                                flex-direction: column; 
+                                box-shadow: 2px 0 5px rgba(0,0,0,0.1);
+                                z-index: 10;
+                            }
+                            .sidebar-header {
+                                background: #202124;
+                                color: #fff;
+                                padding: 15px 20px;
+                            }
+                            .sidebar-content {
+                                padding: 20px;
+                                overflow-y: auto;
+                                flex: 1;
+                            }
+                            
+                            /* 右側 75% */
+                            .preview-area { 
+                                width: 75%; 
+                                background: #525659; 
+                                position: relative;
+                            }
+
+                            .info-group { margin-bottom: 20px; }
+                            .label { font-weight: bold; color: #5f6368; display: block; margin-bottom: 4px; font-size: 0.9rem; }
+                            .value { color: #202124; background: #f8f9fa; padding: 8px 10px; border-radius: 4px; border: 1px solid #eee; }
+                            
+                            .section-title { 
+                                font-size: 1.1rem; 
+                                color: #0d6efd; 
+                                font-weight: bold; 
+                                margin-top: 25px; 
+                                margin-bottom: 15px; 
+                                border-bottom: 2px solid #0d6efd; 
+                                padding-bottom: 5px; 
+                            }
+                        </style>
+                    </head>
+                    <body>
+                        <div class="layout-container">
+                            <div class="sidebar">
+                                <div class="sidebar-header">
+                                    <h3 style="margin:0; font-size:1.2rem;"><i class="fas fa-file-contract"></i> 服務軌跡詳情</h3>
+                                </div>
+                                <div class="sidebar-content">
+                                    <div class="info-group">
+                                        <span class="label">Who (執行者/對象)</span>
+                                        <div class="value"><strong>${staffName}</strong> (顧問)<br>${compName}</div>
+                                    </div>
+                                    <div class="info-group">
+                                        <span class="label">When (時間)</span>
+                                        <div class="value">${fullDate}</div>
+                                    </div>
+                                    <div class="info-group">
+                                        <span class="label">Where (地點)</span>
+                                        <div class="value">${compName}</div>
+                                    </div>
+                                    <div class="info-group">
+                                        <span class="label">What (執行項目)</span>
+                                        <div class="value" style="background:#e8f0fe; border-color:#d2e3fc;">${items}</div>
+                                    </div>
+
+                                    <div class="section-title">佐證資料與備註</div>
+                                    <div class="info-group">
+                                        <div class="value" style="background:transparent; border:none; padding-left:0;">
+                                            ${appendicesHtml}
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="preview-area">
+                                ${previewContent}
+                            </div>
+                        </div>
+                    </body>
+                    </html>
+                `;
+
+                newWindow.document.open();
+                newWindow.document.write(finalHtml);
+                newWindow.document.close();
 
             } catch (err) {
                 console.error(err);
-                alert('資料抓取失敗，無法準備補件通知。');
-            } finally {
-                toggleLoading(false);
+                newWindow.document.body.innerHTML = `<h3 style="color:red;text-align:center;margin-top:50px;">讀取資料發生錯誤，請關閉後重試。<br><small>${err.message}</small></h3>`;
             }
         }
 
-        // 確認發送至 Edge Function
-        async function confirmSendRevision() {
-            const btn = document.getElementById('btnSendRevision');
-            btn.disabled = true;
-            btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>發送中...';
+        // ==========================================
+        // 4. 評鑑審查紀錄 (Modal) 功能
+        // ==========================================
+        let currentReviewEvidenceId = null;
+        const reviewModal = new bootstrap.Modal(document.getElementById('reviewModal'));
 
-            // 取得當前準備好的資料
-            const payload = {
-                evidenceId: document.getElementById('rev-evidence-id').value,
-                consultantEmail: document.getElementById('rev-consultant-email').innerText,
-                consultantName: document.getElementById('rev-consultant-name').innerText,
-                workplaceName: document.getElementById('rev-workplace-name').innerText,
-                evidenceTopic: document.getElementById('rev-evidence-topic').innerText,
-                // 抓取畫面上所有的審查文字內容
-                reviews: Array.from(document.getElementById('rev-history-list').querySelectorAll('.review-history-item .text-dark')).map(el => el.innerText)
-            };
+        // 開啟審查紀錄 Modal
+        async function openReviewModal(evidenceId, companyName) {
+            currentReviewEvidenceId = evidenceId;
+            document.getElementById('reviewCompanyInfo').innerText = `目前查看企業：${companyName}`;
+            const container = document.getElementById('reviewContainer');
+            
+            // 顯示 Loading
+            container.innerHTML = '<div class="text-center py-4"><i class="fas fa-spinner fa-spin fa-2x text-primary"></i><br>正在讀取紀錄...</div>';
+            reviewModal.show();
 
             try {
-                // 呼叫 Supabase Edge Function
-                const response = await fetch('https://yhehfucgemxnfrdvpdhw.supabase.co/functions/v1/send-evaluation-revision', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        // 若 Edge Function 有設定 Authorization Header，請在此加上 Bearer Token
-                        // 'Authorization': `Bearer ${supabaseKey}` 
-                    },
-                    body: JSON.stringify(payload)
-                });
+                // 假設資料庫欄位為 'evaluation_reviews' (JSONB 格式)
+                const { data, error } = await supabaseClient
+                    .from('evidence')
+                    .select('evaluation_reviews')
+                    .eq('id', evidenceId)
+                    .single();
 
-                if (!response.ok) {
-                    throw new Error('Edge Function 回傳錯誤');
+                container.innerHTML = ''; // 清空
+
+                let existingRecords = [];
+                if (data && data.evaluation_reviews) {
+                    existingRecords = data.evaluation_reviews;
                 }
 
-                alert('補件通知已成功發送至負責顧問信箱！');
-                revisionModal.hide();
+                // 渲染現有紀錄 (設定為唯讀)
+                if (existingRecords.length > 0) {
+                    existingRecords.forEach(record => {
+                        addReviewRow(record.date, record.note, true);
+                    });
+                } else {
+                    container.innerHTML = '<div class="text-muted text-center py-3 mb-3 border-bottom"><i class="fas fa-info-circle me-1"></i>尚無審查紀錄，請點擊下方按鈕新增。</div>';
+                }
+
+                // 自動新增一列空白輸入格供使用者填寫
+                addReviewRow();
 
             } catch (err) {
-                console.error('發送失敗:', err);
-                alert('信件發送失敗，請稍後再試或聯繫系統管理員。');
-            } finally {
-                btn.disabled = false;
-                btn.innerHTML = '<i class="fas fa-paper-plane me-1"></i>確認發送';
+                console.error('讀取審查紀錄錯誤:', err);
+                container.innerHTML = `<div class="alert alert-danger">資料讀取失敗：${err.message}</div>`;
             }
         }
 
+        // 動態新增一行紀錄
+        function addReviewRow(dateVal = '', noteVal = '', isReadonly = false) {
+            const container = document.getElementById('reviewContainer');
+            const rowDiv = document.createElement('div');
+            
+            // 唯讀與編輯狀態的樣式區隔
+            rowDiv.className = `row g-2 mb-3 p-3 border rounded shadow-sm review-row ${isReadonly ? 'readonly-row' : 'bg-white'}`;
+
+            // HTML 結構
+            rowDiv.innerHTML = `
+                <div class="col-md-3">
+                    <label class="form-label small fw-bold text-secondary">審查日期</label>
+                    <input type="date" class="form-control review-date" value="${dateVal}" ${isReadonly ? 'disabled' : ''}>
+                </div>
+                <div class="col-md-8">
+                    <label class="form-label small fw-bold text-secondary">審查備註 / 結果</label>
+                    <textarea class="form-control review-note" rows="2" placeholder="請輸入審查內容..." ${isReadonly ? 'disabled' : ''}>${noteVal}</textarea>
+                </div>
+                <div class="col-md-1 d-flex align-items-end justify-content-center">
+                    ${isReadonly 
+                        ? '<span class="badge bg-success"><i class="fas fa-lock me-1"></i>存檔</span>' 
+                        : '<button type="button" class="btn btn-outline-danger" onclick="removeReviewRow(this)" title="刪除此列"><i class="fas fa-trash-alt"></i></button>'
+                    }
+                </div>
+            `;
+
+            // 如果本來有「尚無紀錄」的提示，先移除
+            const noDataMsg = container.querySelector('.text-muted.text-center');
+            if(noDataMsg) noDataMsg.remove();
+
+            container.appendChild(rowDiv);
+        }
+
+        // 移除一行 (僅限尚未儲存的新增列)
+        function removeReviewRow(btnElement) {
+            btnElement.closest('.row').remove();
+        }
+
+        // 確認儲存按鈕 (包含跳窗提醒)
+        async function confirmSaveReview() {
+            // 收集所有新輸入的資料
+            const container = document.getElementById('reviewContainer');
+            const newRows = container.querySelectorAll('.review-row:not(.readonly-row)');
+            
+            let newRecords = [];
+            let isValid = true;
+
+            newRows.forEach(row => {
+                const date = row.querySelector('.review-date').value;
+                const note = row.querySelector('.review-note').value.trim();
+
+                if (date || note) {
+                    if (!date || !note) {
+                        isValid = false; // 需同時填寫日期與備註
+                    } else {
+                        newRecords.push({ date: date, note: note, created_at: new Date().toISOString() });
+                    }
+                }
+            });
+
+            if (!isValid) {
+                alert('請確認所有新增的紀錄皆已填寫「日期」與「備註」。\n如欲刪除空白列請點擊紅色垃圾桶。');
+                return;
+            }
+
+            if (newRecords.length === 0) {
+                alert('目前沒有新增的有效紀錄需要儲存。');
+                return;
+            }
+
+            // 【需求5】儲存前跳窗嚴格提醒
+            if (!confirm("請確定輸入內容是否正確，為保留評鑑證據完整，儲存後將不能修改!")) {
+                return; // 取消則不動作
+            }
+
+            // 執行儲存
+            const loading = document.getElementById('loadingOverlay');
+            loading.style.display = 'flex';
+
+            try {
+                // 1. 先取得原有的紀錄
+                const { data: existingData, error: fetchErr } = await supabaseClient
+                    .from('evidence')
+                    .select('evaluation_reviews')
+                    .eq('id', currentReviewEvidenceId)
+                    .single();
+                
+                if (fetchErr) throw fetchErr;
+
+                let mergedRecords = (existingData.evaluation_reviews || []).concat(newRecords);
+
+                // 2. 更新至資料庫
+                const { error: updateErr } = await supabaseClient
+                    .from('evidence')
+                    .update({ evaluation_reviews: mergedRecords })
+                    .eq('id', currentReviewEvidenceId);
+
+                if (updateErr) throw updateErr;
+
+                alert('審查紀錄儲存成功！資料已鎖定。');
+                reviewModal.hide();
+
+            } catch (err) {
+                console.error('儲存失敗:', err);
+                alert('儲存發生錯誤，請稍後重試。');
+            } finally {
+                loading.style.display = 'none';
+            }
+        }
     </script>
 </body>
 </html>
