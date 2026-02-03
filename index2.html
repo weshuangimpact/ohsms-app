@@ -834,7 +834,7 @@
         }
 
         // ==========================================
-        // 補件/催收 通知功能 (Mailto/API 邏輯)
+        // 補件/催收 通知功能 (Edge Function / Mailto 邏輯)
         // ==========================================
         
         // 打開審查通知 (補件) Modal
@@ -851,38 +851,62 @@
             new bootstrap.Modal(document.getElementById('reviewEmailModal')).show();
         }
 
-        // 寄送審查通知 (呼叫 Mailto 或 Edge Function)
-        function sendReviewEmail() {
+        // 寄送審查通知 (改為呼叫 Supabase Edge Function: send-review-email)
+        async function sendReviewEmail() {
             const id = document.getElementById('email-target-id').value;
             const record = currentStagingData.find(r => r.id === id);
+            
+            // 檢查顧問是否有設定 Email
             if (!record || !record.medical_staff?.email) {
-                return alert('無法發送：找不到該顧問的 Email。');
+                return alert('無法發送：系統中找不到該顧問的 Email。');
             }
 
             const reasonText = document.getElementById('review-reason-text').value.trim();
             const deadline = document.getElementById('email-deadline').value;
 
+            // 檢查必填欄位
             if (!reasonText) {
                 return alert('請填寫需補正的具體原因！');
             }
 
             const consultantEmail = record.medical_staff.email;
+            const consultantName = record.medical_staff.name || '顧問';
             const companyName = record.workplaces?.companies?.name || '未知公司';
-            
-            // 使用 mailto 快速開啟預設信箱
-            const subject = encodeURIComponent(`[OHSMS 審核通知] 請補正 ${companyName} 案件`);
-            const body = encodeURIComponent(
-                `親愛的 ${record.medical_staff.name} 顧問：\n\n` +
-                `您好，您為「${companyName}」提交的服務紀錄 (日期: ${record.visit_date || '未定'}) 經系統審查需進行補件或修改。\n\n` +
-                `【審核意見】：\n${reasonText}\n\n` +
-                `請於 ${deadline} 天內登入 OHSMS 系統完成補正，以利後續結案程序。\n\n` +
-                `OHSMS 系統管理員 敬上`
-            );
+            const projectName = companyName + ' 服務紀錄案件'; // 組合出專案名稱
 
-            window.location.href = `mailto:${consultantEmail}?subject=${subject}&body=${body}`;
-            
-            // 關閉 Modal
-            bootstrap.Modal.getInstance(document.getElementById('reviewEmailModal')).hide();
+            // 取得按鈕並加入 Loading 狀態，防止重複點擊
+            const btn = document.querySelector('#reviewEmailModal .btn-primary');
+            const originalBtnHtml = btn.innerHTML;
+            btn.disabled = true;
+            btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> 發送中...';
+
+            try {
+                // 呼叫 Edge Function 發送信件
+                const { data, error } = await supabaseClient.functions.invoke('send-review-email', {
+                    body: {
+                        email: consultantEmail,
+                        consultantName: consultantName,
+                        projectName: projectName,
+                        reason: reasonText,
+                        days: Number(deadline)
+                    }
+                });
+
+                if (error) throw error;
+
+                alert('✅ 審查補件通知信已成功發送！');
+                
+                // 關閉 Modal
+                bootstrap.Modal.getInstance(document.getElementById('reviewEmailModal')).hide();
+
+            } catch (err) {
+                console.error('發送信件失敗:', err);
+                alert('❌ 信件發送失敗: ' + (err.message || '未知網路錯誤，請稍後再試'));
+            } finally {
+                // 恢復按鈕狀態
+                btn.disabled = false;
+                btn.innerHTML = originalBtnHtml;
+            }
         }
 
         // 打開催收通知 Modal
@@ -898,7 +922,7 @@
             new bootstrap.Modal(document.getElementById('reminderEmailModal')).show();
         }
 
-        // 寄送催收通知
+        // 寄送催收通知 (保留原 mailto 設定)
         function sendReminderEmail() {
             const id = document.getElementById('remind-target-id').value;
             const record = currentStagingData.find(r => r.id === id);
