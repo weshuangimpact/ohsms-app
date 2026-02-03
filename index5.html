@@ -1,0 +1,472 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>評鑑改善專區 (Act) | OHSMS</title>
+    
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+    <style>
+        /* =========================================
+           1. 統一頁首/頁尾 CSS 設定 (內頁專用 / 高度統一版)
+           ========================================= */
+        html, body {
+            height: 100%;
+        }
+
+        body {
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
+            background-color: #f8f9fa; /* 預設背景色 */
+            font-family: 'Segoe UI', 'Microsoft JhengHei', sans-serif;
+        }
+
+        /* 內容區塊自動撐開 */
+        .container, .main-content, .container-fluid {
+            flex: 1; 
+        }
+
+        /* 頁首設定 */
+        .navbar {
+            background-color: #202124 !important;
+            min-height: 85px;
+            color: #fff;
+            flex-shrink: 0;
+        }
+
+        /* 頁尾設定 */
+        footer {
+            background-color: #202124 !important;
+            color: #fff;
+            flex-shrink: 0;
+            font-size: 0.9rem;
+            letter-spacing: 0.5px;
+            display: flex;
+            flex-direction: column; /* 垂直排列 */
+            align-items: center;
+            justify-content: center;
+            margin-top: auto;
+            padding: 15px 0;
+            min-height: 85px; /* 雙行高度 */
+        }
+
+        /* =========================================
+           2. 統一標題與字卡 CSS 設定 (Act Red)
+           ========================================= */
+        :root { 
+            --theme-color: #dc3545; /* Act 階段的主題紅色 */
+        }
+
+        /* PDCA 字卡 (白色區塊) 設定 */
+        .instruction-box {
+            background-color: #fff;              /* 白色背景 */
+            border-left: 5px solid var(--theme-color); /* 左側飾條 */
+            padding: 20px 25px;                  /* 內距 */
+            border-radius: 4px;                  /* 圓角 */
+            margin-bottom: 30px;                 /* 下方留白 */
+            box-shadow: 0 2px 5px rgba(0,0,0,0.05); /* 輕微陰影 */
+        }
+
+        /* PDCA 字卡標題設定 - 依需求不加粗 (font-weight: normal) */
+        .instruction-title {
+            color: var(--theme-color); /* 字體顏色跟隨主題色 */
+            font-weight: normal; 
+            font-size: 1.1rem;
+            margin-bottom: 10px; /* 與內文的間距 */
+        }
+
+        /* =========================================
+           3. 搜尋列與表單樣式
+           ========================================= */
+        .search-box {
+            background: white;
+            padding: 25px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+            max-width: 600px;
+            margin: 0 auto 30px auto;
+        }
+
+        .improvement-row {
+            background: #fff;
+            border: 1px solid #e0e0e0;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 15px;
+            transition: all 0.3s;
+        }
+
+        .improvement-row:hover {
+            border-color: var(--theme-color);
+            box-shadow: 0 0 10px rgba(220, 53, 69, 0.1);
+        }
+
+        .readonly-row {
+            background-color: #f8f9fa;
+            opacity: 0.85;
+            border-style: dashed;
+        }
+
+        /* 隱藏 Loading 遮罩 */
+        .loading-overlay {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(255,255,255,0.8);
+            z-index: 9999;
+            align-items: center;
+            justify-content: center;
+            flex-direction: column;
+        }
+    </style>
+</head>
+<body>
+
+    <nav class="navbar navbar-expand-lg navbar-dark px-4">
+        <div class="container-fluid d-flex justify-content-between align-items-center p-0">
+            <a class="navbar-brand d-flex align-items-center fw-bold" href="dashboard.html">
+                <i class="fas fa-shield-alt me-2"></i>
+                OHSMS 職安管理系統
+            </a>
+
+            <div class="d-flex align-items-center">
+                <span class="text-white me-3 small" id="header-date">
+                    <i class="fas fa-spinner fa-spin"></i>
+                </span>
+                
+                <span class="text-white me-4 small border-start ps-3 border-secondary" id="header-clock" style="opacity: 0.9;">
+                    --:--
+                </span>
+                
+                <span class="text-white me-4 fw-bold" id="header-user">
+                    Hi! 使用者
+                </span>
+                
+                <a class="btn btn-outline-light btn-sm me-2" href="dashboard.html">
+                    <i class="fas fa-reply me-1"></i>回到儀表板
+                </a>
+                
+                <button class="btn btn-outline-light btn-sm" onclick="logoutSystem()">
+                    <i class="fas fa-sign-out-alt me-1"></i>登出
+                </button>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container main-content mt-4 px-4">
+        
+        <div class="mb-4">
+            <h2 class="fw-bold text-dark mb-1">評鑑改善專區 (Act)</h2>
+            <p class="text-secondary">Act 階段：依據審查結果進行矯正預防與證據增補</p>
+        </div>
+
+        <div class="instruction-box">
+            <div class="instruction-title">
+                <i class="fas fa-tools me-2"></i>PDCA 設計理念：Act (改善) —— 持續改善行動
+            </div>
+            <p class="mb-0 text-dark" style="line-height: 1.6;">
+                本模組負責閉環管理的最後一哩路，透過統一的「案號」精準定位需要補正的服務軌跡。顧問在此上傳的改善說明與附件將直接疊加至正式證據鏈 (Evidence Table) 中，落實持續改善精神並確保勞檢時具備完整的不可否認性。
+            </p>
+        </div>
+
+        <div class="search-box text-center">
+            <h5 class="fw-bold mb-3 text-secondary">請輸入案件補正通知信中的「案號」</h5>
+            <div class="input-group input-group-lg">
+                <span class="input-group-text bg-light"><i class="fas fa-hashtag text-danger"></i></span>
+                <input type="text" id="searchInput" class="form-control" placeholder="例如：SR-20260203-001">
+                <button class="btn btn-danger px-4" onclick="searchCase()"><i class="fas fa-search me-2"></i>調閱案件</button>
+            </div>
+            <div id="searchError" class="text-danger mt-2 small fw-bold" style="display: none;">找不到此案號，請確認輸入是否正確。</div>
+        </div>
+
+        <div id="workArea" style="display: none;">
+            <div class="card border-0 shadow-sm mb-4">
+                <div class="card-header bg-white border-bottom-0 pt-4 px-4 pb-0">
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <h5 class="fw-bold text-dark mb-0" id="caseCompanyName">--公司名稱--</h5>
+                        <span class="badge bg-danger fs-6" id="caseNumberDisplay">SR-00000000-000</span>
+                    </div>
+                    <p class="text-muted small mb-0"><i class="far fa-calendar-alt me-1"></i>原始服務日期：<span id="caseVisitDate">--</span></p>
+                    <hr>
+                </div>
+                <div class="card-body px-4 pb-4">
+                    <h6 class="fw-bold text-danger mb-3"><i class="fas fa-history me-1"></i>歷次改善紀錄 (已存檔)</h6>
+                    <div id="existingRecordsContainer" class="mb-4">
+                        </div>
+
+                    <h6 class="fw-bold text-dark mb-3"><i class="fas fa-edit me-1"></i>新增改善行動</h6>
+                    <div id="newRecordsContainer">
+                        </div>
+
+                    <div class="text-center mt-3 mb-4">
+                        <button class="btn btn-outline-secondary" onclick="addNewRow()"><i class="fas fa-plus me-1"></i> 增加一組改善項目</button>
+                    </div>
+
+                    <div class="d-grid gap-2 d-md-flex justify-content-md-end border-top pt-3">
+                        <button class="btn btn-danger px-5 fw-bold" onclick="saveImprovements()"><i class="fas fa-cloud-upload-alt me-2"></i>確認送出並歸檔</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <footer>
+        <div class="mb-1">可信智慧整合有限公司 42917004</div>
+        <div class="small opacity-75" style="font-family: 'Segoe UI', sans-serif; letter-spacing: 1px;">
+            WesmartAI , Making Trust Transparent.
+        </div>
+    </footer>
+
+    <div class="loading-overlay" id="loadingOverlay">
+        <div class="spinner-border text-danger mb-3" role="status" style="width: 3rem; height: 3rem;"></div>
+        <div class="fw-bold text-dark fs-5">資料加密上傳中，請勿關閉視窗...</div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
+    <script>
+        // ==========================================
+        // 1. 統一系統初始化與 Supabase 設定
+        // ==========================================
+        const SUPABASE_URL = 'https://yhehfucgemxnfrdvpdhw.supabase.co';
+        const SUPABASE_KEY = 'sb_publishable_52emtU-9l-SDxcJTWVTPTA_Yu6qEogh';
+        const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+        document.addEventListener('DOMContentLoaded', function() {
+            // 時鐘啟動
+            setInterval(() => {
+                const now = new Date();
+                const clockEl = document.getElementById('header-clock');
+                if(clockEl) clockEl.textContent = now.toLocaleTimeString('zh-TW', { hour12: false });
+            }, 1000);
+
+            // 日期設定
+            const dateEl = document.getElementById('header-date');
+            if(dateEl) {
+                const now = new Date();
+                const days = ['日', '一', '二', '三', '四', '五', '六'];
+                const formattedDate = `${now.getFullYear()}/${now.getMonth() + 1}/${now.getDate()}(${days[now.getDay()]})`;
+                dateEl.innerHTML = `<i class="far fa-calendar-alt me-1"></i>今日是 ${formattedDate}`;
+            }
+
+            // 使用者名稱
+            const userName = sessionStorage.getItem('currentUserName');
+            const userEl = document.getElementById('header-user');
+            if(userEl && userName) userEl.innerText = `Hi! ${userName}`;
+        });
+
+        function logoutSystem() {
+            if(confirm('確定要登出系統嗎？')) {
+                sessionStorage.clear();
+                window.location.href = 'login.html';
+            }
+        }
+
+        // ==========================================
+        // 2. 核心業務邏輯：搜尋案號與呈現
+        // ==========================================
+        let currentEvidenceData = null;
+
+        async function searchCase() {
+            const caseNumber = document.getElementById('searchInput').value.trim();
+            const errorMsg = document.getElementById('searchError');
+            const workArea = document.getElementById('workArea');
+
+            if (!caseNumber) return alert('請輸入案號');
+
+            errorMsg.style.display = 'none';
+            workArea.style.display = 'none';
+            document.getElementById('loadingOverlay').style.display = 'flex';
+
+            try {
+                // 從 Evidence 正式表搜尋該案號
+                const { data, error } = await supabaseClient
+                    .from('evidence')
+                    .select('id, case_number, visit_date, service_year, improvement_records, workplaces(companies(name))')
+                    .eq('case_number', caseNumber)
+                    .single();
+
+                if (error || !data) throw new Error('查無資料');
+
+                currentEvidenceData = data;
+
+                // 填入基本資料
+                document.getElementById('caseCompanyName').innerText = data.workplaces?.companies?.name || '未知公司';
+                document.getElementById('caseNumberDisplay').innerText = data.case_number;
+                document.getElementById('caseVisitDate').innerText = data.visit_date;
+
+                // 渲染現有的改善紀錄 (唯讀)
+                renderExistingRecords(data.improvement_records);
+
+                // 清空並準備一個新的輸入列
+                document.getElementById('newRecordsContainer').innerHTML = '';
+                addNewRow();
+
+                workArea.style.display = 'block';
+
+            } catch (err) {
+                errorMsg.style.display = 'block';
+                console.error(err);
+            } finally {
+                document.getElementById('loadingOverlay').style.display = 'none';
+            }
+        }
+
+        function renderExistingRecords(records) {
+            const container = document.getElementById('existingRecordsContainer');
+            container.innerHTML = '';
+
+            if (!records || records.length === 0) {
+                container.innerHTML = '<div class="alert alert-light text-muted border-0 small"><i class="fas fa-info-circle me-1"></i>此案目前尚無任何改善紀錄。</div>';
+                return;
+            }
+
+            records.forEach(rec => {
+                let filesHtml = '';
+                if (rec.files && rec.files.length > 0) {
+                    filesHtml = rec.files.map(f => `<a href="${f.url}" target="_blank" class="btn btn-sm btn-outline-danger me-2 mt-2"><i class="fas fa-paperclip"></i> ${f.name}</a>`).join('');
+                }
+
+                container.innerHTML += `
+                    <div class="improvement-row readonly-row">
+                        <div class="row align-items-center">
+                            <div class="col-md-2 fw-bold text-secondary"><i class="far fa-calendar-check me-1"></i>${rec.date}</div>
+                            <div class="col-md-7 text-dark">${rec.description}</div>
+                            <div class="col-md-3 text-end">${filesHtml}</div>
+                        </div>
+                    </div>
+                `;
+            });
+        }
+
+        // ==========================================
+        // 3. 動態表單操作 (新增/刪除列)
+        // ==========================================
+        function addNewRow() {
+            const container = document.getElementById('newRecordsContainer');
+            const rowId = 'row_' + Date.now();
+            
+            const html = `
+                <div class="improvement-row" id="${rowId}">
+                    <div class="row g-3">
+                        <div class="col-md-3">
+                            <label class="form-label small fw-bold">改善完成日期 <span class="text-danger">*</span></label>
+                            <input type="date" class="form-control imp-date" required>
+                        </div>
+                        <div class="col-md-5">
+                            <label class="form-label small fw-bold">改善行動說明 <span class="text-danger">*</span></label>
+                            <textarea class="form-control imp-desc" rows="2" placeholder="請簡述改善內容..."></textarea>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label small fw-bold">佐證附件 (PDF/圖片)</label>
+                            <input type="file" class="form-control imp-file" accept=".pdf,.png,.jpg,.jpeg">
+                        </div>
+                        <div class="col-md-1 d-flex align-items-end justify-content-center">
+                            <button class="btn btn-outline-secondary" onclick="deleteRow('${rowId}')" title="刪除此列"><i class="fas fa-trash-alt"></i></button>
+                        </div>
+                    </div>
+                </div>
+            `;
+            container.insertAdjacentHTML('beforeend', html);
+        }
+
+        function deleteRow(rowId) {
+            const row = document.getElementById(rowId);
+            if (row) row.remove();
+        }
+
+        // ==========================================
+        // 4. 檔案上傳與資料庫寫入
+        // ==========================================
+        async function saveImprovements() {
+            const container = document.getElementById('newRecordsContainer');
+            const rows = container.querySelectorAll('.improvement-row');
+            const newEntries = [];
+            let isValid = true;
+
+            // 1. 驗證資料
+            rows.forEach(row => {
+                const date = row.querySelector('.imp-date').value;
+                const desc = row.querySelector('.imp-desc').value.trim();
+                const fileInput = row.querySelector('.imp-file');
+
+                if (date || desc || fileInput.files.length > 0) {
+                    if (!date || !desc) {
+                        isValid = false;
+                    } else {
+                        newEntries.push({ date, desc, file: fileInput.files[0] });
+                    }
+                }
+            });
+
+            if (!isValid) return alert('請確認「日期」與「說明」皆已填寫完整。');
+            if (newEntries.length === 0) return alert('沒有新增的資料需要儲存。');
+
+            if (!confirm('送出後資料將正式寫入證據鏈，是否確認？')) return;
+
+            document.getElementById('loadingOverlay').style.display = 'flex';
+
+            try {
+                const evidenceId = currentEvidenceData.id;
+                const year = currentEvidenceData.service_year || new Date().getFullYear();
+                
+                // 讀取原本的紀錄陣列
+                let finalRecords = currentEvidenceData.improvement_records || [];
+                if (!Array.isArray(finalRecords)) finalRecords = [];
+
+                // 2. 執行上傳並組合新紀錄
+                for (const entry of newEntries) {
+                    let uploadedFiles = [];
+                    
+                    if (entry.file) {
+                        const fileExt = entry.file.name.split('.').pop();
+                        const fileName = `Improvement_${Date.now()}.${fileExt}`;
+                        // 路徑： {year}/{evidence_id}/improvements/{fileName}
+                        const filePath = `${year}/${evidenceId}/improvements/${fileName}`;
+
+                        const { error: uploadErr } = await supabaseClient.storage.from('evidence').upload(filePath, entry.file);
+                        if (uploadErr) throw uploadErr;
+
+                        const { data } = supabaseClient.storage.from('evidence').getPublicUrl(filePath);
+                        uploadedFiles.push({ name: entry.file.name, url: data.publicUrl });
+                    }
+
+                    // 將新紀錄疊加到陣列中
+                    finalRecords.push({
+                        date: entry.date,
+                        description: entry.desc,
+                        files: uploadedFiles,
+                        created_at: new Date().toISOString(),
+                        created_by: sessionStorage.getItem('currentUserId')
+                    });
+                }
+
+                // 3. 更新 Evidence Table
+                const { error: updateErr } = await supabaseClient
+                    .from('evidence')
+                    .update({ 
+                        improvement_records: finalRecords,
+                        status: 'pending' // 重置狀態讓主管重新審核
+                    })
+                    .eq('id', evidenceId);
+
+                if (updateErr) throw updateErr;
+
+                alert('✅ 改善紀錄上傳成功！');
+                searchCase(); // 重新整理畫面
+
+            } catch (err) {
+                console.error(err);
+                alert('❌ 上傳失敗: ' + err.message);
+            } finally {
+                document.getElementById('loadingOverlay').style.display = 'none';
+            }
+        }
+    </script>
+</body>
+</html>
