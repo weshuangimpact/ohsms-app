@@ -1,0 +1,457 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>顧問補件管理 - OHSMS 職安管理系統</title>
+    
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+    <style>
+        /* =========================================
+           統一頁首/頁尾 CSS 設定
+           ========================================= */
+        html, body { height: 100%; }
+        body {
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
+            background-color: #f8f9fa;
+            font-family: 'Segoe UI', 'Microsoft JhengHei', sans-serif;
+        }
+        .main-content { flex: 1; }
+
+        /* 頁首設定 */
+        .navbar {
+            background-color: #202124 !important;
+            min-height: 85px;
+            color: #fff;
+            flex-shrink: 0;
+        }
+
+        /* 頁尾設定 */
+        footer {
+            background-color: #202124 !important;
+            color: #fff;
+            flex-shrink: 0;
+            font-size: 0.9rem;
+            letter-spacing: 0.5px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            margin-top: auto;
+            padding: 15px 0;
+            min-height: 85px;
+        }
+
+        /* =========================================
+           統一標題與字卡設定 (PDCA - Action 改善)
+           ========================================= */
+        :root { 
+            --theme-color: #dc3545; /* Action 階段使用紅色系，代表急需處理的改善行動 */
+        }
+
+        .instruction-box {
+            background-color: #fff;
+            border-left: 5px solid var(--theme-color);
+            padding: 20px 25px;
+            border-radius: 4px;
+            margin-bottom: 30px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+        }
+
+        .instruction-title {
+            color: var(--theme-color); 
+            font-weight: 700;
+            margin-bottom: 10px;
+        }
+
+        /* 待辦清單表格樣式 (參考 index2) */
+        .result-table th { background-color: #f1f3f4; color: #202124; font-weight: 600; }
+        .status-badge { font-size: 0.85em; padding: 0.45em 0.8em; border-radius: 4px; }
+        
+        .loading-overlay {
+            display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(255,255,255,0.8); z-index: 9999;
+            align-items: center; justify-content: center; flex-direction: column;
+        }
+
+        /* 5W1H 文字排版 */
+        .five-w-list { list-style: none; padding-left: 0; margin-bottom: 0; }
+        .five-w-list li { margin-bottom: 8px; line-height: 1.6; }
+        .five-w-badge { display: inline-block; width: 65px; font-weight: bold; color: var(--theme-color); }
+    </style>
+</head>
+<body>
+
+    <nav class="navbar navbar-expand-lg navbar-dark px-4">
+        <div class="container-fluid d-flex justify-content-between align-items-center p-0">
+            <a class="navbar-brand d-flex align-items-center fw-bold" href="dashboard.html">
+                <i class="fas fa-shield-alt me-2"></i> OHSMS 職安管理系統
+            </a>
+            <div class="d-flex align-items-center">
+                <span class="text-white me-3 small" id="header-date"><i class="fas fa-spinner fa-spin"></i></span>
+                <span class="text-white me-4 small border-start ps-3 border-secondary" id="header-clock" style="opacity: 0.9;">--:--</span>
+                <span class="text-white me-4 fw-bold" id="header-user">Hi! 讀取中...</span>
+                <a class="btn btn-outline-light btn-sm me-2" href="index2.html"><i class="fas fa-list-check me-1"></i>一般案件管理</a>
+                <button class="btn btn-outline-light btn-sm" onclick="logoutSystem()"><i class="fas fa-sign-out-alt me-1"></i>登出</button>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container-fluid main-content mt-4 px-4">
+        
+        <div class="mb-4">
+            <h2 class="fw-bold text-dark mb-1">顧問補件管理 (Improvement & Action)</h2>
+            <p class="text-secondary">評鑑缺失改善與系統稽核補件作業中心</p>
+        </div>
+        
+        <div class="instruction-box">
+            <div class="instruction-title">
+                <i class="fas fa-bullseye me-2"></i>5W1H 補件作業精神：建構不可否認之完整證據鏈
+            </div>
+            <ul class="five-w-list text-dark">
+                <li><span class="five-w-badge">Who</span>由 <strong class="text-danger">承辦顧問</strong> 登入此專區進行補件，確保「誰執行、誰負責」。</li>
+                <li><span class="five-w-badge">Why</span>針對系統稽核或評鑑委員指出之缺失進行修補，落實 PDCA 中的 <strong>Action (改善)</strong> 階段。</li>
+                <li><span class="five-w-badge">What</span>檢視缺失紀錄，填寫改善說明並 <strong class="text-primary">上傳修正後之佐證檔案 (PDF)</strong>。</li>
+                <li><span class="five-w-badge">When</span>系統收到補件需求後將狀態標記為「待補件」，顧問應於規定限期內完成上傳。</li>
+                <li><span class="five-w-badge">Where</span>補件檔案將安全存放於雲端證據庫中，直接連結至該案原始執行歷程。</li>
+                <li><span class="five-w-badge">How</span>透過此自動化介面提交，系統將自動寫入「改善日期」與「檔案超連結」並留下不可抹滅之歷程軌跡。</li>
+            </ul>
+        </div>
+
+        <div class="mb-3 d-flex justify-content-between align-items-center">
+            <h5 class="fw-bold mb-0">
+                <i class="fas fa-inbox text-danger me-2"></i>待補件清單 
+                <span class="badge bg-danger rounded-pill ms-2" id="pendingCount">0</span>
+            </h5>
+            <button class="btn btn-sm btn-outline-secondary" onclick="loadPendingCases()"><i class="fas fa-sync-alt me-1"></i>重新整理</button>
+        </div>
+
+        <div class="table-responsive bg-white rounded shadow-sm p-3 w-100">
+            <table class="table table-hover result-table align-middle">
+                <thead>
+                    <tr>
+                        <th width="5%">#</th>
+                        <th width="12%">原執行日期</th>
+                        <th width="15%">企業名稱</th>
+                        <th width="20%">案件主題 (What)</th>
+                        <th width="33%">審核退件原因 / 補件需求</th>
+                        <th width="15%" class="text-center">操作</th>
+                    </tr>
+                </thead>
+                <tbody id="resultBody">
+                    <tr><td colspan="6" class="text-center py-5 text-muted"><i class="fas fa-spinner fa-spin fa-2x mb-3"></i><br>資料載入中...</td></tr>
+                </tbody>
+            </table>
+        </div>
+
+    </div>
+
+    <footer>
+        <div class="mb-1">可信智慧整合有限公司 42917004</div>
+        <div class="small opacity-75" style="font-family: 'Segoe UI', sans-serif; letter-spacing: 1px;">
+            WesmartAI , Making Trust Transparent.
+        </div>
+    </footer>
+
+    <div class="modal fade" id="uploadModal" tabindex="-1" aria-hidden="true" data-bs-backdrop="static">
+        <div class="modal-dialog modal-lg modal-dialog-centered">
+            <div class="modal-content border-0 shadow-lg">
+                <div class="modal-header bg-danger text-white border-0">
+                    <h5 class="modal-title"><i class="fas fa-file-import me-2"></i>提交改善說明與補件</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body bg-light">
+                    <input type="hidden" id="modalEvidenceId">
+                    <input type="hidden" id="modalServiceYear">
+                    <input type="hidden" id="modalFolderId">
+
+                    <div class="alert alert-secondary py-2 mb-3 d-flex justify-content-between align-items-center">
+                        <div>
+                            <span class="badge bg-dark me-2">企業</span> <span id="modalCompanyName" class="fw-bold"></span>
+                        </div>
+                        <span class="small text-muted" id="modalTopic"></span>
+                    </div>
+
+                    <div class="card border-0 shadow-sm mb-3">
+                        <div class="card-header bg-white fw-bold text-danger border-0">
+                            <i class="fas fa-exclamation-circle me-1"></i>前次審核意見
+                        </div>
+                        <div class="card-body pt-0 pb-3" id="modalReviewHistory" style="max-height: 150px; overflow-y: auto;">
+                            </div>
+                    </div>
+
+                    <form id="supplementForm">
+                        <div class="mb-3">
+                            <label class="form-label fw-bold text-dark">改善說明 (必填)</label>
+                            <textarea id="improvementDesc" class="form-control" rows="3" placeholder="請詳細說明本次補件內容或改善措施..." required></textarea>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label fw-bold text-dark">上傳補件檔案 (PDF 格式)</label>
+                            <input type="file" id="improvementFile" class="form-control" accept="application/pdf" required>
+                            <div class="form-text text-muted"><i class="fas fa-info-circle me-1"></i>檔案將自動儲存並連結至原始證據夾中。</div>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer border-0">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                    <button type="button" class="btn btn-danger" onclick="submitSupplement()"><i class="fas fa-cloud-upload-alt me-1"></i>確認上傳補件</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="loading-overlay" id="loadingOverlay">
+        <div class="spinner-border text-danger mb-3" role="status" style="width: 3rem; height: 3rem;"></div>
+        <div class="fw-bold text-dark fs-5" id="loadingText">處理中...</div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
+    <script>
+        // ==========================================
+        // 1. Supabase 初始化 & 全域變數
+        // ==========================================
+        const SUPABASE_URL = 'https://yhehfucgemxnfrdvpdhw.supabase.co';
+        const SUPABASE_KEY = 'sb_publishable_52emtU-9l-SDxcJTWVTPTA_Yu6qEogh';
+        const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+        let currentUser = null;
+        const uploadModal = new bootstrap.Modal(document.getElementById('uploadModal'));
+
+        // ==========================================
+        // 2. 頁面初始化 (沿用 index2 登入檢查)
+        // ==========================================
+        document.addEventListener('DOMContentLoaded', async () => {
+            // 時鐘與日期
+            setInterval(() => {
+                const now = new Date();
+                const clockEl = document.getElementById('header-clock');
+                if(clockEl) clockEl.textContent = now.toLocaleTimeString('zh-TW', { hour12: false });
+            }, 1000);
+
+            const dateEl = document.getElementById('header-date');
+            if(dateEl) {
+                const now = new Date();
+                const days = ['日', '一', '二', '三', '四', '五', '六'];
+                dateEl.innerHTML = `<i class="far fa-calendar-alt me-1"></i>今日是 ${now.getFullYear()}/${now.getMonth() + 1}/${now.getDate()}(${days[now.getDay()]})`;
+            }
+
+            // 檢查登入狀態
+            const userJson = sessionStorage.getItem('wesmart_user');
+            if (!userJson) {
+                alert('您尚未登入或登入逾時，請重新登入。');
+                window.location.href = 'index.html';
+                return;
+            }
+            currentUser = JSON.parse(userJson);
+            document.getElementById('header-user').innerText = `Hi! ${currentUser.name}`;
+
+            // 載入該顧問的待補件清單
+            loadPendingCases();
+        });
+
+        function logoutSystem() {
+            if(confirm('確定要登出系統嗎？')) {
+                sessionStorage.clear();
+                window.location.href = 'index.html';
+            }
+        }
+
+        function showLoading(text = '處理中...') {
+            document.getElementById('loadingText').innerText = text;
+            document.getElementById('loadingOverlay').style.display = 'flex';
+        }
+
+        function hideLoading() {
+            document.getElementById('loadingOverlay').style.display = 'none';
+        }
+
+        // ==========================================
+        // 3. 讀取待補件清單
+        // ==========================================
+        async function loadPendingCases() {
+            showLoading('讀取案件中...');
+            const tbody = document.getElementById('resultBody');
+            const countEl = document.getElementById('pendingCount');
+
+            try {
+                // 假設資料庫中有 evaluation_status 欄位，'pending_revision' 代表待補件
+                // 且必須為當前顧問負責的案件
+                const { data, error } = await supabase
+                    .from('evidence')
+                    .select(`
+                        id, visit_date, evidence_topic, service_year, attachment_folder_id, evaluation_reviews,
+                        workplaces!inner ( companies!inner (name) ),
+                        medical_staff!inner ( id, name )
+                    `)
+                    .eq('medical_staff.name', currentUser.name) // 過濾為當前顧問
+                    .eq('evaluation_status', 'pending_revision') // 過濾狀態
+                    .order('visit_date', { ascending: false });
+
+                if (error) throw error;
+
+                countEl.innerText = data.length;
+
+                if (data.length === 0) {
+                    tbody.innerHTML = `<tr><td colspan="6" class="text-center py-5 text-success"><i class="fas fa-check-circle fa-3x mb-3"></i><br>目前沒有需要補件的案件。太棒了！</td></tr>`;
+                    return;
+                }
+
+                tbody.innerHTML = '';
+                data.forEach((item, index) => {
+                    const companyName = item.workplaces?.companies?.name || '未知';
+                    const topic = item.evidence_topic || '未設定主題';
+                    
+                    // 抓取最後一次的審查紀錄顯示在表格中
+                    const reviews = item.evaluation_reviews || [];
+                    const lastReview = reviews.length > 0 ? reviews[reviews.length - 1].note : '未填寫退件原因';
+
+                    const row = `
+                        <tr>
+                            <td class="text-center fw-bold">${index + 1}</td>
+                            <td>${item.visit_date}</td>
+                            <td class="fw-bold text-dark">${companyName}</td>
+                            <td>${topic}</td>
+                            <td class="text-danger small">${lastReview}</td>
+                            <td class="text-center">
+                                <button class="btn btn-sm btn-danger px-3 shadow-sm" onclick='openUploadModal(${JSON.stringify(item)})'>
+                                    <i class="fas fa-paper-plane me-1"></i>進行補件
+                                </button>
+                            </td>
+                        </tr>
+                    `;
+                    tbody.innerHTML += row;
+                });
+
+            } catch (err) {
+                console.error(err);
+                tbody.innerHTML = `<tr><td colspan="6" class="text-center py-3 text-danger">讀取失敗：${err.message}</td></tr>`;
+            } finally {
+                hideLoading();
+            }
+        }
+
+        // ==========================================
+        // 4. 開啟補件 Modal & 顯示審核紀錄
+        // ==========================================
+        function openUploadModal(item) {
+            // 重置表單
+            document.getElementById('supplementForm').reset();
+            
+            // 填入基本資訊
+            document.getElementById('modalEvidenceId').value = item.id;
+            document.getElementById('modalServiceYear').value = item.service_year;
+            document.getElementById('modalFolderId').value = item.attachment_folder_id;
+            document.getElementById('modalCompanyName').innerText = item.workplaces?.companies?.name || '';
+            document.getElementById('modalTopic').innerText = item.evidence_topic || '';
+
+            // 渲染歷史審核紀錄
+            const historyArea = document.getElementById('modalReviewHistory');
+            historyArea.innerHTML = '';
+            const reviews = item.evaluation_reviews || [];
+            if (reviews.length === 0) {
+                historyArea.innerHTML = '<div class="text-muted small">無紀錄</div>';
+            } else {
+                reviews.forEach(rev => {
+                    historyArea.innerHTML += `
+                        <div class="border-start border-3 border-danger ps-2 mb-2">
+                            <div class="small text-muted">${rev.date}</div>
+                            <div class="text-dark">${rev.note}</div>
+                        </div>`;
+                });
+            }
+
+            uploadModal.show();
+        }
+
+        // ==========================================
+        // 5. 執行上傳與資料庫回寫 (PDCA 閉環核心)
+        // ==========================================
+        async function submitSupplement() {
+            const evidenceId = document.getElementById('modalEvidenceId').value;
+            const serviceYear = document.getElementById('modalServiceYear').value;
+            const folderId = document.getElementById('modalFolderId').value;
+            const desc = document.getElementById('improvementDesc').value.trim();
+            const fileInput = document.getElementById('improvementFile');
+
+            if (!desc) { alert('請填寫改善說明。'); return; }
+            if (fileInput.files.length === 0) { alert('請選擇要上傳的 PDF 補件檔案。'); return; }
+
+            const file = fileInput.files[0];
+            if (file.type !== 'application/pdf') { alert('僅限上傳 PDF 格式檔案。'); return; }
+
+            // 確認視窗
+            if (!confirm('送出後資料將無法修改，是否確認上傳此補件？')) return;
+
+            showLoading('正在上傳檔案並更新系統...');
+
+            try {
+                // 1. 上傳檔案至 Supabase Storage (依附在原始證據夾下，名稱加上 improvement_時間戳記)
+                const timestamp = new Date().getTime();
+                const safeFileName = `improvement_${timestamp}.pdf`;
+                const storagePath = `${serviceYear}/${folderId}/${safeFileName}`;
+
+                const { data: uploadData, error: uploadError } = await supabase.storage
+                    .from('evidence')
+                    .upload(storagePath, file);
+
+                if (uploadError) throw uploadError;
+
+                // 2. 取得檔案公共網址
+                const { data: publicUrlData } = supabase.storage
+                    .from('evidence')
+                    .getPublicUrl(storagePath);
+                const fileUrl = publicUrlData.publicUrl;
+
+                // 3. 取得目前該筆資料的 improvement_records，準備疊加
+                const { data: existingRecord, error: fetchErr } = await supabase
+                    .from('evidence')
+                    .select('improvement_records')
+                    .eq('id', evidenceId)
+                    .single();
+
+                if (fetchErr) throw fetchErr;
+
+                let currentImprovements = existingRecord.improvement_records || [];
+
+                // 4. 建構新的改善紀錄物件
+                const newImprovement = {
+                    date: new Date().toLocaleString('zh-TW'),
+                    description: desc,
+                    file_url: fileUrl,
+                    file_name: safeFileName,
+                    consultant_name: currentUser.name
+                };
+
+                currentImprovements.push(newImprovement);
+
+                // 5. 回寫至資料庫 (更新 JSONB 與狀態)
+                const { error: updateErr } = await supabase
+                    .from('evidence')
+                    .update({ 
+                        improvement_records: currentImprovements,
+                        evaluation_status: 'revised' // 狀態改為：已補件，等待複查
+                    })
+                    .eq('id', evidenceId);
+
+                if (updateErr) throw updateErr;
+
+                alert('補件成功！案件已轉入「已補件待複查」狀態。');
+                uploadModal.hide();
+                loadPendingCases(); // 重整清單
+
+            } catch (err) {
+                console.error('上傳失敗:', err);
+                alert(`上傳發生錯誤: ${err.message}`);
+            } finally {
+                hideLoading();
+            }
+        }
+    </script>
+</body>
+</html>
