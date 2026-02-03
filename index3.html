@@ -379,7 +379,7 @@
                     matchingCompanyIds = companies.map(c => c.id);
                 }
 
-                // 組合查詢：針對 evidence 表
+                // 組合查詢：針對 evidence 表 (補上 email 以利寄信)
                 let query = supabaseClient
                     .from('evidence')
                     .select(`
@@ -655,9 +655,8 @@
 
                 if (updateErr) throw updateErr;
 
-                // --- 新增：寄送補件通知信 ---
+                // --- 僅新增：觸發寄送補件通知信 ---
                 try {
-                    // 找出當前案件的完整資料以獲取信箱與公司名稱
                     const currentRecord = evidenceRecords.find(r => r.id === currentReviewEvidenceId);
                     if (currentRecord && currentRecord.medical_staff?.email) {
                         await fetch('https://yhehfucgemxnfrdvpdhw.supabase.co/functions/v1/send-review-revision', {
@@ -673,17 +672,13 @@
                                 reviewDetails: newRecords // 僅寄送本次新增的紀錄
                             })
                         });
-                        console.log('補件通知信已觸發寄送');
-                    } else {
-                        console.warn('找不到對應的顧問信箱，跳過寄信');
                     }
                 } catch (emailErr) {
                     console.error('寄送信件失敗:', emailErr);
-                    // 信件寄送失敗不阻斷主流程
                 }
                 // --- 新增結束 ---
 
-                alert('審查紀錄儲存成功！(已發送補件通知)');
+                alert('審查紀錄儲存成功！資料已鎖定。(已發送補件通知)');
                 reviewModal.hide();
 
             } catch (err) {
