@@ -9,8 +9,8 @@
 
 <style>
 /* =========================================
-          1. 統一頁首/頁尾 CSS 設定 (內頁專用 / 高度統一版)
-          ========================================= */
+   1. 統一頁首/頁尾 CSS 設定 (內頁專用 / 高度統一版)
+   ========================================= */
 html, body {
 height: 100%;
 }
@@ -24,12 +24,12 @@ font-family: 'Segoe UI', 'Microsoft JhengHei', sans-serif;
 }
 
 /* 內容區塊自動撐開 */
-        .container, .main-content {
-            flex: 1; 
-            max-width: 100% !important; 
-            padding-left: 1.5rem !important; 
-            padding-right: 1.5rem !important;
-        }
+.container, .main-content {
+    flex: 1; 
+    max-width: 100% !important; 
+    padding-left: 1.5rem !important; 
+    padding-right: 1.5rem !important;
+}
 
 /* 頁首設定 */
 .navbar {
@@ -56,8 +56,8 @@ min-height: 85px; /* 雙行高度 */
 }
 
 /* =========================================
-          2. 統一標題與字卡 CSS 設定 (Plan Blue)
-          ========================================= */
+   2. 統一標題與字卡 CSS 設定 (Plan Blue)
+   ========================================= */
 :root { 
 --theme-color: #0d6efd; /* Plan 階段的主題藍色 */
 --theme-light: #e7f1ff;
@@ -83,8 +83,8 @@ margin-bottom: 10px; /* 與內文的間距 */
 }
 
 /* =========================================
-          3. 既有功能 UI 設定 (保留不變)
-          ========================================= */
+   3. 既有功能 UI 設定 (保留不變)
+   ========================================= */
 .card-body { padding: 0 !important; }
 .section-title { border-left: 5px solid var(--theme-color); padding-left: 15px; margin-bottom: 20px; }
 .card-header { background-color: white; border-bottom: 1px solid #f0f0f0; }
@@ -537,7 +537,7 @@ fileInfo.innerHTML = '';
 async function searchRecords() {
 const year = document.getElementById('search-year').value.trim();
 const taxId = document.getElementById('search-tax-id').value.trim();
-const caseNumber = document.getElementById('search-case-number').value.trim(); // 新增：抓取案號搜尋欄位
+const caseNumber = document.getElementById('search-case-number').value.trim();
 
 const container = document.getElementById('records-container');
 container.innerHTML = '<div class="text-center py-5"><div class="spinner-border text-primary"></div><p class="mt-2">查詢中...</p></div>';
@@ -547,23 +547,21 @@ if (!profileData) throw new Error('無法識別使用者身分');
 const { data: staffData } = await supabaseClient.from('medical_staff').select('id').eq('email', profileData.email).single();
 if (!staffData) { container.innerHTML = '<div class="text-center text-muted py-5"><i class="fas fa-user-slash fa-3x mb-3"></i><p>尚未連結顧問身分。</p></div>'; return; }
 
-// 修改：增加選取 case_number 欄位
+// 新增 case_number 欄位的查詢
 let query = supabaseClient.from('service_records').select(`id, case_number, visit_date, service_year, execution_items, workplaces!inner(id, companies!inner(name, tax_id))`).eq('consultant_id', staffData.id).order('visit_date', { ascending: false });
 if (year) query = query.eq('service_year', year);
 if (taxId) query = query.eq('workplaces.companies.tax_id', taxId);
-if (caseNumber) query = query.ilike('case_number', `%${caseNumber}%`); // 新增：以 ILIKE 進行案號模糊比對
+if (caseNumber) query = query.ilike('case_number', `%${caseNumber}%`);
 
 const { data, error } = await query;
 if (error) throw error;
 if (!data || data.length === 0) { container.innerHTML = '<div class="text-center text-muted py-5"><i class="fas fa-folder-open fa-3x mb-3"></i><p>查無符合條件的案件。</p></div>'; return; }
 
+// 移除案號 Badge 的顯示，僅保留原本介面
 container.innerHTML = data.map(record => {
-
-    ? `<span class="badge bg-info text-dark ms-2"><i class="fas fa-hashtag me-1"></i>${record.case_number}</span>` 
-    : '';
-
-return `<div class="col-12"><div class="record-card p-3 rounded d-flex justify-content-between align-items-center" onclick="handleCardClick('${record.id}')"><div><div class="fw-bold text-dark fs-5 mb-1">${record.workplaces.companies.name} <span class="badge bg-light text-muted fw-normal border ms-2">${record.workplaces.companies.tax_id}</span>${caseNumBadge}</div><div class="text-muted small"><i class="far fa-calendar-alt me-1"></i> ${record.visit_date || '預定日期未定'}</div></div><div class="text-end"><div class="small text-primary mt-1">選取此案 <i class="fas fa-chevron-right"></i></div></div></div></div>`;
+return `<div class="col-12"><div class="record-card p-3 rounded d-flex justify-content-between align-items-center" onclick="handleCardClick('${record.id}')"><div><div class="fw-bold text-dark fs-5 mb-1">${record.workplaces.companies.name} <span class="badge bg-light text-muted fw-normal border ms-2">${record.workplaces.companies.tax_id}</span></div><div class="text-muted small"><i class="far fa-calendar-alt me-1"></i> ${record.visit_date || '預定日期未定'}</div></div><div class="text-end"><div class="small text-primary mt-1">選取此案 <i class="fas fa-chevron-right"></i></div></div></div></div>`;
 }).join('');
+
 } catch (err) { container.innerHTML = `<div class="alert alert-danger">錯誤: ${err.message}</div>`; }
 }
 
@@ -755,12 +753,10 @@ const userId = profile.user.id;
 
 const { data: recordData } = await supabaseClient.from('service_records').select('workplace_id, consultant_id, service_year').eq('id', currentRecordId).single();
 
-// ==========================================
-// 新增：產生案號 (Format: SR-YYYYMMDD-隨機流水碼)
-// ==========================================
+// 產生案號 (Format: SR-YYYYMMDD-隨機流水碼)
 const now = new Date();
 const dateStr = now.getFullYear().toString() + (now.getMonth() + 1).toString().padStart(2, '0') + now.getDate().toString().padStart(2, '0');
-const randomSeq = String(Date.now()).slice(-3); // 取毫秒後三碼當作簡易流水號
+const randomSeq = String(Date.now()).slice(-3);
 const caseNumber = `SR-${dateStr}-${randomSeq}`;
 
 const payload = {
@@ -783,7 +779,7 @@ note: '由顧問端上傳之執行紀錄',
 user_remark: remark 
 }),
 attachment_files: attachments,
-case_number: caseNumber, // 新增：寫入案號至暫存表
+case_number: caseNumber, // 寫入案號至暫存表
 status: 'pending',
 updated_at: new Date()
 };
@@ -792,9 +788,7 @@ const { error } = await supabaseClient.from('service_record_staging').upsert(pay
 
 if (error) throw error;
 
-// ==========================================
-// 新增：同時更新母案 (service_records) 的案號
-// ==========================================
+// 同步更新母案 (service_records) 的案號
 await supabaseClient.from('service_records').update({ case_number: caseNumber }).eq('id', currentRecordId);
 
 alert('✅ 存檔成功！資料已送出待審核。');
