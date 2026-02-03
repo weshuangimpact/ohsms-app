@@ -922,29 +922,52 @@
             new bootstrap.Modal(document.getElementById('reminderEmailModal')).show();
         }
 
-        // 寄送催收通知 (保留原有設定，此處仍使用 mailto 作為本地備案)
-        function sendReminderEmail() {
-            const id = document.getElementById('remind-target-id').value;
-            const record = currentStagingData.find(r => r.id === id);
-            if (!record || !record.medical_staff?.email) {
-                return alert('無法發送：找不到該顧問的 Email。');
+async function sendReviewEmail() {
+    const id = document.getElementById('email-target-id').value;
+    const record = currentStagingData.find(r => r.id === id);
+
+    if (!record || !record.medical_staff?.email) {
+        return alert('無法發送：找不到該顧問的 Email。');
+    }
+
+    const reasonText = document.getElementById('review-reason-text').value.trim();
+    const deadline = parseInt(document.getElementById('email-deadline').value, 10);
+
+    if (!reasonText) {
+        return alert('請填寫需補正的具體原因！');
+    }
+
+    try {
+        const res = await fetch(
+            'https://yhehfucgemxnfrdvpdhw.functions.supabase.co/send-review-notification',
+            {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    toEmail: record.medical_staff.email,
+                    consultantName: record.medical_staff.name,
+                    reasons: [reasonText],
+                    deadlineDays: deadline
+                })
             }
+        );
 
-            const consultantEmail = record.medical_staff.email;
-            const companyName = record.workplaces?.companies?.name || '未知公司';
-            
-            const subject = encodeURIComponent(`[OHSMS 催收通知] 尚未結案提醒 (${companyName})`);
-            const body = encodeURIComponent(
-                `親愛的 ${record.medical_staff.name} 顧問：\n\n` +
-                `您好，關於您負責的「${companyName}」服務紀錄目前仍為待審查狀態。\n\n` +
-                `請盡速登入 OHSMS 系統確認並補齊所需文件，以利順利結案。\n\n` +
-                `OHSMS 系統管理員 敬上`
-            );
-
-            window.location.href = `mailto:${consultantEmail}?subject=${subject}&body=${body}`;
-
-            bootstrap.Modal.getInstance(document.getElementById('reminderEmailModal')).hide();
+        const result = await res.json();
+        if (!res.ok || !result.success) {
+            throw new Error('寄信失敗');
         }
+
+        alert('✅ 補件通知已寄出');
+        bootstrap.Modal
+            .getInstance(document.getElementById('reviewEmailModal'))
+            .hide();
+
+    } catch (e) {
+        alert('❌ 補件通知寄送失敗');
+        console.error(e);
+    }
+}
+
     </script>
 </body>
 </html>
