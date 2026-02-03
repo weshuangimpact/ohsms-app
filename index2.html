@@ -834,7 +834,7 @@
         }
 
         // ==========================================
-        // 補件/催收 通知功能 (Edge Function / Mailto 邏輯)
+        // 補件/催收 通知功能 (修改: 僅更新 sendReviewEmail 採用 Edge Function)
         // ==========================================
         
         // 打開審查通知 (補件) Modal
@@ -851,7 +851,7 @@
             new bootstrap.Modal(document.getElementById('reviewEmailModal')).show();
         }
 
-        // 寄送審查通知 (改為呼叫 Supabase Edge Function: send-review-email)
+        // 寄送審查通知 (已修改：呼叫 Supabase Edge Function 'send-review-email'，避免觸發 mailto)
         async function sendReviewEmail() {
             const id = document.getElementById('email-target-id').value;
             const record = currentStagingData.find(r => r.id === id);
@@ -881,7 +881,7 @@
             btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> 發送中...';
 
             try {
-                // 呼叫 Edge Function 發送信件
+                // 呼叫 Edge Function 發送信件 (純 HTTP 請求)
                 const { data, error } = await supabaseClient.functions.invoke('send-review-email', {
                     body: {
                         email: consultantEmail,
@@ -894,7 +894,7 @@
 
                 if (error) throw error;
 
-                alert('✅ 審查補件通知信已成功發送！');
+                alert('✅ 審查補件通知信已成功透過伺服器發送！');
                 
                 // 關閉 Modal
                 bootstrap.Modal.getInstance(document.getElementById('reviewEmailModal')).hide();
@@ -922,7 +922,7 @@
             new bootstrap.Modal(document.getElementById('reminderEmailModal')).show();
         }
 
-        // 寄送催收通知 (保留原 mailto 設定)
+        // 寄送催收通知 (保留原有設定，此處仍使用 mailto 作為本地備案)
         function sendReminderEmail() {
             const id = document.getElementById('remind-target-id').value;
             const record = currentStagingData.find(r => r.id === id);
