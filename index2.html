@@ -866,7 +866,8 @@
                         consultantName: record.medical_staff.name,
                         companyName: record.workplaces?.companies?.name || '未知公司',
                         reason: reasonText,
-                        deadline: deadline
+                        deadline: deadline,
+                        caseNo: record.case_number // ★ 新增案號以符合 Edge Function 要求
                     })
                 });
 
