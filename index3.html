@@ -53,7 +53,7 @@
             min-height: 85px;
         }
 
-        /* PDCA 字卡與主色調 */
+        /* PDCA 字卡與主色調 (黃色) */
         :root { 
             --theme-color: #ffc107; 
         }
@@ -713,18 +713,17 @@
                                 }
                             };
 
-                            // ★ 新增一筆紀錄的 UI 函數 (修正按鈕無效與截斷問題)
+                            // ★ 新增一筆紀錄的 UI 函數 (已修正字串拼接方式，確保按鈕有效)
                             function addAssessmentRow(dateVal = '', commentVal = '') {
                                 const container = document.getElementById('assessment-container');
                                 const row = document.createElement('div');
                                 row.className = 'assessment-row';
-                                row.innerHTML = \`
-                                    <button type="button" class="btn-close position-absolute top-0 end-0 m-2" onclick="this.parentElement.remove()" title="刪除此紀錄" style="font-size: 10px;"></button>
-                                    <span class="label">評鑑日期</span>
-                                    <input type="date" class="form-control form-control-sm mb-2 assessment-date" value="\${dateVal}">
-                                    <span class="label">委員意見欄</span>
-                                    <textarea class="form-control form-control-sm assessment-comment" rows="2" placeholder="請輸入委員意見...">\${commentVal}</textarea>
-                                \`;
+                                // 使用標準字串串接以避免新分頁的 JS 解析錯誤
+                                row.innerHTML = '<button type="button" class="btn-close position-absolute top-0 end-0 m-2" onclick="this.parentElement.remove()" title="刪除此紀錄" style="font-size: 10px;"></button>' +
+                                                '<span class="label">評鑑日期</span>' +
+                                                '<input type="date" class="form-control form-control-sm mb-2 assessment-date" value="' + dateVal + '">' +
+                                                '<span class="label">委員意見欄</span>' +
+                                                '<textarea class="form-control form-control-sm assessment-comment" rows="2" placeholder="請輸入委員意見...">' + commentVal + '</textarea>';
                                 container.appendChild(row);
                             }
 
@@ -780,16 +779,16 @@
                                     return;
                                 }
                                 
-                                const subject = encodeURIComponent(\`[OHSMS通知] 請針對 \${clientName} 服務紀錄進行改善補件\`);
+                                const subject = encodeURIComponent('[OHSMS通知] 請針對 ' + clientName + ' 服務紀錄進行改善補件');
                                 const body = encodeURIComponent(
-                                    \`顧問您好：\\n\\n\` +
-                                    \`關於 \${clientName} 的服務紀錄 (ID: \${evidenceId})，經評鑑審查後有部分事項需要您協助補件或說明。\\n\\n\` +
-                                    \`請登入系統並點擊以下連結查看審查意見與上傳改善紀錄：\\n\` +
-                                    \`\${replyUrl}\\n\\n\` +
-                                    \`謝謝。\`
+                                    '顧問您好：\\n\\n' +
+                                    '關於 ' + clientName + ' 的服務紀錄 (ID: ' + evidenceId + ')，經評鑑審查後有部分事項需要您協助補件或說明。\\n\\n' +
+                                    '請登入系統並點擊以下連結查看審查意見與上傳改善紀錄：\\n' +
+                                    replyUrl + '\\n\\n' +
+                                    '謝謝。'
                                 );
 
-                                window.location.href = \`mailto:\${consultantEmail}?subject=\${subject}&body=\${body}\`;
+                                window.location.href = 'mailto:' + consultantEmail + '?subject=' + subject + '&body=' + body;
                             }
 
                             // 3. 上傳改善紀錄並疊加
@@ -842,13 +841,10 @@
                                     currentAppendices = newAppendices;
                                     const listHtml = newAppendices
                                         .filter(x => x.type === 'improvement')
-                                        .map(doc => \`
-                                            <div style="background:#fff; border:1px solid #dee2e6; padding:8px; margin-bottom:5px; border-radius:4px; font-size:0.9rem;">
-                                                <span class="badge bg-success" style="margin-right:5px;">\${doc.date}</span>
-                                                <a href="\${doc.url}" target="_blank" style="text-decoration:none; color:#198754;">
-                                                    <i class="fas fa-link me-1"></i>\${doc.name}
-                                                </a>
-                                            </div>\`)
+                                        .map(doc => '<div style="background:#fff; border:1px solid #dee2e6; padding:8px; margin-bottom:5px; border-radius:4px; font-size:0.9rem;">' +
+                                                    '<span class="badge bg-success" style="margin-right:5px;">' + doc.date + '</span>' +
+                                                    '<a href="' + doc.url + '" target="_blank" style="text-decoration:none; color:#198754;">' +
+                                                    '<i class="fas fa-link me-1"></i>' + doc.name + '</a></div>')
                                         .join('');
                                     
                                     document.getElementById('improvementList').innerHTML = listHtml;
