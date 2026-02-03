@@ -780,6 +780,18 @@
                     evidenceFileUrl = targetPath;
                 }
 
+                // --- ★ 新增：解析執行項目 (將 JSON 轉為字串) ---
+                let executionItemsStr = '';
+                if (freshRecord.service_desc) {
+                    try {
+                        const descObj = JSON.parse(freshRecord.service_desc);
+                        if (descObj.items && Array.isArray(descObj.items)) {
+                            executionItemsStr = descObj.items.join(', ');
+                        }
+                    } catch(e) { console.error('解析執行項目失敗', e); }
+                }
+                // -----------------------------------------------
+
                 await supabaseClient.from('service_record_staging').update({ 
                     status: 'approved',
                     reviewer_comment: comment,
@@ -799,7 +811,8 @@
                         attachment_folder_id: fileSourceId,
                         file_url: evidenceFileUrl, 
                         additional_appendices: hyperlinksArray,
-                        case_number: freshRecord.case_number // ★ 新增：同步寫入案號至證據檔
+                        case_number: freshRecord.case_number, // ★ 同步寫入案號至證據檔
+                        execution_items: executionItemsStr    // ★ 新增：同步寫入執行項目
                     });
                 
                 if (insertError) throw new Error("寫入正式資料庫失敗: " + insertError.message);
