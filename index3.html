@@ -252,6 +252,7 @@
                             <th scope="col">年度</th>
                             <th scope="col">企業名稱</th>
                             <th scope="col">統一編號</th>
+                            <th scope="col">案號</th>
                             <th scope="col">負責顧問</th>
                             <th scope="col" class="text-center">操作</th>
                         </tr>
@@ -372,7 +373,7 @@
                 let query = supabaseClient
                     .from('evidence')
                     .select(`
-                        id, visit_date, service_year,
+                        id, case_number, visit_date, service_year,
                         workplaces!inner ( companies!inner (name, tax_id) ),
                         medical_staff (name)
                     `)
@@ -430,8 +431,10 @@
                 const taxId = item.workplaces?.companies?.tax_id || '-';
                 const staffName = item.medical_staff?.name || '未指派';
                 const date = item.visit_date || '-';
+                // 修正：提取 case_number
+                const caseNo = item.case_number || '-'; 
 
-                // 修改：為「評鑑補件通知」按鈕綁定 onclick 事件 (第 345 行)
+                // 修改：為「評鑑補件通知」按鈕綁定 onclick 事件，並在表格插入案號顯示
                 const row = `
                     <tr>
                         <th scope="row">${index + 1}</th>
@@ -439,6 +442,7 @@
                         <td>${item.service_year}</td>
                         <td class="fw-bold text-primary">${companyName}</td>
                         <td><span class="badge bg-light text-dark border">${taxId}</span></td>
+                        <td><span class="badge bg-info text-dark">${caseNo}</span></td>
                         <td><i class="fas fa-user-tie me-1 text-secondary"></i>${staffName}</td>
                         <td class="text-center" style="white-space: nowrap;">
                             <div class="btn-group" role="group">
