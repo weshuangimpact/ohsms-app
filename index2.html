@@ -290,10 +290,12 @@
                         <input type="text" class="form-control bg-light" id="email-consultant-name" readonly>
                         <small class="text-muted" id="email-consultant-addr">xxxx@example.com</small>
                     </div>
-<div class="mb-3">
+                    
+                    <div class="mb-3">
                         <label class="form-label fw-bold text-danger">需補正原因 (備註)</label>
                         <textarea class="form-control" id="review-reason-text" rows="3" placeholder="請填寫具體需補正的原因或建議..."></textarea>
                     </div>
+
                     <div class="mb-3">
                         <label class="form-label fw-bold">補正期限</label>
                         <div class="input-group">
@@ -304,7 +306,7 @@
                     </div>
                     <div class="alert alert-light border small">
                         <strong>預覽內容：</strong><br>
-                        親愛的 <span class="preview-name">XXX</span> 顧問，您的送審案件因上述原因需要補正，請盡速完成以利結案。
+                        親愛的 <span class="preview-name text-primary">XXX</span> 顧問，您的送審案件需要補正，請盡速完成以利結案。
                     </div>
                 </div>
                 <div class="modal-footer">
@@ -333,7 +335,7 @@
                     </div>
                     <div class="alert alert-warning border border-warning">
                         <strong>信件內容預覽：</strong><br>
-                        親愛的 <span class="remind-preview-name">XXX</span> 顧問：<br>
+                        親愛的 <span class="remind-preview-name text-primary">XXX</span> 顧問：<br>
                         您的案件尚未結案，請盡速補齊附件，以利系統結案程序。
                     </div>
                 </div>
@@ -413,107 +415,6 @@
         let currentStagingData = []; 
         let currentReviewId = null; 
 
-function openReviewEmailModal(id) {
-    const record = currentStagingData.find(r => r.id === id);
-    if (!record) return alert('資料不存在');
-
-    document.getElementById('email-target-id').value = id;
-    document.getElementById('email-consultant-name').value = record.medical_staff?.name || '';
-    document.getElementById('email-consultant-addr').innerText = record.medical_staff?.email || '';
-
-    document.querySelector('.preview-name').innerText = record.medical_staff?.name || '顧問';
-
-    // 重置表單（允許重複發送）
-    document.querySelectorAll('#reviewEmailModal input[type=checkbox]').forEach(cb => cb.checked = false);
-    document.getElementById('reason-other-text').value = '';
-    document.getElementById('reason-other-text').style.display = 'none';
-    document.getElementById('email-deadline').value = 3;
-
-    new bootstrap.Modal(document.getElementById('reviewEmailModal')).show();
-}
-function openReminderModal(id) {
-    const record = currentStagingData.find(r => r.id === id);
-    if (!record) return alert('資料不存在');
-
-    document.getElementById('remind-target-id').value = id;
-    document.getElementById('remind-consultant-name').value = record.medical_staff?.name || '';
-    document.getElementById('remind-consultant-addr').innerText = record.medical_staff?.email || '';
-    document.querySelector('.remind-preview-name').innerText = record.medical_staff?.name || '顧問';
-
-    new bootstrap.Modal(document.getElementById('reminderEmailModal')).show();
-}
-async function sendReviewEmail() {
-    const id = document.getElementById('email-target-id').value;
-    const record = currentStagingData.find(r => r.id === id);
-    if (!record) return alert('資料錯誤');
-
-    const checked = Array.from(document.querySelectorAll('#reviewEmailModal input[type=checkbox]:checked'))
-        .map(cb => cb.value);
-
-    const otherText = document.getElementById('reason-other-text').value.trim();
-    const deadlineDays = parseInt(document.getElementById('email-deadline').value, 10) || 3;
-
-    if (checked.length === 0 && !otherText) {
-        return alert('請至少勾選一項補件原因或填寫其他說明');
-    }
-
-    const { data: sessionData } = await supabaseClient.auth.getSession();
-    const token = sessionData.session?.access_token;
-    if (!token) return alert('登入狀態失效');
-
-    await fetch(`${SUPABASE_URL}/functions/v1/send-email`, {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({
-            type: 'review_notice',
-            email: record.medical_staff.email,
-            data: {
-                consultant_name: record.medical_staff.name,
-                company_name: record.workplaces?.companies?.name || '',
-                missing_items: checked,
-                other_note: otherText,
-                deadline_days: deadlineDays
-            }
-        })
-    });
-
-    alert('✅ 審查補件通知已發送（可重複發送）');
-    bootstrap.Modal.getInstance(document.getElementById('reviewEmailModal')).hide();
-}
-async function sendReminderEmail() {
-    const id = document.getElementById('remind-target-id').value;
-    const record = currentStagingData.find(r => r.id === id);
-    if (!record) return alert('資料錯誤');
-
-    const { data: sessionData } = await supabaseClient.auth.getSession();
-    const token = sessionData.session?.access_token;
-    if (!token) return alert('登入狀態失效');
-
-    await fetch(`${SUPABASE_URL}/functions/v1/send-email`, {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({
-            type: 'reminder_notice',
-            email: record.medical_staff.email,
-            data: {
-                consultant_name: record.medical_staff.name,
-                company_name: record.workplaces?.companies?.name || '',
-                deadline_days: 2
-            }
-        })
-    });
-
-    alert('✅ 催收通知已發送（可重複發送）');
-    bootstrap.Modal.getInstance(document.getElementById('reminderEmailModal')).hide();
-}
-
-        
         function initChart() {
             const ctx = document.getElementById('rateChart').getContext('2d');
             rateChart = new Chart(ctx, {
@@ -804,7 +705,8 @@ async function sendReminderEmail() {
 
             new bootstrap.Modal(document.getElementById('approvalModal')).show();
         }
-async function performFinalApproval() {
+
+        async function performFinalApproval() {
             const id = document.getElementById('approve-target-id').value;
             const type = document.getElementById('approve-type').value;
             const comment = document.getElementById('approve-comment').value.trim();
@@ -929,6 +831,95 @@ async function performFinalApproval() {
                 btn.disabled = false;
                 btn.innerText = originalBtnText;
             }
+        }
+
+        // ==========================================
+        // 補件/催收 通知功能 (Mailto/API 邏輯)
+        // ==========================================
+        
+        // 打開審查通知 (補件) Modal
+        function openReviewEmailModal(id) {
+            const record = currentStagingData.find(r => r.id === id);
+            if (!record) return;
+
+            document.getElementById('email-target-id').value = id;
+            document.getElementById('email-consultant-name').value = record.medical_staff?.name || '未知顧問';
+            document.getElementById('email-consultant-addr').innerText = record.medical_staff?.email || '無 Email 記錄';
+            document.querySelector('#reviewEmailModal .preview-name').innerText = record.medical_staff?.name || '';
+            document.getElementById('review-reason-text').value = ''; // 清空原本的備註
+
+            new bootstrap.Modal(document.getElementById('reviewEmailModal')).show();
+        }
+
+        // 寄送審查通知 (呼叫 Mailto 或 Edge Function)
+        function sendReviewEmail() {
+            const id = document.getElementById('email-target-id').value;
+            const record = currentStagingData.find(r => r.id === id);
+            if (!record || !record.medical_staff?.email) {
+                return alert('無法發送：找不到該顧問的 Email。');
+            }
+
+            const reasonText = document.getElementById('review-reason-text').value.trim();
+            const deadline = document.getElementById('email-deadline').value;
+
+            if (!reasonText) {
+                return alert('請填寫需補正的具體原因！');
+            }
+
+            const consultantEmail = record.medical_staff.email;
+            const companyName = record.workplaces?.companies?.name || '未知公司';
+            
+            // 使用 mailto 快速開啟預設信箱
+            const subject = encodeURIComponent(`[OHSMS 審核通知] 請補正 ${companyName} 案件`);
+            const body = encodeURIComponent(
+                `親愛的 ${record.medical_staff.name} 顧問：\n\n` +
+                `您好，您為「${companyName}」提交的服務紀錄 (日期: ${record.visit_date || '未定'}) 經系統審查需進行補件或修改。\n\n` +
+                `【審核意見】：\n${reasonText}\n\n` +
+                `請於 ${deadline} 天內登入 OHSMS 系統完成補正，以利後續結案程序。\n\n` +
+                `OHSMS 系統管理員 敬上`
+            );
+
+            window.location.href = `mailto:${consultantEmail}?subject=${subject}&body=${body}`;
+            
+            // 關閉 Modal
+            bootstrap.Modal.getInstance(document.getElementById('reviewEmailModal')).hide();
+        }
+
+        // 打開催收通知 Modal
+        function openReminderModal(id) {
+            const record = currentStagingData.find(r => r.id === id);
+            if (!record) return;
+
+            document.getElementById('remind-target-id').value = id;
+            document.getElementById('remind-consultant-name').value = record.medical_staff?.name || '未知顧問';
+            document.getElementById('remind-consultant-addr').innerText = record.medical_staff?.email || '無 Email 記錄';
+            document.querySelector('#reminderEmailModal .remind-preview-name').innerText = record.medical_staff?.name || '';
+
+            new bootstrap.Modal(document.getElementById('reminderEmailModal')).show();
+        }
+
+        // 寄送催收通知
+        function sendReminderEmail() {
+            const id = document.getElementById('remind-target-id').value;
+            const record = currentStagingData.find(r => r.id === id);
+            if (!record || !record.medical_staff?.email) {
+                return alert('無法發送：找不到該顧問的 Email。');
+            }
+
+            const consultantEmail = record.medical_staff.email;
+            const companyName = record.workplaces?.companies?.name || '未知公司';
+            
+            const subject = encodeURIComponent(`[OHSMS 催收通知] 尚未結案提醒 (${companyName})`);
+            const body = encodeURIComponent(
+                `親愛的 ${record.medical_staff.name} 顧問：\n\n` +
+                `您好，關於您負責的「${companyName}」服務紀錄目前仍為待審查狀態。\n\n` +
+                `請盡速登入 OHSMS 系統確認並補齊所需文件，以利順利結案。\n\n` +
+                `OHSMS 系統管理員 敬上`
+            );
+
+            window.location.href = `mailto:${consultantEmail}?subject=${subject}&body=${body}`;
+
+            bootstrap.Modal.getInstance(document.getElementById('reminderEmailModal')).hide();
         }
     </script>
 </body>
