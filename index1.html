@@ -236,9 +236,9 @@ Hi! 使用者
 
 <div class="col-lg-3">
 <div class="input-group input-group-sm">
-<span class="input-group-text bg-white text-primary border-primary fw-bold"><i class="fas fa-list-ul me-2"></i>事項</span>
+<span class="input-group-text bg-white text-primary border-primary fw-bold"><i class="fas fa-tag me-2"></i>類別</span>
 <select class="form-select border-primary" id="service-type-select" onchange="toggleServiceTypeOther()">
-<option value="" disabled selected>請選擇執行事項...</option>
+<option value="" disabled selected>請選擇服務類別...</option>
 <option value="勞工身心健康管理">勞工身心健康管理</option>
 <option value="職業病預防">職業病預防</option>
 <option value="臨場健康服務">臨場健康服務</option>
@@ -246,7 +246,7 @@ Hi! 使用者
 <option value="other">其他 (可填寫)</option>
 </select>
 </div>
-<input type="text" class="form-control form-control-sm mt-1 border-primary" id="service-type-other" style="display:none;" placeholder="請輸入其他事項">
+<input type="text" class="form-control form-control-sm mt-1 border-primary" id="service-type-other" style="display:none;" placeholder="請輸入其他類別名稱">
 </div>
 
 <div class="col-lg-5">
@@ -727,10 +727,10 @@ const remark = document.getElementById('service-remark').value.trim();
 
 const serviceTypeSelect = document.getElementById('service-type-select');
 let serviceType = serviceTypeSelect.value;
-if (!serviceType) throw new Error("請選擇【執行事項】。");
+if (!serviceType) throw new Error("請選擇【服務類別】。");
 if (serviceType === 'other') {
 const otherVal = document.getElementById('service-type-other').value.trim();
-if (!otherVal) throw new Error("選擇「其他」時，請輸入具體事項內容。");
+if (!otherVal) throw new Error("選擇「其他」時，請輸入具體類別名稱。");
 serviceType = otherVal;
 }
 
