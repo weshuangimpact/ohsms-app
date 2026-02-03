@@ -431,7 +431,7 @@
                 const staffName = item.medical_staff?.name || '未指派';
                 const date = item.visit_date || '-';
 
-                // 修改：為「評鑑審查紀錄」按鈕綁定 onclick 事件
+                // 修改：為「評鑑補件通知」按鈕綁定 onclick 事件 (第 345 行)
                 const row = `
                     <tr>
                         <th scope="row">${index + 1}</th>
@@ -448,7 +448,7 @@
                                 <button class="btn btn-sm btn-outline-primary" title="評鑑審查紀錄" onclick="openReviewModal('${item.id}', '${companyName}')">
                                     <i class="fas fa-clipboard-check"></i> 評鑑審查紀錄
                                 </button>
-                                <button class="btn btn-sm btn-outline-warning" title="評鑑補件通知">
+                                <button class="btn btn-sm btn-outline-warning" title="評鑑補件通知" onclick="sendRevisionMail('${item.id}', '${companyName}')">
                                     <i class="fas fa-paper-plane"></i> 評鑑補件通知
                                 </button>
                                 <button class="btn btn-sm btn-outline-success" title="評鑑改善紀錄">
@@ -817,38 +817,40 @@
                 loading.style.display = 'none';
             }
         }
+        
+        // 評鑑補件通知寄信功能
         async function sendRevisionMail(evidenceId, companyName) {
-  if (!confirm(`是否發送「${companyName}」的評鑑補件通知信？`)) {
-    return;
-  }
+            if (!confirm(`是否發送「${companyName}」的評鑑補件通知信？`)) {
+                return;
+            }
 
-  try {
-    const res = await fetch(
-      'https://yhehfucgemxnfrdvpdhw.supabase.co/functions/v1/send-evaluation-revision',
-      {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${SUPABASE_KEY}`
-        },
-        body: JSON.stringify({
-          id: evidenceId
-        })
-      }
-    );
+            try {
+                const res = await fetch(
+                'https://yhehfucgemxnfrdvpdhw.supabase.co/functions/v1/send-evaluation-revision',
+                {
+                    method: 'POST',
+                    headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${SUPABASE_KEY}`
+                    },
+                    body: JSON.stringify({
+                    id: evidenceId
+                    })
+                }
+                );
 
-    const result = await res.json();
+                const result = await res.json();
 
-    if (!res.ok) {
-      throw result;
-    }
+                if (!res.ok) {
+                throw result;
+                }
 
-    alert('評鑑補件通知已成功寄出。');
-  } catch (err) {
-    console.error(err);
-    alert('寄送失敗，請稍後再試。');
-  }
-}
+                alert('評鑑補件通知已成功寄出。');
+            } catch (err) {
+                console.error(err);
+                alert('寄送失敗，請稍後再試。');
+            }
+        }
 
     </script>
 </body>
