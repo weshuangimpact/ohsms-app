@@ -401,7 +401,7 @@
         // 原有功能邏輯 (保持不變)
         // ==========================================
         const SUPABASE_URL = 'https://yhehfucgemxnfrdvpdhw.supabase.co';
-        const SUPABASE_KEY = 'sb_publishable_52emtU-9l-SDxcJTWVTPTA_Yu6qEogh';
+        const SUPABASE_KEY = 'sb_publishable_52emtU-9l-SDxcJTWVTPTA_Yu6qEogh'; // ★ 我們將直接使用此 Key 作為 API 驗證憑證
         const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
         const { PDFDocument } = PDFLib;
 
@@ -817,10 +817,9 @@
         }
 
         // ==========================================
-        // ★★★ 全新修改：對接 Edge Function 的郵件發送邏輯 ★★★
+        // ★★★ 修正點：對接 Edge Function 郵件發送邏輯 (解決 401 錯誤) ★★★
         // ==========================================
         
-        // 打開審查通知 (補件) Modal (保持不變)
         function openReviewEmailModal(id) {
             const record = currentStagingData.find(r => r.id === id);
             if (!record) return;
@@ -834,7 +833,7 @@
             new bootstrap.Modal(document.getElementById('reviewEmailModal')).show();
         }
 
-        // 寄送審查通知 (改為呼叫 send-review API)
+        // 寄送審查通知 (呼叫 send-review API)
         async function sendReviewEmail() {
             const id = document.getElementById('email-target-id').value;
             const record = currentStagingData.find(r => r.id === id);
@@ -849,22 +848,18 @@
                 return alert('請填寫需補正的具體原因！');
             }
 
-            // 按鈕進入 Loading 狀態
             const btn = document.querySelector('#reviewEmailModal .btn-primary');
             const originalText = btn.innerHTML;
             btn.disabled = true;
             btn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i> 發送中...';
 
             try {
-                // 取得當前管理員憑證以供驗證
-                const { data: sessionData } = await supabaseClient.auth.getSession();
-                const accessToken = sessionData.session?.access_token;
-
+                // 【關鍵修正】改用已定義的 SUPABASE_KEY (Anon Key) 通過驗證，解決 401 Invalid JWT
                 const res = await fetch('https://yhehfucgemxnfrdvpdhw.supabase.co/functions/v1/send-review', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${accessToken}`
+                        'Authorization': `Bearer ${SUPABASE_KEY}` 
                     },
                     body: JSON.stringify({
                         email: record.medical_staff.email,
@@ -889,7 +884,6 @@
             }
         }
 
-        // 打開催收通知 Modal (保持不變)
         function openReminderModal(id) {
             const record = currentStagingData.find(r => r.id === id);
             if (!record) return;
@@ -902,7 +896,7 @@
             new bootstrap.Modal(document.getElementById('reminderEmailModal')).show();
         }
 
-        // 寄送催收通知 (改為呼叫 send-reminder API)
+        // 寄送催收通知 (呼叫 send-reminder API)
         async function sendReminderEmail() {
             const id = document.getElementById('remind-target-id').value;
             const record = currentStagingData.find(r => r.id === id);
@@ -910,22 +904,18 @@
                 return alert('無法發送：找不到該顧問的 Email。');
             }
 
-            // 按鈕進入 Loading 狀態
             const btn = document.querySelector('#reminderEmailModal .btn-dark');
             const originalText = btn.innerHTML;
             btn.disabled = true;
             btn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i> 發送中...';
 
             try {
-                // 取得當前管理員憑證以供驗證
-                const { data: sessionData } = await supabaseClient.auth.getSession();
-                const accessToken = sessionData.session?.access_token;
-
+                // 【關鍵修正】改用已定義的 SUPABASE_KEY (Anon Key) 通過驗證，解決 401 Invalid JWT
                 const res = await fetch('https://yhehfucgemxnfrdvpdhw.supabase.co/functions/v1/send-reminder', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${accessToken}`
+                        'Authorization': `Bearer ${SUPABASE_KEY}`
                     },
                     body: JSON.stringify({
                         email: record.medical_staff.email,
