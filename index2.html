@@ -290,21 +290,9 @@
                         <input type="text" class="form-control bg-light" id="email-consultant-name" readonly>
                         <small class="text-muted" id="email-consultant-addr">xxxx@example.com</small>
                     </div>
-                    <div class="mb-3">
-                        <label class="form-label fw-bold text-danger">需補正原因 (可複選)</label>
-                        <div class="form-check">
-                            <input class="form-check-input" type="checkbox" value="附件錯置" id="reason1">
-                            <label class="form-check-label" for="reason1">附件錯置</label>
-                        </div>
-                        <div class="form-check">
-                            <input class="form-check-input" type="checkbox" value="缺件" id="reason2">
-                            <label class="form-check-label" for="reason2">缺件 (如：缺少照片或簽名檔)</label>
-                        </div>
-                        <div class="form-check">
-                            <input class="form-check-input" type="checkbox" value="其他" id="reason3" onchange="toggleOtherReason()">
-                            <label class="form-check-label" for="reason3">其他原因</label>
-                        </div>
-                        <input type="text" class="form-control mt-2" id="reason-other-text" placeholder="請填寫具體原因..." style="display:none;">
+<div class="mb-3">
+                        <label class="form-label fw-bold text-danger">需補正原因 (備註)</label>
+                        <textarea class="form-control" id="review-reason-text" rows="3" placeholder="請填寫具體需補正的原因或建議..."></textarea>
                     </div>
                     <div class="mb-3">
                         <label class="form-label fw-bold">補正期限</label>
