@@ -198,6 +198,11 @@ Hi! 使用者
 <label class="form-label fw-bold small">公司統編 (選填)</label>
 <input type="text" class="form-control" id="search-tax-id" placeholder="請輸入 8 碼統編">
 </div>
+<div class="mb-3">
+<label class="form-label fw-bold small">案件號碼 (選填)</label>
+<input type="text" class="form-control" id="search-case-number" placeholder="例如：SR-20260203-001">
+</div>
+
 <div class="d-grid mt-4">
 <button class="btn btn-primary" onclick="searchRecords()"><i class="fas fa-search me-2"></i>查詢案件</button>
 </div>
@@ -307,6 +312,7 @@ Hi! 使用者
 </div>
 
 <footer>
+        <div class="mb-1">可信智慧整合有限公司 42917004 &nbsp;|&nbsp; 服務專線：0912-310570</div>
         <div class="mb-1">可信智慧整合有限公司 42917004</div>
 <div class="small opacity-75" style="font-family: 'Segoe UI', sans-serif; letter-spacing: 1px;">
 WesmartAI , Making Trust Transparent.
@@ -531,6 +537,8 @@ fileInfo.innerHTML = '';
 async function searchRecords() {
 const year = document.getElementById('search-year').value.trim();
 const taxId = document.getElementById('search-tax-id').value.trim();
+const caseNumber = document.getElementById('search-case-number').value.trim(); // 新增：抓取案號搜尋欄位
+
 const container = document.getElementById('records-container');
 container.innerHTML = '<div class="text-center py-5"><div class="spinner-border text-primary"></div><p class="mt-2">查詢中...</p></div>';
 try {
@@ -539,16 +547,23 @@ if (!profileData) throw new Error('無法識別使用者身分');
 const { data: staffData } = await supabaseClient.from('medical_staff').select('id').eq('email', profileData.email).single();
 if (!staffData) { container.innerHTML = '<div class="text-center text-muted py-5"><i class="fas fa-user-slash fa-3x mb-3"></i><p>尚未連結顧問身分。</p></div>'; return; }
 
-let query = supabaseClient.from('service_records').select(`id, visit_date, service_year, execution_items, workplaces!inner(id, companies!inner(name, tax_id))`).eq('consultant_id', staffData.id).order('visit_date', { ascending: false });
+// 修改：增加選取 case_number 欄位
+let query = supabaseClient.from('service_records').select(`id, case_number, visit_date, service_year, execution_items, workplaces!inner(id, companies!inner(name, tax_id))`).eq('consultant_id', staffData.id).order('visit_date', { ascending: false });
 if (year) query = query.eq('service_year', year);
 if (taxId) query = query.eq('workplaces.companies.tax_id', taxId);
+if (caseNumber) query = query.ilike('case_number', `%${caseNumber}%`); // 新增：以 ILIKE 進行案號模糊比對
 
 const { data, error } = await query;
 if (error) throw error;
 if (!data || data.length === 0) { container.innerHTML = '<div class="text-center text-muted py-5"><i class="fas fa-folder-open fa-3x mb-3"></i><p>查無符合條件的案件。</p></div>'; return; }
 
 container.innerHTML = data.map(record => {
-return `<div class="col-12"><div class="record-card p-3 rounded d-flex justify-content-between align-items-center" onclick="handleCardClick('${record.id}')"><div><div class="fw-bold text-dark fs-5 mb-1">${record.workplaces.companies.name} <span class="badge bg-light text-muted fw-normal border ms-2">${record.workplaces.companies.tax_id}</span></div><div class="text-muted small"><i class="far fa-calendar-alt me-1"></i> ${record.visit_date || '預定日期未定'}</div></div><div class="text-end"><div class="small text-primary mt-1">選取此案 <i class="fas fa-chevron-right"></i></div></div></div></div>`;
+// 新增：顯示藍色案號 Badge (若該案有案號)
+const caseNumBadge = record.case_number 
+    ? `<span class="badge bg-info text-dark ms-2"><i class="fas fa-hashtag me-1"></i>${record.case_number}</span>` 
+    : '';
+
+return `<div class="col-12"><div class="record-card p-3 rounded d-flex justify-content-between align-items-center" onclick="handleCardClick('${record.id}')"><div><div class="fw-bold text-dark fs-5 mb-1">${record.workplaces.companies.name} <span class="badge bg-light text-muted fw-normal border ms-2">${record.workplaces.companies.tax_id}</span>${caseNumBadge}</div><div class="text-muted small"><i class="far fa-calendar-alt me-1"></i> ${record.visit_date || '預定日期未定'}</div></div><div class="text-end"><div class="small text-primary mt-1">選取此案 <i class="fas fa-chevron-right"></i></div></div></div></div>`;
 }).join('');
 } catch (err) { container.innerHTML = `<div class="alert alert-danger">錯誤: ${err.message}</div>`; }
 }
@@ -741,6 +756,14 @@ const userId = profile.user.id;
 
 const { data: recordData } = await supabaseClient.from('service_records').select('workplace_id, consultant_id, service_year').eq('id', currentRecordId).single();
 
+// ==========================================
+// 新增：產生案號 (Format: SR-YYYYMMDD-隨機流水碼)
+// ==========================================
+const now = new Date();
+const dateStr = now.getFullYear().toString() + (now.getMonth() + 1).toString().padStart(2, '0') + now.getDate().toString().padStart(2, '0');
+const randomSeq = String(Date.now()).slice(-3); // 取毫秒後三碼當作簡易流水號
+const caseNumber = `SR-${dateStr}-${randomSeq}`;
+
 const payload = {
 id: currentStagingId, 
 origin_record_id: currentRecordId,
@@ -761,6 +784,7 @@ note: '由顧問端上傳之執行紀錄',
 user_remark: remark 
 }),
 attachment_files: attachments,
+case_number: caseNumber, // 新增：寫入案號至暫存表
 status: 'pending',
 updated_at: new Date()
 };
@@ -768,6 +792,11 @@ updated_at: new Date()
 const { error } = await supabaseClient.from('service_record_staging').upsert(payload);
 
 if (error) throw error;
+
+// ==========================================
+// 新增：同時更新母案 (service_records) 的案號
+// ==========================================
+await supabaseClient.from('service_records').update({ case_number: caseNumber }).eq('id', currentRecordId);
 
 alert('✅ 存檔成功！資料已送出待審核。');
 backToStep1();
