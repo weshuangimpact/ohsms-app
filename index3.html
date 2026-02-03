@@ -490,11 +490,11 @@
             `);
 
             try {
-                // 1. 查詢詳細資料 (加入 service_type)
+                // 1. 查詢詳細資料
                 const { data, error } = await supabaseClient
                     .from('evidence')
                     .select(`
-                        id, visit_date, start_time, end_time, service_type, execution_items, 
+                        id, visit_date, start_time, end_time, execution_items, 
                         file_url, attachment_folder_id, service_year, additional_appendices,
                         workplaces ( companies (name) ),
                         medical_staff (name) 
@@ -509,11 +509,7 @@
                 const compName = data.workplaces?.companies?.name || '未知企業';
                 const timeRange = `${data.start_time || '--:--'} ~ ${data.end_time || '--:--'}`;
                 const fullDate = `${data.visit_date} (${timeRange})`;
-                
-                // 處理服務類型邏輯
-                let serviceTypeValue = data.service_type || data.execution_items || '無服務類型紀錄';
-                if (serviceTypeValue === 'other') serviceTypeValue = '其他';
-                const items = serviceTypeValue;
+                const items = data.execution_items || '無執行項目紀錄';
                 
                 // 3. 處理 Appendices (一般 Q 類附件)
                 let appendicesHtml = '';
@@ -637,7 +633,7 @@
                                         <div class="value">${compName}</div>
                                     </div>
                                     <div class="info-group">
-                                        <span class="label">What (服務類型)</span>
+                                        <span class="label">What (執行項目)</span>
                                         <div class="value" style="background:#e8f0fe; border-color:#d2e3fc;">${items}</div>
                                     </div>
 
