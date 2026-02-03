@@ -942,7 +942,10 @@ async function sendReviewEmail() {
             'https://yhehfucgemxnfrdvpdhw.functions.supabase.co/send-review-notification',
             {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${SUPABASE_KEY}`
+                },
                 body: JSON.stringify({
                     toEmail: record.medical_staff.email,
                     consultantName: record.medical_staff.name,
@@ -954,7 +957,7 @@ async function sendReviewEmail() {
 
         const result = await res.json();
         if (!res.ok || !result.success) {
-            throw new Error('寄信失敗');
+            throw new Error(result?.error || 'send failed');
         }
 
         alert('✅ 補件通知已寄出');
@@ -963,8 +966,8 @@ async function sendReviewEmail() {
             .hide();
 
     } catch (e) {
-        alert('❌ 補件通知寄送失敗');
         console.error(e);
+        alert('❌ 補件通知寄送失敗');
     }
 }
 
