@@ -365,17 +365,14 @@
         // 統一頁首與系統初始化邏輯
         // ==========================================
         document.addEventListener('DOMContentLoaded', function() {
-            // 1. 顯示畫面 (Flex 佈局)
             document.body.style.display = 'flex';
 
-            // 2. 啟動時鐘
             setInterval(() => {
                 const now = new Date();
                 const clockEl = document.getElementById('header-clock');
                 if(clockEl) clockEl.textContent = now.toLocaleTimeString('zh-TW', { hour12: false });
             }, 1000);
 
-            // 3. 設定日期
             const dateEl = document.getElementById('header-date');
             if(dateEl) {
                 const now = new Date();
@@ -384,18 +381,15 @@
                 dateEl.innerHTML = `<i class="far fa-calendar-alt me-1"></i>今日是 ${formattedDate}`;
             }
 
-            // 4. 讀取使用者名稱 (並更新到 header)
             const role = sessionStorage.getItem('currentUserRole') || 'admin';
             const userName = sessionStorage.getItem('currentUserName') || '管理員';
             const userEl = document.getElementById('header-user');
             if(userEl) userEl.innerText = `Hi! ${userName}`;
             
-            // 執行原有初始化
             initChart();
             refreshData();
         });
 
-        // 統一登出功能
         function logoutSystem() {
             if(confirm('確定要登出系統嗎？')) {
                 sessionStorage.clear();
@@ -432,7 +426,6 @@
             const tbody = document.getElementById('pendingTableBody');
             
             try {
-                // 讀取 'evidence' 表而非 'service_records' 來計算已核定數量
                 const { count: approvedCount, error: err1 } = await supabaseClient
                     .from('evidence')
                     .select('*', { count: 'exact', head: true })
@@ -723,7 +716,6 @@
             btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> 處理中...';
 
             try {
-                // 1. 【關鍵修正】不讀取快取，直接從資料庫抓最新、最乾淨的 attachment_files
                 const { data: freshRecord, error: fetchError } = await supabaseClient
                     .from('service_record_staging')
                     .select('*')
@@ -734,37 +726,31 @@
 
                 const fileSourceId = freshRecord.id;
                 
-                // 2. 解析附件並「篩選出超連結」 (Generate Hyperlinks)
                 let rawFiles = freshRecord.attachment_files;
                 if (typeof rawFiles === 'string') {
                     try { rawFiles = JSON.parse(rawFiles); } catch(e) { rawFiles = []; }
                 }
                 if (!Array.isArray(rawFiles)) rawFiles = [];
 
-                // 準備要寫入 additional_appendices 的陣列
                 const hyperlinksArray = [];
-                const pdfUrlsForMerge = []; // 給合併 PDF 用的
+                const pdfUrlsForMerge = []; 
 
                 for (const f of rawFiles) {
-                    // 取得 Staging Bucket 的公開連結
                     const fullPath = f.path.includes('/') ? f.path : `${fileSourceId}/${f.path}`;
                     const { data } = supabaseClient.storage.from('staging').getPublicUrl(fullPath);
                     
                     if (data && data.publicUrl) {
-                        // A. 這是您要的：篩選出超連結，準備寫入 DB
                         hyperlinksArray.push({
                             name: f.name,
                             url: data.publicUrl
                         });
 
-                        // B. 另外收集 PDF 連結給合併程式用
                         if (f.name.toLowerCase().endsWith('.pdf')) {
                             pdfUrlsForMerge.push(data.publicUrl);
                         }
                     }
                 }
 
-                // 3. 處理 PDF 合併 (維持原功能)
                 let finalPdfBlob = null;
                 if (pdfUrlsForMerge.length > 0) {
                     const mergedPdf = await PDFDocument.create();
@@ -781,7 +767,6 @@
                     finalPdfBlob = new Blob([mergedBytes], { type: 'application/pdf' });
                 }
 
-                // 4. 上傳合併後的 PDF 到 Evidence Bucket
                 const year = freshRecord.service_year || new Date().getFullYear();
                 const timestamp = Date.now();
                 const targetPath = `${year}/${id}/Evidence_Final_${timestamp}.pdf`; 
@@ -795,7 +780,6 @@
                     evidenceFileUrl = targetPath;
                 }
 
-                // 5. 更新 Staging 狀態
                 await supabaseClient.from('service_record_staging').update({ 
                     status: 'approved',
                     reviewer_comment: comment,
@@ -803,7 +787,6 @@
                     audit_note: comment
                 }).eq('id', id);
 
-                // 6. 【寫入資料庫】 將剛剛產生的 hyperlinksArray 寫入 additional_appendices
                 const { error: insertError } = await supabaseClient
                     .from('evidence')
                     .insert({
@@ -814,8 +797,8 @@
                         is_special_case: (type === 'special'),
                         audit_note: comment,
                         attachment_folder_id: fileSourceId,
-                        file_url: evidenceFileUrl, // 這是合併的大檔
-                        additional_appendices: hyperlinksArray // ★ 這裡就是你要的超連結陣列
+                        file_url: evidenceFileUrl, 
+                        additional_appendices: hyperlinksArray 
                     });
                 
                 if (insertError) throw new Error("寫入正式資料庫失敗: " + insertError.message);
@@ -834,10 +817,10 @@
         }
 
         // ==========================================
-        // 補件/催收 通知功能 (修改: 僅更新 sendReviewEmail 採用 Edge Function)
+        // ★★★ 全新修改：對接 Edge Function 的郵件發送邏輯 ★★★
         // ==========================================
         
-        // 打開審查通知 (補件) Modal
+        // 打開審查通知 (補件) Modal (保持不變)
         function openReviewEmailModal(id) {
             const record = currentStagingData.find(r => r.id === id);
             if (!record) return;
@@ -846,70 +829,67 @@
             document.getElementById('email-consultant-name').value = record.medical_staff?.name || '未知顧問';
             document.getElementById('email-consultant-addr').innerText = record.medical_staff?.email || '無 Email 記錄';
             document.querySelector('#reviewEmailModal .preview-name').innerText = record.medical_staff?.name || '';
-            document.getElementById('review-reason-text').value = ''; // 清空原本的備註
+            document.getElementById('review-reason-text').value = ''; 
 
             new bootstrap.Modal(document.getElementById('reviewEmailModal')).show();
         }
 
-        // 寄送審查通知 (已修改：呼叫 Supabase Edge Function 'send-review-email'，避免觸發 mailto)
+        // 寄送審查通知 (改為呼叫 send-review API)
         async function sendReviewEmail() {
             const id = document.getElementById('email-target-id').value;
             const record = currentStagingData.find(r => r.id === id);
-            
-            // 檢查顧問是否有設定 Email
             if (!record || !record.medical_staff?.email) {
-                return alert('無法發送：系統中找不到該顧問的 Email。');
+                return alert('無法發送：找不到該顧問的 Email。');
             }
 
             const reasonText = document.getElementById('review-reason-text').value.trim();
             const deadline = document.getElementById('email-deadline').value;
 
-            // 檢查必填欄位
             if (!reasonText) {
                 return alert('請填寫需補正的具體原因！');
             }
 
-            const consultantEmail = record.medical_staff.email;
-            const consultantName = record.medical_staff.name || '顧問';
-            const companyName = record.workplaces?.companies?.name || '未知公司';
-            const projectName = companyName + ' 服務紀錄案件'; // 組合出專案名稱
-
-            // 取得按鈕並加入 Loading 狀態，防止重複點擊
+            // 按鈕進入 Loading 狀態
             const btn = document.querySelector('#reviewEmailModal .btn-primary');
-            const originalBtnHtml = btn.innerHTML;
+            const originalText = btn.innerHTML;
             btn.disabled = true;
-            btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> 發送中...';
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i> 發送中...';
 
             try {
-                // 呼叫 Edge Function 發送信件 (純 HTTP 請求)
-                const { data, error } = await supabaseClient.functions.invoke('send-review-email', {
-                    body: {
-                        email: consultantEmail,
-                        consultantName: consultantName,
-                        projectName: projectName,
+                // 取得當前管理員憑證以供驗證
+                const { data: sessionData } = await supabaseClient.auth.getSession();
+                const accessToken = sessionData.session?.access_token;
+
+                const res = await fetch('https://yhehfucgemxnfrdvpdhw.supabase.co/functions/v1/send-review', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${accessToken}`
+                    },
+                    body: JSON.stringify({
+                        email: record.medical_staff.email,
+                        consultantName: record.medical_staff.name,
+                        companyName: record.workplaces?.companies?.name || '未知公司',
                         reason: reasonText,
-                        days: Number(deadline)
-                    }
+                        deadline: deadline
+                    })
                 });
 
-                if (error) throw error;
+                if (!res.ok) throw new Error(await res.text());
 
-                alert('✅ 審查補件通知信已成功透過伺服器發送！');
-                
-                // 關閉 Modal
+                alert(`✅ 已成功發送審查通知給 ${record.medical_staff.name}`);
                 bootstrap.Modal.getInstance(document.getElementById('reviewEmailModal')).hide();
-
+                
             } catch (err) {
-                console.error('發送信件失敗:', err);
-                alert('❌ 信件發送失敗: ' + (err.message || '未知網路錯誤，請稍後再試'));
+                console.error(err);
+                alert(`❌ 發送失敗：${err.message}`);
             } finally {
-                // 恢復按鈕狀態
                 btn.disabled = false;
-                btn.innerHTML = originalBtnHtml;
+                btn.innerHTML = originalText;
             }
         }
 
-        // 打開催收通知 Modal
+        // 打開催收通知 Modal (保持不變)
         function openReminderModal(id) {
             const record = currentStagingData.find(r => r.id === id);
             if (!record) return;
@@ -922,6 +902,51 @@
             new bootstrap.Modal(document.getElementById('reminderEmailModal')).show();
         }
 
+        // 寄送催收通知 (改為呼叫 send-reminder API)
+        async function sendReminderEmail() {
+            const id = document.getElementById('remind-target-id').value;
+            const record = currentStagingData.find(r => r.id === id);
+            if (!record || !record.medical_staff?.email) {
+                return alert('無法發送：找不到該顧問的 Email。');
+            }
+
+            // 按鈕進入 Loading 狀態
+            const btn = document.querySelector('#reminderEmailModal .btn-dark');
+            const originalText = btn.innerHTML;
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i> 發送中...';
+
+            try {
+                // 取得當前管理員憑證以供驗證
+                const { data: sessionData } = await supabaseClient.auth.getSession();
+                const accessToken = sessionData.session?.access_token;
+
+                const res = await fetch('https://yhehfucgemxnfrdvpdhw.supabase.co/functions/v1/send-reminder', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${accessToken}`
+                    },
+                    body: JSON.stringify({
+                        email: record.medical_staff.email,
+                        consultantName: record.medical_staff.name,
+                        companyName: record.workplaces?.companies?.name || '未知公司'
+                    })
+                });
+
+                if (!res.ok) throw new Error(await res.text());
+
+                alert(`✅ 已成功發送催收通知給 ${record.medical_staff.name}`);
+                bootstrap.Modal.getInstance(document.getElementById('reminderEmailModal')).hide();
+                
+            } catch (err) {
+                console.error(err);
+                alert(`❌ 發送失敗：${err.message}`);
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = originalText;
+            }
+        }
     </script>
 </body>
 </html>
