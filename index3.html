@@ -817,6 +817,39 @@
                 loading.style.display = 'none';
             }
         }
+        async function sendRevisionMail(evidenceId, companyName) {
+  if (!confirm(`是否發送「${companyName}」的評鑑補件通知信？`)) {
+    return;
+  }
+
+  try {
+    const res = await fetch(
+      'https://yhehfucgemxnfrdvpdhw.supabase.co/functions/v1/send-evaluation-revision',
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${SUPABASE_KEY}`
+        },
+        body: JSON.stringify({
+          id: evidenceId
+        })
+      }
+    );
+
+    const result = await res.json();
+
+    if (!res.ok) {
+      throw result;
+    }
+
+    alert('評鑑補件通知已成功寄出。');
+  } catch (err) {
+    console.error(err);
+    alert('寄送失敗，請稍後再試。');
+  }
+}
+
     </script>
 </body>
 </html>
