@@ -798,7 +798,8 @@
                         audit_note: comment,
                         attachment_folder_id: fileSourceId,
                         file_url: evidenceFileUrl, 
-                        additional_appendices: hyperlinksArray 
+                        additional_appendices: hyperlinksArray,
+                        case_number: freshRecord.case_number // ★ 新增：同步寫入案號至證據檔
                     });
                 
                 if (insertError) throw new Error("寫入正式資料庫失敗: " + insertError.message);
