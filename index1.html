@@ -558,8 +558,7 @@ if (error) throw error;
 if (!data || data.length === 0) { container.innerHTML = '<div class="text-center text-muted py-5"><i class="fas fa-folder-open fa-3x mb-3"></i><p>查無符合條件的案件。</p></div>'; return; }
 
 container.innerHTML = data.map(record => {
-// 新增：顯示藍色案號 Badge (若該案有案號)
-const caseNumBadge = record.case_number 
+
     ? `<span class="badge bg-info text-dark ms-2"><i class="fas fa-hashtag me-1"></i>${record.case_number}</span>` 
     : '';
 
