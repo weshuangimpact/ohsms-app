@@ -465,7 +465,7 @@
         }
 
         // ==========================================
-        // 3. 開啟新分頁 (純預覽功能) -> 已修正為加入「初始審核資訊」
+        // 3. 開啟新分頁 (純預覽功能) -> 已修正：側邊欄新增審核資訊
         // ==========================================
         async function openEvidenceTab(evidenceId) {
             const newWindow = window.open('', '_blank');
@@ -531,9 +531,26 @@
                 // --- 初始審核資訊變數 ---
                 const caseNo = data.case_number || '無';
                 const closeType = data.is_special_case ? '特案允許結案' : '核定結案';
-                const badgeClass = data.is_special_case ? 'bg-warning text-dark' : 'bg-success text-white';
+                const badgeClass = data.is_special_case ? 'background:#ffc107; color:#212529;' : 'background:#198754; color:white;';
                 const auditNote = data.audit_note || '無';
-                const reviewerText = data.reviewer_id ? '系統管理員' : '無';
+                
+                // ★ 審核者邏輯修正：查 profiles 表抓取真實姓名
+                let reviewerText = '無';
+                if (data.reviewer_id) {
+                    const { data: profile } = await supabaseClient
+                        .from('profiles')
+                        .select('name')
+                        .eq('id', data.reviewer_id)
+                        .single();
+                    
+                    if (profile && profile.name) {
+                        reviewerText = profile.name;
+                    } else {
+                        // 若查無此人但有ID，預設顯示
+                        reviewerText = '系統管理員';
+                    }
+                }
+                
                 const reviewDate = data.created_at ? new Date(data.created_at).toLocaleString('zh-TW', { hour12: false }) : '無';
 
                 // 3. 處理 Appendices (一般 Q 類附件)
@@ -636,6 +653,17 @@
                                 border-bottom: 2px solid #0d6efd; 
                                 padding-bottom: 5px; 
                             }
+
+                            /* 審核資訊樣式 */
+                            .review-info-box {
+                                margin-top: 30px;
+                                padding: 15px;
+                                background-color: #f1f3f5;
+                                border-radius: 6px;
+                                border-left: 4px solid #6c757d;
+                            }
+                            .review-label { font-size: 0.8rem; color: #6c757d; font-weight: bold; }
+                            .review-value { font-size: 0.95rem; color: #333; margin-bottom: 8px; }
                         </style>
                     </head>
                     <body>
@@ -669,26 +697,30 @@
                                         </div>
                                     </div>
 
-                                    <div class="section-title" style="margin-top: 40px; color: #6c757d; border-color: #6c757d;">初始審核資訊</div>
-                                    <div class="info-group">
-                                        <span class="label">案號</span>
-                                        <div class="value">${caseNo}</div>
-                                    </div>
-                                    <div class="info-group">
-                                        <span class="label">結案類別</span>
-                                        <div class="value"><span class="badge ${badgeClass}">${closeType}</span></div>
-                                    </div>
-                                    <div class="info-group">
-                                        <span class="label">審核意見</span>
-                                        <div class="value">${auditNote}</div>
-                                    </div>
-                                    <div class="info-group">
-                                        <span class="label">審核者 / 時間</span>
-                                        <div class="value">
+                                    <div class="review-info-box">
+                                        <div style="font-weight:bold; font-size:1rem; margin-bottom:10px; color:#495057;">
+                                            <i class="fas fa-clipboard-check me-2"></i>初始審核資訊
+                                        </div>
+                                        <div class="review-label">案號</div>
+                                        <div class="review-value">${caseNo}</div>
+
+                                        <div class="review-label">結案類別</div>
+                                        <div class="review-value">
+                                            <span style="padding:4px 8px; border-radius:4px; font-size:0.85rem; font-weight:bold; ${badgeClass}">
+                                                ${closeType}
+                                            </span>
+                                        </div>
+
+                                        <div class="review-label">審核意見</div>
+                                        <div class="review-value">${auditNote}</div>
+
+                                        <div class="review-label">審核者 / 時間</div>
+                                        <div class="review-value">
                                             ${reviewerText}<br>
-                                            <small class="text-muted">${reviewDate}</small>
+                                            <small style="color:#888;">${reviewDate}</small>
                                         </div>
                                     </div>
+
                                 </div>
                             </div>
                             <div class="preview-area">
