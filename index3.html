@@ -290,7 +290,7 @@
                     </div>
 
                     <div id="reviewContainer">
-                        </div>
+                    </div>
 
                     <div class="text-center mt-3">
                         <button type="button" class="btn btn-outline-secondary" onclick="addReviewRow()">
@@ -299,8 +299,7 @@
                     </div>
                 </div>
                 <div class="modal-footer">
-                    <div class="me-auto text-start small text-muted lh-sm" id="initialReviewInfo" style="max-width: 60%;">
-                        </div>
+                    <div id="initialReviewInfo" class="me-auto text-start small text-muted" style="font-size: 0.85rem; line-height: 1.4;"></div>
 
                     <div class="d-flex gap-2">
                         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
@@ -701,10 +700,10 @@
             reviewModal.show();
 
             try {
-                // 1. 修改：多讀取 case_number, is_special_case, audit_note, created_at 以供顯示
+                // 1. 修改：多讀取 case_number, is_special_case, audit_note, created_at, reviewer_id 以供顯示
                 const { data, error } = await supabaseClient
                     .from('evidence')
-                    .select('evaluation_reviews, case_number, is_special_case, audit_note, created_at')
+                    .select('evaluation_reviews, case_number, is_special_case, audit_note, created_at, reviewer_id')
                     .eq('id', evidenceId)
                     .single();
 
@@ -712,17 +711,21 @@
 
                 // 2. 顯示左下角「初始審核資訊」
                 const infoDiv = document.getElementById('initialReviewInfo');
-                const caseNo = data.case_number || '-';
+                const caseNo = data.case_number || '無';
                 const closeType = data.is_special_case ? '特案允許結案' : '核定結案';
-                const auditNote = data.audit_note || '(無審核意見)';
-                const reviewDate = data.created_at ? new Date(data.created_at).toLocaleString('zh-TW', { hour12: false }) : '-';
+                const auditNote = data.audit_note || '無';
+                
+                // 審核者邏輯：若有 reviewer_id 則顯示系統管理員，否則顯示無
+                const reviewerText = data.reviewer_id ? '系統管理員' : '無';
+                
+                const reviewDate = data.created_at ? new Date(data.created_at).toLocaleString('zh-TW', { hour12: false }) : '無';
                 
                 infoDiv.innerHTML = `
                     <div style="font-weight:bold; color:#333; margin-bottom:2px;"><i class="fas fa-hashtag me-1"></i>案號：${caseNo}</div>
                     <div><span class="badge ${data.is_special_case ? 'bg-warning text-dark' : 'bg-success'}">${closeType}</span></div>
                     <div class="mt-1"><i class="fas fa-comment-dots me-1"></i>意見：${auditNote}</div>
                     <div class="text-muted mt-1" style="font-size:0.8rem;">
-                        <i class="fas fa-user-shield me-1"></i>審核者：系統管理員 &nbsp;|&nbsp; 
+                        <i class="fas fa-user-shield me-1"></i>審核者：${reviewerText} &nbsp;|&nbsp; 
                         <i class="far fa-clock me-1"></i>${reviewDate}
                     </div>
                 `;
