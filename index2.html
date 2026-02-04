@@ -790,13 +790,18 @@
                         }
                     } catch(e) { console.error('解析執行項目失敗', e); }
                 }
+                
+                // --- ★ 新增：取得審核者 ID ---
+                const currentUserId = sessionStorage.getItem('currentUserId');
                 // -----------------------------------------------
 
                 await supabaseClient.from('service_record_staging').update({ 
                     status: 'approved',
                     reviewer_comment: comment,
                     is_special_case: (type === 'special'),
-                    audit_note: comment
+                    audit_note: comment,
+                    reviewer_id: currentUserId, // ★ 同步更新暫存表
+                    updated_at: new Date()
                 }).eq('id', id);
 
                 const { error: insertError } = await supabaseClient
@@ -811,8 +816,10 @@
                         attachment_folder_id: fileSourceId,
                         file_url: evidenceFileUrl, 
                         additional_appendices: hyperlinksArray,
-                        case_number: freshRecord.case_number, // ★ 同步寫入案號至證據檔
-                        execution_items: executionItemsStr    // ★ 新增：同步寫入執行項目
+                        case_number: freshRecord.case_number, // ★ 同步寫入案號
+                        execution_items: executionItemsStr,   // ★ 同步寫入執行項目
+                        reviewer_id: currentUserId,           // ★ 新增：寫入審核者 ID
+                        updated_by: currentUserId             // ★ 新增：寫入更新者 ID
                     });
                 
                 if (insertError) throw new Error("寫入正式資料庫失敗: " + insertError.message);
