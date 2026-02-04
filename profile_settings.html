@@ -27,7 +27,7 @@
             margin: 0;
         }
 
-        /* [修正 1] 內容區塊：移除置中設定，改為自然流動，並自動撐開 */
+        /* 內容區塊自動撐開 */
         .container-fluid, .main-content {
             flex: 1; 
         }
@@ -57,7 +57,7 @@
         }
 
         /* =========================================
-           2. 標題與 5W1H 字卡設定 (參考 index6 風格)
+           2. 標題與 5W1H 字卡設定
            ========================================= */
         .instruction-box {
             background-color: #fff;
@@ -67,7 +67,7 @@
             margin-bottom: 30px;
             box-shadow: 0 2px 5px rgba(0,0,0,0.05);
             width: 100%;
-            text-align: left; /* [修正 2] 靠左對齊 */
+            text-align: left;
         }
 
         .instruction-title {
@@ -80,7 +80,6 @@
         /* =========================================
            3. 重設密碼卡片設定
            ========================================= */
-        /* [修正 3] 移除卡片寬度限制 (max-width)，改由 Grid 控制 */
         .reset-card {
             border: none; 
             border-radius: 12px;
@@ -94,7 +93,7 @@
             background-color: var(--theme-color);
             color: white; 
             padding: 1.5rem; 
-            text-align: center; 
+            text-align: center; /* 標題文字置中 */
             border-bottom: none;
         }
 
@@ -165,7 +164,7 @@
             </p>
         </div>
 
-        <div class="row">
+        <div class="row justify-content-center">
             <div class="col-lg-6 col-md-8">
                 <div class="card reset-card">
                     <div class="card-header">
