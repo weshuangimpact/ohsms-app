@@ -133,18 +133,12 @@
             border-radius: 6px;
             margin-bottom: 30px;
         }
-        .review-label { font-size: 0.85rem; color: #856404; font-weight: bold; margin-bottom: 2px; }
-        .review-value { font-size: 1rem; color: #212529; margin-bottom: 10px; }
         
-        /* 針對 evaluation_reviews 列表的樣式 */
-        .review-list {
-            margin: 0;
-            padding-left: 1.2rem;
+        .review-list-item {
+            border-bottom: 1px solid #e9ecef;
+            padding: 10px 0;
         }
-        .review-list li {
-            margin-bottom: 0.5rem;
-            line-height: 1.5;
-        }
+        .review-list-item:last-child { border-bottom: none; }
     </style>
 </head>
 <body>
@@ -224,24 +218,8 @@
                     
                     <div class="review-info-box">
                         <h6 class="fw-bold text-dark border-bottom border-warning pb-2 mb-3"><i class="fas fa-clipboard-check me-2"></i>原始評鑑審查紀錄</h6>
-                        <div class="row">
-                            <div class="col-md-3">
-                                <div class="review-label">結案類別</div>
-                                <div class="review-value" id="infoCloseType">--</div>
+                        <div id="evaluationReviewsList" style="font-size: 0.95rem;">
                             </div>
-                            <div class="col-md-3">
-                                <div class="review-label">審核者</div>
-                                <div class="review-value" id="infoReviewer">--</div>
-                            </div>
-                            <div class="col-md-3">
-                                <div class="review-label">審核時間</div>
-                                <div class="review-value" id="infoReviewDate">--</div>
-                            </div>
-                        </div>
-                        <div class="mt-2">
-                            <div class="review-label">審核意見 / 需補正事項</div>
-                            <div class="review-value text-danger" id="infoAuditNote">--</div>
-                        </div>
                     </div>
 
                     <h6 class="fw-bold text-secondary mb-3"><i class="fas fa-history me-1"></i>歷次改善紀錄 (已存檔)</h6>
@@ -328,7 +306,7 @@
                     .from('evidence')
                     .select(`
                         id, case_number, visit_date, service_year, improvement_records, 
-                        is_special_case, audit_note, reviewer_id, created_at, evaluation_reviews,
+                        evaluation_reviews,
                         workplaces(companies(name)),
                         medical_staff(name)
                     `)
@@ -344,47 +322,29 @@
                 document.getElementById('caseNumberDisplay').innerText = data.case_number;
                 document.getElementById('caseVisitDate').innerText = data.visit_date;
 
-                // 填入審核資訊
-                document.getElementById('infoCloseType').innerHTML = `<span class="badge ${data.is_special_case ? 'bg-warning text-dark' : 'bg-success'}">${data.is_special_case ? '特案允許結案' : '核定結案'}</span>`;
-                
-                // ★ 關鍵修正：優先顯示 evaluation_reviews (審查詳細紀錄)，若無則顯示 audit_note
-                let auditContentHtml = '';
+                // ★ 修正：只顯示 evaluation_reviews 的內容，不顯示其他管理資訊
+                const reviewsContainer = document.getElementById('evaluationReviewsList');
+                reviewsContainer.innerHTML = '';
+
                 if (data.evaluation_reviews && Array.isArray(data.evaluation_reviews) && data.evaluation_reviews.length > 0) {
-                    auditContentHtml = '<ul class="review-list">';
-                    data.evaluation_reviews.forEach(r => {
-                         // 假設結構為 {date: '...', note: '...'}
-                         const rDate = r.date || '無日期';
-                         const rNote = r.note || '';
-                         auditContentHtml += `<li><strong>[${rDate}]</strong> ${rNote}</li>`;
+                    let reviewsHtml = '';
+                    data.evaluation_reviews.forEach((r, idx) => {
+                        const rDate = r.date || '無日期';
+                        const rNote = r.note || '無內容';
+                        reviewsHtml += `
+                            <div class="review-list-item">
+                                <div class="d-flex justify-content-between">
+                                    <span class="badge bg-secondary mb-1">紀錄 #${idx + 1}</span>
+                                    <small class="text-muted"><i class="far fa-clock me-1"></i>${rDate}</small>
+                                </div>
+                                <div class="text-dark mt-1 ps-1" style="white-space: pre-wrap;">${rNote}</div>
+                            </div>
+                        `;
                     });
-                    auditContentHtml += '</ul>';
+                    reviewsContainer.innerHTML = reviewsHtml;
                 } else {
-                    // 若無詳細紀錄，回退顯示 audit_note
-                    auditContentHtml = `<span class="fw-bold">${data.audit_note || '無審核意見'}</span>`;
+                    reviewsContainer.innerHTML = '<div class="text-muted small py-2"><i class="fas fa-info-circle me-1"></i>目前尚無詳細評鑑審查(補件)紀錄。</div>';
                 }
-                document.getElementById('infoAuditNote').innerHTML = auditContentHtml;
-
-                document.getElementById('infoReviewDate').innerText = data.created_at ? new Date(data.created_at).toLocaleString('zh-TW', { hour12: false }) : '無';
-
-                // 查詢審核者姓名
-                let reviewerName = '無';
-                if (data.reviewer_id) {
-                    // 先查 profiles
-                    const { data: profile } = await supabaseClient
-                        .from('profiles')
-                        .select('full_name')
-                        .eq('id', data.reviewer_id)
-                        .single();
-                    
-                    if (profile && profile.full_name) {
-                        reviewerName = profile.full_name;
-                    } else {
-                         // 若查不到再查 medical_staff
-                         const { data: staff } = await supabaseClient.from('medical_staff').select('name').eq('id', data.reviewer_id).single();
-                         if(staff) reviewerName = staff.name;
-                    }
-                }
-                document.getElementById('infoReviewer').innerText = reviewerName;
 
                 renderExistingRecords(data.improvement_records);
                 document.getElementById('newRecordsContainer').innerHTML = '';
