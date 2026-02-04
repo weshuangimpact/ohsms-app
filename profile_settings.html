@@ -3,36 +3,39 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>個人密碼管理 | OHSMS</title>
+    <title>重設密碼 | OHSMS</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     
     <style>
+        :root {
+            /* 定義本頁主題色：灰色 (對應 Profile Settings) */
+            --theme-color: #6c757d;
+        }
+
         /* =========================================
-           1. 統一頁首/頁尾 CSS 設定 (內頁專用 / 高度統一版)
+           1. 統一頁首/頁尾 CSS 設定
            ========================================= */
-        html, body {
-            height: 100%;
-        }
-
+        html, body { height: 100%; }
+        
         body {
-            display: none; /* 權限驗證前先隱藏，JS 載入後改為 flex */
-            flex-direction: column;
+            display: flex; 
+            flex-direction: column; 
             min-height: 100vh;
-            background-color: #f8f9fa; /* 預設背景色 */
-            font-family: 'Segoe UI', 'Microsoft JhengHei', sans-serif;
-            color: #333;
+            background-color: #f8f9fa; 
+            font-family: 'Segoe UI', 'Microsoft JhengHei', sans-serif; 
+            margin: 0;
         }
 
-        /* 內容區塊自動撐開 */
-        .container, .main-content, .container-fluid {
+        /* [修正 1] 內容區塊：移除置中設定，改為自然流動，並自動撐開 */
+        .container-fluid, .main-content {
             flex: 1; 
         }
 
         /* 頁首設定 */
         .navbar {
             background-color: #202124 !important;
-            min-height: 85px; /* [修正] 統一高度為 85px */
+            min-height: 85px; /* 統一高度 */
             color: #fff;
             flex-shrink: 0;
         }
@@ -44,73 +47,85 @@
             flex-shrink: 0;
             font-size: 0.9rem;
             letter-spacing: 0.5px;
-            display: flex;
-            flex-direction: column; /* 垂直排列 */
-            align-items: center;
-            justify-content: center;
-            margin-top: auto;
-            padding: 15px 0;
-            min-height: 85px; /* 雙行高度 */
+            display: flex; 
+            flex-direction: column;
+            align-items: center; 
+            justify-content: center; 
+            margin-top: auto; 
+            padding: 15px 0; 
+            min-height: 85px;
         }
 
         /* =========================================
-           2. 統一標題與字卡 CSS 設定 (Profile Gray)
+           2. 標題與 5W1H 字卡設定 (參考 index6 風格)
            ========================================= */
-        :root { 
-            --primary-bg: #f4f6f9; 
-            --theme-color: #6c757d; /* Profile Settings 階段的主題灰色 */
-        }
-
-        /* PDCA/5W1H 字卡 (白色區塊) 設定 */
         .instruction-box {
-            background-color: #fff;              /* 白色背景 */
+            background-color: #fff;
             border-left: 5px solid var(--theme-color); /* 左側主題色飾條 */
-            padding: 20px 25px;                  /* 內距 */
-            border-radius: 4px;                  /* 圓角 */
-            margin-bottom: 30px;                 /* 下方留白 */
-            box-shadow: 0 2px 5px rgba(0,0,0,0.05); /* 輕微陰影 */
+            padding: 20px 25px;
+            border-radius: 4px;
+            margin-bottom: 30px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
             width: 100%;
-            text-align: left;
+            text-align: left; /* [修正 2] 靠左對齊 */
         }
 
-        /* 字卡標題設定 */
         .instruction-title {
-            color: var(--theme-color);           /* 字體顏色跟隨主題色 */
-            font-weight: 700;                    /* 粗體 */
-            margin-bottom: 10px;                 /* 與內文的間距 */
+            color: var(--theme-color);
+            font-weight: 700;
+            margin-bottom: 10px;
             font-size: 1.1rem;
         }
 
         /* =========================================
-           3. 既有功能 UI 設定 (保留表單樣式)
+           3. 重設密碼卡片設定
            ========================================= */
-        .settings-card {
-            border: none;
+        /* [修正 3] 移除卡片寬度限制 (max-width)，改由 Grid 控制 */
+        .reset-card {
+            border: none; 
             border-radius: 12px;
             box-shadow: 0 4px 6px rgba(0,0,0,0.05);
-            background-color: white;
+            background-color: #fff; 
             overflow: hidden;
+            height: 100%; /* 讓卡片高度自然延伸 */
         }
 
-        /* 表單樣式優化 */
-        .form-control:focus {
-            box-shadow: 0 0 0 0.25rem rgba(108, 117, 125, 0.15); /* 調整為灰色系 */
-            border-color: var(--theme-color);
+        .card-header {
+            background-color: var(--theme-color);
+            color: white; 
+            padding: 1.5rem; 
+            text-align: center; 
+            border-bottom: none;
         }
-        .password-toggle {
-            cursor: pointer;
-            color: #6c757d;
+
+        .form-control:focus { 
+            border-color: var(--theme-color); 
+            box-shadow: 0 0 0 0.2rem rgba(108, 117, 125, 0.25); 
         }
-        .password-toggle:hover { color: #343a40; }
         
-        /* 按鈕顏色覆寫配合主題 */
-        .btn-primary {
+        /* 狀態顯示區塊 */
+        #auth-status {
+            font-size: 0.9rem; 
+            margin-bottom: 15px; 
+            padding: 10px; 
+            border-radius: 5px; 
+            text-align: center;
+        }
+        .status-waiting { background-color: #fff3cd; color: #856404; border: 1px solid #ffeeba; }
+        .status-ok { background-color: #d1e7dd; color: #0f5132; border: 1px solid #badbcc; }
+        .status-error { background-color: #f8d7da; color: #842029; border: 1px solid #f5c6cb; }
+        
+        /* 按鈕樣式 */
+        .btn-theme {
             background-color: var(--theme-color);
             border-color: var(--theme-color);
+            color: white;
+            font-weight: bold;
         }
-        .btn-primary:hover {
+        .btn-theme:hover {
             background-color: #5a6268;
             border-color: #545b62;
+            color: white;
         }
     </style>
 </head>
@@ -150,7 +165,7 @@
             </p>
         </div>
 
-        <div class="row justify-content-center">
+        <div class="row">
             <div class="col-lg-6 col-md-8">
                 <div class="card reset-card">
                     <div class="card-header">
