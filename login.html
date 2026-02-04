@@ -7,19 +7,67 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <style>
+        /* =========================================
+           1. 統一頁首/頁尾 CSS 設定 (20260131版)
+           ========================================= */
+        html, body {
+            height: 100%;
+        }
+
         body {
+            display: flex; /* 確保 Flex 佈局生效 */
+            flex-direction: column;
+            min-height: 100vh;
+            background-color: #f8f9fa; /* 預設背景色 */
+            font-family: 'Segoe UI', 'Microsoft JhengHei', sans-serif;
+            margin: 0;
+        }
+
+        /* 內容區塊自動撐開 */
+        .main-content {
+            flex: 1;
+            width: 100%;
+            /* 將原本登入頁的漸層與置中設定移到這裡 */
             background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
-            height: 100vh;
             display: flex;
             align-items: center;
             justify-content: center;
-            font-family: 'Segoe UI', 'Microsoft JhengHei', sans-serif;
+            padding: 20px;
         }
+
+        /* 頁首設定 */
+        .navbar {
+            background-color: #202124 !important;
+            min-height: 85px; /* 統一高度為 85px */
+            color: #fff;
+            flex-shrink: 0;
+        }
+
+        /* 頁尾設定 */
+        footer {
+            background-color: #202124 !important;
+            color: #fff;
+            flex-shrink: 0;
+            font-size: 0.9rem;
+            letter-spacing: 0.5px;
+            display: flex;
+            flex-direction: column; /* 垂直排列 */
+            align-items: center;
+            justify-content: center;
+            margin-top: auto;
+            padding: 15px 0;
+            min-height: 85px; /* 雙行高度 */
+        }
+
+        /* =========================================
+           2. 登入卡片專用設定
+           ========================================= */
         .login-card {
             width: 100%; max-width: 400px;
             border: none; border-radius: 15px;
             box-shadow: 0 10px 25px rgba(0,0,0,0.1);
             overflow: hidden;
+            background-color: #fff;
         }
         .card-header {
             background-color: #2c3e50; color: white;
@@ -54,49 +102,76 @@
 </head>
 <body>
 
-    <div class="card login-card">
-        <div class="card-header">
-            <h3 class="mb-0"><i class="fas fa-shield-alt me-2"></i>OHSMS</h3>
-            <small class="opacity-75">職業衛生服務管理系統</small>
+    <nav class="navbar navbar-expand-lg navbar-dark px-4">
+        <div class="container-fluid d-flex justify-content-between align-items-center p-0">
+            <a class="navbar-brand d-flex align-items-center fw-bold" href="#">
+                <i class="fas fa-shield-alt me-2"></i>
+                OHSMS 職安管理系統
+            </a>
+
+            <div class="d-flex align-items-center">
+                <span class="text-white me-3 small" id="header-date">
+                   <i class="fas fa-spinner fa-spin"></i>
+                </span>
+                <span class="text-white small border-start ps-3 border-secondary" id="header-clock" style="opacity: 0.9;">
+                    --:--
+                </span>
+                </div>
         </div>
-        <div class="card-body p-4">
-            
-            <div id="error-msg" class="alert alert-danger py-2 small" role="alert">
-                <i class="fas fa-exclamation-circle me-1"></i> <span id="error-text">帳號或密碼錯誤</span>
+    </nav>
+
+    <div class="main-content">
+        <div class="card login-card">
+            <div class="card-header">
+                <h3 class="mb-0"><i class="fas fa-shield-alt me-2"></i>OHSMS</h3>
+                <small class="opacity-75">職業衛生服務管理系統</small>
             </div>
-
-            <form id="loginForm">
-                <div class="mb-3">
-                    <label for="email" class="form-label text-muted small fw-bold">Email (帳號)</label>
-                    <div class="input-group">
-                        <span class="input-group-text bg-light border-end-0"><i class="fas fa-envelope text-muted"></i></span>
-                        <input type="email" class="form-control border-start-0 ps-0" id="email" placeholder="name@company.com" required>
-                    </div>
-                </div>
+            <div class="card-body p-4">
                 
-                <div class="mb-4">
-                    <label for="password" class="form-label text-muted small fw-bold">密碼 (Password)</label>
-                    <div class="input-group">
-                        <span class="input-group-text bg-light border-end-0"><i class="fas fa-lock text-muted"></i></span>
-                        <input type="password" class="form-control border-start-0 ps-0" id="password" placeholder="請輸入密碼" required>
-                    </div>
+                <div id="error-msg" class="alert alert-danger py-2 small" role="alert">
+                    <i class="fas fa-exclamation-circle me-1"></i> <span id="error-text">帳號或密碼錯誤</span>
                 </div>
 
-                <div class="d-flex justify-content-between align-items-center mb-4">
-                    <div class="form-check">
-                        <input class="form-check-input" type="checkbox" id="rememberMe">
-                        <label class="form-check-label small text-muted" for="rememberMe">記住我</label>
+                <form id="loginForm">
+                    <div class="mb-3">
+                        <label for="email" class="form-label text-muted small fw-bold">Email (帳號)</label>
+                        <div class="input-group">
+                            <span class="input-group-text bg-light border-end-0"><i class="fas fa-envelope text-muted"></i></span>
+                            <input type="email" class="form-control border-start-0 ps-0" id="email" placeholder="name@company.com" required>
+                        </div>
                     </div>
-                    <a href="#" class="text-decoration-none small text-muted" data-bs-toggle="modal" data-bs-target="#forgotModal">忘記密碼?</a>
-                </div>
+                    
+                    <div class="mb-4">
+                        <label for="password" class="form-label text-muted small fw-bold">密碼 (Password)</label>
+                        <div class="input-group">
+                            <span class="input-group-text bg-light border-end-0"><i class="fas fa-lock text-muted"></i></span>
+                            <input type="password" class="form-control border-start-0 ps-0" id="password" placeholder="請輸入密碼" required>
+                        </div>
+                    </div>
 
-                <button type="submit" id="btn-login" class="btn btn-primary w-100 login-btn">登入系統</button>
-            </form>
-        </div>
-        <div class="card-footer bg-light text-center py-3 border-top-0">
-            <small class="text-muted">&copy; 2026 WesmartAI Inc. All rights reserved.</small>
+                    <div class="d-flex justify-content-between align-items-center mb-4">
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="rememberMe">
+                            <label class="form-check-label small text-muted" for="rememberMe">記住我</label>
+                        </div>
+                        <a href="#" class="text-decoration-none small text-muted" data-bs-toggle="modal" data-bs-target="#forgotModal">忘記密碼?</a>
+                    </div>
+
+                    <button type="submit" id="btn-login" class="btn btn-primary w-100 login-btn">登入系統</button>
+                </form>
+            </div>
+            <div class="card-footer bg-light text-center py-3 border-top-0">
+                <small class="text-muted">&copy; 2026 WesmartAI Co., Ltd. All rights reserved.</small>
+            </div>
         </div>
     </div>
+
+    <footer>
+        <div class="mb-1">可信智慧整合有限公司 42917004</div>
+        <div class="small opacity-75" style="font-family: 'Segoe UI', sans-serif; letter-spacing: 1px;">
+            WesmartAI , Making Trust Transparent.
+        </div>
+    </footer>
 
     <div class="modal fade" id="forgotModal" tabindex="-1">
         <div class="modal-dialog modal-dialog-centered">
@@ -123,6 +198,7 @@
     <script>
         // 1. 初始化
         const SUPABASE_URL = 'https://yhehfucgemxnfrdvpdhw.supabase.co';
+        // 使用您提供的 Key，保持原樣
         const SUPABASE_KEY = 'sb_publishable_52emtU-9l-SDxcJTWVTPTA_Yu6qEogh'; 
         
         // 檢查 SDK 是否載入
@@ -137,12 +213,31 @@
         const errorMsg = document.getElementById('error-msg');
         const errorText = document.getElementById('error-text');
 
-        // --- 這是您原本的登入邏輯 (完全保留不動) ---
+        // --- 啟動統一頁首的時鐘與日期功能 ---
+        document.addEventListener('DOMContentLoaded', function() {
+            // 時鐘
+            setInterval(() => {
+                const now = new Date();
+                const clockEl = document.getElementById('header-clock');
+                if(clockEl) clockEl.textContent = now.toLocaleTimeString('zh-TW', { hour12: false });
+            }, 1000);
+
+            // 日期
+            const dateEl = document.getElementById('header-date');
+            if(dateEl) {
+                const now = new Date();
+                const days = ['日', '一', '二', '三', '四', '五', '六'];
+                const formattedDate = `${now.getFullYear()}/${now.getMonth() + 1}/${now.getDate()}(${days[now.getDay()]})`;
+                dateEl.innerHTML = `<i class="far fa-calendar-alt me-1"></i>今日是 ${formattedDate}`;
+            }
+        });
+        // ------------------------------------
+
+        // --- 登入邏輯 (完全保留) ---
         form.addEventListener('submit', async function(e) {
             e.preventDefault();
             console.log('正在嘗試登入...');
             
-            // UI 重置
             errorMsg.style.display = 'none';
             btnLogin.disabled = true;
             btnLogin.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>驗證中...';
@@ -173,11 +268,10 @@
                     .from('profiles')
                     .select('*')
                     .eq('id', userId)
-                    .single(); // 這裡會報錯，如果沒有找到對應 ID 的資料
+                    .single(); 
 
                 if (profileError) {
                     console.error('Profile Error Details:', profileError);
-                    // 特殊錯誤代碼 PGRST116 代表查無資料 (0 rows)
                     if (profileError.code === 'PGRST116') {
                         throw new Error('登入成功，但資料庫找不到您的資料！\n請確認您是否已將 Auth UID 填入 profiles 表格的 id 欄位。');
                     }
@@ -197,41 +291,33 @@
 
                 btnLogin.innerHTML = '<i class="fas fa-check me-2"></i>登入成功，跳轉中...';
                 
-                // 檢查 dashboard.html 是否存在 (這只是個提示，無法真正檢查檔案)
-                console.log('正在導向 dashboard.html');
-                
                 setTimeout(() => {
                     window.location.href = 'dashboard.html';
                 }, 500);
 
             } catch (err) {
                 console.error('登入流程錯誤:', err);
-                
-                // 顯示錯誤給使用者看
-                errorText.innerText = err.message; // 顯示具體錯誤文字
+                errorText.innerText = err.message;
                 errorMsg.style.display = 'block';
                 btnLogin.disabled = false;
                 btnLogin.innerText = '登入系統';
                 
-                // 動畫
                 document.querySelector('.login-card').classList.add('shake');
                 setTimeout(() => document.querySelector('.login-card').classList.remove('shake'), 500);
             }
         });
 
-        // --- ★ 新增：忘記密碼發送邏輯 ---
+        // --- 忘記密碼發送邏輯 (完全保留) ---
         async function sendReset() {
             const email = document.getElementById('reset-email').value.trim();
             if (!email) return alert('請輸入 Email');
             
-            // 鎖定按鈕避免重複點擊
             const btn = document.querySelector('#forgotModal .btn-primary');
             const originalText = btn.innerText;
             btn.disabled = true;
             btn.innerText = '發送中...';
 
             try {
-                // 呼叫 Supabase 發信
                 const { error } = await supabaseClient.auth.resetPasswordForEmail(email, {
                     redirectTo: window.location.origin + '/dashboard.html' 
                 });
@@ -240,7 +326,6 @@
 
                 alert('重設信已發送！\n請至您的信箱收取信件，點擊連結後即可登入系統修改密碼。');
                 
-                // 關閉 Modal
                 const modal = bootstrap.Modal.getInstance(document.getElementById('forgotModal'));
                 modal.hide();
 
@@ -248,7 +333,6 @@
                 console.error('重設密碼失敗:', err);
                 alert('發送失敗: ' + err.message);
             } finally {
-                // 恢復按鈕
                 btn.disabled = false;
                 btn.innerText = originalText;
             }
