@@ -8,40 +8,72 @@
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <style>
         /* =========================================
-           1. 統一頁首/頁尾 CSS 設定
+           1. 統一頁首/頁尾 CSS 設定 (與內頁一致)
            ========================================= */
-        html, body { height: 100%; }
+        html, body {
+            height: 100%;
+        }
+
         body {
-            display: flex; flex-direction: column; min-height: 100vh;
-            font-family: 'Segoe UI', 'Microsoft JhengHei', sans-serif; margin: 0;
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
+            font-family: 'Segoe UI', 'Microsoft JhengHei', sans-serif;
+            margin: 0;
         }
+
+        /* 頁首設定 (標準化) */
         .navbar {
-            background-color: #202124 !important; min-height: 85px; color: #fff; flex-shrink: 0;
+            background-color: #202124 !important;
+            min-height: 85px; /* 統一高度 */
+            color: #fff;
+            flex-shrink: 0;
         }
+
+        /* 頁尾設定 (標準化) */
         footer {
-            background-color: #202124 !important; color: #fff; flex-shrink: 0;
-            font-size: 0.9rem; letter-spacing: 0.5px;
-            display: flex; flex-direction: column; align-items: center; justify-content: center;
-            margin-top: auto; padding: 15px 0; min-height: 85px;
+            background-color: #202124 !important;
+            color: #fff;
+            flex-shrink: 0;
+            font-size: 0.9rem;
+            letter-spacing: 0.5px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            margin-top: auto;
+            padding: 15px 0;
+            min-height: 85px;
         }
 
         /* =========================================
-           2. 登入頁專用設定
+           2. 登入頁專用設定 (Login Specific)
            ========================================= */
+        /* 內容區塊：繼承原本 body 的漸層背景與置中特性 */
         .main-content {
-            flex: 1; width: 100%;
+            flex: 1;
+            width: 100%;
             background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
-            display: flex; align-items: center; justify-content: center; padding: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px; /* 避免手機版貼邊 */
         }
+
         .login-card {
-            width: 100%; max-width: 400px; border: none; border-radius: 15px;
-            box-shadow: 0 10px 25px rgba(0,0,0,0.1); overflow: hidden; background-color: #fff;
+            width: 100%; max-width: 400px;
+            border: none; border-radius: 15px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+            overflow: hidden;
+            background-color: #fff;
         }
         .card-header {
-            background-color: #2c3e50; color: white; padding: 2rem; text-align: center; border-bottom: none;
+            background-color: #2c3e50; color: white;
+            padding: 2rem; text-align: center; border-bottom: none;
         }
         .login-btn {
-            background-color: #2c3e50; border: none; padding: 10px; font-weight: 600; letter-spacing: 1px;
+            background-color: #2c3e50; border: none; padding: 10px;
+            font-weight: 600; letter-spacing: 1px;
         }
         .login-btn:hover { background-color: #34495e; }
         .form-control:focus {
@@ -49,6 +81,7 @@
         }
         #error-msg { display: none; }
         
+        /* 搖晃動畫 */
         .shake { animation: shake 0.5s; }
         @keyframes shake {
             0% { transform: translate(1px, 1px) rotate(0deg); }
@@ -70,9 +103,10 @@
     <nav class="navbar navbar-expand-lg navbar-dark px-4">
         <div class="container-fluid d-flex justify-content-center justify-content-lg-start p-0">
             <a class="navbar-brand d-flex align-items-center fw-bold" href="#">
-                <i class="fas fa-shield-alt me-2"></i> OHSMS 職安管理系統
+                <i class="fas fa-shield-alt me-2"></i>
+                OHSMS 職安管理系統
             </a>
-        </div>
+            </div>
     </nav>
 
     <div class="main-content">
@@ -82,6 +116,7 @@
                 <small class="opacity-75">職業衛生服務管理系統</small>
             </div>
             <div class="card-body p-4">
+                
                 <div id="error-msg" class="alert alert-danger py-2 small" role="alert">
                     <i class="fas fa-exclamation-circle me-1"></i> <span id="error-text">帳號或密碼錯誤</span>
                 </div>
@@ -150,11 +185,12 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
     <script>
-        // 1. 初始化 - 【修正】使用正確的 Anon Key
+        [cite_start]// 1. 初始化 - 使用正確的 Supabase Anon Key [cite: 1678]
         const SUPABASE_URL = 'https://yhehfucgemxnfrdvpdhw.supabase.co';
+        // 修正：使用正確的 JWT 金鑰，而非 publishable key
         const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InloZWhmdWNnZW14bmZyZHZwZGh3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Mzg1NTE4ODQsImV4cCI6MjA1NDEyNzg4NH0.K19i-g0QdJvX2nQ9uQJ8vVjX9w1Xz6sO5yQ1z5v9w1';
         
-        // 檢查 SDK
+        // 檢查 SDK 是否載入
         if (typeof window.supabase === 'undefined') {
             alert('錯誤：Supabase SDK 未載入，請檢查網路連線或 CDN 網址。');
         }
@@ -166,10 +202,12 @@
         const errorMsg = document.getElementById('error-msg');
         const errorText = document.getElementById('error-text');
 
-        // --- 登入邏輯 ---
+        // --- 原本的登入邏輯 (還原為查詢 profiles) ---
         form.addEventListener('submit', async function(e) {
             e.preventDefault();
+            console.log('正在嘗試登入...');
             
+            // UI 重置
             errorMsg.style.display = 'none';
             btnLogin.disabled = true;
             btnLogin.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>驗證中...';
@@ -179,34 +217,47 @@
 
             try {
                 // Step A: 驗證帳密
+                console.log('Step A: 呼叫 Auth API...');
                 const { data: authData, error: authError } = await supabaseClient.auth.signInWithPassword({
                     email: email,
                     password: password
                 });
 
-                if (authError) throw new Error('帳號或密碼錯誤');
+                if (authError) {
+                    console.error('Auth Error:', authError);
+                    throw new Error('帳號或密碼錯誤 (Auth API)');
+                }
+                
+                console.log('Step A 成功，User UID:', authData.user.id);
 
-                // Step B: 查詢權限 - 【修正】改查 medical_staff
-                // 您的系統使用 medical_staff 記錄 system_role
-                const { data: staffData, error: staffError } = await supabaseClient
-                    .from('medical_staff')
-                    .select('name, system_role')
-                    .eq('email', email)
-                    .single();
+                // Step B: 查詢權限 (還原為查詢 profiles 表格)
+                console.log('Step B: 查詢 Profiles 表格...');
+                const userId = authData.user.id;
+                
+                const { data: profileData, error: profileError } = await supabaseClient
+                    .from('profiles')
+                    .select('*')
+                    .eq('id', userId)
+                    .single(); 
 
-                // 若找不到 medical_staff 資料，可能需要 fallback 機制或報錯
-                // 這裡假設所有可登入人員都在 medical_staff
-                if (staffError || !staffData) {
-                    console.error('Staff Error:', staffError);
-                    throw new Error('登入成功，但在員工名單中找不到您的資料，請聯繫管理員。');
+                if (profileError) {
+                    console.error('Profile Error Details:', profileError);
+                    if (profileError.code === 'PGRST116') {
+                        throw new Error('登入成功，但資料庫找不到您的資料！\n請確認您是否已將 Auth UID 填入 profiles 表格的 id 欄位。');
+                    }
+                    throw new Error('讀取使用者權限失敗: ' + profileError.message);
                 }
 
-                // Step C: 寫入 Session
-                // 注意：這裡使用 Auth 的 ID 作為 user_id，但權限來自 medical_staff
-                sessionStorage.setItem('currentUserId', authData.user.id);
-                sessionStorage.setItem('currentUserEmail', email);
-                sessionStorage.setItem('currentUserRole', staffData.system_role || 'consultant');
-                sessionStorage.setItem('currentUserName', staffData.name || email);
+                if (!profileData) {
+                    throw new Error('查無使用者資料 (Data is null)');
+                }
+
+                console.log('Step B 成功，角色為:', profileData.role);
+
+                // Step C: 寫入 Session 並跳轉
+                sessionStorage.setItem('currentUserId', userId);
+                sessionStorage.setItem('currentUserRole', profileData.role || 'user');
+                sessionStorage.setItem('currentUserName', profileData.full_name || email);
 
                 btnLogin.innerHTML = '<i class="fas fa-check me-2"></i>登入成功，跳轉中...';
                 
@@ -216,17 +267,20 @@
 
             } catch (err) {
                 console.error('登入流程錯誤:', err);
+                
+                // 顯示錯誤給使用者看
                 errorText.innerText = err.message;
                 errorMsg.style.display = 'block';
                 btnLogin.disabled = false;
                 btnLogin.innerText = '登入系統';
                 
+                // 動畫
                 document.querySelector('.login-card').classList.add('shake');
                 setTimeout(() => document.querySelector('.login-card').classList.remove('shake'), 500);
             }
         });
 
-        // --- 忘記密碼發送邏輯 (Edge Function) ---
+        // --- 忘記密碼發送邏輯 (還原為原生 API) ---
         async function sendReset() {
             const email = document.getElementById('reset-email').value.trim();
             if (!email) return alert('請輸入 Email');
@@ -237,22 +291,21 @@
             btn.innerText = '發送中...';
 
             try {
-                const { data, error } = await supabaseClient.functions.invoke('reset-password', {
-                    body: { 
-                        email: email,
-                        redirectTo: window.location.origin + '/dashboard.html' 
-                    }
+                // 使用原生的 resetPasswordForEmail，不呼叫 Edge Function
+                const { error } = await supabaseClient.auth.resetPasswordForEmail(email, {
+                    redirectTo: window.location.origin + '/dashboard.html' 
                 });
                 
                 if (error) throw error;
-                if (data && data.error) throw new Error(data.error);
 
-                alert('✅ 重設信已發送！\n請至您的信箱收取信件，點擊連結後即可登入系統修改密碼。');
-                bootstrap.Modal.getInstance(document.getElementById('forgotModal')).hide();
+                alert('重設信已發送！\n請至您的信箱收取信件，點擊連結後即可登入系統修改密碼。');
+                
+                const modal = bootstrap.Modal.getInstance(document.getElementById('forgotModal'));
+                modal.hide();
 
             } catch (err) {
                 console.error('重設密碼失敗:', err);
-                alert('❌ 發送失敗: ' + err.message);
+                alert('發送失敗: ' + err.message);
             } finally {
                 btn.disabled = false;
                 btn.innerText = originalText;
