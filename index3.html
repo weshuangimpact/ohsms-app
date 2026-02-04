@@ -465,7 +465,7 @@
         }
 
         // ==========================================
-        // 3. 開啟新分頁 (純預覽功能) -> 已修正：側邊欄新增審核資訊
+        // 3. 開啟新分頁 (純預覽功能) -> ★ 修正：側邊欄新增審核資訊 (查 profiles)
         // ==========================================
         async function openEvidenceTab(evidenceId) {
             const newWindow = window.open('', '_blank');
@@ -534,20 +534,30 @@
                 const badgeClass = data.is_special_case ? 'background:#ffc107; color:#212529;' : 'background:#198754; color:white;';
                 const auditNote = data.audit_note || '無';
                 
-                // ★ 審核者邏輯修正：查 profiles 表抓取真實姓名
+                // ★ 審核者邏輯修正：查 profiles 表抓取真實姓名 (full_name)
                 let reviewerText = '無';
                 if (data.reviewer_id) {
                     const { data: profile } = await supabaseClient
                         .from('profiles')
-                        .select('name')
+                        .select('full_name') // ★ 使用 full_name
                         .eq('id', data.reviewer_id)
                         .single();
                     
-                    if (profile && profile.name) {
-                        reviewerText = profile.name;
+                    if (profile && profile.full_name) {
+                        reviewerText = profile.full_name;
                     } else {
-                        // 若查無此人但有ID，預設顯示
-                        reviewerText = '系統管理員';
+                        // 若 profiles 查無，嘗試查 medical_staff (顧問也可能是審核者)
+                        const { data: staff } = await supabaseClient
+                            .from('medical_staff')
+                            .select('name')
+                            .eq('id', data.reviewer_id)
+                            .single();
+
+                        if (staff && staff.name) {
+                            reviewerText = staff.name;
+                        } else {
+                            reviewerText = `未知 (ID: ${data.reviewer_id.substring(0,6)}...)`;
+                        }
                     }
                 }
                 
