@@ -299,12 +299,8 @@
                     </div>
                 </div>
                 <div class="modal-footer">
-                    <div id="initialReviewInfo" class="me-auto text-start small text-muted" style="font-size: 0.85rem; line-height: 1.4;"></div>
-
-                    <div class="d-flex gap-2">
-                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
-                        <button type="button" class="btn btn-primary px-4" onclick="confirmSaveReview()"><i class="fas fa-save me-2"></i>確認儲存</button>
-                    </div>
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                    <button type="button" class="btn btn-primary px-4" onclick="confirmSaveReview()"><i class="fas fa-save me-2"></i>確認儲存</button>
                 </div>
             </div>
         </div>
@@ -469,7 +465,7 @@
         }
 
         // ==========================================
-        // 3. 開啟新分頁 (純預覽功能)
+        // 3. 開啟新分頁 (純預覽功能) -> 已修正為加入「初始審核資訊」
         // ==========================================
         async function openEvidenceTab(evidenceId) {
             const newWindow = window.open('', '_blank');
@@ -492,12 +488,13 @@
             `);
 
             try {
-                // 1. 查詢詳細資料
+                // 1. 查詢詳細資料 (加入審核相關欄位)
                 const { data, error } = await supabaseClient
                     .from('evidence')
                     .select(`
                         id, visit_date, start_time, end_time, execution_items, 
                         file_url, attachment_folder_id, service_year, additional_appendices,
+                        case_number, is_special_case, audit_note, reviewer_id, created_at,
                         workplaces ( companies (name) ),
                         medical_staff (name) 
                     `)
@@ -531,6 +528,14 @@
                 // 修正：項目顯示改為 service_type
                 const serviceType = stagingData.service_type || '無服務類型紀錄';
                 
+                // --- 初始審核資訊變數 ---
+                const caseNo = data.case_number || '無';
+                const closeType = data.is_special_case ? '特案允許結案' : '核定結案';
+                const badgeClass = data.is_special_case ? 'bg-warning text-dark' : 'bg-success text-white';
+                const auditNote = data.audit_note || '無';
+                const reviewerText = data.reviewer_id ? '系統管理員' : '無';
+                const reviewDate = data.created_at ? new Date(data.created_at).toLocaleString('zh-TW', { hour12: false }) : '無';
+
                 // 3. 處理 Appendices (一般 Q 類附件)
                 let appendicesHtml = '';
                 let existingAppendices = data.additional_appendices || [];
@@ -663,6 +668,27 @@
                                             ${appendicesHtml}
                                         </div>
                                     </div>
+
+                                    <div class="section-title" style="margin-top: 40px; color: #6c757d; border-color: #6c757d;">初始審核資訊</div>
+                                    <div class="info-group">
+                                        <span class="label">案號</span>
+                                        <div class="value">${caseNo}</div>
+                                    </div>
+                                    <div class="info-group">
+                                        <span class="label">結案類別</span>
+                                        <div class="value"><span class="badge ${badgeClass}">${closeType}</span></div>
+                                    </div>
+                                    <div class="info-group">
+                                        <span class="label">審核意見</span>
+                                        <div class="value">${auditNote}</div>
+                                    </div>
+                                    <div class="info-group">
+                                        <span class="label">審核者 / 時間</span>
+                                        <div class="value">
+                                            ${reviewerText}<br>
+                                            <small class="text-muted">${reviewDate}</small>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
                             <div class="preview-area">
@@ -700,43 +726,21 @@
             reviewModal.show();
 
             try {
-                // 1. 修改：多讀取 case_number, is_special_case, audit_note, created_at, reviewer_id 以供顯示
+                // 假設資料庫欄位為 'evaluation_reviews' (JSONB 格式)
                 const { data, error } = await supabaseClient
                     .from('evidence')
-                    .select('evaluation_reviews, case_number, is_special_case, audit_note, created_at, reviewer_id')
+                    .select('evaluation_reviews')
                     .eq('id', evidenceId)
                     .single();
 
-                if (error) throw error;
-
-                // 2. 顯示左下角「初始審核資訊」
-                const infoDiv = document.getElementById('initialReviewInfo');
-                const caseNo = data.case_number || '無';
-                const closeType = data.is_special_case ? '特案允許結案' : '核定結案';
-                const auditNote = data.audit_note || '無';
-                
-                // 審核者邏輯：若有 reviewer_id 則顯示系統管理員，否則顯示無
-                const reviewerText = data.reviewer_id ? '系統管理員' : '無';
-                
-                const reviewDate = data.created_at ? new Date(data.created_at).toLocaleString('zh-TW', { hour12: false }) : '無';
-                
-                infoDiv.innerHTML = `
-                    <div style="font-weight:bold; color:#333; margin-bottom:2px;"><i class="fas fa-hashtag me-1"></i>案號：${caseNo}</div>
-                    <div><span class="badge ${data.is_special_case ? 'bg-warning text-dark' : 'bg-success'}">${closeType}</span></div>
-                    <div class="mt-1"><i class="fas fa-comment-dots me-1"></i>意見：${auditNote}</div>
-                    <div class="text-muted mt-1" style="font-size:0.8rem;">
-                        <i class="fas fa-user-shield me-1"></i>審核者：${reviewerText} &nbsp;|&nbsp; 
-                        <i class="far fa-clock me-1"></i>${reviewDate}
-                    </div>
-                `;
-
-                // 3. 處理評鑑紀錄列表 (保持原樣)
                 container.innerHTML = ''; // 清空
+
                 let existingRecords = [];
                 if (data && data.evaluation_reviews) {
                     existingRecords = data.evaluation_reviews;
                 }
 
+                // 渲染現有紀錄 (設定為唯讀)
                 if (existingRecords.length > 0) {
                     existingRecords.forEach(record => {
                         addReviewRow(record.date, record.note, true);
@@ -745,7 +749,7 @@
                     container.innerHTML = '<div class="text-muted text-center py-3 mb-3 border-bottom"><i class="fas fa-info-circle me-1"></i>尚無審查紀錄，請點擊下方按鈕新增。</div>';
                 }
 
-                // 自動新增一列空白輸入格
+                // 自動新增一列空白輸入格供使用者填寫
                 addReviewRow();
 
             } catch (err) {
