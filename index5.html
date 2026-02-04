@@ -135,6 +135,16 @@
         }
         .review-label { font-size: 0.85rem; color: #856404; font-weight: bold; margin-bottom: 2px; }
         .review-value { font-size: 1rem; color: #212529; margin-bottom: 10px; }
+        
+        /* 針對 evaluation_reviews 列表的樣式 */
+        .review-list {
+            margin: 0;
+            padding-left: 1.2rem;
+        }
+        .review-list li {
+            margin-bottom: 0.5rem;
+            line-height: 1.5;
+        }
     </style>
 </head>
 <body>
@@ -230,7 +240,7 @@
                         </div>
                         <div class="mt-2">
                             <div class="review-label">審核意見 / 需補正事項</div>
-                            <div class="review-value text-danger fw-bold" id="infoAuditNote" style="white-space: pre-wrap;">--</div>
+                            <div class="review-value text-danger" id="infoAuditNote">--</div>
                         </div>
                     </div>
 
@@ -313,12 +323,12 @@
             document.getElementById('loadingOverlay').style.display = 'flex';
 
             try {
-                // 修正：增加讀取審核相關欄位
+                // 修正：增加讀取 evaluation_reviews (歷次審查詳細紀錄)
                 const { data, error } = await supabaseClient
                     .from('evidence')
                     .select(`
                         id, case_number, visit_date, service_year, improvement_records, 
-                        is_special_case, audit_note, reviewer_id, created_at,
+                        is_special_case, audit_note, reviewer_id, created_at, evaluation_reviews,
                         workplaces(companies(name)),
                         medical_staff(name)
                     `)
@@ -336,19 +346,40 @@
 
                 // 填入審核資訊
                 document.getElementById('infoCloseType').innerHTML = `<span class="badge ${data.is_special_case ? 'bg-warning text-dark' : 'bg-success'}">${data.is_special_case ? '特案允許結案' : '核定結案'}</span>`;
-                document.getElementById('infoAuditNote').innerText = data.audit_note || '無';
+                
+                // ★ 關鍵修正：優先顯示 evaluation_reviews (審查詳細紀錄)，若無則顯示 audit_note
+                let auditContentHtml = '';
+                if (data.evaluation_reviews && Array.isArray(data.evaluation_reviews) && data.evaluation_reviews.length > 0) {
+                    auditContentHtml = '<ul class="review-list">';
+                    data.evaluation_reviews.forEach(r => {
+                         // 假設結構為 {date: '...', note: '...'}
+                         const rDate = r.date || '無日期';
+                         const rNote = r.note || '';
+                         auditContentHtml += `<li><strong>[${rDate}]</strong> ${rNote}</li>`;
+                    });
+                    auditContentHtml += '</ul>';
+                } else {
+                    // 若無詳細紀錄，回退顯示 audit_note
+                    auditContentHtml = `<span class="fw-bold">${data.audit_note || '無審核意見'}</span>`;
+                }
+                document.getElementById('infoAuditNote').innerHTML = auditContentHtml;
+
                 document.getElementById('infoReviewDate').innerText = data.created_at ? new Date(data.created_at).toLocaleString('zh-TW', { hour12: false }) : '無';
 
                 // 查詢審核者姓名
                 let reviewerName = '無';
                 if (data.reviewer_id) {
+                    // 先查 profiles
                     const { data: profile } = await supabaseClient
                         .from('profiles')
                         .select('full_name')
                         .eq('id', data.reviewer_id)
                         .single();
-                    if (profile && profile.full_name) reviewerName = profile.full_name;
-                    else {
+                    
+                    if (profile && profile.full_name) {
+                        reviewerName = profile.full_name;
+                    } else {
+                         // 若查不到再查 medical_staff
                          const { data: staff } = await supabaseClient.from('medical_staff').select('name').eq('id', data.reviewer_id).single();
                          if(staff) reviewerName = staff.name;
                     }
