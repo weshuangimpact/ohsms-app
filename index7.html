@@ -344,7 +344,7 @@
                                 </div>
                                 <div class="mt-2 text-end">
                                     <small class="text-muted d-block mb-1"><i class="fas fa-info-circle"></i> 匯入支援：公司/顧問/日期/時間/事項</small>
-                                    <a href="#" class="small text-decoration-none" onclick="downloadTemplate('record')"><i class="fas fa-download me-1"></i>下載範本</a>
+                                    <a href="#" class="small text-decoration-none" onclick="downloadTemplate('record')"><i class="fas fa-download me-1"></i>下載包含現有資料之範本</a>
                                 </div>
                             </div>
                         </div>
@@ -425,9 +425,14 @@
                         </div>
                     </form>
                 </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
-                    <button type="button" class="btn btn-primary" onclick="saveCompany()">儲存變更</button>
+                <div class="modal-footer justify-content-between">
+                    <button type="button" class="btn btn-danger" id="btn-delete-company" onclick="deleteCompany()" style="display:none;">
+                        <i class="fas fa-trash me-1"></i>刪除
+                    </button>
+                    <div class="ms-auto">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                        <button type="button" class="btn btn-primary" onclick="saveCompany()">儲存變更</button>
+                    </div>
                 </div>
             </div>
         </div>
@@ -493,9 +498,14 @@
                         </div>
                     </form>
                 </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
-                    <button type="button" class="btn btn-success" onclick="saveStaff()">儲存變更</button>
+                <div class="modal-footer justify-content-between">
+                    <button type="button" class="btn btn-danger" id="btn-delete-staff" onclick="deleteStaff()" style="display:none;">
+                        <i class="fas fa-trash me-1"></i>刪除
+                    </button>
+                    <div class="ms-auto">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                        <button type="button" class="btn btn-success" onclick="saveStaff()">儲存變更</button>
+                    </div>
                 </div>
             </div>
         </div>
@@ -556,7 +566,7 @@
                     <button type="button" class="btn btn-danger" id="btn-delete-record" onclick="deleteRecord()" style="display:none;">
                         <i class="fas fa-trash me-1"></i>刪除
                     </button>
-                    <div>
+                    <div class="ms-auto">
                         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
                         <button type="button" class="btn btn-warning text-dark" onclick="saveRecord()">儲存</button>
                     </div>
@@ -676,6 +686,7 @@
             document.getElementById('company-id').value = '';
             document.getElementById('companyModalTitle').innerText = '新增事業單位';
             document.getElementById('contract-end').disabled = true;
+            document.getElementById('btn-delete-company').style.display = 'none'; // 新增時隱藏刪除
             new bootstrap.Modal(document.getElementById('companyModal')).show();
         }
 
@@ -698,6 +709,7 @@
             endInput.disabled = isActive;
 
             document.getElementById('companyModalTitle').innerText = '編輯事業單位';
+            document.getElementById('btn-delete-company').style.display = 'block'; // 編輯時顯示刪除
             new bootstrap.Modal(document.getElementById('companyModal')).show();
         }
 
@@ -747,6 +759,53 @@
                 alert('✅ 儲存成功！' + (!id ? '(已自動建立預設作業場所)' : ''));
                 bootstrap.Modal.getInstance(document.getElementById('companyModal')).hide();
                 loadCompanies();
+            }
+        }
+        
+        // 刪除公司功能 (含防呆)
+        async function deleteCompany() {
+            const id = document.getElementById('company-id').value;
+            if(!id) return;
+
+            // 防呆檢查：是否有關聯的服務紀錄
+            try {
+                // 1. 取得該公司的所有場所 ID
+                const { data: wpData, error: wpError } = await supabaseClient
+                    .from('workplaces')
+                    .select('id')
+                    .eq('company_id', id);
+
+                if (wpError) throw wpError;
+                
+                // 2. 如果有場所，檢查這些場所是否有服務紀錄
+                if (wpData && wpData.length > 0) {
+                    const wpIds = wpData.map(w => w.id);
+                    const { count, error: countError } = await supabaseClient
+                        .from('service_records')
+                        .select('*', { count: 'exact', head: true })
+                        .in('workplace_id', wpIds);
+                    
+                    if (countError) throw countError;
+
+                    if (count > 0) {
+                        alert('⚠️ 警告：該公司已有服務執行紀錄，不得刪除！\n\n請先移除相關服務紀錄後再試。');
+                        return;
+                    }
+                }
+                
+                // 3. 通過檢查，執行刪除
+                if(!confirm('確定要刪除此公司資料嗎？\n\n注意：相關的作業場所設定將一併被刪除。')) return;
+
+                const { error: delError } = await supabaseClient.from('companies').delete().eq('id', id);
+                if(delError) throw delError;
+
+                alert('🗑️ 公司資料已刪除');
+                bootstrap.Modal.getInstance(document.getElementById('companyModal')).hide();
+                loadCompanies();
+
+            } catch (err) {
+                console.error(err);
+                alert('刪除檢查失敗: ' + err.message);
             }
         }
 
@@ -805,6 +864,7 @@
             document.getElementById('staff-id').value = '';
             document.getElementById('staffModalTitle').innerText = '新增醫護人員';
             document.getElementById('staff-resign').disabled = true;
+            document.getElementById('btn-delete-staff').style.display = 'none'; // 新增時隱藏刪除
             new bootstrap.Modal(document.getElementById('staffModal')).show();
         }
 
@@ -827,6 +887,7 @@
             resignInput.disabled = isActive;
 
             document.getElementById('staffModalTitle').innerText = '編輯醫護人員';
+            document.getElementById('btn-delete-staff').style.display = 'block'; // 編輯時顯示刪除
             new bootstrap.Modal(document.getElementById('staffModal')).show();
         }
 
@@ -858,6 +919,40 @@
             else {
                 bootstrap.Modal.getInstance(document.getElementById('staffModal')).hide();
                 loadStaff();
+            }
+        }
+
+        // 刪除人員功能 (含防呆)
+        async function deleteStaff() {
+            const id = document.getElementById('staff-id').value;
+            if(!id) return;
+
+            // 防呆檢查：是否有關聯的服務紀錄
+            try {
+                const { count, error: countError } = await supabaseClient
+                    .from('service_records')
+                    .select('*', { count: 'exact', head: true })
+                    .eq('consultant_id', id);
+                
+                if (countError) throw countError;
+
+                if (count > 0) {
+                    alert('⚠️ 警告：該人員已有負責的服務執行紀錄，不得刪除！\n\n請先將相關紀錄移轉給其他顧問後再試。');
+                    return;
+                }
+
+                if(!confirm('確定要刪除此醫護人員資料嗎？此動作無法復原。')) return;
+
+                const { error: delError } = await supabaseClient.from('medical_staff').delete().eq('id', id);
+                if(delError) throw delError;
+
+                alert('🗑️ 人員資料已刪除');
+                bootstrap.Modal.getInstance(document.getElementById('staffModal')).hide();
+                loadStaff();
+
+            } catch (err) {
+                console.error(err);
+                alert('刪除檢查失敗: ' + err.message);
             }
         }
 
@@ -1104,37 +1199,32 @@
 
             } else if (type === 'record') {
                 // ==========================================
-                // 重點修正：動態撈取資料庫公司 + 完整欄位
+                // ★ 重點修正：自動帶入資料庫現有的公司名單
                 // ==========================================
                 try {
-                    // 1. 抓取所有已經建立場所 (Workplace) 的公司
-                    const { data: wpData, error } = await supabaseClient
-                        .from('workplaces')
-                        .select('companies (name)')
-                        .order('created_at', { ascending: false });
+                    // 1. 抓取所有服務中的公司
+                    const { data: activeCompanies, error } = await supabaseClient
+                        .from('companies')
+                        .select('name')
+                        .eq('is_active', true)
+                        .order('name');
 
                     if (error) throw error;
 
-                    // 2. 取出不重複的公司名稱 (使用 Set 去重)
-                    // 過濾掉無效資料
-                    const companyNames = [...new Set(wpData.map(item => item.companies?.name).filter(n => n))];
-
-                    // 3. 設定完整標題 (對應 Modal 所有欄位)
-                    // 順序：公司 | 顧問 | 日期 | 開始時間 | 結束時間 | 事項
+                    // 2. 標題：公司名稱, 顧問姓名, 日期, 開始, 結束, 事項
                     csvContent += "公司名稱,顧問姓名,服務日期(YYYY-MM-DD),開始時間(HH:mm),結束時間(HH:mm),執行事項\n";
 
-                    if (companyNames.length === 0) {
-                        // 若無資料，給一行範例
+                    if (!activeCompanies || activeCompanies.length === 0) {
                         csvContent += "範例公司,王顧問,,09:00,12:00,建立母案";
                     } else {
-                        // 4. 為每一間公司產生一行預填列
-                        companyNames.forEach(name => {
-                            // 只填第一欄，其他留空給使用者填
-                            csvContent += `${name},,,,,\n`;
+                        // 3. 將每間公司列為一行，方便使用者直接填寫
+                        activeCompanies.forEach(c => {
+                            // 只填第一欄，其他留空
+                            csvContent += `${c.name},,,,,\n`;
                         });
                     }
 
-                    triggerDownload(csvContent, 'service_record_template_full.csv');
+                    triggerDownload(csvContent, 'service_record_with_companies.csv');
 
                 } catch (e) {
                     console.error(e);
@@ -1247,7 +1337,7 @@
                         if(!row[0]) return; 
                         
                         const cName = String(row[0]).trim(); // Col 0: 公司
-                        const sName = String(row[1]).trim(); // Col 1: 顧問
+                        const sName = String(row[1] || '').trim(); // Col 1: 顧問 (允許為空，但會報錯)
                         const date = formatDate(row[2]);     // Col 2: 日期
                         
                         // 新增時間讀取 (Excel 可能讀成小數點或字串，簡單處理轉字串)
