@@ -32,7 +32,7 @@
         /* 頁首設定 */
         .navbar {
             background-color: #202124 !important;
-            min-height: 85px; /* [修正] 統一高度為 85px */
+            min-height: 85px; /* 統一高度為 85px */
             color: #fff;
             flex-shrink: 0;
         }
@@ -181,10 +181,9 @@
                     <label class="form-label fw-bold small text-muted">動作類型</label>
                     <select class="form-select" id="filter-action">
                         <option value="">全部動作</option>
-                        <option value="新增">新增 (Insert)</option>
-                        <option value="更新">更新 (Update)</option>
-                        <option value="刪除">刪除 (Delete)</option>
-                        <option value="批量匯入">批量匯入 (Import)</option>
+                        <option value="INSERT">新增 (Insert)</option>
+                        <option value="UPDATE">更新 (Update)</option>
+                        <option value="DELETE">刪除 (Delete)</option>
                     </select>
                 </div>
                 <div class="col-md-2">
@@ -342,6 +341,7 @@
             tbody.innerHTML = '<tr><td colspan="6" class="text-center py-5">資料讀取中...</td></tr>';
 
             try {
+                // 1. 查詢 Logs
                 let query = supabaseClient
                     .from('audit_logs')
                     .select('*')
@@ -354,27 +354,55 @@
                     query = query.eq('action_type', actionType);
                 }
 
-                const { data, error } = await query;
-                
+                const { data: logs, error } = await query;
                 if (error) throw error;
 
-                let filteredData = data || [];
+                let displayData = logs || [];
+
+                // 2. 補全操作人員姓名 (透過 user_id 查詢 profiles)
+                if (displayData.length > 0) {
+                    // 收集所有不重複的 user_id
+                    const userIds = [...new Set(displayData.map(l => l.user_id).filter(id => id))];
+                    
+                    if (userIds.length > 0) {
+                        // 一次性查詢 profiles 表格
+                        const { data: profiles, error: pError } = await supabaseClient
+                            .from('profiles')
+                            .select('id, full_name')
+                            .in('id', userIds);
+                        
+                        if (!pError && profiles) {
+                            // 建立 ID -> Name 的對照表
+                            const nameMap = {};
+                            profiles.forEach(p => nameMap[p.id] = p.full_name);
+
+                            // 將姓名填回 log 資料
+                            displayData = displayData.map(log => ({
+                                ...log,
+                                // 優先顯示 profiles 的全名，若無則顯示 log 內的 user_name，再無則顯示 Unknown
+                                display_name: nameMap[log.user_id] || log.user_name || 'Unknown'
+                            }));
+                        }
+                    }
+                }
+
+                // 3. 前端關鍵字過濾
                 if (keyword) {
                     const lowerKey = keyword.toLowerCase();
-                    filteredData = filteredData.filter(log => 
-                        (log.user_name && log.user_name.toLowerCase().includes(lowerKey)) ||
+                    displayData = displayData.filter(log => 
+                        (log.display_name && log.display_name.toLowerCase().includes(lowerKey)) ||
                         (log.details && log.details.toLowerCase().includes(lowerKey)) ||
                         (log.target_table && log.target_table.toLowerCase().includes(lowerKey))
                     );
                 }
 
-                currentLogs = filteredData;
+                currentLogs = displayData;
                 
-                if (filteredData.length === 0) {
+                if (displayData.length === 0) {
                     alert('🔍 查無符合條件的紀錄 (資料庫回傳 0 筆)');
                 }
 
-                renderTable(filteredData);
+                renderTable(displayData);
 
             } catch (err) {
                 console.error(err);
@@ -398,24 +426,34 @@
 
             countLabel.innerText = `顯示 ${logs.length} 筆資料`;
 
+            // 定義動作類型的中文對照
+            const actionMap = {
+                'INSERT': '新增',
+                'UPDATE': '更新',
+                'DELETE': '刪除'
+            };
+
             tbody.innerHTML = logs.map(log => {
                 const timeStr = new Date(log.created_at).toLocaleString('zh-TW', { hour12: false });
                 
                 let roleBadge = '<span class="badge badge-role-user">一般</span>';
                 if (log.user_role === 'admin') roleBadge = '<span class="badge badge-role-admin">管理員</span>';
-                else if (log.user_role === 'general') roleBadge = '<span class="badge badge-role-manager">文管</span>';
+                else if (log.user_role === 'doc_control') roleBadge = '<span class="badge badge-role-manager">文管</span>'; // 修正: general 改為 doc_control 以對應正確角色代碼
 
+                // 根據英文指令設定顏色與中文顯示
                 let actionColor = 'text-dark';
-                if (log.action_type === '刪除') actionColor = 'text-danger fw-bold';
-                if (log.action_type === '新增') actionColor = 'text-success fw-bold';
-                if (log.action_type === '更新') actionColor = 'text-primary fw-bold';
+                let actionText = actionMap[log.action_type] || log.action_type; // 若無對應則顯示原值
+
+                if (log.action_type === 'DELETE') actionColor = 'text-danger fw-bold';
+                if (log.action_type === 'INSERT') actionColor = 'text-success fw-bold';
+                if (log.action_type === 'UPDATE') actionColor = 'text-primary fw-bold';
 
                 return `
                 <tr class="animate__animated animate__fadeIn">
                     <td class="ps-4 text-muted small font-monospace">${timeStr}</td>
-                    <td class="fw-bold">${log.user_name || 'Unknown'}</td>
+                    <td class="fw-bold">${log.display_name || log.user_name || 'Unknown'}</td>
                     <td>${roleBadge}</td>
-                    <td class="${actionColor}">${log.action_type}</td>
+                    <td class="${actionColor}">${actionText}</td>
                     <td><span class="badge bg-light text-dark border">${log.target_table}</span></td>
                     <td class="text-muted small text-break" style="max-width: 300px;">${log.details || '-'}</td>
                 </tr>
@@ -429,15 +467,19 @@
             let csvContent = "data:text/csv;charset=utf-8,\uFEFF"; 
             csvContent += "時間,操作人員,身分,動作,目標資料表,詳情\n";
 
+            // 匯出時同樣需要對照表
+            const actionMap = { 'INSERT': '新增', 'UPDATE': '更新', 'DELETE': '刪除' };
+
             currentLogs.forEach(log => {
                 const time = new Date(log.created_at).toLocaleString('zh-TW', { hour12: false });
+                const actionText = actionMap[log.action_type] || log.action_type;
                 const escape = (text) => text ? `"${text.replace(/"/g, '""')}"` : '""';
                 
                 const row = [
                     escape(time),
-                    escape(log.user_name),
+                    escape(log.display_name || log.user_name),
                     escape(log.user_role),
-                    escape(log.action_type),
+                    escape(actionText),
                     escape(log.target_table),
                     escape(log.details)
                 ].join(",");
