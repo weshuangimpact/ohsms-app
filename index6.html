@@ -206,7 +206,6 @@
                             <tr>
                                 <th class="ps-4">時間 (Time)</th>
                                 <th>操作人員</th>
-                                <th>身分</th>
                                 <th>動作類型</th>
                                 <th>目標資料表</th>
                                 <th>操作詳情 (Details)</th>
@@ -214,7 +213,7 @@
                         </thead>
                         <tbody id="logTableBody">
                             <tr>
-                                <td colspan="6" class="text-center py-5 text-muted">
+                                <td colspan="5" class="text-center py-5 text-muted">
                                     <i class="fas fa-search fa-3x mb-3 text-secondary"></i><br>
                                     請選擇時間範圍並點擊「查詢紀錄」
                                 </td>
@@ -318,6 +317,56 @@
             console.error('Init Error:', e);
         }
 
+        // 輔助函式：解析並轉譯操作詳情 (Action Translation)
+        function formatLogDetails(log) {
+            if (!log.details) return '-';
+            
+            let content = {};
+            let isJson = false;
+            try {
+                content = JSON.parse(log.details);
+                isJson = true;
+            } catch (e) {
+                // 如果不是 JSON，直接回傳原始文字
+                return log.details;
+            }
+
+            // 對照表：將資料庫表名轉為中文
+            const tableMap = {
+                'companies': '客戶公司主檔',
+                'medical_staff': '醫護人員名單',
+                'workplaces': '作業場所',
+                'service_records': '服務執行歷程',
+                'profiles': '系統帳號權限',
+                'audit_logs': '稽核日誌'
+            };
+            
+            // 對照表：動作轉為中文
+            const actionMap = {
+                'INSERT': '新增',
+                'UPDATE': '更新',
+                'DELETE': '刪除'
+            };
+
+            const tableName = tableMap[log.target_table] || log.target_table;
+            const actionName = actionMap[log.action_type] || log.action_type;
+            const userName = log.display_name || log.user_name || '系統人員';
+
+            // 嘗試從 JSON 中找出「人名」或「公司名」等關鍵資訊
+            let targetName = '';
+            if (content.name) targetName = content.name;
+            else if (content.full_name) targetName = content.full_name;
+            else if (content.department_name) targetName = content.department_name;
+            else if (content.tax_id) targetName = `統編 ${content.tax_id}`;
+            else if (content.visit_date) targetName = `${content.visit_date} 的服務紀錄`;
+            else if (content.id) targetName = `ID:${content.id.substring(0,8)}...`;
+            else targetName = '資料';
+
+            // 組合成人類可讀的句子
+            // 格式：[誰] [做什麼] [哪張表] 中 [哪一筆資料] 的資料
+            return `${userName} ${actionName} ${tableName} 中「${targetName}」的資料`;
+        }
+
         async function loadLogs() {
             if (!supabaseClient) {
                 alert('資料庫連線尚未初始化，請重新整理頁面。');
@@ -338,7 +387,7 @@
 
             btn.disabled = true;
             btn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>查詢中...';
-            tbody.innerHTML = '<tr><td colspan="6" class="text-center py-5">資料讀取中...</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="5" class="text-center py-5">資料讀取中...</td></tr>';
 
             try {
                 // 1. 查詢 Logs
@@ -361,37 +410,38 @@
 
                 // 2. 補全操作人員姓名 (透過 user_id 查詢 profiles)
                 if (displayData.length > 0) {
-                    // 收集所有不重複的 user_id
                     const userIds = [...new Set(displayData.map(l => l.user_id).filter(id => id))];
                     
                     if (userIds.length > 0) {
-                        // 一次性查詢 profiles 表格
                         const { data: profiles, error: pError } = await supabaseClient
                             .from('profiles')
                             .select('id, full_name')
                             .in('id', userIds);
                         
                         if (!pError && profiles) {
-                            // 建立 ID -> Name 的對照表
                             const nameMap = {};
                             profiles.forEach(p => nameMap[p.id] = p.full_name);
 
-                            // 將姓名填回 log 資料
                             displayData = displayData.map(log => ({
                                 ...log,
-                                // 優先顯示 profiles 的全名，若無則顯示 log 內的 user_name，再無則顯示 Unknown
                                 display_name: nameMap[log.user_id] || log.user_name || 'Unknown'
                             }));
                         }
                     }
                 }
 
-                // 3. 前端關鍵字過濾
+                // 3. 預先處理轉譯文字，以便進行關鍵字搜尋
+                displayData = displayData.map(log => ({
+                    ...log,
+                    translated_details: formatLogDetails(log) // 加入轉譯後的文字
+                }));
+
+                // 4. 前端關鍵字過濾
                 if (keyword) {
                     const lowerKey = keyword.toLowerCase();
                     displayData = displayData.filter(log => 
                         (log.display_name && log.display_name.toLowerCase().includes(lowerKey)) ||
-                        (log.details && log.details.toLowerCase().includes(lowerKey)) ||
+                        (log.translated_details && log.translated_details.toLowerCase().includes(lowerKey)) ||
                         (log.target_table && log.target_table.toLowerCase().includes(lowerKey))
                     );
                 }
@@ -407,7 +457,7 @@
             } catch (err) {
                 console.error(err);
                 alert('❌ 讀取失敗: ' + err.message);
-                tbody.innerHTML = '<tr><td colspan="6" class="text-center py-5 text-danger">讀取發生錯誤</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="5" class="text-center py-5 text-danger">讀取發生錯誤</td></tr>';
             } finally {
                 btn.disabled = false;
                 btn.innerHTML = '<i class="fas fa-search me-2"></i>查詢紀錄';
@@ -419,43 +469,48 @@
             const countLabel = document.getElementById('record-count');
 
             if (logs.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="6" class="text-center py-5 text-muted">查無符合條件的紀錄</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="5" class="text-center py-5 text-muted">查無符合條件的紀錄</td></tr>';
                 countLabel.innerText = '顯示 0 筆資料';
                 return;
             }
 
             countLabel.innerText = `顯示 ${logs.length} 筆資料`;
 
-            // 定義動作類型的中文對照
             const actionMap = {
                 'INSERT': '新增',
                 'UPDATE': '更新',
                 'DELETE': '刪除'
             };
 
+            const tableMap = {
+                'companies': '客戶公司主檔',
+                'medical_staff': '醫護人員名單',
+                'workplaces': '作業場所',
+                'service_records': '服務執行歷程',
+                'profiles': '系統帳號權限',
+                'audit_logs': '稽核日誌'
+            };
+
             tbody.innerHTML = logs.map(log => {
                 const timeStr = new Date(log.created_at).toLocaleString('zh-TW', { hour12: false });
                 
-                let roleBadge = '<span class="badge badge-role-user">一般</span>';
-                if (log.user_role === 'admin') roleBadge = '<span class="badge badge-role-admin">管理員</span>';
-                else if (log.user_role === 'doc_control') roleBadge = '<span class="badge badge-role-manager">文管</span>'; // 修正: general 改為 doc_control 以對應正確角色代碼
-
-                // 根據英文指令設定顏色與中文顯示
+                // 動作類型顏色
                 let actionColor = 'text-dark';
-                let actionText = actionMap[log.action_type] || log.action_type; // 若無對應則顯示原值
-
+                let actionText = actionMap[log.action_type] || log.action_type;
                 if (log.action_type === 'DELETE') actionColor = 'text-danger fw-bold';
                 if (log.action_type === 'INSERT') actionColor = 'text-success fw-bold';
                 if (log.action_type === 'UPDATE') actionColor = 'text-primary fw-bold';
+
+                // 資料表中文
+                let tableName = tableMap[log.target_table] || log.target_table;
 
                 return `
                 <tr class="animate__animated animate__fadeIn">
                     <td class="ps-4 text-muted small font-monospace">${timeStr}</td>
                     <td class="fw-bold">${log.display_name || log.user_name || 'Unknown'}</td>
-                    <td>${roleBadge}</td>
                     <td class="${actionColor}">${actionText}</td>
-                    <td><span class="badge bg-light text-dark border">${log.target_table}</span></td>
-                    <td class="text-muted small text-break" style="max-width: 300px;">${log.details || '-'}</td>
+                    <td><span class="badge bg-light text-dark border">${tableName}</span></td>
+                    <td class="text-muted small">${log.translated_details}</td>
                 </tr>
                 `;
             }).join('');
@@ -465,23 +520,31 @@
             if (currentLogs.length === 0) return alert('目前無資料可匯出，請先執行查詢。');
 
             let csvContent = "data:text/csv;charset=utf-8,\uFEFF"; 
-            csvContent += "時間,操作人員,身分,動作,目標資料表,詳情\n";
+            // 移除身分欄位
+            csvContent += "時間,操作人員,動作,目標資料表,操作詳情\n";
 
-            // 匯出時同樣需要對照表
             const actionMap = { 'INSERT': '新增', 'UPDATE': '更新', 'DELETE': '刪除' };
+            const tableMap = {
+                'companies': '客戶公司主檔',
+                'medical_staff': '醫護人員名單',
+                'workplaces': '作業場所',
+                'service_records': '服務執行歷程',
+                'profiles': '系統帳號權限',
+                'audit_logs': '稽核日誌'
+            };
 
             currentLogs.forEach(log => {
                 const time = new Date(log.created_at).toLocaleString('zh-TW', { hour12: false });
                 const actionText = actionMap[log.action_type] || log.action_type;
+                const tableText = tableMap[log.target_table] || log.target_table;
                 const escape = (text) => text ? `"${text.replace(/"/g, '""')}"` : '""';
                 
                 const row = [
                     escape(time),
                     escape(log.display_name || log.user_name),
-                    escape(log.user_role),
                     escape(actionText),
-                    escape(log.target_table),
-                    escape(log.details)
+                    escape(tableText),
+                    escape(log.translated_details) // 使用轉譯後的詳情
                 ].join(",");
                 
                 csvContent += row + "\n";
