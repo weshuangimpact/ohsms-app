@@ -216,7 +216,7 @@
                                 <th class="ps-4">日期</th>
                                 <th>公司/顧問</th>
                                 <th>服務類型</th>
-                                <th>描述摘要</th>
+                                <th>補件要求紀錄</th>
                                 <th class="text-end pe-4">管理動作 (Actions)</th>
                             </tr>
                         </thead>
@@ -228,6 +228,22 @@
             </div>
         </div>
 
+    </div>
+
+    <div class="modal fade" id="reviewDetailModal" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header bg-warning text-dark">
+                    <h5 class="modal-title fw-bold"><i class="fas fa-history me-2"></i>補件要求內容詳情</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body p-4" id="review-detail-content">
+                    </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-sm btn-secondary" data-bs-dismiss="modal">關閉</button>
+                </div>
+            </div>
+        </div>
     </div>
 
     <div class="modal fade" id="approvalModal" tabindex="-1" data-bs-backdrop="static">
@@ -397,7 +413,7 @@
         }
 
         // ==========================================
-        // 原有功能邏輯 (保持不變)
+        // 原有功能邏輯
         // ==========================================
         const SUPABASE_URL = 'https://yhehfucgemxnfrdvpdhw.supabase.co';
         const SUPABASE_KEY = 'sb_publishable_52emtU-9l-SDxcJTWVTPTA_Yu6qEogh'; 
@@ -407,6 +423,9 @@
         let rateChart = null;
         let currentStagingData = []; 
         let currentReviewId = null; 
+        
+        // 全域暫存，用於 Modal 顯示
+        let currentEvidenceMap = {};
 
         function initChart() {
             const ctx = document.getElementById('rateChart').getContext('2d');
@@ -463,12 +482,12 @@
                 rateChart.data.datasets[0].data = [approvedCount, pendingCount];
                 rateChart.update();
 
-                // [修正] 3. 預先取得所有待補正案件的 Evidence 資料 (為了抓取 deadline)
+                // 3. 預先取得所有待補正案件的 Evidence 資料 (為了抓取 deadline 與 note)
                 const correctionCaseNumbers = filteredPending
                     .filter(p => p.status === 'correction_requested' && p.case_number)
                     .map(p => p.case_number);
                 
-                let evidenceMap = {};
+                currentEvidenceMap = {};
                 if (correctionCaseNumbers.length > 0) {
                     const { data: evData } = await supabaseClient
                         .from('evidence')
@@ -479,7 +498,7 @@
                         evData.forEach(e => {
                             if (e.evaluation_reviews && Array.isArray(e.evaluation_reviews) && e.evaluation_reviews.length > 0) {
                                 // 取最新一筆 (最後一個元素)
-                                evidenceMap[e.case_number] = e.evaluation_reviews[e.evaluation_reviews.length - 1];
+                                currentEvidenceMap[e.case_number] = e.evaluation_reviews[e.evaluation_reviews.length - 1];
                             }
                         });
                     }
@@ -487,6 +506,7 @@
 
                 tbody.innerHTML = filteredPending.map((p) => {
                     let descText = '-';
+                    // 預設為原始描述
                     try {
                         if (p.service_desc && p.service_desc.trim().startsWith('{')) {
                             const parsed = JSON.parse(p.service_desc);
@@ -502,14 +522,17 @@
                     
                     let statusBadge = '';
                     let deadlineHtml = '';
+                    let reviewLink = descText; // 預設為一般描述
 
                     // [修正] 待補正狀態的顯示邏輯
                     if(p.status === 'correction_requested') {
                         statusBadge = '<span class="badge bg-warning text-dark me-1">待補正</span>';
                         
-                        // 嘗試從 Map 中抓取期限
-                        if (p.case_number && evidenceMap[p.case_number]) {
-                            const reviewInfo = evidenceMap[p.case_number];
+                        // 嘗試從 Map 中抓取期限與審查意見
+                        if (p.case_number && currentEvidenceMap[p.case_number]) {
+                            const reviewInfo = currentEvidenceMap[p.case_number];
+                            
+                            // 顯示期限
                             if (reviewInfo.deadline) {
                                 deadlineHtml = `
                                     <div class="mt-1 small text-danger border border-danger rounded px-2 py-1 d-inline-block" style="background-color: #fff5f5;">
@@ -517,6 +540,14 @@
                                     </div>
                                 `;
                             }
+
+                            // 替換描述摘要為「補件要求紀錄」連結
+                            const reviewDate = reviewInfo.date ? reviewInfo.date.split(' ')[0] : '未知日期'; // 只取日期部分
+                            reviewLink = `
+                                <a href="#" onclick="showReviewDetail('${p.case_number}'); return false;" class="text-decoration-none text-primary fw-bold">
+                                    <i class="fas fa-file-contract me-1"></i>${reviewDate}
+                                </a>
+                            `;
                         }
                     }
 
@@ -532,7 +563,9 @@
                             <span class="badge bg-light text-dark border">${p.service_type || '一般訪視'}</span>
                             ${deadlineHtml}
                         </td>
-                        <td class="text-truncate" style="max-width: 250px;">${descText}</td>
+                        <td class="text-truncate" style="max-width: 250px;">
+                            ${reviewLink}
+                        </td>
                         <td class="text-end pe-4">
                             <div class="btn-group">
                                 <button class="btn btn-sm btn-primary fw-bold" onclick="openStagingPreview('${p.id}', this)" title="預覽審核">
@@ -558,6 +591,29 @@
             } catch (e) {
                 console.error(e);
                 alert('載入失敗');
+            }
+        }
+
+        // [新增] 顯示補件要求詳情 Modal
+        function showReviewDetail(caseNumber) {
+            const reviewInfo = currentEvidenceMap[caseNumber];
+            if (reviewInfo) {
+                const content = `
+                    <div class="mb-3">
+                        <label class="text-muted small fw-bold">發送日期</label>
+                        <div class="fs-5">${reviewInfo.date}</div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="text-muted small fw-bold">審查人員</label>
+                        <div>${reviewInfo.reviewer || '管理者'}</div>
+                    </div>
+                    <div class="p-3 bg-light border rounded">
+                        <label class="text-danger small fw-bold mb-2"><i class="fas fa-exclamation-circle me-1"></i>補件/修正要求內容：</label>
+                        <div style="white-space: pre-wrap; color: #333;">${reviewInfo.note}</div>
+                    </div>
+                `;
+                document.getElementById('review-detail-content').innerHTML = content;
+                new bootstrap.Modal(document.getElementById('reviewDetailModal')).show();
             }
         }
 
@@ -828,7 +884,6 @@
                     evidenceFileUrl = targetPath;
                 }
 
-                // --- ★ 新增：解析執行項目 (將 JSON 轉為字串) ---
                 let executionItemsStr = '';
                 if (freshRecord.service_desc) {
                     try {
@@ -839,24 +894,20 @@
                     } catch(e) { console.error('解析執行項目失敗', e); }
                 }
                 
-                // --- ★ 新增：取得審核者 ID ---
                 const currentUserId = sessionStorage.getItem('currentUserId');
-                // -----------------------------------------------
 
                 await supabaseClient.from('service_record_staging').update({ 
                     status: 'approved',
                     reviewer_comment: comment,
                     is_special_case: (type === 'special'),
                     audit_note: comment,
-                    reviewer_id: currentUserId, // ★ 同步更新暫存表
+                    reviewer_id: currentUserId,
                     updated_at: new Date()
                 }).eq('id', id);
 
-                // ★ 核定時：檢查是否已存在 (若是補件後再核定的)，若有則更新 status 為 approved，若無則插入
                 const { data: existingEvidence } = await supabaseClient.from('evidence').select('id').eq('case_number', freshRecord.case_number).single();
 
                 if (existingEvidence) {
-                     // 若是補件後的核定，更新舊有 evidence 紀錄
                      await supabaseClient.from('evidence').update({
                         status: 'approved',
                         evaluation_status: 'closed',
@@ -865,7 +916,6 @@
                         review_date: new Date().toISOString()
                      }).eq('id', existingEvidence.id);
                 } else {
-                    // 若是直接核定，建立新 evidence 紀錄
                     const { error: insertError } = await supabaseClient
                     .from('evidence')
                     .insert({
@@ -878,12 +928,12 @@
                         attachment_folder_id: fileSourceId,
                         file_url: evidenceFileUrl, 
                         additional_appendices: hyperlinksArray,
-                        case_number: freshRecord.case_number, // ★ 同步寫入案號
-                        execution_items: executionItemsStr,   // ★ 同步寫入執行項目
-                        reviewer_id: currentUserId,           // ★ 新增：寫入審核者 ID
-                        updated_by: currentUserId,            // ★ 新增：寫入更新者 ID
-                        status: 'approved',                   // ★ 狀態設為已核定
-                        evaluation_status: 'closed'           // ★ 評鑑狀態設為已結案
+                        case_number: freshRecord.case_number, 
+                        execution_items: executionItemsStr,   
+                        reviewer_id: currentUserId,           
+                        updated_by: currentUserId,            
+                        status: 'approved',                   
+                        evaluation_status: 'closed'           
                     });
                     if (insertError) throw new Error("寫入正式資料庫失敗: " + insertError.message);
                 }
@@ -914,9 +964,6 @@
             new bootstrap.Modal(document.getElementById('reviewEmailModal')).show();
         }
 
-        // ==========================================
-        // ★★★ 修正點：發送補件通知並寫入資料庫 ★★★
-        // ==========================================
         async function sendReviewEmail() {
             const id = document.getElementById('email-target-id').value;
             const record = currentStagingData.find(r => r.id === id);
@@ -927,7 +974,6 @@
             const reasonText = document.getElementById('review-reason-text').value.trim();
             const days = parseInt(document.getElementById('email-deadline').value) || 3;
             
-            // 計算補正期限 (日期時間)
             const deadlineDate = new Date();
             deadlineDate.setDate(deadlineDate.getDate() + days);
             const formattedDeadline = deadlineDate.toLocaleString('zh-TW', { hour12: false });
@@ -946,7 +992,6 @@
                 const userName = sessionStorage.getItem('currentUserName') || '管理員';
                 const nowStr = new Date().toLocaleString('zh-TW', { hour12: false });
 
-                // 1. 準備寫入 evidence 的審查紀錄物件
                 const newReviewEntry = {
                     date: nowStr,
                     reviewer: userName,
@@ -954,41 +999,33 @@
                     deadline: formattedDeadline
                 };
 
-                // 2. 檢查 evidence 表是否已有此案號的資料
                 const { data: existingEv, error: fetchErr } = await supabaseClient
                     .from('evidence')
                     .select('id, evaluation_reviews')
                     .eq('case_number', record.case_number)
                     .single();
 
-                // 3. 處理 evaluation_reviews 陣列
                 let reviewsArray = [];
                 if (existingEv && existingEv.evaluation_reviews) {
-                    // 如果原本就有，則附加
                     reviewsArray = Array.isArray(existingEv.evaluation_reviews) 
                         ? existingEv.evaluation_reviews 
-                        : JSON.parse(JSON.stringify(existingEv.evaluation_reviews)); // 確保它是陣列
+                        : JSON.parse(JSON.stringify(existingEv.evaluation_reviews));
                 }
                 reviewsArray.push(newReviewEntry);
 
-                // 4. 寫入 Evidence 表 (若無則新增，若有則更新)
-                // 注意：這裡必須確保 Index 5 能查到，所以要建立/更新 evidence 紀錄
                 const evidencePayload = {
                     case_number: record.case_number,
                     workplace_id: record.workplace_id,
                     service_year: record.service_year,
                     visit_date: record.visit_date,
                     consultant_id: record.consultant_id,
-                    status: 'correction_pending', // 標記為待補正
+                    status: 'correction_pending', 
                     evaluation_status: 'pending',
-                    evaluation_reviews: reviewsArray, // ★ 寫入審查歷程
+                    evaluation_reviews: reviewsArray, 
                     updated_by: currentUserId,
-                    attachment_folder_id: record.id // 暫時關聯到 Staging ID
+                    attachment_folder_id: record.id 
                 };
 
-                // 若是新案件 (existingEv 為 null)，需要 upsert (以 case_number 為準? 但 case_number 不是 PK)
-                // Supabase upsert 需要 unique constraint。假設 evidence.case_number 尚未設為 unique
-                // 我們用 update 或 insert 分開處理比較保險
                 if (existingEv) {
                     await supabaseClient.from('evidence').update({
                         evaluation_reviews: reviewsArray,
@@ -999,14 +1036,12 @@
                     await supabaseClient.from('evidence').insert(evidencePayload);
                 }
 
-                // 5. 更新 Staging 表狀態
                 await supabaseClient.from('service_record_staging').update({
                     status: 'correction_requested',
                     reviewer_comment: reasonText,
                     reviewer_id: currentUserId
                 }).eq('id', id);
 
-                // 6. 呼叫 Edge Function 發送郵件
                 const res = await fetch('https://yhehfucgemxnfrdvpdhw.supabase.co/functions/v1/send-review', {
                     method: 'POST',
                     headers: {
@@ -1027,7 +1062,7 @@
 
                 alert(`✅ 已成功發送通知並建立補正紀錄。\n期限：${formattedDeadline}`);
                 bootstrap.Modal.getInstance(document.getElementById('reviewEmailModal')).hide();
-                refreshData(); // 刷新列表
+                refreshData(); 
 
             } catch (err) {
                 console.error(err);
@@ -1050,7 +1085,6 @@
             new bootstrap.Modal(document.getElementById('reminderEmailModal')).show();
         }
 
-        // 寄送催收通知 (呼叫 send-reminder API)
         async function sendReminderEmail() {
             const id = document.getElementById('remind-target-id').value;
             const record = currentStagingData.find(r => r.id === id);
@@ -1064,7 +1098,6 @@
             btn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i> 發送中...';
 
             try {
-                // 【關鍵修正】改用已定義的 SUPABASE_KEY (Anon Key) 通過驗證，解決 401 Invalid JWT
                 const res = await fetch('https://yhehfucgemxnfrdvpdhw.supabase.co/functions/v1/send-reminder', {
                     method: 'POST',
                     headers: {
