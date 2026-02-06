@@ -704,15 +704,7 @@ async function searchRecords() {
 
         // 渲染卡片
         container.innerHTML = data.map(record => {
-            // 提示使用者此案號是否來自關聯
-            let displayCaseNum = record.case_number || '無案號';
-            if (caseNumber && targetMotherIds && targetMotherIds.includes(record.id)) {
-                // 如果使用者是用舊案號搜到的，我們標記出來
-                if (!record.case_number.includes(caseNumber)) {
-                     displayCaseNum = `<span class="text-secondary text-decoration-line-through me-1 small">${caseNumber}</span> <span class="text-danger fw-bold">${record.case_number}</span>`;
-                }
-            }
-
+            // [修正] 母案列表卡片不再顯示任何案號，僅作為容器
             return `
                 <div class="col-12">
                     <div class="record-card p-3 rounded d-flex justify-content-between align-items-center" onclick="handleCardClick('${record.id}')">
@@ -723,7 +715,6 @@ async function searchRecords() {
                             </div>
                             <div class="text-muted small">
                                 <i class="far fa-calendar-alt me-1"></i> ${record.visit_date || '預定日期未定'}
-                                <span class="ms-2">| 案號: ${displayCaseNum}</span>
                             </div>
                         </div>
                         <div class="text-end">
@@ -1036,8 +1027,8 @@ updated_at: new Date()
 const { error } = await supabaseClient.from('service_record_staging').upsert(payload);
 if (error) throw error;
 
-// 2. 寫入 Mother Record (兩個 Table 都寫入)
-await supabaseClient.from('service_records').update({ case_number: finalCaseNumber }).eq('id', currentRecordId);
+// 2. [修正] 移除寫入 Mother Record 的動作
+// await supabaseClient.from('service_records').update({ case_number: finalCaseNumber }).eq('id', currentRecordId);
 
 alert(`✅ 存檔成功！資料已送出待審核。\n案件編號：${finalCaseNumber}`);
 backToStep1();
