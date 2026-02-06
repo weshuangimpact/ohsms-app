@@ -707,42 +707,47 @@ async function searchRecords() {
 }
 
 async function handleCardClick(motherId) {
-currentRecordId = motherId;
-const { data: pendingItems, error } = await supabaseClient
-.from('service_record_staging')
-.select('id, service_date, service_type')
-.eq('origin_record_id', motherId)
-.eq('status', 'pending')
-.order('created_at', { ascending: false });
+    currentRecordId = motherId;
+    const { data: pendingItems, error } = await supabaseClient
+        .from('service_record_staging')
+        // [修正] 增加 case_number 欄位的讀取
+        .select('id, service_date, service_type, case_number')
+        .eq('origin_record_id', motherId)
+        .eq('status', 'pending')
+        .order('created_at', { ascending: false });
 
-if (error) { console.error(error); return alert('檢查暫存資料失敗'); }
+    if (error) { console.error(error); return alert('檢查暫存資料失敗'); }
 
-if (pendingItems && pendingItems.length > 0) {
-showActionChoiceModal(pendingItems);
-} else {
-initStep2(null);
-}
+    if (pendingItems && pendingItems.length > 0) {
+        showActionChoiceModal(pendingItems);
+    } else {
+        initStep2(null);
+    }
 }
 
 function showActionChoiceModal(items) {
-const listGroup = document.getElementById('pending-list-group');
-listGroup.innerHTML = items.map(item => `
-                <button type="button" class="list-group-item list-group-item-action d-flex justify-content-between align-items-center" onclick="initStep2('${item.id}')">
-                    <div>
-                        <div class="fw-bold text-primary">修改送審案件</div>
-                        <small class="text-muted">日期：${item.service_date} | 類型：${item.service_type || '未指定'}</small>
-                    </div>
-                    <i class="fas fa-edit text-secondary"></i>
-                </button>
-            `).join('');
+    const listGroup = document.getElementById('pending-list-group');
+    // [修正] HTML 模板增加案號顯示 (在 修改送審案件 後面)
+    listGroup.innerHTML = items.map(item => `
+        <button type="button" class="list-group-item list-group-item-action d-flex justify-content-between align-items-center" onclick="initStep2('${item.id}')">
+            <div>
+                <div class="fw-bold text-primary">
+                    修改送審案件 
+                    <span class="badge bg-light text-dark border ms-2">${item.case_number || '--'}</span>
+                </div>
+                <small class="text-muted">日期：${item.service_date} | 類型：${item.service_type || '未指定'}</small>
+            </div>
+            <i class="fas fa-edit text-secondary"></i>
+        </button>
+    `).join('');
 
-const btnNew = document.getElementById('btn-create-new');
-btnNew.onclick = () => {
-bootstrap.Modal.getInstance(document.getElementById('actionChoiceModal')).hide();
-initStep2(null); 
-};
+    const btnNew = document.getElementById('btn-create-new');
+    btnNew.onclick = () => {
+        bootstrap.Modal.getInstance(document.getElementById('actionChoiceModal')).hide();
+        initStep2(null); 
+    };
 
-new bootstrap.Modal(document.getElementById('actionChoiceModal')).show();
+    new bootstrap.Modal(document.getElementById('actionChoiceModal')).show();
 }
 
 async function initStep2(stagingId) {
