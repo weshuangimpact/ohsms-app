@@ -206,6 +206,7 @@ Hi! 使用者
         </div>
     </div>
 </div>
+
 <div class="step-indicator px-5">
 <div class="step-item active" id="step1-indicator"><div class="step-circle">1</div><div>選擇案件</div></div>
 <div class="step-item" id="step2-indicator"><div class="step-circle">2</div><div>執行紀錄與上傳</div></div>
@@ -732,9 +733,10 @@ async function handleCardClick(motherId) {
     const { data: pendingItems, error } = await supabaseClient
         .from('service_record_staging')
         // [修正] 增加 case_number 欄位的讀取
-        .select('id, service_date, service_type, case_number')
+        .select('id, service_date, service_type, case_number, status')
         .eq('origin_record_id', motherId)
-        .eq('status', 'pending')
+        // [修正] 搜尋範圍擴大至 correction_requested，確保被退件的案子也能被選到
+        .in('status', ['pending', 'correction_requested'])
         .order('created_at', { ascending: false });
 
     if (error) { console.error(error); return alert('檢查暫存資料失敗'); }
@@ -748,19 +750,25 @@ async function handleCardClick(motherId) {
 
 function showActionChoiceModal(items) {
     const listGroup = document.getElementById('pending-list-group');
-    // [修正] HTML 模板增加案號顯示 (在 修改送審案件 後面)
-    listGroup.innerHTML = items.map(item => `
+    // [修正] HTML 模板增加案號顯示，並加入狀態標籤 (待補正/待審核)
+    listGroup.innerHTML = items.map(item => {
+        const statusBadge = item.status === 'correction_requested' 
+            ? '<span class="badge bg-warning text-dark ms-2">⚠️ 待補正</span>' 
+            : '<span class="badge bg-secondary ms-2">待審核</span>';
+            
+        return `
         <button type="button" class="list-group-item list-group-item-action d-flex justify-content-between align-items-center" onclick="initStep2('${item.id}')">
             <div>
                 <div class="fw-bold text-primary">
                     修改送審案件 
                     <span class="badge bg-light text-dark border ms-2">${item.case_number || '--'}</span>
+                    ${statusBadge}
                 </div>
                 <small class="text-muted">日期：${item.service_date} | 類型：${item.service_type || '未指定'}</small>
             </div>
             <i class="fas fa-edit text-secondary"></i>
         </button>
-    `).join('');
+    `}).join('');
 
     const btnNew = document.getElementById('btn-create-new');
     btnNew.onclick = () => {
