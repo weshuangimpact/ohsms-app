@@ -11,7 +11,7 @@
 
     <style>
         /* =========================================
-           1. 統一頁首/頁尾 CSS 設定 (完全保留您的原始設定)
+           1. 統一頁首/頁尾 CSS 設定 (內頁專用 / 高度統一版)
            ========================================= */
         :root { 
             --primary-bg: #f4f6f9; 
@@ -95,9 +95,11 @@
     <script>
         document.addEventListener('DOMContentLoaded', function() {
             const role = sessionStorage.getItem('currentUserRole');
-            // 這裡保留您的權限檢查邏輯，若不需要可自行移除
-            // if (role === 'consultant') { ... } 
-            
+            if (role === 'consultant') {
+                alert('權限不足：顧問帳號無法存取此頁面。');
+                window.location.href = 'dashboard.html';
+                return;
+            }
             // 權限通過，顯示頁面 (使用 Flex 佈局以配合 Sticky Footer)
             document.body.style.display = 'flex';
         });
@@ -341,7 +343,7 @@
                                     <input type="file" id="file-record" hidden accept=".csv, .xlsx, .xls" onchange="handleFileSelect(this, 'record')">
                                 </div>
                                 <div class="mt-2 text-end">
-                                    <small class="text-muted d-block mb-1"><i class="fas fa-info-circle"></i> 支援：公司/顧問/日期/時間</small>
+                                    <small class="text-muted d-block mb-1"><i class="fas fa-info-circle"></i> 匯入支援：公司/顧問/日期/時間/事項</small>
                                     <a href="#" class="small text-decoration-none" onclick="downloadTemplate('record')"><i class="fas fa-download me-1"></i>下載包含現有資料之範本</a>
                                 </div>
                             </div>
@@ -604,7 +606,7 @@
         const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
         document.addEventListener('DOMContentLoaded', () => {
-            // 時鐘與日期邏輯
+            // 時鐘與日期
             setInterval(() => {
                 const now = new Date();
                 const clockEl = document.getElementById('header-clock');
@@ -623,6 +625,7 @@
             const userEl = document.getElementById('header-user');
             if(userEl && userName) userEl.innerText = `Hi! ${userName}`;
 
+            // 資料載入
             loadCompanies();
             loadStaff();
             loadRecords(); 
@@ -1159,9 +1162,8 @@
             } else if (type === 'record') {
                 // ★修正 2: 服務歷程範本包含「負責顧問」欄位，並抓取現有公司
                 try {
-                    // 1. 抓取所有服務中的公司，並嘗試關聯負責顧問 (若資料庫有關聯)
-                    // 注意：目前 DB 結構若 company 沒有直接關聯 consultant，則這裡僅列出公司
-                    // 假設 companies 表有 consultant_id 欄位 (根據先前設定)，嘗試關聯
+                    // 1. 抓取所有服務中的公司，並嘗試關聯負責顧問
+                    // (依據上下文推測 companies 有關聯 medical_staff，若無關聯將只顯示公司)
                     const { data: activeCompanies, error } = await supabaseClient
                         .from('companies')
                         .select(`
@@ -1177,20 +1179,24 @@
                     csvContent += "公司名稱,負責顧問,服務日期(YYYY-MM-DD),開始時間(HH:mm),結束時間(HH:mm),執行事項\n";
 
                     if (!activeCompanies || activeCompanies.length === 0) {
-                        csvContent += "範例公司,王顧問,,09:00,12:00,例行訪視";
+                        csvContent += "範例公司,王顧問,,09:00,12:00,建立母案";
                     } else {
                         // 3. 將每間公司列為一行，預填公司名與顧問名
                         activeCompanies.forEach(c => {
-                            const consultantName = c.medical_staff ? c.medical_staff.name : '';
-                            csvContent += `${c.name},${consultantName},,,,\n`;
+                            let consultantName = '';
+                            if(c.medical_staff) {
+                                // 處理一對一或多對一可能的格式
+                                consultantName = Array.isArray(c.medical_staff) ? (c.medical_staff[0]?.name) : c.medical_staff.name;
+                            }
+                            csvContent += `${c.name},${consultantName || ''},,,,\n`;
                         });
                     }
 
-                    triggerDownload(csvContent, 'service_record_template.csv');
+                    triggerDownload(csvContent, 'service_record_with_consultants.csv');
 
                 } catch (e) {
                     console.error(e);
-                    alert('產生範本失敗: ' + e.message);
+                    alert('產生範本失敗 (請確認公司資料表是否關聯顧問): ' + e.message);
                 }
             }
         }
@@ -1254,12 +1260,11 @@
                     });
 
                 } else if (type === 'staff') {
-                    // 這裡根據 CSV 欄位讀取
+                    // 對應新的範本格式
                     html += '<th>姓名</th><th>角色</th><th>職務</th><th>Email</th><th>入職日</th></tr></thead><tbody>';
                     rows.forEach(row => {
                         if(!row[0]) return;
                         const name = row[0]; 
-                        // 對應範本：col 1 是 role (consultant/admin/doc_control)
                         const role = row[1] || 'consultant'; 
                         const type = row[2] || '兼職';
                         const phone = row[3]; const email = row[4]; const onboard = formatDate(row[5]);
@@ -1298,12 +1303,13 @@
                     rows.forEach(row => {
                         if(!row[0]) return; 
                         
-                        const cName = String(row[0]).trim(); // 公司名稱
-                        const sName = String(row[1] || '').trim(); // 負責顧問 (新欄位)
-                        const date = formatDate(row[2]);     // 日期
-                        const startTime = row[3] ? String(row[3]).trim() : null; // 開始時間
-                        const endTime = row[4] ? String(row[4]).trim() : null;   // 結束時間
-                        const items = row[5] ? String(row[5]).trim() : null;     // 執行事項
+                        // [0]公司, [1]顧問, [2]日期, [3]開始, [4]結束, [5]事項
+                        const cName = String(row[0]).trim(); 
+                        const sName = String(row[1] || '').trim(); 
+                        const date = formatDate(row[2]);     
+                        const startTime = row[3] ? String(row[3]).trim() : null; 
+                        const endTime = row[4] ? String(row[4]).trim() : null;   
+                        const items = row[5] ? String(row[5]).trim() : null;     
 
                         const wpId = compMap[cName];
                         const stId = staffMap[sName];
@@ -1334,7 +1340,7 @@
                             </tr>`;
                         } else {
                             let errorMsg = [];
-                            if(!wpId) errorMsg.push("無對應公司(場所)");
+                            if(!wpId) errorMsg.push("無對應公司/場所");
                             if(!stId) errorMsg.push("無對應顧問");
                             
                             html += `<tr class="table-danger">
