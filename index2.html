@@ -169,8 +169,8 @@
                     <div class="d-flex justify-content-between align-items-center mb-4">
                         <h5 class="fw-bold mb-0">當前年度達成率 (即時計算)</h5>
                         <select class="form-select w-auto fw-bold text-success" id="target-year" onchange="refreshData()">
-                            <option value="2026">2026 年度</option>
-                            <option value="2025" selected>2025 年度</option>
+                            <option value="2026" selected>2026 年度</option>
+                            <option value="2025">2025 年度</option>
                             <option value="2024">2024 年度</option>
                         </select>
                     </div>
@@ -423,8 +423,6 @@
         let rateChart = null;
         let currentStagingData = []; 
         let currentReviewId = null; 
-        
-        // 全域暫存，用於 Modal 顯示
         let currentEvidenceMap = {};
 
         function initChart() {
@@ -444,10 +442,10 @@
             const tbody = document.getElementById('pendingTableBody');
             
             try {
-                // 1. 取得已核定數量
-                const { count: approvedCount, error: err1 } = await supabaseClient
+                // 1. [修正] 取得已核定數量 (以 case_number 去重，避免同母案多筆紀錄)
+                const { data: approvedData, error: err1 } = await supabaseClient
                     .from('evidence')
-                    .select('*', { count: 'exact', head: true })
+                    .select('case_number') // 只要案號
                     .eq('service_year', year)
                     .eq('status', 'approved');
 
@@ -465,6 +463,9 @@
 
                 if (err1 || err2) throw (err1 || err2);
 
+                // 計算 Unique Approved Cases
+                const uniqueApprovedCases = new Set(approvedData.map(d => d.case_number).filter(c => c)).size;
+
                 const filteredPending = stagingData.filter(d => {
                     const d1 = d.visit_date ? new Date(d.visit_date).getFullYear() : null;
                     const d2 = d.service_date ? new Date(d.service_date).getFullYear() : null;
@@ -472,17 +473,20 @@
                 });
 
                 currentStagingData = filteredPending; 
-                const pendingCount = filteredPending.length;
+                
+                // 計算 Unique Pending Cases (避免補件時重複計算)
+                const uniquePendingCases = new Set(filteredPending.map(d => d.case_number).filter(c => c)).size;
 
-                const total = approvedCount + pendingCount;
-                const rate = total === 0 ? 100 : Math.round((approvedCount / total) * 100);
-                document.getElementById('val-approved').innerText = approvedCount;
-                document.getElementById('val-pending').innerText = pendingCount;
+                // [修正] 更新圖表邏輯：使用案號數而非筆數
+                const total = uniqueApprovedCases + uniquePendingCases;
+                const rate = total === 0 ? 100 : Math.round((uniqueApprovedCases / total) * 100);
+                document.getElementById('val-approved').innerText = uniqueApprovedCases;
+                document.getElementById('val-pending').innerText = uniquePendingCases;
                 document.getElementById('val-rate').innerText = rate + '%';
-                rateChart.data.datasets[0].data = [approvedCount, pendingCount];
+                rateChart.data.datasets[0].data = [uniqueApprovedCases, uniquePendingCases];
                 rateChart.update();
 
-                // 3. 預先取得所有待補正案件的 Evidence 資料 (為了抓取 deadline 與 note)
+                // 3. 預先取得所有待補正案件的 Evidence 資料
                 const correctionCaseNumbers = filteredPending
                     .filter(p => p.status === 'correction_requested' && p.case_number)
                     .map(p => p.case_number);
@@ -497,7 +501,6 @@
                     if (evData) {
                         evData.forEach(e => {
                             if (e.evaluation_reviews && Array.isArray(e.evaluation_reviews) && e.evaluation_reviews.length > 0) {
-                                // 取最新一筆 (最後一個元素)
                                 currentEvidenceMap[e.case_number] = e.evaluation_reviews[e.evaluation_reviews.length - 1];
                             }
                         });
@@ -506,7 +509,6 @@
 
                 tbody.innerHTML = filteredPending.map((p) => {
                     let descText = '-';
-                    // 預設為原始描述
                     try {
                         if (p.service_desc && p.service_desc.trim().startsWith('{')) {
                             const parsed = JSON.parse(p.service_desc);
@@ -522,27 +524,23 @@
                     
                     let statusBadge = '';
                     let deadlineHtml = '';
-                    let reviewLink = descText; // 預設為一般描述
+                    let reviewLink = descText;
 
-                    // [修正] 待補正狀態的顯示邏輯
                     if(p.status === 'correction_requested') {
                         statusBadge = '<span class="badge bg-warning text-dark me-1">待補正</span>';
                         
-                        // 嘗試從 Map 中抓取期限與審查意見
                         if (p.case_number && currentEvidenceMap[p.case_number]) {
                             const reviewInfo = currentEvidenceMap[p.case_number];
                             
-                            // 顯示期限
                             if (reviewInfo.deadline) {
                                 deadlineHtml = `
                                     <div class="mt-1 small text-danger border border-danger rounded px-2 py-1 d-inline-block" style="background-color: #fff5f5;">
-                                        <i class="far fa-clock me-1"></i> 通知補件期限：${reviewInfo.deadline}
+                                        <i class="far fa-clock me-1"></i> 期限：${reviewInfo.deadline}
                                     </div>
                                 `;
                             }
 
-                            // 替換描述摘要為「補件要求紀錄」連結
-                            const reviewDate = reviewInfo.date ? reviewInfo.date.split(' ')[0] : '未知日期'; // 只取日期部分
+                            const reviewDate = reviewInfo.date ? reviewInfo.date.split(' ')[0] : '未知日期';
                             reviewLink = `
                                 <a href="#" onclick="showReviewDetail('${p.case_number}'); return false;" class="text-decoration-none text-primary fw-bold">
                                     <i class="fas fa-file-contract me-1"></i>${reviewDate}
@@ -594,7 +592,6 @@
             }
         }
 
-        // [新增] 顯示補件要求詳情 Modal
         function showReviewDetail(caseNumber) {
             const reviewInfo = currentEvidenceMap[caseNumber];
             if (reviewInfo) {
