@@ -185,7 +185,7 @@
                                             <tr>
                                                 <th>統編</th>
                                                 <th>公司名稱</th>
-                                                <th>地址</th>
+                                                <th>負責顧問</th>
                                                 <th>聯絡人</th>
                                                 <th>合約狀態</th>
                                                 <th class="text-end">操作</th>
@@ -392,6 +392,14 @@
                                 <input type="text" class="form-control" id="company-name" required>
                             </div>
                         </div>
+                        <div class="mb-3">
+                            <label class="form-label fw-bold small">負責顧問</label>
+                            <select class="form-select" id="company-consultant">
+                                <option value="">請選擇...</option>
+                                </select>
+                            <div class="form-text small text-primary">設定後，下載歷程範本將自動帶入此顧問。</div>
+                        </div>
+
                         <div class="mb-3">
                             <label class="form-label fw-bold small">地址</label>
                             <input type="text" class="form-control" id="company-address">
@@ -650,7 +658,11 @@
             const search = document.getElementById('search-company').value.trim();
             tbody.innerHTML = '<tr><td colspan="6" class="text-center py-4"><div class="spinner-border spinner-border-sm text-primary"></div></td></tr>';
 
-            let query = supabaseClient.from('companies').select('*').order('created_at', {ascending: false});
+            // 修改：加入關聯查詢 medical_staff(name) 以顯示顧問姓名
+            let query = supabaseClient.from('companies')
+                .select('*, medical_staff(name)') 
+                .order('created_at', {ascending: false});
+            
             if(search) query = query.ilike('name', `%${search}%`);
 
             const { data, error } = await query;
@@ -667,21 +679,44 @@
                 return;
             }
 
-            tbody.innerHTML = data.map(c => `
+            tbody.innerHTML = data.map(c => {
+                // 顯示顧問姓名，若無則顯示未設定
+                const consultantName = c.medical_staff ? c.medical_staff.name : '<span class="text-muted small">未設定</span>';
+                return `
                 <tr>
                     <td class="font-monospace">${c.tax_id}</td>
                     <td class="fw-bold text-primary" style="cursor:pointer" onclick="editCompany('${c.id}')">${c.name}</td>
-                    <td>${c.address || '-'}</td>
+                    <td>${consultantName}</td>
                     <td>${c.contact_person || '-'}</td>
                     <td>${c.is_active ? '<span class="badge bg-success">服務中</span>' : '<span class="badge bg-secondary">已結束</span>'}</td>
                     <td class="text-end">
                         <button class="btn btn-sm btn-outline-primary" onclick="editCompany('${c.id}')"><i class="fas fa-edit"></i></button>
                     </td>
                 </tr>
-            `).join('');
+            `}).join('');
         }
 
-        function openCompanyModal() {
+        // 新增：載入公司編輯視窗的顧問下拉選單
+        async function loadCompanyConsultants() {
+            const select = document.getElementById('company-consultant');
+            const { data, error } = await supabaseClient
+                .from('medical_staff')
+                .select('id, name')
+                .eq('is_active', true)
+                .order('name');
+            
+            if(error) {
+                console.error('載入顧問失敗', error);
+                return;
+            }
+
+            select.innerHTML = '<option value="">請選擇...</option>' + 
+                data.map(s => `<option value="${s.id}">${s.name}</option>`).join('');
+        }
+
+        async function openCompanyModal() {
+            await loadCompanyConsultants(); // 載入顧問清單
+
             document.getElementById('companyForm').reset();
             document.getElementById('company-id').value = '';
             document.getElementById('companyModalTitle').innerText = '新增事業單位';
@@ -691,12 +726,17 @@
         }
 
         async function editCompany(id) {
+            await loadCompanyConsultants(); // 載入顧問清單
+
             const { data, error } = await supabaseClient.from('companies').select('*').eq('id', id).single();
             if(error) return alert('讀取失敗');
 
             document.getElementById('company-id').value = data.id;
             document.getElementById('company-tax-id').value = data.tax_id;
             document.getElementById('company-name').value = data.name;
+            // 回填顧問ID
+            document.getElementById('company-consultant').value = data.consultant_id || '';
+            
             document.getElementById('company-address').value = data.address || '';
             document.getElementById('company-contact').value = data.contact_person || '';
             document.getElementById('company-phone').value = data.phone || '';
@@ -718,6 +758,8 @@
             const payload = {
                 tax_id: document.getElementById('company-tax-id').value,
                 name: document.getElementById('company-name').value,
+                // 新增：儲存負責顧問ID
+                consultant_id: document.getElementById('company-consultant').value || null,
                 address: document.getElementById('company-address').value,
                 contact_person: document.getElementById('company-contact').value,
                 phone: document.getElementById('company-phone').value,
