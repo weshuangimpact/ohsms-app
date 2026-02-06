@@ -45,7 +45,8 @@
             font-size: 0.9rem;
             letter-spacing: 0.5px;
             display: flex;
-            flex-direction: column; /* 垂直排列 */
+            flex-direction: column;
+            /* 垂直排列 */
             align-items: center;
             justify-content: center;
             margin-top: auto;
@@ -64,21 +65,30 @@
 
         /* PDCA/5W1H 字卡 (白色區塊) 設定 */
         .instruction-box {
-            background-color: #fff; /* 白色背景 */
-            border-left: 5px solid var(--theme-color); /* 左側主題色飾條 */
-            padding: 20px 25px; /* 內距 */
-            border-radius: 4px; /* 圓角 */
-            margin-bottom: 30px; /* 下方留白 */
-            box-shadow: 0 2px 5px rgba(0,0,0,0.05); /* 輕微陰影 */
+            background-color: #fff;
+            /* 白色背景 */
+            border-left: 5px solid var(--theme-color);
+            /* 左側主題色飾條 */
+            padding: 20px 25px;
+            /* 內距 */
+            border-radius: 4px;
+            /* 圓角 */
+            margin-bottom: 30px;
+            /* 下方留白 */
+            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+            /* 輕微陰影 */
             width: 100%;
             text-align: left;
         }
 
         /* 字卡標題設定 */
         .instruction-title {
-            color: var(--theme-text); /* 字體顏色 */
-            font-weight: 700; /* 粗體 */
-            margin-bottom: 10px; /* 與內文的間距 */
+            color: var(--theme-text);
+            /* 字體顏色 */
+            font-weight: 700;
+            /* 粗體 */
+            margin-bottom: 10px;
+            /* 與內文的間距 */
             font-size: 1.1rem;
         }
 
@@ -338,7 +348,6 @@
             const roleFilter = document.getElementById('role-filter').value;
             
             tbody.innerHTML = '<tr><td colspan="5" class="text-center py-5 text-muted"><i class="fas fa-spinner fa-spin me-2"></i>資料載入中...</td></tr>';
-            
             try {
                 // [關鍵] 同時讀取 role (職稱) 與 system_role (系統權限)
                 let query = supabaseClient.from('medical_staff').select('*').order('created_at', { ascending: false });
@@ -355,9 +364,6 @@
                 let filtered = staffData;
                 if(keyword) filtered = filtered.filter(s => (s.name && s.name.toLowerCase().includes(keyword)) || (s.email && s.email.toLowerCase().includes(keyword)));
                 
-                // 注意：這裡的篩選邏輯稍後會在 map 中二次處理，這裡先做初步篩選
-                // 為了確保篩選準確，建議先進行 map 轉換再 filter，或是接受這裡可能因 legacy 數據有落差
-                
                 if(filtered.length === 0) {
                     tbody.innerHTML = '<tr><td colspan="5" class="text-center py-5 text-muted">查無資料</td></tr>';
                     return;
@@ -367,6 +373,7 @@
                     const profile = profilesMap[s.user_id];
                     const hasAccount = !!(s.user_id); 
                     const emailValue = profile ? profile.email : (s.email || '');
+  
                     const emailDisplay = emailValue || '<span class="text-muted fst-italic">未綁定帳號</span>';
                     
                     // ===============================================
@@ -384,68 +391,74 @@
 
                     // 篩選器邏輯 (Client-side filtering for accuracy)
                     if (roleFilter && displayRole !== roleFilter) return '';
-
                     let roleBadge = '';
                     switch(displayRole) {
                         case 'admin': 
-                            roleBadge = '<span class="badge role-badge-admin">管理員 (Admin)</span>'; 
+                            roleBadge = '<span class="badge role-badge-admin">管理員 (Admin)</span>';
                             break;
                         case 'consultant': 
-                            roleBadge = '<span class="badge role-badge-consultant">顧問 (Consultant)</span>'; 
+                            roleBadge = '<span class="badge role-badge-consultant">顧問 (Consultant)</span>';
                             break;
                         case 'doc_control': 
-                            roleBadge = '<span class="badge role-badge-general">文管人員 (Doc_control)</span>'; 
+                            roleBadge = '<span class="badge role-badge-general">文管人員 (Doc_control)</span>';
                             break;
                         default: 
-                            roleBadge = '<span class="badge role-badge-general">文管人員 (Doc_control)</span>'; 
+                            roleBadge = '<span class="badge role-badge-general">文管人員 (Doc_control)</span>';
                             break;
                     }
 
                     const statusBadge = s.is_active 
                         ? '<span class="badge bg-success bg-opacity-10 text-success">在職 (Active)</span>' 
                         : '<span class="badge bg-secondary">已停用 (Inactive)</span>';
+                    
+                    let actionBtn = '';
+                    let notifyBtn = '';
 
-let actionBtn = '';
-let notifyBtn = '';
+                    // 只要有 email，就允許發送「開通通知」
+                    if (emailValue) {
+                        notifyBtn = `
+                            <button class="btn btn-sm btn-outline-primary fw-bold ms-2"
+                                onclick="sendActivateNotice('${emailValue}', '${s.name}')">
+                                <i class="fas fa-paper-plane me-1"></i>
+                            </button>
+                        `;
+                    }
 
-// 只要有 email，就允許發送「開通通知」
-if (emailValue) {
-    notifyBtn = `
-        <button class="btn btn-sm btn-outline-primary fw-bold ms-2"
-            onclick="sendActivateNotice('${emailValue}', '${s.name}')">
-            <i class="fas fa-paper-plane me-1"></i>開通通知
-        </button>
-    `;
-}
+                    if (hasAccount) {
+                        if (s.is_active) {
+                            actionBtn = `
+                                <button class="btn btn-sm btn-outline-danger fw-bold"
+                                    onclick="toggleStatus('${s.id}', false, '${s.name}')">
+                                    <i class="fas fa-ban me-1"></i>停用
+                                </button>
+                                ${notifyBtn}
+                            `;
+                        } else {
+                            actionBtn = `
+                                <button class="btn btn-sm btn-outline-success fw-bold"
+                                    onclick="toggleStatus('${s.id}', true, '${s.name}')">
+                                    <i class="fas fa-redo me-1"></i>恢復
+                                </button>
+                                ${notifyBtn}
+                            `;
+                        }
+                    } else {
+                        actionBtn = `
+                            <button class="btn btn-sm btn-theme fw-bold"
+                                onclick="openActivateModal('${s.id}', '${s.name}', '${displayRole}', '${emailValue}')">
+                                <i class="fas fa-key me-1"></i>啟用帳號
+                            </button>
+                            ${notifyBtn}
+                        `;
+                    }
 
-if (hasAccount) {
-    if (s.is_active) {
-        actionBtn = `
-            <button class="btn btn-sm btn-outline-danger fw-bold"
-                onclick="toggleStatus('${s.id}', false, '${s.name}')">
-                <i class="fas fa-ban me-1"></i>停用權限
-            </button>
-            ${notifyBtn}
-        `;
-    } else {
-        actionBtn = `
-            <button class="btn btn-sm btn-outline-success fw-bold"
-                onclick="toggleStatus('${s.id}', true, '${s.name}')">
-                <i class="fas fa-redo me-1"></i>恢復權限
-            </button>
-            ${notifyBtn}
-        `;
-    }
-} else {
-    actionBtn = `
-        <button class="btn btn-sm btn-theme fw-bold"
-            onclick="openActivateModal('${s.id}', '${s.name}', '${displayRole}', '${emailValue}')">
-            <i class="fas fa-key me-1"></i>啟用帳號
-        </button>
-        ${notifyBtn}
-    `;
-}
-
+                    // [新增] 刪除按鈕 (包含在所有狀態中)
+                    const deleteBtn = `
+                        <button class="btn btn-sm btn-outline-secondary ms-2" title="刪除此帳號與名單"
+                            onclick="deleteUserComplete('${s.id}', '${s.user_id || ''}', '${s.name}')">
+                            <i class="fas fa-trash-alt"></i>
+                        </button>
+                    `;
 
                     return `
                         <tr>
@@ -453,7 +466,10 @@ if (hasAccount) {
                             <td>${roleBadge}</td>
                             <td class="font-monospace small">${emailDisplay}</td>
                             <td>${statusBadge}</td>
-                            <td class="text-end pe-4">${actionBtn}</td>
+                            <td class="text-end pe-4">
+                                ${actionBtn}
+                                ${deleteBtn}
+                            </td>
                         </tr>
                     `;
                 }).join('');
@@ -492,7 +508,6 @@ if (hasAccount) {
             const password = document.getElementById('invite-password').value;
             const role = document.getElementById('invite-system-role').value;
             const name = document.getElementById('invite-name').innerText;
-            
             if(!email || !password) return alert('請輸入 Email 和密碼');
 
             const btn = document.querySelector('#inviteModal .btn-theme');
@@ -507,11 +522,9 @@ if (hasAccount) {
                 const tempClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY, {
                     auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false, storage: dummyStorage }
                 });
-                
                 const { data: authData, error: authError } = await tempClient.auth.signUp({
                     email: email, password: password, options: { data: { full_name: name, role: role } }
                 });
-
                 if (authError) {
                     if (authError.message.includes("already registered")) {
                         throw new Error("❌ 失敗：此 Email 已存在於 Auth 系統中！請至 Supabase 後台處理。");
@@ -524,28 +537,23 @@ if (hasAccount) {
                 }
 
                 newUserId = authData.user.id;
-                
                 btn.innerHTML = '<i class="fas fa-sync fa-spin"></i> 執行 Step 2: 寫入資料...';
-                
                 // Step 2: 寫入 Profiles
                 const { error: profileError } = await supabaseClient.from('profiles').upsert({
                     id: newUserId, email: email, full_name: name, role: role, status: 'active', is_active: true,
                     created_by: (await supabaseClient.auth.getUser()).data.user?.id 
                 });
-
                 if (profileError) throw new Error("Profile 寫入失敗: " + profileError.message);
 
                 // Step 3: 更新 Medical Staff (確保寫入正確的三種角色之一)
                 const { error: staffError } = await supabaseClient.from('medical_staff').update({ 
                     user_id: newUserId, system_role: role, is_active: true, email: email
                 }).eq('id', staffId);
-                
                 if (staffError) throw new Error("名單綁定失敗: " + staffError.message);
 
                 alert(`✅ 帳號開通完整成功！\n\nUser ID: ${newUserId}\n\n請嘗試登入。`);
                 bootstrap.Modal.getInstance(document.getElementById('inviteModal')).hide();
                 loadUsers();
-
             } catch (err) {
                 console.error(err);
                 alert(err.message);
@@ -556,50 +564,46 @@ if (hasAccount) {
         }
 
         async function sendActivateNotice(email, name) {
-    if (!confirm(`確定要發送【開通通知】給 ${name} (${email}) 嗎？`)) return;
+            if (!confirm(`確定要發送【開通通知】給 ${name} (${email}) 嗎？`)) return;
+            try {
+                const { data: sessionData } = await supabaseClient.auth.getSession();
+                const accessToken = sessionData.session?.access_token;
 
-    try {
-        const { data: sessionData } = await supabaseClient.auth.getSession();
-        const accessToken = sessionData.session?.access_token;
+                if (!accessToken) {
+                    alert('❌ 無法取得登入憑證，請重新登入');
+                    return;
+                }
 
-        if (!accessToken) {
-            alert('❌ 無法取得登入憑證，請重新登入');
-            return;
-        }
-
-        const res = await fetch(
-            'https://yhehfucgemxnfrdvpdhw.supabase.co/functions/v1/send-email',
-            {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${accessToken}`
-                },
-                body: JSON.stringify({
-                    type: 'activate',
-                    email: email,
-                    data: {
-                        name: name,
-                        email: email
+                const res = await fetch(
+                    'https://yhehfucgemxnfrdvpdhw.supabase.co/functions/v1/send-email',
+                    {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${accessToken}`
+                        },
+                        body: JSON.stringify({
+                            type: 'activate',
+                            email: email,
+                            data: {
+                                name: name,
+                                email: email
+                            }
+                        })
                     }
-                })
-            }
-        );
+                );
+                if (!res.ok) {
+                    const text = await res.text();
+                    throw new Error(text || '寄送失敗');
+                }
 
-        if (!res.ok) {
-            const text = await res.text();
-            throw new Error(text || '寄送失敗');
+                alert(`✅ 已成功發送開通通知給 ${email}`);
+            } catch (err) {
+                console.error(err);
+                alert(`❌ 發送失敗：${err.message}`);
+            }
         }
 
-        alert(`✅ 已成功發送開通通知給 ${email}`);
-
-    } catch (err) {
-        console.error(err);
-        alert(`❌ 發送失敗：${err.message}`);
-    }
-}
-
-        
         async function toggleStatus(staffId, isActive, name) {
             const actionName = isActive ? "恢復權限" : "停用權限";
             if (!confirm(`確定要對「${name}」執行【${actionName}】嗎？`)) return;
@@ -617,6 +621,54 @@ if (hasAccount) {
             } catch (err) {
                 console.error(err);
                 alert(`❌ 失敗: ` + err.message);
+            }
+        }
+
+        // ==========================================
+        // [新增] 完整刪除邏輯 (含資料庫防呆檢查)
+        // ==========================================
+        async function deleteUserComplete(staffId, userId, name) {
+            const confirmMsg = `⚠️ 危險操作警告 ⚠️\n\n確定要刪除「${name}」的所有資料嗎？\n\n執行步驟：\n1. 刪除人員名單 (若有服務紀錄將被擋下)\n2. 刪除登入帳號 (Auth)\n\n此動作無法復原！`;
+            if (!confirm(confirmMsg)) return;
+
+            try {
+                // Step 1: 嘗試刪除 medical_staff
+                // 這裡依賴資料庫的外鍵約束 (Foreign Key Constraint) 進行防呆
+                // 如果該人員有 service_records，Supabase 會回傳錯誤，我們就此中止
+                const { error: staffError } = await supabaseClient
+                    .from('medical_staff')
+                    .delete()
+                    .eq('id', staffId);
+
+                if (staffError) {
+                    // 檢查是否為外鍵約束錯誤 (Postgres Error 23503)
+                    if (staffError.code === '23503' || staffError.message.includes('foreign key constraint')) {
+                         throw new Error(`無法刪除：該人員已有「服務執行紀錄」或關聯資料。\n\n(資料庫保護機制生效，請先移除相關紀錄)`);
+                    }
+                    throw staffError;
+                }
+
+                // Step 2: 名單刪除成功後，接著刪除 Auth 帳號 (如果有的話)
+                if (userId) {
+                    // 呼叫 RPC 函數執行刪除 (需事先在 DB 建立此函數)
+                    const { error: rpcError } = await supabaseClient.rpc('delete_user_by_id', { target_user_id: userId });
+
+                    if (rpcError) {
+                        alert(`⚠️ 人員名單已刪除，但 Auth 帳號刪除失敗。\n原因: ${rpcError.message}\n請至 Supabase 後台手動刪除 User。`);
+                    } else {
+                        alert(`✅ 成功刪除「${name}」的所有資料 (名單與帳號)。`);
+                    }
+                } else {
+                     alert(`✅ 成功刪除「${name}」的名單 (此人原無綁定帳號)。`);
+                }
+
+                loadUsers();
+
+            } catch (err) {
+                console.error(err);
+                alert(`❌ 刪除失敗: ${err.message}`);
+                // 即使失敗也刷新列表以確保顯示正確狀態
+                loadUsers();
             }
         }
     </script>
