@@ -118,6 +118,22 @@ border-radius: 6px;
 padding: 15px;
 margin-bottom: 20px;
 }
+
+/* 審查歷程樣式 */
+.review-history-item {
+    border-left: 4px solid #ffc107;
+    background-color: #fff9e6;
+    padding: 15px;
+    margin-bottom: 15px;
+    border-radius: 4px;
+}
+.review-meta {
+    font-size: 0.85rem;
+    color: #666;
+    margin-bottom: 5px;
+    display: flex;
+    justify-content: space-between;
+}
 </style>
 
 <script>
@@ -176,6 +192,20 @@ Hi! 使用者
 </p>
 </div>
 
+<div id="review-history-section" style="display:none;" class="mb-4">
+    <div class="card border-warning">
+        <div class="card-header bg-warning text-dark fw-bold">
+            <i class="fas fa-history me-2"></i>審查通知歷程 (Review History)
+        </div>
+        <div class="card-body p-3 bg-light">
+            <div class="alert alert-warning border-0 mb-3 small">
+                <i class="fas fa-info-circle me-1"></i> 以下列出管理者針對案件 <strong id="history-case-number" class="text-dark">--</strong> 發出的補正要求與審查意見：
+            </div>
+            <div id="review-history-list">
+                </div>
+        </div>
+    </div>
+</div>
 <div class="step-indicator px-5">
 <div class="step-item active" id="step1-indicator"><div class="step-circle">1</div><div>選擇案件</div></div>
 <div class="step-item" id="step2-indicator"><div class="step-circle">2</div><div>執行紀錄與上傳</div></div>
@@ -751,84 +781,114 @@ function showActionChoiceModal(items) {
 }
 
 async function initStep2(stagingId) {
-const modalEl = document.getElementById('actionChoiceModal');
-const modal = bootstrap.Modal.getInstance(modalEl);
-if (modal) modal.hide();
+    const modalEl = document.getElementById('actionChoiceModal');
+    const modal = bootstrap.Modal.getInstance(modalEl);
+    if (modal) modal.hide();
 
-// [修正重點]：初始化時清空全域案號，避免混用
-currentCaseNumber = null;
+    currentCaseNumber = null;
 
-if (!stagingId) {
-currentStagingId = crypto.randomUUID();
-} else {
-currentStagingId = stagingId;
-}
-
-document.querySelectorAll('input[type="checkbox"]').forEach(cb => cb.checked = false);
-document.querySelectorAll('.item-actions').forEach(el => el.classList.remove('visible'));
-document.getElementById('service-type-select').value = "";
-toggleServiceTypeOther();
-document.getElementById('service-remark').value = ""; 
-document.getElementById('execution-date').value = "";
-document.getElementById('start-time').value = "";
-document.getElementById('end-time').value = "";
-
-// 【新增】清除動態產生的 QA~QZ 欄位，重置計數
-document.getElementById('q-extras-container').innerHTML = '';
-qExtraCount = 0;
-
-checklistItems.forEach(item => updateItemUI(item.id, item.code, null, null, false));
-
-const { data: motherData } = await supabaseClient.from('service_records').select(`*, workplaces(companies(name))`).eq('id', currentRecordId).single();
-document.getElementById('current-company-name').innerText = motherData.workplaces.companies.name;
-document.getElementById('current-year-badge').innerText = (motherData.service_year || '') + ' 年度 (母案)';
-
-const { data: files } = await supabaseClient.storage.from(BUCKET_NAME).list(`${currentStagingId}`);
-
-if (stagingId) {
-await loadStagingData(stagingId);
-}
-
-if (files && files.length > 0) {
-files.forEach(file => {
-const parts = file.name.split('_');
-if (parts.length >= 2) { 
-const code = parts[0];
-
-// 判斷是否為標準項目 (A-Q)
-const targetItem = checklistItems.find(i => i.code === code);
-if (targetItem) {
-    const cb = document.getElementById(`cb-${targetItem.id}`);
-    if(cb) {
-    cb.checked = true;
-    toggleItemAction(targetItem.id);
-    updateItemUI(targetItem.id, code, file.name, null, true);
+    if (!stagingId) {
+        currentStagingId = crypto.randomUUID();
+    } else {
+        currentStagingId = stagingId;
     }
-} else {
-    // 【新增】判斷是否為 QA, QB, QC... 並動態還原
-    if (code.startsWith('Q') && code.length > 1) {
-        // 動態生成該列 UI
-        addQExtraRow(code);
-        // 設定 UI 狀態
-        const suffix = code.replace('Q', '');
-        const itemId = `other-${suffix}`;
-        updateItemUI(itemId, code, file.name, null, true);
-        
-        // 更新計數器，避免下次按 + 號重複
-        const suffixIndex = qSuffixes.indexOf(suffix);
-        if (suffixIndex >= qExtraCount) {
-            qExtraCount = suffixIndex + 1;
+
+    // 重置表單
+    document.querySelectorAll('input[type="checkbox"]').forEach(cb => cb.checked = false);
+    document.querySelectorAll('.item-actions').forEach(el => el.classList.remove('visible'));
+    document.getElementById('service-type-select').value = "";
+    toggleServiceTypeOther();
+    document.getElementById('service-remark').value = ""; 
+    document.getElementById('execution-date').value = "";
+    document.getElementById('start-time').value = "";
+    document.getElementById('end-time').value = "";
+    document.getElementById('q-extras-container').innerHTML = '';
+    qExtraCount = 0;
+    
+    // 重置審查歷程區塊
+    const historySection = document.getElementById('review-history-section');
+    const historyList = document.getElementById('review-history-list');
+    const historyCaseNum = document.getElementById('history-case-number');
+    historySection.style.display = 'none';
+    historyList.innerHTML = '';
+
+    checklistItems.forEach(item => updateItemUI(item.id, item.code, null, null, false));
+
+    const { data: motherData } = await supabaseClient.from('service_records').select(`*, workplaces(companies(name))`).eq('id', currentRecordId).single();
+    document.getElementById('current-company-name').innerText = motherData.workplaces.companies.name;
+    document.getElementById('current-year-badge').innerText = (motherData.service_year || '') + ' 年度 (母案)';
+
+    const { data: files } = await supabaseClient.storage.from(BUCKET_NAME).list(`${currentStagingId}`);
+
+    if (stagingId) {
+        await loadStagingData(stagingId);
+    }
+
+    if (files && files.length > 0) {
+        files.forEach(file => {
+            const parts = file.name.split('_');
+            if (parts.length >= 2) { 
+                const code = parts[0];
+                const targetItem = checklistItems.find(i => i.code === code);
+                if (targetItem) {
+                    const cb = document.getElementById(`cb-${targetItem.id}`);
+                    if(cb) {
+                        cb.checked = true;
+                        toggleItemAction(targetItem.id);
+                        updateItemUI(targetItem.id, code, file.name, null, true);
+                    }
+                } else {
+                    if (code.startsWith('Q') && code.length > 1) {
+                        addQExtraRow(code);
+                        const suffix = code.replace('Q', '');
+                        const itemId = `other-${suffix}`;
+                        updateItemUI(itemId, code, file.name, null, true);
+                        const suffixIndex = qSuffixes.indexOf(suffix);
+                        if (suffixIndex >= qExtraCount) {
+                            qExtraCount = suffixIndex + 1;
+                        }
+                    }
+                }
+            }
+        });
+    }
+
+    // ★★★ 新增：讀取 Evidence 表的審查歷程 (連動 Index 2 寫入的資料) ★★★
+    if (currentCaseNumber) {
+        const { data: evidenceData } = await supabaseClient
+            .from('evidence')
+            .select('evaluation_reviews')
+            .eq('case_number', currentCaseNumber)
+            .single();
+
+        if (evidenceData && evidenceData.evaluation_reviews && Array.isArray(evidenceData.evaluation_reviews) && evidenceData.evaluation_reviews.length > 0) {
+            historyCaseNum.innerText = currentCaseNumber;
+            let historyHtml = '';
+            
+            // 反向排序，讓最新的顯示在上面
+            [...evidenceData.evaluation_reviews].reverse().forEach((review, index) => {
+                const deadlineText = review.deadline ? `<span class="badge bg-danger ms-2"><i class="far fa-clock me-1"></i>期限：${review.deadline}</span>` : '';
+                historyHtml += `
+                    <div class="review-history-item animate__animated animate__fadeIn">
+                        <div class="review-meta">
+                            <strong><i class="fas fa-user-shield me-1"></i>${review.reviewer || '管理者'}</strong>
+                            <small class="text-muted">${review.date}</small>
+                        </div>
+                        <div class="mt-2 text-dark" style="white-space: pre-wrap;">${review.note}</div>
+                        <div class="mt-2">${deadlineText}</div>
+                    </div>
+                `;
+            });
+            
+            historyList.innerHTML = historyHtml;
+            historySection.style.display = 'block';
         }
     }
-}
+    // ★★★ End ★★★
 
-}
-});
-}
-
-document.getElementById('step1-content').style.display = 'none';
-document.getElementById('step2-content').style.display = 'block';
-updateStepIndicator(2);
+    document.getElementById('step1-content').style.display = 'none';
+    document.getElementById('step2-content').style.display = 'block';
+    updateStepIndicator(2);
 }
 
 async function loadStagingData(stagingId) {
