@@ -403,18 +403,20 @@ container.innerHTML = checklistItems.map(item => {
 const acceptType = item.id === 'other' ? '*/*' : '.pdf';
 const fileTypeMsg = item.id === 'other' ? '支援所有格式' : '限 PDF';
 
-// 【修改】針對 Q (id='other') 插入 + 按鈕
-let extraBtnHtml = '';
+// 【修改】針對 Q (id='other')，在主區塊下方新增一個獨立的操作區塊
+let qBottomHtml = '';
 if (item.id === 'other') {
-    extraBtnHtml = `
-    <button type="button" class="btn btn-sm btn-outline-success ms-2" onclick="addQExtraRow()" title="新增更多 Q 類附件 (QA, QB...)">
-        <i class="fas fa-plus"></i>
-    </button>
+    qBottomHtml = `
+    <div class="mt-2 p-2 bg-light rounded border border-secondary-subtle" style="position: relative; z-index: 5;">
+        <div class="d-flex justify-content-end align-items-center">
+            <button type="button" class="btn btn-sm btn-outline-success fw-bold" onclick="addQExtraRow()" title="新增更多 Q 類附件 (QA, QB...)">
+                <i class="fas fa-plus-circle me-1"></i> 新增 Q 類附件
+            </button>
+        </div>
+        <div id="q-extras-container" class="mt-2"></div>
+    </div>
     `;
 }
-
-// 【修改】如果是 Q 選項，下方會多一個 div id="q-extras-container"
-const qExtrasContainer = item.id === 'other' ? '<div id="q-extras-container" class="mt-2 ps-4 border-start ms-2"></div>' : '';
 
 return `
                 <div class="list-group-item p-3" id="item-row-${item.id}">
@@ -438,9 +440,9 @@ return `
                                 <button type="button" class="btn btn-outline-danger" onclick="handleItemFileDelete('${item.id}', '${item.code}')" title="刪除"><i class="fas fa-trash-alt"></i></button>
                             </div>
                             <div id="spinner-${item.id}" style="display:none;" class="text-primary ms-2"><span class="spinner-border spinner-border-sm"></span></div>
-                            ${extraBtnHtml} </div>
+                        </div>
                     </div>
-                    ${qExtrasContainer} </div>`;
+                    ${qBottomHtml} </div>`;
 }).join('');
 }
 
@@ -469,7 +471,7 @@ function addQExtraRow(existingCode = null) {
 
     // 產生與上方一致的 UI，僅縮排與顏色微調
     const rowHtml = `
-        <div class="d-flex align-items-center justify-content-between p-2 mt-1 bg-light rounded" id="item-row-${itemId}">
+        <div class="d-flex align-items-center justify-content-between p-2 mt-1 bg-white rounded border" id="item-row-${itemId}">
             <div class="d-flex align-items-center gap-3" style="flex: 1;">
                  <input class="form-check-input flex-shrink-0" type="checkbox" name="service-item" value="${itemId}" data-code="${code}" id="cb-${itemId}" checked disabled>
                  <label class="form-check-label pt-1 fw-bold text-secondary">
