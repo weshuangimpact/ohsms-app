@@ -403,7 +403,7 @@ container.innerHTML = checklistItems.map(item => {
 const acceptType = item.id === 'other' ? '*/*' : '.pdf';
 const fileTypeMsg = item.id === 'other' ? '支援所有格式' : '限 PDF';
 
-// 【修改】針對 Q (id='other') 插入 + 按鈕，並加入下方容器 div
+// 【修改】針對 Q (id='other') 插入 + 按鈕
 let extraBtnHtml = '';
 if (item.id === 'other') {
     extraBtnHtml = `
@@ -412,6 +412,9 @@ if (item.id === 'other') {
     </button>
     `;
 }
+
+// 【修改】如果是 Q 選項，下方會多一個 div id="q-extras-container"
+const qExtrasContainer = item.id === 'other' ? '<div id="q-extras-container" class="mt-2 ps-4 border-start ms-2"></div>' : '';
 
 return `
                 <div class="list-group-item p-3" id="item-row-${item.id}">
@@ -437,8 +440,7 @@ return `
                             <div id="spinner-${item.id}" style="display:none;" class="text-primary ms-2"><span class="spinner-border spinner-border-sm"></span></div>
                             ${extraBtnHtml} </div>
                     </div>
-                    <div id="q-extras-container" class="mt-2 ps-4 border-start ms-2"></div>
-                </div>`;
+                    ${qExtrasContainer} </div>`;
 }).join('');
 }
 
