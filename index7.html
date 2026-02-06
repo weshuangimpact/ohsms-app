@@ -122,7 +122,7 @@
                 <span class="text-white me-4 small border-start ps-3 border-secondary" id="header-clock" style="opacity: 0.9;">
                     --:--
                 </span>
-             
+              
                 <span class="text-white me-4 fw-bold" id="header-user">
                     Hi! 使用者
                 </span>
@@ -1287,7 +1287,7 @@
                     rows.forEach(row => {
                         if(!row[0]) return; 
                         const taxId = row[0]; const name = row[1]; const address = row[2];
-                        const contact = row[3]; const phone = row[4];   
+                        const contact = row[3]; const phone = row[4];    
                         const startDate = formatDate(row[5]); const endDate = formatDate(row[6]);
                         
                         let isActive = true;
@@ -1308,8 +1308,23 @@
                         if(!row[0]) return;
                         const name = row[0]; const role = row[1] || 'consultant'; const type = row[2] || '兼職';
                         const phone = row[3]; const email = row[4]; const onboard = formatDate(row[5]);
+                        
+                        // [關鍵修正] 自動判定系統權限 (system_role)
+                        // 邏輯：如果職稱包含 "consultant" 或 "顧問"，權限就設為 consultant，否則預設為 doc_control
+                        let derivedSystemRole = 'doc_control'; // 預設權限
+                        const roleStr = String(role).toLowerCase(); // 轉小寫比對
+                        
+                        if (roleStr.includes('consultant') || roleStr.includes('顧問')) {
+                            derivedSystemRole = 'consultant';
+                        } else if (roleStr.includes('admin') || roleStr.includes('管理')) {
+                            derivedSystemRole = 'admin';
+                        }
+
                         pendingImportData.push({
-                            name: String(name).trim(), role: role, employment_type: type,
+                            name: String(name).trim(), 
+                            role: role, 
+                            system_role: derivedSystemRole, // [★新增] 寫入正確權限
+                            employment_type: type,
                             phone: String(phone || ''), email: email, onboard_date: onboard,
                             is_active: true, created_by: sessionStorage.getItem('currentUserId')
                         });
@@ -1347,7 +1362,7 @@
                         
                         const cName = String(row[0]).trim(); // Col 0: 公司
                         const sName = String(row[1] || '').trim(); // Col 1: 顧問 (允許為空，但會報錯)
-                        const date = formatDate(row[2]);     // Col 2: 日期
+                        const date = formatDate(row[2]);      // Col 2: 日期
                         
                         // 新增時間讀取 (Excel 可能讀成小數點或字串，簡單處理轉字串)
                         const startTime = row[3] ? String(row[3]).trim() : null; // Col 3: 開始時間
@@ -1362,10 +1377,10 @@
                              pendingImportData.push({
                                 workplace_id: wpId, 
                                 consultant_id: stId, 
-                                visit_date: date,     
+                                visit_date: date,      
                                 service_year: year,
                                 start_time: startTime, // 寫入開始時間
-                                end_time: endTime,     // 寫入結束時間
+                                end_time: endTime,      // 寫入結束時間
                                 execution_items: items,
                                 created_by: sessionStorage.getItem('currentUserId')
                             });
