@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>評鑑支援 | OHACSS</title>
+    <title>線上客服中心 | OHACSS</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     
@@ -145,7 +145,7 @@
                 <span class="text-white me-4 small border-start ps-3 border-secondary" id="header-clock" style="opacity: 0.9;">
                     --:--
                 </span>
-             
+                
                 <span class="text-white me-4 fw-bold" id="header-user">
                     Hi! 使用者
                 </span>
@@ -164,16 +164,16 @@
     <div class="container-fluid px-4 mt-4 main-content pb-5">
         
         <div class="mb-4">
-            <h2 class="fw-bold text-dark mb-1">評鑑支援</h2>
-            <p class="text-secondary">Always Here：您的專屬職安系統管家</p>
+            <h2 class="fw-bold text-dark mb-1">線上客服中心</h2>
+            <p class="text-secondary">Always Here：您的專屬系統服務管家</p>
         </div>
 
         <div class="instruction-box">
             <div class="instruction-title">
-                <i class="fas fa-headset me-2"></i>Service Spirit：有溫度的數位連結
+                <i class="fas fa-headset me-2"></i>Service Support：溝通與支援機制
             </div>
             <p class="mb-0 text-dark" style="line-height: 1.6;">
-                本模組建立即時且暢通的溝通管道，確保使用者的需求與操作問題能被有效傳遞與及時回應。
+                本模組提供即時且可追蹤的溝通管道，確保使用者提出的問題、異常與需求能被有效記錄、回應與處置，作為管理體系中支援、溝通與持續改善的重要輔助機制。
             </p>
         </div>
 
@@ -231,10 +231,12 @@
 
                 <div class="card border-0 shadow-sm mt-4 bg-light">
                     <div class="card-body">
-                        <h6 class="fw-bold mb-3"><i class="fas fa-book me-2 text-secondary"></i>參考文件</h6>
-                        <button class="btn btn-outline-secondary w-100 text-start" data-bs-toggle="modal" data-bs-target="#isoModal">
-                            <i class="fas fa-file-alt me-2"></i>附錄 A：系統功能模組 × ISO 45001 條文對應說明
-                        </button>
+                        <h6 class="fw-bold mb-3"><i class="fas fa-question-circle me-2 text-secondary"></i>常見問題 (FAQ)</h6>
+                        <ul class="list-unstyled small mb-0">
+                            <li class="mb-2"><a href="#" class="text-decoration-none text-secondary">• 忘記登入密碼如何重設？</a></li>
+                            <li class="mb-2"><a href="#" class="text-decoration-none text-secondary">• 如何上傳顧問訪視紀錄？</a></li>
+                            <li class="mb-2"><a href="#" class="text-decoration-none text-secondary">• 帳號權限不足無法存取頁面？</a></li>
+                        </ul>
                     </div>
                 </div>
 
@@ -248,103 +250,6 @@
             WesmartAI , Making Trust Transparent.
         </div>
     </footer>
-
-    <div class="modal fade" id="isoModal" tabindex="-1" aria-labelledby="isoModalLabel" aria-hidden="true">
-        <div class="modal-dialog modal-lg modal-dialog-scrollable">
-            <div class="modal-content">
-                <div class="modal-header bg-secondary text-white">
-                    <h5 class="modal-title" id="isoModalLabel">附錄 A：OHACSS 系統功能模組 × ISO 45001 條文對應說明</h5>
-                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
-                </div>
-                <div class="modal-body">
-                    <div class="alert alert-info">
-                        <strong>說明原則：</strong><br>
-                        本附錄說明 OHACSS 如何支援組織落實 ISO 45001 的管理精神與要求，
-                        系統本身並非 OHSMS，而是支援 OHSMS 建置、運作、審查與改善之數位系統。
-                    </div>
-
-                    <h6 class="fw-bold text-dark mt-4">1️⃣ 系統整體設計原則：PDCA × Evidence × 5W1H</h6>
-                    <ul class="list-unstyled text-secondary small mb-2">
-                        <li><span class="badge bg-light text-dark border">Clause 4–10</span> 管理系統整體架構</li>
-                        <li><span class="badge bg-light text-dark border">Clause 7.5</span> Documented Information</li>
-                    </ul>
-                    <p class="small">OHACSS 以 PDCA 管理循環為核心架構，透過 Evidence 導向的資料設計與 5W1H 原則，將服務規劃、執行、審查與改善行動系統化記錄，支援組織建立具一致性、可追溯性與可稽核性的職業安全衛生管理體系。</p>
-                    <hr>
-
-                    <h6 class="fw-bold text-dark mt-4">2️⃣ 服務執行歷程管理（Plan & Do）</h6>
-                    <ul class="list-unstyled text-secondary small mb-2">
-                        <li><span class="badge bg-light text-dark border">Clause 6</span> Planning</li>
-                        <li><span class="badge bg-light text-dark border">Clause 8</span> Operation</li>
-                    </ul>
-                    <p class="small">本模組支援組織建立服務與作業基準，並完整記錄實際執行歷程。透過版本控管與補件機制，確保從規劃到現場執行的資料具備一致性與可追溯性，作為風險控制與作業管理的客觀依據。</p>
-                    <hr>
-
-                    <h6 class="fw-bold text-dark mt-4">3️⃣ 管理者總覽（Check & Act｜決策層）</h6>
-                    <ul class="list-unstyled text-secondary small mb-2">
-                        <li><span class="badge bg-light text-dark border">Clause 9</span> Performance Evaluation</li>
-                        <li><span class="badge bg-light text-dark border">Clause 9.3</span> Management Review</li>
-                    </ul>
-                    <p class="small">本模組支援管理階層即時檢視執行成果與年度達成狀態，並對暫存資料進行審查與確認。管理者可依審查結果啟動改善決策，作為管理審查與持續改善的決策依據。</p>
-                    <hr>
-
-                    <h6 class="fw-bold text-dark mt-4">4️⃣ 評鑑改善專區（Act）</h6>
-                    <ul class="list-unstyled text-secondary small mb-2">
-                        <li><span class="badge bg-light text-dark border">Clause 10</span> Improvement</li>
-                        <li><span class="badge bg-light text-dark border">Clause 10.2</span> Incident, Nonconformity and Corrective Action</li>
-                    </ul>
-                    <p class="small">本模組支援矯正與預防行動的執行與追蹤，所有改善說明與佐證資料均直接連結至原始服務證據鏈，確保改善行動具備完整紀錄並可供後續稽核與查驗。</p>
-                    <hr>
-
-                    <h6 class="fw-bold text-dark mt-4">5️⃣ 評鑑支援 AI 智慧助理（Evaluation Support）</h6>
-                    <ul class="list-unstyled text-secondary small mb-2">
-                        <li><span class="badge bg-light text-dark border">Clause 9</span> Performance Evaluation</li>
-                        <li><span class="badge bg-light text-dark border">Clause 7.5</span> Documented Information</li>
-                    </ul>
-                    <p class="small">本模組輔助進行資料完整性檢核與評鑑判斷，協助使用者檢視證據是否符合管理與審查需求，強化評鑑過程的客觀性、可說明性與一致性。</p>
-                    <hr>
-
-                    <h6 class="fw-bold text-dark mt-4">6️⃣ 基本資料建立（5W1H）</h6>
-                    <ul class="list-unstyled text-secondary small mb-2">
-                        <li><span class="badge bg-light text-dark border">Clause 7.5</span> Documented Information</li>
-                        <li><span class="badge bg-light text-dark border">Clause 8</span> Operation</li>
-                    </ul>
-                    <p class="small">本模組建立人、事、時、地、物等基礎關聯資料，確保所有服務與作業紀錄具備清楚來源與執行脈絡，作為管理體系運作與追溯的基石。</p>
-                    <hr>
-
-                    <h6 class="fw-bold text-dark mt-4">7️⃣ 系統日誌與稽核證據（Audit Evidence）</h6>
-                    <ul class="list-unstyled text-secondary small mb-2">
-                        <li><span class="badge bg-light text-dark border">Clause 9.2</span> Internal Audit</li>
-                        <li><span class="badge bg-light text-dark border">Clause 7.5</span> Documented Information</li>
-                    </ul>
-                    <p class="small">本模組完整記錄系統操作與資料異動歷程，確保所有關鍵行為具備不可否認性與可稽核性，支援內部稽核與外部查核作業。</p>
-                    <hr>
-
-                    <h6 class="fw-bold text-dark mt-4">8️⃣ 帳號權限管理（Account Management）</h6>
-                    <ul class="list-unstyled text-secondary small mb-2">
-                        <li><span class="badge bg-light text-dark border">Clause 5.3</span> Organizational Roles, Responsibilities and Authorities</li>
-                        <li><span class="badge bg-light text-dark border">Clause 7.2</span> Competence</li>
-                    </ul>
-                    <p class="small">本模組透過角色與權限設定，明確界定使用者責任與可執行範圍，支援組織在管理體系中落實責任分工與內部控制。</p>
-                    <hr>
-
-                    <h6 class="fw-bold text-dark mt-4">9️⃣ 個人密碼管理（Security）</h6>
-                    <ul class="list-unstyled text-secondary small mb-2">
-                        <li><span class="badge bg-light text-dark border">Clause 7.1</span> Resources</li>
-                        <li><span class="badge bg-light text-dark border">Clause 7.5</span> Documented Information</li>
-                    </ul>
-                    <p class="small">本模組支援帳號安全與存取控制，確保僅有授權人員可於適當時間執行系統操作，維護管理體系資料的完整性與安全性。</p>
-                    
-                    <div class="bg-light p-3 rounded mt-4 text-center">
-                        <strong>附錄結語</strong><br>
-                        <small class="text-muted">OHACSS 為支援 ISO 45001 職業安全衛生管理體系之數位系統，透過 PDCA 管理循環、Evidence 導向資料設計與 5W1H 可追溯架構，協助組織建立一致、可稽核且可持續改善的管理運作機制。</small>
-                    </div>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">關閉</button>
-                </div>
-            </div>
-        </div>
-    </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     
