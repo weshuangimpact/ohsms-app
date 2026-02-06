@@ -311,7 +311,7 @@
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
                     <button type="button" class="btn btn-primary" onclick="sendReviewEmail()">
-                        <i class="fas fa-paper-plane me-1"></i> 確認發送
+                        <i class="fas fa-paper-plane me-1"></i> 確認發送並寫入
                     </button>
                 </div>
             </div>
@@ -400,7 +400,7 @@
         // 原有功能邏輯 (保持不變)
         // ==========================================
         const SUPABASE_URL = 'https://yhehfucgemxnfrdvpdhw.supabase.co';
-        const SUPABASE_KEY = 'sb_publishable_52emtU-9l-SDxcJTWVTPTA_Yu6qEogh'; // ★ 我們將直接使用此 Key 作為 API 驗證憑證
+        const SUPABASE_KEY = 'sb_publishable_52emtU-9l-SDxcJTWVTPTA_Yu6qEogh'; 
         const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
         const { PDFDocument } = PDFLib;
 
@@ -425,10 +425,12 @@
             const tbody = document.getElementById('pendingTableBody');
             
             try {
+                // [修正] 統計已核定數時，只計算 status='approved'，避免納入 correction_pending
                 const { count: approvedCount, error: err1 } = await supabaseClient
                     .from('evidence')
                     .select('*', { count: 'exact', head: true })
-                    .eq('service_year', year);
+                    .eq('service_year', year)
+                    .eq('status', 'approved'); // ★ 修正：確保只計算正式核定的案件
 
                 const { data: stagingData, error: err2 } = await supabaseClient
                     .from('service_record_staging')
@@ -439,7 +441,7 @@
                             companies ( name )
                         )
                     `)
-                    .eq('status', 'pending');
+                    .in('status', ['pending', 'correction_requested']); // ★ 修正：顯示待審與待補正的案件
 
                 if (err1 || err2) throw (err1 || err2);
 
@@ -474,6 +476,12 @@
                     const consultantName = p.medical_staff?.name || '未知顧問';
                     const companyName = p.workplaces?.companies?.name || '未知公司';
                     const displayDate = p.visit_date || p.service_date;
+                    
+                    // 增加狀態標記
+                    let statusBadge = '';
+                    if(p.status === 'correction_requested') {
+                        statusBadge = '<span class="badge bg-warning text-dark me-1">待補正</span>';
+                    }
 
                     return `
                     <tr class="animate__animated animate__fadeIn">
@@ -482,7 +490,7 @@
                             <div class="fw-bold">${companyName}</div>
                             <small class="text-muted">${consultantName}</small>
                         </td>
-                        <td><span class="badge bg-light text-dark border">${p.service_type || '一般訪視'}</span></td>
+                        <td>${statusBadge}<span class="badge bg-light text-dark border">${p.service_type || '一般訪視'}</span></td>
                         <td class="text-truncate" style="max-width: 250px;">${descText}</td>
                         <td class="text-end pe-4">
                             <div class="btn-group">
@@ -490,10 +498,10 @@
                                     <i class="far fa-eye"></i>
                                 </button>
                                 <button class="btn btn-sm btn-outline-success" onclick="openReviewEmailModal('${p.id}')" title="審查通知 (補件)">
-                                    <i class="far fa-envelope"></i>
+                                    <i class="fas fa-envelope"></i>
                                 </button>
                                 <button class="btn btn-sm btn-outline-danger" onclick="openReminderModal('${p.id}')" title="催收通知">
-                                    <i class="far fa-bell"></i>
+                                    <i class="fas fa-bell"></i>
                                 </button>
                                 <button class="btn btn-sm btn-warning text-dark fw-bold" onclick="openApprovalModal('${p.id}', 'special')" title="特案允許結案">
                                     <i class="fas fa-exclamation-triangle"></i>
@@ -803,7 +811,21 @@
                     updated_at: new Date()
                 }).eq('id', id);
 
-                const { error: insertError } = await supabaseClient
+                // ★ 核定時：檢查是否已存在 (若是補件後再核定的)，若有則更新 status 為 approved，若無則插入
+                const { data: existingEvidence } = await supabaseClient.from('evidence').select('id').eq('case_number', freshRecord.case_number).single();
+
+                if (existingEvidence) {
+                     // 若是補件後的核定，更新舊有 evidence 紀錄
+                     await supabaseClient.from('evidence').update({
+                        status: 'approved',
+                        evaluation_status: 'closed',
+                        file_url: evidenceFileUrl,
+                        updated_by: currentUserId,
+                        review_date: new Date().toISOString()
+                     }).eq('id', existingEvidence.id);
+                } else {
+                    // 若是直接核定，建立新 evidence 紀錄
+                    const { error: insertError } = await supabaseClient
                     .from('evidence')
                     .insert({
                         workplace_id: freshRecord.workplace_id,
@@ -818,11 +840,13 @@
                         case_number: freshRecord.case_number, // ★ 同步寫入案號
                         execution_items: executionItemsStr,   // ★ 同步寫入執行項目
                         reviewer_id: currentUserId,           // ★ 新增：寫入審核者 ID
-                        updated_by: currentUserId             // ★ 新增：寫入更新者 ID
+                        updated_by: currentUserId,            // ★ 新增：寫入更新者 ID
+                        status: 'approved',                   // ★ 狀態設為已核定
+                        evaluation_status: 'closed'           // ★ 評鑑狀態設為已結案
                     });
+                    if (insertError) throw new Error("寫入正式資料庫失敗: " + insertError.message);
+                }
                 
-                if (insertError) throw new Error("寫入正式資料庫失敗: " + insertError.message);
-
                 alert('✅ 結案成功！');
                 bootstrap.Modal.getInstance(document.getElementById('approvalModal')).hide();
                 refreshData(); 
@@ -836,10 +860,6 @@
             }
         }
 
-        // ==========================================
-        // ★★★ 修正點：對接 Edge Function 郵件發送邏輯 (解決 401 錯誤) ★★★
-        // ==========================================
-        
         function openReviewEmailModal(id) {
             const record = currentStagingData.find(r => r.id === id);
             if (!record) return;
@@ -853,7 +873,9 @@
             new bootstrap.Modal(document.getElementById('reviewEmailModal')).show();
         }
 
-        // 寄送審查通知 (呼叫 send-review API)
+        // ==========================================
+        // ★★★ 修正點：發送補件通知並寫入資料庫 ★★★
+        // ==========================================
         async function sendReviewEmail() {
             const id = document.getElementById('email-target-id').value;
             const record = currentStagingData.find(r => r.id === id);
@@ -862,7 +884,12 @@
             }
 
             const reasonText = document.getElementById('review-reason-text').value.trim();
-            const deadline = document.getElementById('email-deadline').value;
+            const days = parseInt(document.getElementById('email-deadline').value) || 3;
+            
+            // 計算補正期限 (日期時間)
+            const deadlineDate = new Date();
+            deadlineDate.setDate(deadlineDate.getDate() + days);
+            const formattedDeadline = deadlineDate.toLocaleString('zh-TW', { hour12: false });
 
             if (!reasonText) {
                 return alert('請填寫需補正的具體原因！');
@@ -871,10 +898,74 @@
             const btn = document.querySelector('#reviewEmailModal .btn-primary');
             const originalText = btn.innerHTML;
             btn.disabled = true;
-            btn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i> 發送中...';
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i> 處理中...';
 
             try {
-                // 【關鍵修正】改用已定義的 SUPABASE_KEY (Anon Key) 通過驗證，解決 401 Invalid JWT
+                const currentUserId = sessionStorage.getItem('currentUserId');
+                const userName = sessionStorage.getItem('currentUserName') || '管理員';
+                const nowStr = new Date().toLocaleString('zh-TW', { hour12: false });
+
+                // 1. 準備寫入 evidence 的審查紀錄物件
+                const newReviewEntry = {
+                    date: nowStr,
+                    reviewer: userName,
+                    note: reasonText,
+                    deadline: formattedDeadline
+                };
+
+                // 2. 檢查 evidence 表是否已有此案號的資料
+                const { data: existingEv, error: fetchErr } = await supabaseClient
+                    .from('evidence')
+                    .select('id, evaluation_reviews')
+                    .eq('case_number', record.case_number)
+                    .single();
+
+                // 3. 處理 evaluation_reviews 陣列
+                let reviewsArray = [];
+                if (existingEv && existingEv.evaluation_reviews) {
+                    // 如果原本就有，則附加
+                    reviewsArray = Array.isArray(existingEv.evaluation_reviews) 
+                        ? existingEv.evaluation_reviews 
+                        : JSON.parse(JSON.stringify(existingEv.evaluation_reviews)); // 確保它是陣列
+                }
+                reviewsArray.push(newReviewEntry);
+
+                // 4. 寫入 Evidence 表 (若無則新增，若有則更新)
+                // 注意：這裡必須確保 Index 5 能查到，所以要建立/更新 evidence 紀錄
+                const evidencePayload = {
+                    case_number: record.case_number,
+                    workplace_id: record.workplace_id,
+                    service_year: record.service_year,
+                    visit_date: record.visit_date,
+                    consultant_id: record.consultant_id,
+                    status: 'correction_pending', // 標記為待補正
+                    evaluation_status: 'pending',
+                    evaluation_reviews: reviewsArray, // ★ 寫入審查歷程
+                    updated_by: currentUserId,
+                    attachment_folder_id: record.id // 暫時關聯到 Staging ID
+                };
+
+                // 若是新案件 (existingEv 為 null)，需要 upsert (以 case_number 為準? 但 case_number 不是 PK)
+                // Supabase upsert 需要 unique constraint。假設 evidence.case_number 尚未設為 unique
+                // 我們用 update 或 insert 分開處理比較保險
+                if (existingEv) {
+                    await supabaseClient.from('evidence').update({
+                        evaluation_reviews: reviewsArray,
+                        status: 'correction_pending',
+                        updated_by: currentUserId
+                    }).eq('id', existingEv.id);
+                } else {
+                    await supabaseClient.from('evidence').insert(evidencePayload);
+                }
+
+                // 5. 更新 Staging 表狀態
+                await supabaseClient.from('service_record_staging').update({
+                    status: 'correction_requested',
+                    reviewer_comment: reasonText,
+                    reviewer_id: currentUserId
+                }).eq('id', id);
+
+                // 6. 呼叫 Edge Function 發送郵件
                 const res = await fetch('https://yhehfucgemxnfrdvpdhw.supabase.co/functions/v1/send-review', {
                     method: 'POST',
                     headers: {
@@ -886,19 +977,20 @@
                         consultantName: record.medical_staff.name,
                         companyName: record.workplaces?.companies?.name || '未知公司',
                         reason: reasonText,
-                        deadline: deadline,
-                        caseNo: record.case_number // ★ 新增案號以符合 Edge Function 要求
+                        deadline: days,
+                        caseNo: record.case_number
                     })
                 });
 
                 if (!res.ok) throw new Error(await res.text());
 
-                alert(`✅ 已成功發送審查通知給 ${record.medical_staff.name}`);
+                alert(`✅ 已成功發送通知並建立補正紀錄。\n期限：${formattedDeadline}`);
                 bootstrap.Modal.getInstance(document.getElementById('reviewEmailModal')).hide();
-                
+                refreshData(); // 刷新列表
+
             } catch (err) {
                 console.error(err);
-                alert(`❌ 發送失敗：${err.message}`);
+                alert(`❌ 錯誤：${err.message}`);
             } finally {
                 btn.disabled = false;
                 btn.innerHTML = originalText;
