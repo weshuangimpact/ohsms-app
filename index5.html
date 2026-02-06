@@ -19,43 +19,40 @@
         }
 
         body {
-            display: flex;
+            display: none; /* 權限驗證前先隱藏，JS 載入後改為 flex */
             flex-direction: column;
             min-height: 100vh;
             background-color: #f8f9fa; /* 預設背景色 */
             font-family: 'Segoe UI', 'Microsoft JhengHei', sans-serif;
         }
 
-        /* 內容區塊自動撐開，移除 max-width 限制 */
-        .container-fluid, .main-content {
+        /* 內容區塊自動撐開 */
+        .container, .main-content, .container-fluid {
             flex: 1; 
-            width: 100%;
-            padding-left: 1.5rem !important; 
-            padding-right: 1.5rem !important;
         }
 
         /* 頁首設定 */
         .navbar {
             background-color: #202124 !important;
-            min-height: 85px;
+            min-height: 85px; 
             color: #fff;
-            flex-shrink: 0;
+            flex-shrink: 0; 
         }
 
         /* 頁尾設定 */
         footer {
             background-color: #202124 !important;
             color: #fff;
-            flex-shrink: 0;
+            flex-shrink: 0; 
             font-size: 0.9rem;
             letter-spacing: 0.5px;
             display: flex;
-            flex-direction: column; /* 垂直排列 */
+            flex-direction: column;
             align-items: center;
             justify-content: center;
-            margin-top: auto;
+            margin-top: auto; 
             padding: 15px 0;
-            min-height: 85px; /* 雙行高度 */
+            min-height: 85px; 
         }
 
         /* =========================================
@@ -65,6 +62,7 @@
             --theme-color: #dc3545; /* Act 階段的主題紅色 */
         }
 
+        /* PDCA 字卡 (白色區塊) 設定 */
         .instruction-box {
             background-color: #fff;
             border-left: 5px solid var(--theme-color);
@@ -74,22 +72,22 @@
             box-shadow: 0 2px 5px rgba(0,0,0,0.05);
         }
 
+        /* PDCA 字卡標題設定 */
         .instruction-title {
             color: var(--theme-color);
-            font-weight: normal; 
-            font-size: 1.1rem;
+            font-weight: 700;
             margin-bottom: 10px;
         }
 
         /* =========================================
-           3. 搜尋列與表單樣式 (移除寬度限制)
+           3. 本頁特定樣式 (保留功能設定)
            ========================================= */
         .search-box {
             background: white;
             padding: 25px;
             border-radius: 8px;
             box-shadow: 0 2px 10px rgba(0,0,0,0.05);
-            width: 100%; /* 修正：撐滿寬度 */
+            width: 100%;
             margin-bottom: 30px;
         }
 
@@ -124,9 +122,8 @@
             flex-direction: column;
         }
 
-        /* 審核資訊區塊樣式 (仿照 Index 3) */
         .review-info-box {
-            background-color: #fff3cd; /* 淺黃色背景強調 */
+            background-color: #fff3cd;
             border: 1px solid #ffeeba;
             border-left: 5px solid #ffc107;
             padding: 20px;
@@ -140,13 +137,25 @@
         }
         .review-list-item:last-child { border-bottom: none; }
     </style>
+    
+    <script>
+        // 權限檢查：預先隱藏 body，檢查通過後再顯示
+        document.addEventListener('DOMContentLoaded', function() {
+            const role = sessionStorage.getItem('currentUserRole');
+            if (!role) {
+                alert('請先登入');
+                window.location.href = 'login.html';
+                return;
+            }
+            document.body.style.display = 'flex';
+        });
+    </script>
 </head>
 <body>
 
-<nav class="navbar navbar-expand-lg navbar-dark px-4">
+    <nav class="navbar navbar-expand-lg navbar-dark px-4">
         <div class="container-fluid d-flex justify-content-between align-items-center p-0">
-            
-            <a class="navbar-brand d-flex align-items-center" href="dashboard.html">
+            <a class="navbar-brand d-flex align-items-center fw-bold" href="dashboard.html">
                 <i class="fas fa-shield-alt me-2"></i>
                 OHACSS 職業健康評鑑與合規支援系統
             </a>
@@ -175,9 +184,9 @@
         </div>
     </nav>
 
-    <div class="container-fluid main-content mt-4">
+    <div class="container-fluid px-4 pb-5 main-content">
         
-        <div class="mb-4">
+        <div class="mt-4 mb-4">
             <h2 class="fw-bold text-dark mb-1">評鑑改善專區 (Act)</h2>
             <p class="text-secondary">Act 階段：依據審查結果進行矯正預防與證據增補</p>
         </div>
@@ -265,6 +274,7 @@
         const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
         const { PDFDocument } = PDFLib;
 
+        // 統一的頁首時間更新邏輯
         document.addEventListener('DOMContentLoaded', function() {
             setInterval(() => {
                 const now = new Date();
@@ -306,7 +316,7 @@
             document.getElementById('loadingOverlay').style.display = 'flex';
 
             try {
-                // 修正：增加讀取 evaluation_reviews (歷次審查詳細紀錄)
+                // 讀取 evaluation_reviews (歷次審查詳細紀錄)
                 const { data, error } = await supabaseClient
                     .from('evidence')
                     .select(`
@@ -327,7 +337,7 @@
                 document.getElementById('caseNumberDisplay').innerText = data.case_number;
                 document.getElementById('caseVisitDate').innerText = data.visit_date;
 
-                // ★ 修正：只顯示 evaluation_reviews 的內容，不顯示其他管理資訊
+                // 顯示 evaluation_reviews 的內容
                 const reviewsContainer = document.getElementById('evaluationReviewsList');
                 reviewsContainer.innerHTML = '';
 
