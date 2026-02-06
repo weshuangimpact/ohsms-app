@@ -1193,43 +1193,34 @@
                 triggerDownload(csvContent, 'company_import_template.csv');
 
             } else if (type === 'staff') {
-                // 修正：移除「護理人員」選項，並提供 3 種有效角色的示範
-                csvContent += "姓名,身分角色(consultant/admin/doc_control),職務型態(全職/兼職),電話,Email,入職日期(YYYY-MM-DD)\n";
-                csvContent += "王顧問,consultant,兼職,0911222333,consultant@test.com,2024-01-01\n";
-                csvContent += "陳管理,admin,全職,0922333444,admin@test.com,2024-02-01\n";
-                csvContent += "林文管,doc_control,全職,0933444555,doc@test.com,2024-03-01";
+                csvContent += "姓名,身分角色(醫師/護理人員/顧問),職務型態(全職/兼職),電話,Email,入職日期(YYYY-MM-DD)\n";
+                csvContent += "李小美,護理人員,全職,0987654321,nurse@test.com,2024-05-20";
                 triggerDownload(csvContent, 'staff_import_template.csv');
 
             } else if (type === 'record') {
                 // ==========================================
-                // ★ 重點修正：自動帶入資料庫現有的公司名單與負責顧問
+                // ★ 重點修正：自動帶入資料庫現有的公司名單
                 // ==========================================
                 try {
-                    // 1. 抓取所有服務中的公司，同時關聯查詢其負責顧問
+                    // 1. 抓取所有服務中的公司
                     const { data: activeCompanies, error } = await supabaseClient
                         .from('companies')
-                        .select(`
-                            name,
-                            consultant_id,
-                            medical_staff ( name )
-                        `)
+                        .select('name')
                         .eq('is_active', true)
                         .order('name');
 
                     if (error) throw error;
 
-                    // 2. 標題：保留完整格式以供匯入，但資料列只填入公司與顧問
+                    // 2. 標題：公司名稱, 顧問姓名, 日期, 開始, 結束, 事項
                     csvContent += "公司名稱,顧問姓名,服務日期(YYYY-MM-DD),開始時間(HH:mm),結束時間(HH:mm),執行事項\n";
 
                     if (!activeCompanies || activeCompanies.length === 0) {
                         csvContent += "範例公司,王顧問,,09:00,12:00,建立母案";
                     } else {
-                        // 3. 將每間公司列為一行，自動填入顧問姓名
+                        // 3. 將每間公司列為一行，方便使用者直接填寫
                         activeCompanies.forEach(c => {
-                            // 取得顧問姓名，若無則留空
-                            const consultantName = c.medical_staff ? c.medical_staff.name : '';
-                            // 僅填入前兩欄 (公司, 顧問)，其餘欄位留空但保留逗號以符合格式
-                            csvContent += `${c.name},${consultantName},,,,\n`;
+                            // 只填第一欄，其他留空
+                            csvContent += `${c.name},,,,,\n`;
                         });
                     }
 
@@ -1306,7 +1297,7 @@
                     html += '<th>姓名</th><th>角色</th><th>職務</th><th>Email</th><th>入職日</th></tr></thead><tbody>';
                     rows.forEach(row => {
                         if(!row[0]) return;
-                        const name = row[0]; const role = row[1] || 'consultant'; const type = row[2] || '兼職';
+                        const name = row[0]; const role = row[1] || '護理人員'; const type = row[2] || '兼職';
                         const phone = row[3]; const email = row[4]; const onboard = formatDate(row[5]);
                         pendingImportData.push({
                             name: String(name).trim(), role: role, employment_type: type,
