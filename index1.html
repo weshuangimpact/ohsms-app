@@ -370,6 +370,7 @@ const BUCKET_NAME = 'staging';
 let currentRecordId = null; // 母案 ID
 let currentStagingId = null; // 暫存案 ID (同時也是資料夾名稱)
 let currentUserId = sessionStorage.getItem('currentUserId'); 
+let currentCaseNumber = null; // [修正新增] 用來暫存目前的案號，避免重複生成
 
 // 【新增】Q 選項擴充的後綴定義
 const qSuffixes = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("");
@@ -610,37 +611,99 @@ fileInfo.innerHTML = '';
 }
 
 // ==========================================
-// 搜尋與選取邏輯
+// [修正版] 搜尋與選取邏輯 - 雙軌搜尋 (Staging First)
 // ==========================================
 async function searchRecords() {
-const year = document.getElementById('search-year').value.trim();
-const taxId = document.getElementById('search-tax-id').value.trim();
-const caseNumber = document.getElementById('search-case-number').value.trim();
+    const year = document.getElementById('search-year').value.trim();
+    const taxId = document.getElementById('search-tax-id').value.trim();
+    const caseNumber = document.getElementById('search-case-number').value.trim();
 
-const container = document.getElementById('records-container');
-container.innerHTML = '<div class="text-center py-5"><div class="spinner-border text-primary"></div><p class="mt-2">查詢中...</p></div>';
-try {
-const { data: profileData } = await supabaseClient.from('profiles').select('email').eq('id', currentUserId).single();
-if (!profileData) throw new Error('無法識別使用者身分');
-const { data: staffData } = await supabaseClient.from('medical_staff').select('id').eq('email', profileData.email).single();
-if (!staffData) { container.innerHTML = '<div class="text-center text-muted py-5"><i class="fas fa-user-slash fa-3x mb-3"></i><p>尚未連結顧問身分。</p></div>'; return; }
+    const container = document.getElementById('records-container');
+    container.innerHTML = '<div class="text-center py-5"><div class="spinner-border text-primary"></div><p class="mt-2">查詢中...</p></div>';
 
-// 新增 case_number 欄位的查詢
-let query = supabaseClient.from('service_records').select(`id, case_number, visit_date, service_year, execution_items, workplaces!inner(id, companies!inner(name, tax_id))`).eq('consultant_id', staffData.id).order('visit_date', { ascending: false });
-if (year) query = query.eq('service_year', year);
-if (taxId) query = query.eq('workplaces.companies.tax_id', taxId);
-if (caseNumber) query = query.ilike('case_number', `%${caseNumber}%`);
+    try {
+        const { data: profileData } = await supabaseClient.from('profiles').select('email').eq('id', currentUserId).single();
+        if (!profileData) throw new Error('無法識別使用者身分');
+        
+        const { data: staffData } = await supabaseClient.from('medical_staff').select('id').eq('email', profileData.email).single();
+        if (!staffData) { 
+            container.innerHTML = '<div class="text-center text-muted py-5"><i class="fas fa-user-slash fa-3x mb-3"></i><p>尚未連結顧問身分。</p></div>'; 
+            return; 
+        }
 
-const { data, error } = await query;
-if (error) throw error;
-if (!data || data.length === 0) { container.innerHTML = '<div class="text-center text-muted py-5"><i class="fas fa-folder-open fa-3x mb-3"></i><p>查無符合條件的案件。</p></div>'; return; }
+        // 1. 如果有案號，先去 Staging 找對應的母案 ID
+        let targetMotherIds = null;
+        if (caseNumber) {
+            const { data: stagingData } = await supabaseClient
+                .from('service_record_staging')
+                .select('origin_record_id')
+                .ilike('case_number', `%${caseNumber}%`);
 
-// 移除案號 Badge 的顯示，僅保留原本介面
-container.innerHTML = data.map(record => {
-return `<div class="col-12"><div class="record-card p-3 rounded d-flex justify-content-between align-items-center" onclick="handleCardClick('${record.id}')"><div><div class="fw-bold text-dark fs-5 mb-1">${record.workplaces.companies.name} <span class="badge bg-light text-muted fw-normal border ms-2">${record.workplaces.companies.tax_id}</span></div><div class="text-muted small"><i class="far fa-calendar-alt me-1"></i> ${record.visit_date || '預定日期未定'}</div></div><div class="text-end"><div class="small text-primary mt-1">選取此案 <i class="fas fa-chevron-right"></i></div></div></div></div>`;
-}).join('');
+            if (stagingData && stagingData.length > 0) {
+                targetMotherIds = stagingData.map(item => item.origin_record_id);
+            }
+        }
 
-} catch (err) { container.innerHTML = `<div class="alert alert-danger">錯誤: ${err.message}</div>`; }
+        // 2. 組合查詢條件
+        let query = supabaseClient.from('service_records')
+            .select(`id, case_number, visit_date, service_year, execution_items, workplaces!inner(id, companies!inner(name, tax_id))`)
+            .eq('consultant_id', staffData.id)
+            .order('visit_date', { ascending: false });
+
+        if (year) query = query.eq('service_year', year);
+        if (taxId) query = query.eq('workplaces.companies.tax_id', taxId);
+        
+        // 修正後的案號搜尋邏輯
+        if (caseNumber) {
+            if (targetMotherIds && targetMotherIds.length > 0) {
+                // 如果在 Staging 找到了，就顯示那些母案 (即使母案案號已變更)
+                query = query.in('id', targetMotherIds);
+            } else {
+                // 如果 Staging 沒找到，才直接搜母案
+                query = query.ilike('case_number', `%${caseNumber}%`);
+            }
+        }
+
+        const { data, error } = await query;
+        if (error) throw error;
+        
+        if (!data || data.length === 0) { 
+            container.innerHTML = '<div class="text-center text-muted py-5"><i class="fas fa-folder-open fa-3x mb-3"></i><p>查無符合條件的案件。</p></div>'; 
+            return; 
+        }
+
+        // 渲染卡片
+        container.innerHTML = data.map(record => {
+            // 提示使用者此案號是否來自關聯
+            let displayCaseNum = record.case_number || '無案號';
+            if (caseNumber && targetMotherIds && targetMotherIds.includes(record.id)) {
+                // 如果使用者是用舊案號搜到的，我們標記出來
+                if (!record.case_number.includes(caseNumber)) {
+                     displayCaseNum = `<span class="text-secondary text-decoration-line-through me-1 small">${caseNumber}</span> <span class="text-danger fw-bold">${record.case_number}</span>`;
+                }
+            }
+
+            return `
+                <div class="col-12">
+                    <div class="record-card p-3 rounded d-flex justify-content-between align-items-center" onclick="handleCardClick('${record.id}')">
+                        <div>
+                            <div class="fw-bold text-dark fs-5 mb-1">
+                                ${record.workplaces.companies.name} 
+                                <span class="badge bg-light text-muted fw-normal border ms-2">${record.workplaces.companies.tax_id}</span>
+                            </div>
+                            <div class="text-muted small">
+                                <i class="far fa-calendar-alt me-1"></i> ${record.visit_date || '預定日期未定'}
+                                <span class="ms-2">| 案號: ${displayCaseNum}</span>
+                            </div>
+                        </div>
+                        <div class="text-end">
+                            <div class="small text-primary mt-1">選取此案 <i class="fas fa-chevron-right"></i></div>
+                        </div>
+                    </div>
+                </div>`;
+        }).join('');
+
+    } catch (err) { container.innerHTML = `<div class="alert alert-danger">錯誤: ${err.message}</div>`; }
 }
 
 async function handleCardClick(motherId) {
@@ -686,6 +749,9 @@ async function initStep2(stagingId) {
 const modalEl = document.getElementById('actionChoiceModal');
 const modal = bootstrap.Modal.getInstance(modalEl);
 if (modal) modal.hide();
+
+// [修正重點]：初始化時清空全域案號，避免混用
+currentCaseNumber = null;
 
 if (!stagingId) {
 currentStagingId = crypto.randomUUID();
@@ -763,6 +829,11 @@ updateStepIndicator(2);
 async function loadStagingData(stagingId) {
 const { data, error } = await supabaseClient.from('service_record_staging').select('*').eq('id', stagingId).single();
 if(error) { alert('讀取暫存資料失敗'); return; }
+
+// [修正重點]：載入既有資料時，將案號保存到全域變數
+if (data.case_number) {
+    currentCaseNumber = data.case_number;
+}
 
 document.getElementById('execution-date').value = data.visit_date || data.service_date || '';
 document.getElementById('start-time').value = data.start_time || '';
@@ -857,11 +928,19 @@ const userId = profile.user.id;
 
 const { data: recordData } = await supabaseClient.from('service_records').select('workplace_id, consultant_id, service_year').eq('id', currentRecordId).single();
 
-// 產生案號 (Format: SR-YYYYMMDD-隨機流水碼)
-const now = new Date();
-const dateStr = now.getFullYear().toString() + (now.getMonth() + 1).toString().padStart(2, '0') + now.getDate().toString().padStart(2, '0');
-const randomSeq = String(Date.now()).slice(-3);
-const caseNumber = `SR-${dateStr}-${randomSeq}`;
+// [修正重點]：案號生成邏輯 - 若目前 staging 已經有案號，就沿用；否則才產生新的。
+// 這解決了「每次存檔都會產生新案號，導致舊案號在資料庫消失」的問題。
+let finalCaseNumber = currentCaseNumber;
+
+if (!finalCaseNumber) {
+    const now = new Date();
+    const dateStr = now.getFullYear().toString() + (now.getMonth() + 1).toString().padStart(2, '0') + now.getDate().toString().padStart(2, '0');
+    const randomSeq = String(Date.now()).slice(-3);
+    finalCaseNumber = `SR-${dateStr}-${randomSeq}`;
+    
+    // 更新到全域變數，確保若使用者連續按兩次存檔，不會產生兩個不同案號
+    currentCaseNumber = finalCaseNumber;
+}
 
 const payload = {
 id: currentStagingId, 
@@ -883,19 +962,19 @@ note: '由顧問端上傳之執行紀錄',
 user_remark: remark 
 }),
 attachment_files: attachments,
-case_number: caseNumber, // 寫入案號至暫存表
+case_number: finalCaseNumber, // [修正] 使用固定的案號
 status: 'pending',
 updated_at: new Date()
 };
 
+// 1. 寫入 Staging
 const { error } = await supabaseClient.from('service_record_staging').upsert(payload);
-
 if (error) throw error;
 
-// 同步更新母案 (service_records) 的案號
-await supabaseClient.from('service_records').update({ case_number: caseNumber }).eq('id', currentRecordId);
+// 2. 寫入 Mother Record (兩個 Table 都寫入)
+await supabaseClient.from('service_records').update({ case_number: finalCaseNumber }).eq('id', currentRecordId);
 
-alert('✅ 存檔成功！資料已送出待審核。');
+alert(`✅ 存檔成功！資料已送出待審核。\n案件編號：${finalCaseNumber}`);
 backToStep1();
 
 } catch (err) {
