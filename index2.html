@@ -425,13 +425,14 @@
             const tbody = document.getElementById('pendingTableBody');
             
             try {
-                // [修正] 統計已核定數時，只計算 status='approved'，避免納入 correction_pending
+                // 1. 取得已核定數量
                 const { count: approvedCount, error: err1 } = await supabaseClient
                     .from('evidence')
                     .select('*', { count: 'exact', head: true })
                     .eq('service_year', year)
-                    .eq('status', 'approved'); // ★ 修正：確保只計算正式核定的案件
+                    .eq('status', 'approved');
 
+                // 2. 取得待審核案件 (Staging)
                 const { data: stagingData, error: err2 } = await supabaseClient
                     .from('service_record_staging')
                     .select(`
@@ -441,7 +442,7 @@
                             companies ( name )
                         )
                     `)
-                    .in('status', ['pending', 'correction_requested']); // ★ 修正：顯示待審與待補正的案件
+                    .in('status', ['pending', 'correction_requested']);
 
                 if (err1 || err2) throw (err1 || err2);
 
@@ -462,6 +463,28 @@
                 rateChart.data.datasets[0].data = [approvedCount, pendingCount];
                 rateChart.update();
 
+                // [修正] 3. 預先取得所有待補正案件的 Evidence 資料 (為了抓取 deadline)
+                const correctionCaseNumbers = filteredPending
+                    .filter(p => p.status === 'correction_requested' && p.case_number)
+                    .map(p => p.case_number);
+                
+                let evidenceMap = {};
+                if (correctionCaseNumbers.length > 0) {
+                    const { data: evData } = await supabaseClient
+                        .from('evidence')
+                        .select('case_number, evaluation_reviews')
+                        .in('case_number', correctionCaseNumbers);
+                    
+                    if (evData) {
+                        evData.forEach(e => {
+                            if (e.evaluation_reviews && Array.isArray(e.evaluation_reviews) && e.evaluation_reviews.length > 0) {
+                                // 取最新一筆 (最後一個元素)
+                                evidenceMap[e.case_number] = e.evaluation_reviews[e.evaluation_reviews.length - 1];
+                            }
+                        });
+                    }
+                }
+
                 tbody.innerHTML = filteredPending.map((p) => {
                     let descText = '-';
                     try {
@@ -477,10 +500,24 @@
                     const companyName = p.workplaces?.companies?.name || '未知公司';
                     const displayDate = p.visit_date || p.service_date;
                     
-                    // 增加狀態標記
                     let statusBadge = '';
+                    let deadlineHtml = '';
+
+                    // [修正] 待補正狀態的顯示邏輯
                     if(p.status === 'correction_requested') {
                         statusBadge = '<span class="badge bg-warning text-dark me-1">待補正</span>';
+                        
+                        // 嘗試從 Map 中抓取期限
+                        if (p.case_number && evidenceMap[p.case_number]) {
+                            const reviewInfo = evidenceMap[p.case_number];
+                            if (reviewInfo.deadline) {
+                                deadlineHtml = `
+                                    <div class="mt-1 small text-danger border border-danger rounded px-2 py-1 d-inline-block" style="background-color: #fff5f5;">
+                                        <i class="far fa-clock me-1"></i> 期限：${reviewInfo.deadline}
+                                    </div>
+                                `;
+                            }
+                        }
                     }
 
                     return `
@@ -490,7 +527,11 @@
                             <div class="fw-bold">${companyName}</div>
                             <small class="text-muted">${consultantName}</small>
                         </td>
-                        <td>${statusBadge}<span class="badge bg-light text-dark border">${p.service_type || '一般訪視'}</span></td>
+                        <td>
+                            ${statusBadge}
+                            <span class="badge bg-light text-dark border">${p.service_type || '一般訪視'}</span>
+                            ${deadlineHtml}
+                        </td>
                         <td class="text-truncate" style="max-width: 250px;">${descText}</td>
                         <td class="text-end pe-4">
                             <div class="btn-group">
