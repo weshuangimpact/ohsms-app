@@ -32,112 +32,101 @@
         /* 頁首設定 */
         .navbar {
             background-color: #202124 !important;
-            min-height: 85px; 
+            min-height: 85px; /* [修正] 統一高度為 85px */
             color: #fff;
-            flex-shrink: 0; 
+            flex-shrink: 0;
         }
 
         /* 頁尾設定 */
         footer {
             background-color: #202124 !important;
             color: #fff;
-            flex-shrink: 0; 
+            flex-shrink: 0;
             font-size: 0.9rem;
             letter-spacing: 0.5px;
             display: flex;
-            flex-direction: column;
+            flex-direction: column; /* 垂直排列 */
             align-items: center;
             justify-content: center;
-            margin-top: auto; 
+            margin-top: auto;
             padding: 15px 0;
-            min-height: 85px; 
+            min-height: 85px; /* 雙行高度 */
         }
 
         /* =========================================
-           2. PDCA 字卡與標題 CSS
+           2. 統一標題與字卡 CSS 設定 (Service Pink)
            ========================================= */
+        :root { 
+            --primary-bg: #f8f9fa; 
+            --theme-color: #e83e8c; /* Service 階段的主題粉紅色 */
+            --theme-light: #fce4ec; /* 淺粉色背景 */
+        }
+
+        /* PDCA 字卡 (白色區塊) 設定 */
         .instruction-box {
-            background-color: #fff;
-            border-left: 5px solid #17a2b8; /* 使用 Info 顏色或自訂 */
-            padding: 20px 25px;
-            border-radius: 4px;
-            margin-bottom: 30px;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+            background-color: #fff;              /* 白色背景 */
+            border-left: 5px solid var(--theme-color); /* 左側主題色飾條 */
+            padding: 20px 25px;                  /* 內距 */
+            border-radius: 4px;                  /* 圓角 */
+            margin-bottom: 30px;                 /* 下方留白 */
+            box-shadow: 0 2px 5px rgba(0,0,0,0.05); /* 輕微陰影 */
+            width: 100%;
+            text-align: left;
         }
 
+        /* PDCA 字卡標題設定 */
         .instruction-title {
-            color: #17a2b8;
-            font-weight: 700;
-            margin-bottom: 10px;
+            color: var(--theme-color);           /* 字體顏色跟隨主題色 */
+            font-weight: 700;                    /* 粗體 */
+            margin-bottom: 10px;                 /* 與內文的間距 */
+            font-size: 1.1rem;
         }
 
         /* =========================================
-           3. 本頁特定樣式 (客服與問答)
+           3. 客服專用 UI 設定
            ========================================= */
-        .chat-container {
+        /* 側邊資訊卡片 */
+        .contact-info-card {
             background: white;
-            border-radius: 8px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
-            height: 600px; /* 固定高度 */
-            overflow: hidden;
-            border: 1px solid #e0e0e0;
-        }
-
-        .faq-list .list-group-item {
+            border-radius: 12px;
+            padding: 25px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+            margin-bottom: 20px;
+            transition: all 0.3s;
             cursor: pointer;
-            transition: all 0.2s;
-            border-left: 3px solid transparent;
+            border-left: 4px solid transparent;
         }
-        .faq-list .list-group-item:hover {
-            background-color: #f8f9fa;
-            border-left-color: #17a2b8;
+        .contact-info-card:hover {
+            transform: translateX(5px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
         }
-        .faq-list .list-group-item.active {
-            background-color: #e0f7fa;
-            color: #006064;
-            border-color: #b2ebf2;
-            border-left-color: #00bcd4;
-        }
+        
+        .card-phone { border-left-color: #0d6efd; }
+        .card-email { border-left-color: #ffc107; }
 
-        /* ISO Modal 樣式優化 */
-        .iso-section {
-            margin-bottom: 25px;
-            padding-bottom: 15px;
-            border-bottom: 1px dashed #eee;
-        }
-        .iso-section:last-child {
-            border-bottom: none;
-        }
-        .iso-title {
-            font-weight: bold;
-            color: #2c3e50;
-            margin-bottom: 10px;
-            display: flex;
-            align-items: center;
-        }
-        .iso-badge {
-            background-color: #17a2b8;
-            color: white;
-            width: 24px;
-            height: 24px;
+        .icon-circle {
+            width: 50px; height: 50px;
             border-radius: 50%;
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            margin-right: 10px;
-            font-size: 0.8rem;
+            background: #f8f9fa;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 1.25rem;
+            margin-right: 15px;
         }
-        .clause-tag {
-            background-color: #e9ecef;
-            color: #495057;
-            padding: 2px 8px;
-            border-radius: 4px;
-            font-size: 0.85rem;
-            margin-right: 5px;
-            display: inline-block;
-            margin-bottom: 3px;
-        }
+        
+        /* 導引卡片文字顏色 */
+        .text-pink { color: var(--theme-color); }
     </style>
+
+    <script>
+        // 權限檢查
+        document.addEventListener('DOMContentLoaded', function() {
+            if (!sessionStorage.getItem('currentUserId')) { 
+                window.location.href = 'login.html'; 
+            }
+            // 顯示畫面
+            document.body.style.display = 'flex';
+        });
+    </script>
 </head>
 <body>
 
@@ -172,57 +161,83 @@
         </div>
     </nav>
 
-    <div class="container-fluid px-4 pb-5 main-content">
+    <div class="container-fluid px-4 mt-4 main-content pb-5">
         
-        <div class="mt-4 mb-4">
+        <div class="mb-4">
             <h2 class="fw-bold text-dark mb-1">評鑑支援</h2>
-            <p class="text-secondary">提供系統操作指引、法規對應說明以及線上即時客服諮詢</p>
+            <p class="text-secondary">Always Here：您的專屬職安系統管家</p>
         </div>
 
         <div class="instruction-box">
             <div class="instruction-title">
-                <i class="fas fa-info-circle me-2"></i>功能說明
+                <i class="fas fa-headset me-2"></i>Service Spirit：有溫度的數位連結
             </div>
             <p class="mb-0 text-dark" style="line-height: 1.6;">
-                本專區整合系統操作常見問題、ISO 45001 條文對應說明，並提供真人線上客服對話窗口。若您在操作過程中有任何疑問，或需要針對評鑑內容進行諮詢，歡迎利用右側對話視窗與我們聯繫。
+                本模組建立即時且暢通的溝通管道，確保使用者的需求與操作問題能被有效傳遞與及時回應。
             </p>
         </div>
 
-        <div class="row g-4 h-100">
-            <div class="col-lg-4">
-                <div class="card border-0 shadow-sm h-100">
-                    <div class="card-header bg-white py-3 fw-bold text-dark">
-                        <i class="fas fa-book me-2 text-info"></i>參考文件與說明
-                    </div>
-                    <div class="card-body p-0">
-                        <div class="list-group list-group-flush faq-list">
-                            <button class="list-group-item list-group-item-action py-3" data-bs-toggle="modal" data-bs-target="#isoModal">
-                                <div class="d-flex w-100 justify-content-between align-items-center">
-                                    <div>
-                                        <h6 class="mb-1 fw-bold text-dark">附錄 A：OHACSS × ISO 45001</h6>
-                                        <small class="text-muted">系統功能模組與條文對應說明</small>
-                                    </div>
-                                    <i class="fas fa-chevron-right text-muted"></i>
-                                </div>
-                            </button>
-                            
-                            <div class="p-3 text-center text-muted small mt-4">
-                                <i class="fas fa-wrench mb-2"></i><br>
-                                常見問題 (FAQ) 建置中...
-                            </div>
+        <div class="row g-4">
+            
+            <div class="col-lg-8">
+                <div class="card border-0 shadow-sm h-100 bg-white">
+                    <div class="card-body d-flex flex-column align-items-center justify-content-center text-center p-5">
+                        <div class="mb-4 p-4 rounded-circle" style="background-color: var(--theme-light);">
+                            <i class="fas fa-comments text-pink" style="font-size: 4rem;"></i>
+                        </div>
+                        <h3 class="fw-bold text-dark">OHSMS 線上支援助理</h3>
+                        <p class="text-muted fs-5 mt-2">
+                            遇到問題了嗎？無需安裝軟體，<br>
+                            請點擊畫面 <strong class="text-pink">右下角</strong> 的綠色圖示 <i class="fas fa-comment-dots"></i><br>
+                            即可開始與客服人員免登入對談。
+                        </p>
+                        
+                        <div class="mt-4 p-3 bg-light rounded text-start d-inline-block border">
+                            <small class="text-secondary">
+                                <i class="fas fa-info-circle me-2 text-pink"></i>服務時間：週一至週五 09:00 - 18:00<br>
+                                <i class="fas fa-moon me-2 text-pink"></i>非服務時間請直接發送E-MAIL，我們將於次一工作日優先回覆。
+                            </small>
                         </div>
                     </div>
                 </div>
             </div>
 
-            <div class="col-lg-8">
-                <div class="chat-container">
-                    <div class="d-flex align-items-center justify-content-center h-100 text-muted flex-column">
-                        <div class="spinner-border text-info mb-3" role="status"></div>
-                        <p>正在連線至線上客服系統...</p>
-                        <small>若長時間未顯示，請檢查您的網路設定或廣告阻擋器。</small>
+            <div class="col-lg-4">
+                <h5 class="fw-bold mb-3 text-secondary">其他聯絡方式</h5>
+                
+                <div class="contact-info-card card-phone" onclick="location.href='tel:0912310570'">
+                    <div class="d-flex align-items-center">
+                        <div class="icon-circle text-white bg-primary">
+                            <i class="fas fa-phone-alt"></i>
+                        </div>
+                        <div>
+                            <h6 class="fw-bold mb-1">緊急客服專線</h6>
+                            <small class="text-muted">0912-310-570</small>
+                        </div>
                     </div>
                 </div>
+
+                <div class="contact-info-card card-email" onclick="location.href='mailto:wesmartaitaiwan@gmail.com'">
+                    <div class="d-flex align-items-center">
+                        <div class="icon-circle text-dark bg-warning">
+                            <i class="fas fa-envelope"></i>
+                        </div>
+                        <div style="overflow: hidden;">
+                            <h6 class="fw-bold mb-1">問題回報信箱</h6>
+                            <small class="text-muted text-truncate d-block">wesmartaitaiwan@gmail.com</small>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card border-0 shadow-sm mt-4 bg-light">
+                    <div class="card-body">
+                        <h6 class="fw-bold mb-3"><i class="fas fa-book me-2 text-secondary"></i>參考文件</h6>
+                        <button class="btn btn-outline-secondary w-100 text-start" data-bs-toggle="modal" data-bs-target="#isoModal">
+                            <i class="fas fa-file-alt me-2"></i>附錄 A：系統功能模組 × ISO 45001 條文對應說明
+                        </button>
+                    </div>
+                </div>
+
             </div>
         </div>
     </div>
@@ -237,125 +252,92 @@
     <div class="modal fade" id="isoModal" tabindex="-1" aria-labelledby="isoModalLabel" aria-hidden="true">
         <div class="modal-dialog modal-lg modal-dialog-scrollable">
             <div class="modal-content">
-                <div class="modal-header bg-info text-white">
-                    <h5 class="modal-title fw-bold" id="isoModalLabel">
-                        <i class="fas fa-file-contract me-2"></i>附錄 A：OHACSS 系統功能模組 × ISO 45001 條文對應說明
-                    </h5>
+                <div class="modal-header bg-secondary text-white">
+                    <h5 class="modal-title" id="isoModalLabel">附錄 A：OHACSS 系統功能模組 × ISO 45001 條文對應說明</h5>
                     <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
-                <div class="modal-body px-4 py-3">
+                <div class="modal-body">
+                    <div class="alert alert-info">
+                        <strong>說明原則：</strong><br>
+                        本附錄說明 OHACSS 如何支援組織落實 ISO 45001 的管理精神與要求，
+                        系統本身並非 OHSMS，而是支援 OHSMS 建置、運作、審查與改善之數位系統。
+                    </div>
+
+                    <h6 class="fw-bold text-dark mt-4">1️⃣ 系統整體設計原則：PDCA × Evidence × 5W1H</h6>
+                    <ul class="list-unstyled text-secondary small mb-2">
+                        <li><span class="badge bg-light text-dark border">Clause 4–10</span> 管理系統整體架構</li>
+                        <li><span class="badge bg-light text-dark border">Clause 7.5</span> Documented Information</li>
+                    </ul>
+                    <p class="small">OHACSS 以 PDCA 管理循環為核心架構，透過 Evidence 導向的資料設計與 5W1H 原則，將服務規劃、執行、審查與改善行動系統化記錄，支援組織建立具一致性、可追溯性與可稽核性的職業安全衛生管理體系。</p>
+                    <hr>
+
+                    <h6 class="fw-bold text-dark mt-4">2️⃣ 服務執行歷程管理（Plan & Do）</h6>
+                    <ul class="list-unstyled text-secondary small mb-2">
+                        <li><span class="badge bg-light text-dark border">Clause 6</span> Planning</li>
+                        <li><span class="badge bg-light text-dark border">Clause 8</span> Operation</li>
+                    </ul>
+                    <p class="small">本模組支援組織建立服務與作業基準，並完整記錄實際執行歷程。透過版本控管與補件機制，確保從規劃到現場執行的資料具備一致性與可追溯性，作為風險控制與作業管理的客觀依據。</p>
+                    <hr>
+
+                    <h6 class="fw-bold text-dark mt-4">3️⃣ 管理者總覽（Check & Act｜決策層）</h6>
+                    <ul class="list-unstyled text-secondary small mb-2">
+                        <li><span class="badge bg-light text-dark border">Clause 9</span> Performance Evaluation</li>
+                        <li><span class="badge bg-light text-dark border">Clause 9.3</span> Management Review</li>
+                    </ul>
+                    <p class="small">本模組支援管理階層即時檢視執行成果與年度達成狀態，並對暫存資料進行審查與確認。管理者可依審查結果啟動改善決策，作為管理審查與持續改善的決策依據。</p>
+                    <hr>
+
+                    <h6 class="fw-bold text-dark mt-4">4️⃣ 評鑑改善專區（Act）</h6>
+                    <ul class="list-unstyled text-secondary small mb-2">
+                        <li><span class="badge bg-light text-dark border">Clause 10</span> Improvement</li>
+                        <li><span class="badge bg-light text-dark border">Clause 10.2</span> Incident, Nonconformity and Corrective Action</li>
+                    </ul>
+                    <p class="small">本模組支援矯正與預防行動的執行與追蹤，所有改善說明與佐證資料均直接連結至原始服務證據鏈，確保改善行動具備完整紀錄並可供後續稽核與查驗。</p>
+                    <hr>
+
+                    <h6 class="fw-bold text-dark mt-4">5️⃣ 評鑑支援 AI 智慧助理（Evaluation Support）</h6>
+                    <ul class="list-unstyled text-secondary small mb-2">
+                        <li><span class="badge bg-light text-dark border">Clause 9</span> Performance Evaluation</li>
+                        <li><span class="badge bg-light text-dark border">Clause 7.5</span> Documented Information</li>
+                    </ul>
+                    <p class="small">本模組輔助進行資料完整性檢核與評鑑判斷，協助使用者檢視證據是否符合管理與審查需求，強化評鑑過程的客觀性、可說明性與一致性。</p>
+                    <hr>
+
+                    <h6 class="fw-bold text-dark mt-4">6️⃣ 基本資料建立（5W1H）</h6>
+                    <ul class="list-unstyled text-secondary small mb-2">
+                        <li><span class="badge bg-light text-dark border">Clause 7.5</span> Documented Information</li>
+                        <li><span class="badge bg-light text-dark border">Clause 8</span> Operation</li>
+                    </ul>
+                    <p class="small">本模組建立人、事、時、地、物等基礎關聯資料，確保所有服務與作業紀錄具備清楚來源與執行脈絡，作為管理體系運作與追溯的基石。</p>
+                    <hr>
+
+                    <h6 class="fw-bold text-dark mt-4">7️⃣ 系統日誌與稽核證據（Audit Evidence）</h6>
+                    <ul class="list-unstyled text-secondary small mb-2">
+                        <li><span class="badge bg-light text-dark border">Clause 9.2</span> Internal Audit</li>
+                        <li><span class="badge bg-light text-dark border">Clause 7.5</span> Documented Information</li>
+                    </ul>
+                    <p class="small">本模組完整記錄系統操作與資料異動歷程，確保所有關鍵行為具備不可否認性與可稽核性，支援內部稽核與外部查核作業。</p>
+                    <hr>
+
+                    <h6 class="fw-bold text-dark mt-4">8️⃣ 帳號權限管理（Account Management）</h6>
+                    <ul class="list-unstyled text-secondary small mb-2">
+                        <li><span class="badge bg-light text-dark border">Clause 5.3</span> Organizational Roles, Responsibilities and Authorities</li>
+                        <li><span class="badge bg-light text-dark border">Clause 7.2</span> Competence</li>
+                    </ul>
+                    <p class="small">本模組透過角色與權限設定，明確界定使用者責任與可執行範圍，支援組織在管理體系中落實責任分工與內部控制。</p>
+                    <hr>
+
+                    <h6 class="fw-bold text-dark mt-4">9️⃣ 個人密碼管理（Security）</h6>
+                    <ul class="list-unstyled text-secondary small mb-2">
+                        <li><span class="badge bg-light text-dark border">Clause 7.1</span> Resources</li>
+                        <li><span class="badge bg-light text-dark border">Clause 7.5</span> Documented Information</li>
+                    </ul>
+                    <p class="small">本模組支援帳號安全與存取控制，確保僅有授權人員可於適當時間執行系統操作，維護管理體系資料的完整性與安全性。</p>
                     
-                    <div class="alert alert-light border border-info border-start-4 mb-4">
-                        <strong><i class="fas fa-pen-fancy me-2"></i>說明原則：</strong><br>
-                        本附錄說明 OHACSS 如何支援組織落實 ISO 45001 的管理精神與要求，系統本身並非 OHSMS，而是支援 OHSMS 建置、運作、審查與改善之數位系統。
+                    <div class="bg-light p-3 rounded mt-4 text-center">
+                        <strong>附錄結語</strong><br>
+                        <small class="text-muted">OHACSS 為支援 ISO 45001 職業安全衛生管理體系之數位系統，透過 PDCA 管理循環、Evidence 導向資料設計與 5W1H 可追溯架構，協助組織建立一致、可稽核且可持續改善的管理運作機制。</small>
                     </div>
-
-                    <div class="iso-section">
-                        <div class="iso-title"><span class="iso-badge">1</span>系統整體設計原則：PDCA × Evidence × 5W1H</div>
-                        <div class="mb-2">
-                            <span class="clause-tag">Clause 4–10 (整體架構)</span>
-                            <span class="clause-tag">Clause 7.5 (Documented Information)</span>
-                        </div>
-                        <p class="text-secondary small mb-0">
-                            OHACSS 以 PDCA 管理循環為核心架構，透過 Evidence 導向的資料設計與 5W1H 原則，將服務規劃、執行、審查與改善行動系統化記錄，支援組織建立具一致性、可追溯性與可稽核性的職業安全衛生管理體系。
-                        </p>
-                    </div>
-
-                    <div class="iso-section">
-                        <div class="iso-title"><span class="iso-badge">2</span>服務執行歷程管理 (Plan & Do)</div>
-                        <div class="mb-2">
-                            <span class="clause-tag">Clause 6 (Planning)</span>
-                            <span class="clause-tag">Clause 8 (Operation)</span>
-                        </div>
-                        <p class="text-secondary small mb-0">
-                            本模組支援組織建立服務與作業基準，並完整記錄實際執行歷程。透過版本控管與補件機制，確保從規劃到現場執行的資料具備一致性與可追溯性，作為風險控制與作業管理的客觀依據。
-                        </p>
-                    </div>
-
-                    <div class="iso-section">
-                        <div class="iso-title"><span class="iso-badge">3</span>管理者總覽 (Check & Act｜決策層)</div>
-                        <div class="mb-2">
-                            <span class="clause-tag">Clause 9 (Performance Evaluation)</span>
-                            <span class="clause-tag">Clause 9.3 (Management Review)</span>
-                        </div>
-                        <p class="text-secondary small mb-0">
-                            本模組支援管理階層即時檢視執行成果與年度達成狀態，並對暫存資料進行審查與確認。管理者可依審查結果啟動改善決策，作為管理審查與持續改善的決策依據。
-                        </p>
-                    </div>
-
-                    <div class="iso-section">
-                        <div class="iso-title"><span class="iso-badge">4</span>評鑑改善專區 (Act)</div>
-                        <div class="mb-2">
-                            <span class="clause-tag">Clause 10 (Improvement)</span>
-                            <span class="clause-tag">Clause 10.2 (Incident, Nonconformity...)</span>
-                        </div>
-                        <p class="text-secondary small mb-0">
-                            本模組支援矯正與預防行動的執行與追蹤，所有改善說明與佐證資料均直接連結至原始服務證據鏈，確保改善行動具備完整紀錄並可供後續稽核與查驗。
-                        </p>
-                    </div>
-
-                    <div class="iso-section">
-                        <div class="iso-title"><span class="iso-badge">5</span>評鑑支援 AI 智慧助理 (Evaluation Support)</div>
-                        <div class="mb-2">
-                            <span class="clause-tag">Clause 9 (Performance Evaluation)</span>
-                            <span class="clause-tag">Clause 7.5 (Documented Information)</span>
-                        </div>
-                        <p class="text-secondary small mb-0">
-                            本模組輔助進行資料完整性檢核與評鑑判斷，協助使用者檢視證據是否符合管理與審查需求，強化評鑑過程的客觀性、可說明性與一致性。
-                        </p>
-                    </div>
-
-                    <div class="iso-section">
-                        <div class="iso-title"><span class="iso-badge">6</span>基本資料建立 (5W1H)</div>
-                        <div class="mb-2">
-                            <span class="clause-tag">Clause 7.5 (Documented Information)</span>
-                            <span class="clause-tag">Clause 8 (Operation)</span>
-                        </div>
-                        <p class="text-secondary small mb-0">
-                            本模組建立人、事、時、地、物等基礎關聯資料，確保所有服務與作業紀錄具備清楚來源與執行脈絡，作為管理體系運作與追溯的基石。
-                        </p>
-                    </div>
-
-                    <div class="iso-section">
-                        <div class="iso-title"><span class="iso-badge">7</span>系統日誌與稽核證據 (Audit Evidence)</div>
-                        <div class="mb-2">
-                            <span class="clause-tag">Clause 9.2 (Internal Audit)</span>
-                            <span class="clause-tag">Clause 7.5 (Documented Information)</span>
-                        </div>
-                        <p class="text-secondary small mb-0">
-                            本模組完整記錄系統操作與資料異動歷程，確保所有關鍵行為具備不可否認性與可稽核性，支援內部稽核與外部查核作業。
-                        </p>
-                    </div>
-
-                    <div class="iso-section">
-                        <div class="iso-title"><span class="iso-badge">8</span>帳號權限管理 (Account Management)</div>
-                        <div class="mb-2">
-                            <span class="clause-tag">Clause 5.3 (Roles & Authorities)</span>
-                            <span class="clause-tag">Clause 7.2 (Competence)</span>
-                        </div>
-                        <p class="text-secondary small mb-0">
-                            本模組透過角色與權限設定，明確界定使用者責任與可執行範圍，支援組織在管理體系中落實責任分工與內部控制。
-                        </p>
-                    </div>
-
-                    <div class="iso-section">
-                        <div class="iso-title"><span class="iso-badge">9</span>個人密碼管理 (Security)</div>
-                        <div class="mb-2">
-                            <span class="clause-tag">Clause 7.1 (Resources)</span>
-                            <span class="clause-tag">Clause 7.5 (Documented Information)</span>
-                        </div>
-                        <p class="text-secondary small mb-0">
-                            本模組支援帳號安全與存取控制，確保僅有授權人員可於適當時間執行系統操作，維護管理體系資料的完整性與安全性。
-                        </p>
-                    </div>
-
-                    <div class="bg-light p-3 rounded text-center border mt-4">
-                        <h6 class="fw-bold text-dark">附錄結語</h6>
-                        <p class="mb-0 small text-secondary">
-                            OHACSS 為支援 ISO 45001 職業安全衛生管理體系之數位系統，透過 PDCA 管理循環、Evidence 導向資料設計與 5W1H 可追溯架構，協助組織建立一致、可稽核且可持續改善的管理運作機制。
-                        </p>
-                    </div>
-
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">關閉</button>
@@ -365,19 +347,17 @@
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-
+    
     <script>
+        // ==========================================
+        // 統一頁首與系統初始化邏輯
+        // ==========================================
         document.addEventListener('DOMContentLoaded', function() {
-            // 4. 顯示頁面
-            document.body.style.display = 'flex';
-
             // 1. 啟動時鐘
             setInterval(() => {
                 const now = new Date();
                 const clockEl = document.getElementById('header-clock');
-                if(clockEl) {
-                    clockEl.textContent = now.toLocaleTimeString('zh-TW', { hour12: false });
-                }
+                if(clockEl) clockEl.textContent = now.toLocaleTimeString('zh-TW', { hour12: false });
             }, 1000);
 
             // 2. 設定日期
@@ -409,11 +389,11 @@
     (function(){
     var s1=document.createElement("script"),s0=document.getElementsByTagName("script")[0];
     s1.async=true;
-    s1.src='https://embed.tawk.to/67a32bf5825083258e103f61/1ijam7v9d';
+    s1.src='https://embed.tawk.to/697d86ca0f84561c354701fe/1jg95d25c';
     s1.charset='UTF-8';
     s1.setAttribute('crossorigin','*');
     s0.parentNode.insertBefore(s1,s0);
     })();
     </script>
-</body>
+    </body>
 </html>
