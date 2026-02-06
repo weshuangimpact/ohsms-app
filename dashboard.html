@@ -379,15 +379,15 @@
             } 
             else if (userRole === 'doc_control') {
                 // Doc_control: 1, 2, 3, 4, 5, 6, 7, users, profile
-                // ★ 修正：文管人員現在可以看到 users (帳號管理) 了
+                // ★ 修改：允許文管人員存取 users (帳號權限管理)
                 show(cards.plan);      // 1
                 show(cards.manager);   // 2
                 show(cards.eval);      // 3
-                show(cards.service);   // 4 (文管需協助歸檔)
-                hide(cards.act);       // 5 (文控不用改進 - 依原本邏輯隱藏)
+                show(cards.service);   // 4 
+                hide(cards.act);       // 5 
                 show(cards.maint);     // 6
                 show(cards.master);    // 7
-                show(cards.users);     // Users (★ 開放)
+                show(cards.users);     // Users (★ 已設為顯示)
                 show(cards.profile);   // Profile
             }
             else if (userRole === 'consultant') {
@@ -395,7 +395,7 @@
                 show(cards.plan);      // 1
                 hide(cards.manager);   // 2
                 hide(cards.eval);      // 3
-                show(cards.act);       // 5 (顧問需要填寫改善紀錄)
+                show(cards.act);       // 5 
                 hide(cards.maint);     // 6
                 hide(cards.master);    // 7
                 hide(cards.users);     // Users
