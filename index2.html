@@ -150,13 +150,13 @@
                         <div class="bg-primary text-white rounded-circle p-2 me-3">
                             <i class="fas fa-search fa-fw"></i>
                         </div>
-                        <h5 class="fw-bold mb-0">服務歷程查詢</h5>
+                        <h5 class="fw-bold mb-0">服務歷程查詢 (Case Trace)</h5>
                     </div>
                     
                     <div class="p-3 bg-light rounded border mb-3">
-                        <label class="form-label small text-muted fw-bold">輸入案件號碼</label>
+                        <label class="form-label small text-muted fw-bold">輸入案號 (Case Number)</label>
                         <div class="input-group">
-                            <input type="text" class="form-control" id="search-case-number" placeholder="例如：SR-20260207-260">
+                            <input type="text" class="form-control" id="search-case-number" placeholder="例如：CASE-2026-001">
                             <button class="btn btn-primary" type="button" onclick="searchCaseHistory()">
                                 <i class="fas fa-search me-1"></i> 查詢
                             </button>
@@ -247,13 +247,13 @@
                             <tr>
                                 <th class="ps-4">日期</th>
                                 <th>公司/顧問</th>
-                                <th>服務類型</th>
+                                <th>案號</th> <th>服務類型</th>
                                 <th>補件要求紀錄</th>
                                 <th class="text-end pe-4">管理動作 (Actions)</th>
                             </tr>
                         </thead>
                         <tbody id="pendingTableBody">
-                            <tr><td colspan="5" class="text-center py-4 text-muted">正在載入暫存資料...</td></tr>
+                            <tr><td colspan="6" class="text-center py-4 text-muted">正在載入暫存資料...</td></tr>
                         </tbody>
                     </table>
                 </div>
@@ -588,6 +588,8 @@
                             <div class="fw-bold">${companyName}</div>
                             <small class="text-muted">${consultantName}</small>
                         </td>
+                        <td> <span class="badge rounded-pill bg-info text-dark">${p.case_number || '無案號'}</span>
+                        </td>
                         <td>
                             ${statusBadge}
                             <span class="badge bg-light text-dark border">${p.service_type || '一般訪視'}</span>
@@ -616,7 +618,7 @@
                             </div>
                         </td>
                     </tr>
-                `}).join('') || '<tr><td colspan="5" class="text-center py-4 text-muted">當前年度無待處理資料</td></tr>';
+                `}).join('') || '<tr><td colspan="6" class="text-center py-4 text-muted">當前年度無待處理資料</td></tr>';
 
             } catch (e) {
                 console.error(e);
