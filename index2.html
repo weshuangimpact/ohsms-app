@@ -147,19 +147,51 @@
             <div class="col-md-5">
                 <div class="card info-card shadow-sm h-100">
                     <div class="d-flex align-items-center mb-3">
-                        <div class="bg-success text-white rounded-circle p-2 me-3">
-                            <i class="fas fa-calculator fa-fw"></i>
+                        <div class="bg-primary text-white rounded-circle p-2 me-3">
+                            <i class="fas fa-search fa-fw"></i>
                         </div>
-                        <h5 class="fw-bold mb-0">年度結案達成率公式</h5>
+                        <h5 class="fw-bold mb-0">服務歷程查詢 (Case Trace)</h5>
                     </div>
-                    <div class="p-3 bg-light rounded border-start border-4 border-success mb-3">
-                        <code class="text-dark fw-bold" style="font-size: 1.1rem;">
-                            已核定入庫 / ( 已核定入庫 + 暫存待審核 ) × 100%
-                        </code>
+                    
+                    <div class="p-3 bg-light rounded border mb-3">
+                        <label class="form-label small text-muted fw-bold">輸入案號 (Case Number)</label>
+                        <div class="input-group">
+                            <input type="text" class="form-control" id="search-case-number" placeholder="例如：CASE-2026-001">
+                            <button class="btn btn-primary" type="button" onclick="searchCaseHistory()">
+                                <i class="fas fa-search me-1"></i> 查詢
+                            </button>
+                        </div>
                     </div>
-                    <p class="text-muted small mb-0">
-                        <i class="fas fa-info-circle me-1"></i> <strong>說明：</strong><br>
-                        系統會掃描資料庫中狀態為待審查的所有資料。若當年度無待審核案件(全部完成結案)，達成率即為100%</span>。
+
+                    <div id="search-result-area" class="d-none animate__animated animate__fadeIn">
+                        <p class="text-muted small mb-2 fw-bold"><i class="fas fa-info-circle me-1"></i>查詢結果：</p>
+                        <ul class="list-group small">
+                            <li class="list-group-item d-flex justify-content-between align-items-center">
+                                <div>
+                                    <i class="fas fa-file-invoice me-2 text-secondary"></i>
+                                    <span class="text-dark">案件審核預覽 (入庫前)</span>
+                                </div>
+                                <a href="#" id="link-staging-preview" class="text-decoration-none fw-bold text-primary border-bottom border-primary pb-1">
+                                    <i class="far fa-eye me-1"></i>開啟預覽
+                                </a>
+                            </li>
+                            <li class="list-group-item d-flex justify-content-between align-items-center">
+                                <div>
+                                    <i class="fas fa-file-contract me-2 text-success"></i>
+                                    <span class="text-dark">服務軌跡詳情 (正式憑證)</span>
+                                </div>
+                                <a href="#" id="link-evidence-detail" class="text-decoration-none fw-bold text-success border-bottom border-success pb-1">
+                                    <i class="fas fa-external-link-alt me-1"></i>開啟詳情
+                                </a>
+                            </li>
+                        </ul>
+                    </div>
+                    
+                    <div id="search-error-msg" class="text-danger small mt-2 d-none fw-bold text-center"></div>
+
+                    <p class="text-muted small mb-0 mt-3 pt-2 border-top">
+                        <i class="fas fa-lightbulb me-1 text-warning"></i> 
+                        <strong>提示：</strong>透過此功能可調閱已結案案件的原始審核狀態與最終正式憑證，協助釐清作業流程。
                     </p>
                 </div>
             </div>
@@ -611,6 +643,490 @@
                 `;
                 document.getElementById('review-detail-content').innerHTML = content;
                 new bootstrap.Modal(document.getElementById('reviewDetailModal')).show();
+            }
+        }
+
+        // ==========================================
+        // 服務歷程查詢與顯示邏輯 (New)
+        // ==========================================
+        async function searchCaseHistory() {
+            const caseNo = document.getElementById('search-case-number').value.trim();
+            if(!caseNo) return alert('請輸入案號');
+
+            const resArea = document.getElementById('search-result-area');
+            const errArea = document.getElementById('search-error-msg');
+            const linkStaging = document.getElementById('link-staging-preview');
+            const linkEvidence = document.getElementById('link-evidence-detail');
+
+            resArea.classList.add('d-none');
+            errArea.classList.add('d-none');
+            errArea.innerText = '';
+
+            // 按鈕狀態回饋
+            const btn = document.querySelector('button[onclick="searchCaseHistory()"]');
+            const originalBtnHtml = btn.innerHTML;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+            btn.disabled = true;
+
+            try {
+                // 1. 查詢 Staging ID (可能已 approved, 但紀錄仍在)
+                const { data: stagingData, error: err1 } = await supabaseClient
+                    .from('service_record_staging')
+                    .select('id')
+                    .eq('case_number', caseNo)
+                    .maybeSingle();
+
+                // 2. 查詢 Evidence ID (正式憑證)
+                const { data: evidenceData, error: err2 } = await supabaseClient
+                    .from('evidence')
+                    .select('id')
+                    .eq('case_number', caseNo)
+                    .maybeSingle();
+
+                if(!stagingData && !evidenceData) {
+                    throw new Error('找不到此案號的相關資料');
+                }
+
+                resArea.classList.remove('d-none');
+
+                // 設定 Staging 連結
+                if(stagingData) {
+                    linkStaging.onclick = (e) => { e.preventDefault(); openHistoricalStagingPreview(stagingData.id); };
+                    linkStaging.classList.remove('disabled', 'text-muted');
+                    linkStaging.style.pointerEvents = 'auto';
+                } else {
+                    linkStaging.onclick = (e) => e.preventDefault();
+                    linkStaging.classList.add('disabled', 'text-muted');
+                    linkStaging.style.pointerEvents = 'none';
+                }
+
+                // 設定 Evidence 連結
+                if(evidenceData) {
+                    linkEvidence.onclick = (e) => { e.preventDefault(); openEvidenceTab(evidenceData.id); };
+                    linkEvidence.classList.remove('disabled', 'text-muted');
+                    linkEvidence.style.pointerEvents = 'auto';
+                } else {
+                    linkEvidence.onclick = (e) => e.preventDefault();
+                    linkEvidence.classList.add('disabled', 'text-muted');
+                    linkEvidence.style.pointerEvents = 'none';
+                }
+
+            } catch(e) {
+                errArea.innerText = e.message;
+                errArea.classList.remove('d-none');
+            } finally {
+                btn.innerHTML = originalBtnHtml;
+                btn.disabled = false;
+            }
+        }
+
+        // 獨立的 Staging 預覽功能 (需重新 fetch 資料，因為可能不在 currentStagingData 中)
+        async function openHistoricalStagingPreview(stagingId) {
+            const loadingWin = window.open('', '_blank');
+            loadingWin.document.write('<h3>資料載入中，請稍候...</h3>');
+
+            try {
+                // Fetch record
+                const { data: record, error } = await supabaseClient
+                    .from('service_record_staging')
+                    .select(`
+                        *,
+                        workplaces ( companies ( name ) )
+                    `)
+                    .eq('id', stagingId)
+                    .single();
+
+                if(error || !record) throw new Error('無法讀取暫存資料');
+
+                // 以下邏輯複製自 openStagingPreview，但改用 fetched record
+                const companyName = record.workplaces?.companies?.name || '未知公司';
+                const serviceItem = record.service_type || '未指定';
+                const visitDate = record.visit_date || record.service_date || '未設定';
+                const timeRange = (record.start_time && record.end_time) ? `${record.start_time} ~ ${record.end_time}` : '未記錄';
+                
+                let specialNote = '無';
+                try {
+                    if (record.service_desc && record.service_desc.trim().startsWith('{')) {
+                        const json = JSON.parse(record.service_desc);
+                        specialNote = json.user_remark || json.special_note || json.note || '無';
+                    } else {
+                        specialNote = record.service_desc || '無';
+                    }
+                } catch(e) {}
+
+                const fileSourceId = record.id; 
+                let files = record.attachment_files;
+                if (typeof files === 'string') { try { files = JSON.parse(files); } catch(e) { files = []; } }
+                if (!Array.isArray(files)) files = [];
+                
+                // Fetch storage list to find extra files
+                const { data: storageFiles } = await supabaseClient.storage.from('staging').list(fileSourceId);
+                if (storageFiles && storageFiles.length > 0) {
+                    storageFiles.forEach(sf => {
+                        if (sf.name === '.emptyFolderPlaceholder') return;
+                        const exists = files.some(jsonFile => jsonFile.name === sf.name);
+                        if (!exists) {
+                            files.push({
+                                name: sf.name,
+                                path: `${fileSourceId}/${sf.name}`,
+                                type: sf.metadata?.mimetype || 'application/pdf'
+                            });
+                        }
+                    });
+                }
+
+                files.sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+
+                const pdfUrls = [];
+                const otherLinks = [];
+
+                for (const f of files) {
+                    const fullPath = f.path.includes('/') ? f.path : `${fileSourceId}/${f.path}`;
+                    const { data } = supabaseClient.storage.from('staging').getPublicUrl(fullPath);
+                    if (data?.publicUrl) {
+                        const isPdf = f.name.toLowerCase().endsWith('.pdf');
+                        if (isPdf) {
+                            pdfUrls.push(data.publicUrl);
+                        } else {
+                            otherLinks.push({ name: f.name, url: data.publicUrl });
+                        }
+                    }
+                }
+
+                let finalPdfUrl = '';
+                if (pdfUrls.length > 0) {
+                    const mergedPdf = await PDFDocument.create();
+                    for (const url of pdfUrls) {
+                        try {
+                            const res = await fetch(url);
+                            const existingPdfBytes = await res.arrayBuffer();
+                            const pdf = await PDFDocument.load(existingPdfBytes);
+                            const copiedPages = await mergedPdf.copyPages(pdf, pdf.getPageIndices());
+                            copiedPages.forEach((page) => mergedPdf.addPage(page));
+                        } catch (err) { console.error("PDF Merge Error", err); }
+                    }
+                    if(mergedPdf.getPageCount() > 0) {
+                        const pdfBytes = await mergedPdf.save();
+                        const blob = new Blob([pdfBytes], { type: 'application/pdf' });
+                        finalPdfUrl = URL.createObjectURL(blob);
+                    }
+                }
+
+                const otherLinksHtml = otherLinks.map(l => 
+                    `<a href="${l.url}" target="_blank" class="btn btn-sm btn-outline-secondary me-2 mb-2"><i class="fas fa-paperclip"></i> ${l.name}</a>`
+                ).join('');
+
+                const pdfViewerHtml = finalPdfUrl 
+                    ? `<iframe src="${finalPdfUrl}#toolbar=0" class="pdf-viewer"></iframe>` 
+                    : `<div class="alert alert-warning text-center mt-5">此案件無 PDF 附件可預覽</div>`;
+
+                const htmlContent = `
+                    <!DOCTYPE html>
+                    <html lang="zh-TW">
+                    <head>
+                        <title>歷史案件審核預覽: ${companyName}</title>
+                        <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+                        <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+                        <style>
+                            body { background: #f0f2f5; padding: 20px; height: 100vh; display: flex; flex-direction: column; }
+                            .header-card { background: white; padding: 15px 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); margin-bottom: 15px; flex-shrink: 0; }
+                            .meta-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 15px; margin-bottom: 10px; }
+                            .meta-item label { font-size: 0.85rem; color: #6c757d; font-weight: bold; display: block; }
+                            .meta-item div { font-weight: 500; color: #212529; }
+                            .note-box { background: #fff3cd; color: #664d03; padding: 10px; border-radius: 4px; font-size: 0.9rem; margin-top: 10px; border: 1px solid #ffecb5; }
+                            .pdf-container { flex-grow: 1; background: white; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); overflow: hidden; display: flex; flex-direction: column; }
+                            .pdf-viewer { width: 100%; height: 100%; border: none; }
+                            .file-links { margin-top: 10px; }
+                        </style>
+                    </head>
+                    <body>
+                        <div class="header-card">
+                            <div class="d-flex justify-content-between align-items-start">
+                                <h5 class="fw-bold text-success"><i class="fas fa-history me-2"></i>歷史案件審核預覽 (Snapshot)</h5>
+                            </div>
+                            <hr class="my-2">
+                            <div class="meta-grid">
+                                <div class="meta-item"><label>當前案件 (公司)</label><div>${companyName}</div></div>
+                                <div class="meta-item"><label>執行事項</label><div>${serviceItem}</div></div>
+                                <div class="meta-item"><label>執行日期</label><div>${visitDate}</div></div>
+                                <div class="meta-item"><label>執行期間</label><div>${timeRange}</div></div>
+                            </div>
+                            ${ specialNote !== '無' ? `<div class="note-box"><strong><i class="fas fa-sticky-note me-1"></i>特殊事項備註 / 結案理由：</strong> ${specialNote}</div>` : '' }
+                            ${ otherLinks.length > 0 ? `<div class="file-links"><strong><i class="fas fa-paperclip me-1"></i>其他附件：</strong> ${otherLinksHtml}</div>` : ''}
+                        </div>
+                        <div class="pdf-container">
+                            ${pdfViewerHtml}
+                        </div>
+                    </body>
+                    </html>
+                `;
+
+                loadingWin.document.open();
+                loadingWin.document.write(htmlContent);
+                loadingWin.document.close();
+
+            } catch (err) {
+                loadingWin.document.body.innerHTML = `<h3 style="color:red">開啟失敗：${err.message}</h3>`;
+                console.error(err);
+            }
+        }
+
+        // 從 Index 3 移植的正式憑證詳情功能
+        async function openEvidenceTab(evidenceId) {
+            const newWindow = window.open('', '_blank');
+            if (!newWindow) {
+                alert('您的瀏覽器封鎖了彈出視窗，請允許開啟以檢視詳情。');
+                return;
+            }
+
+            // 先寫入 Loading 狀態
+            newWindow.document.write(`
+                <html>
+                <head><title>讀取中...</title></head>
+                <body style="display:flex;justify-content:center;align-items:center;height:100vh;background:#f8f9fa;font-family:sans-serif;">
+                    <div style="text-align:center;">
+                        <div style="font-size:24px;margin-bottom:10px;">資料讀取中...</div>
+                        <div style="color:#666;">正在從資料庫取得完整證據紀錄</div>
+                    </div>
+                </body>
+                </html>
+            `);
+
+            try {
+                // 1. 查詢詳細資料 (加入審核相關欄位)
+                const { data, error } = await supabaseClient
+                    .from('evidence')
+                    .select(`
+                        id, visit_date, start_time, end_time, execution_items, 
+                        file_url, attachment_folder_id, service_year, additional_appendices,
+                        case_number, is_special_case, audit_note, reviewer_id, created_at,
+                        workplaces ( companies (name) ),
+                        medical_staff (name) 
+                    `)
+                    .eq('id', evidenceId)
+                    .single();
+
+                if (error) throw error;
+
+                // --- 新增：讀取 staging 表的服務類型與時間數據 ---
+                let stagingData = {};
+                if (data.attachment_folder_id) {
+                    const { data: sData } = await supabaseClient
+                        .from('service_record_staging')
+                        .select('service_type, start_time, end_time')
+                        .eq('id', data.attachment_folder_id)
+                        .single();
+                    if (sData) stagingData = sData;
+                }
+                // ------------------------------------------------
+
+                // 2. 變數準備
+                const staffName = data.medical_staff?.name || '未指派';
+                const compName = data.workplaces?.companies?.name || '未知企業';
+                
+                // 修正：時間改為優先讀取 staging 的資料
+                const startTime = stagingData.start_time || data.start_time || '--:--';
+                const endTime = stagingData.end_time || data.end_time || '--:--';
+                const timeRange = `${startTime} ~ ${endTime}`;
+                const fullDate = `${data.visit_date} (${timeRange})`;
+                
+                // 修正：項目顯示改為 service_type
+                const serviceType = stagingData.service_type || '無服務類型紀錄';
+                
+                // --- 初始審核資訊變數 ---
+                const caseNo = data.case_number || '無';
+                const closeType = data.is_special_case ? '特案允許結案' : '核定結案';
+                const badgeClass = data.is_special_case ? 'background:#ffc107; color:#212529;' : 'background:#198754; color:white;';
+                const auditNote = data.audit_note || '無';
+                
+                const reviewerText = data.reviewer_id ? '系統管理員' : '無';
+                const reviewDate = data.created_at ? new Date(data.created_at).toLocaleString('zh-TW', { hour12: false }) : '無';
+
+                // 3. 處理 Appendices (一般 Q 類附件)
+                let appendicesHtml = '';
+                let existingAppendices = data.additional_appendices || [];
+                if (!Array.isArray(existingAppendices)) existingAppendices = [];
+
+                const standardDocs = existingAppendices.filter(f => f.type !== 'improvement');
+
+                // 顯示 Q 類附件
+                const qDocs = standardDocs.filter(f => {
+                    const name = f.name || '';
+                    return name.toUpperCase().startsWith('Q') || name.toUpperCase().includes('_Q_');
+                });
+
+                if (qDocs.length > 0) {
+                    appendicesHtml = qDocs.map((file, idx) => {
+                        let fName = file.name || `附件 Q-${idx + 1}`;
+                        let fUrl = file.signedUrl || file.url || '#';
+                        return `<div style="margin-bottom:4px;"><a href="${fUrl}" target="_blank" style="color:#0d6efd;text-decoration:none;"><i class="fas fa-paperclip me-1"></i>${fName}</a></div>`;
+                    }).join('');
+                } else {
+                    appendicesHtml = '<span class="text-muted small">無 Q 類附件</span>';
+                }
+
+                // 4. 檔案預覽 (右側)
+                let targetFilePath = data.file_url;
+                if (!targetFilePath && data.attachment_folder_id) {
+                    const searchPath = `${data.service_year}/${data.attachment_folder_id}`;
+                    const { data: fileList } = await supabaseClient.storage.from('evidence').list(searchPath);
+                    if (fileList && fileList.length > 0) {
+                        const pdfFile = fileList.find(f => f.name.toLowerCase().endsWith('.pdf'));
+                        targetFilePath = `${searchPath}/${pdfFile ? pdfFile.name : fileList[0].name}`;
+                    }
+                }
+
+                let previewContent = '';
+                if (targetFilePath) {
+                    const { data: fileData } = await supabaseClient.storage.from('evidence').createSignedUrl(targetFilePath, 3600);
+                    if (fileData?.signedUrl) {
+                        previewContent = `<iframe src="${fileData.signedUrl}#toolbar=0" style="width:100%; height:100%; border:none;" title="Evidence Preview"></iframe>`;
+                    } else {
+                        previewContent = `<div style="color:white;text-align:center;padding-top:20%;">無法取得檔案簽署連結</div>`;
+                    }
+                } else {
+                    previewContent = `<div style="color:#aaa;text-align:center;padding-top:20%;font-size:1.2rem;">此紀錄無證據檔案<br><span style="font-size:0.9rem">(Folder ID: ${data.attachment_folder_id || '無'})</span></div>`;
+                }
+
+                // 5. 構建 HTML (純預覽 UI)
+                const finalHtml = `
+                    <!DOCTYPE html>
+                    <html lang="zh-TW">
+                    <head>
+                        <meta charset="UTF-8">
+                        <title>證據詳情 | ${compName}</title>
+                        <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+                        <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+                        <style>
+                            body, html { margin: 0; padding: 0; height: 100%; overflow: hidden; font-family: 'Segoe UI', sans-serif; }
+                            .layout-container { display: flex; height: 100vh; }
+                            
+                            /* 左側 25% */
+                            .sidebar { 
+                                width: 25%; 
+                                background: #fff; 
+                                border-right: 1px solid #dee2e6; 
+                                display: flex; 
+                                flex-direction: column; 
+                                box-shadow: 2px 0 5px rgba(0,0,0,0.1);
+                                z-index: 10;
+                            }
+                            .sidebar-header {
+                                background: #202124;
+                                color: #fff;
+                                padding: 15px 20px;
+                            }
+                            .sidebar-content {
+                                padding: 20px;
+                                overflow-y: auto;
+                                flex: 1;
+                            }
+                            
+                            /* 右側 75% */
+                            .preview-area { 
+                                width: 75%; 
+                                background: #525659; 
+                                position: relative;
+                            }
+
+                            .info-group { margin-bottom: 20px; }
+                            .label { font-weight: bold; color: #5f6368; display: block; margin-bottom: 4px; font-size: 0.9rem; }
+                            .value { color: #202124; background: #f8f9fa; padding: 8px 10px; border-radius: 4px; border: 1px solid #eee; }
+                            
+                            .section-title { 
+                                font-size: 1.1rem; 
+                                color: #0d6efd; 
+                                font-weight: bold; 
+                                margin-top: 25px; 
+                                margin-bottom: 15px; 
+                                border-bottom: 2px solid #0d6efd; 
+                                padding-bottom: 5px; 
+                            }
+
+                            /* 審核資訊樣式 */
+                            .review-info-box {
+                                margin-top: 30px;
+                                padding: 15px;
+                                background-color: #f1f3f5;
+                                border-radius: 6px;
+                                border-left: 4px solid #6c757d;
+                            }
+                            .review-label { font-size: 0.8rem; color: #6c757d; font-weight: bold; }
+                            .review-value { font-size: 0.95rem; color: #333; margin-bottom: 8px; }
+                        </style>
+                    </head>
+                    <body>
+                        <div class="layout-container">
+                            <div class="sidebar">
+                                <div class="sidebar-header">
+                                    <h3 style="margin:0; font-size:1.2rem;"><i class="fas fa-file-contract"></i> 服務軌跡詳情</h3>
+                                </div>
+                                <div class="sidebar-content">
+                                    <div class="info-group">
+                                        <span class="label">Who (執行者/對象)</span>
+                                        <div class="value"><strong>${staffName}</strong> (顧問)<br>${compName}</div>
+                                    </div>
+                                    <div class="info-group">
+                                        <span class="label">When (時間)</span>
+                                        <div class="value">${fullDate}</div>
+                                    </div>
+                                    <div class="info-group">
+                                        <span class="label">Where (地點)</span>
+                                        <div class="value">${compName}</div>
+                                    </div>
+                                    <div class="info-group">
+                                        <span class="label">What (服務類型)</span>
+                                        <div class="value" style="background:#e8f0fe; border-color:#d2e3fc;">${serviceType}</div>
+                                    </div>
+
+                                    <div class="section-title">佐證資料與備註</div>
+                                    <div class="info-group">
+                                        <div class="value" style="background:transparent; border:none; padding-left:0;">
+                                            ${appendicesHtml}
+                                        </div>
+                                    </div>
+
+                                    <div class="review-info-box">
+                                        <div style="font-weight:bold; font-size:1rem; margin-bottom:10px; color:#495057;">
+                                            <i class="fas fa-clipboard-check me-2"></i>初始審核資訊
+                                        </div>
+                                        <div class="review-label">案號</div>
+                                        <div class="review-value">${caseNo}</div>
+
+                                        <div class="review-label">結案類別</div>
+                                        <div class="review-value">
+                                            <span style="padding:4px 8px; border-radius:4px; font-size:0.85rem; font-weight:bold; ${badgeClass}">
+                                                ${closeType}
+                                            </span>
+                                        </div>
+
+                                        <div class="review-label">審核意見</div>
+                                        <div class="review-value">${auditNote}</div>
+
+                                        <div class="review-label">審核者 / 時間</div>
+                                        <div class="review-value">
+                                            ${reviewerText}<br>
+                                            <small style="color:#888;">${reviewDate}</small>
+                                        </div>
+                                    </div>
+
+                                </div>
+                            </div>
+                            <div class="preview-area">
+                                ${previewContent}
+                            </div>
+                        </div>
+                    </body>
+                    </html>
+                `;
+
+                newWindow.document.open();
+                newWindow.document.write(finalHtml);
+                newWindow.document.close();
+
+            } catch (err) {
+                console.error(err);
+                newWindow.document.body.innerHTML = `<h3 style="color:red;text-align:center;margin-top:50px;">讀取資料發生錯誤，請關閉後重試。<br><small>${err.message}</small></h3>`;
             }
         }
 
