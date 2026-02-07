@@ -59,8 +59,8 @@ min-height: 85px; /* 雙行高度 */
    2. 統一標題與字卡 CSS 設定 (Plan Blue)
    ========================================= */
 :root { 
-    --theme-color: #0d6efd; /* Plan 階段的主題藍色 */
-    --theme-light: #e7f1ff;
+--theme-color: #0d6efd; /* Plan 階段的主題藍色 */
+--theme-light: #e7f1ff;
 }
 
 /* PDCA 字卡 (白色區塊) 設定 */
@@ -134,15 +134,6 @@ margin-bottom: 20px;
     display: flex;
     justify-content: space-between;
 }
-
-/* 新增：改善歷程樣式 */
-.improvement-history-item {
-    border-left: 4px solid #198754;
-    background-color: #f1f8f5;
-    padding: 10px 15px;
-    margin-bottom: 10px;
-    border-radius: 4px;
-}
 </style>
 
 <script>
@@ -211,7 +202,7 @@ Hi! 使用者
                 <i class="fas fa-info-circle me-1"></i> 以下列出管理者針對案件 <strong id="history-case-number" class="text-dark">--</strong> 發出的補正要求與審查意見：
             </div>
             <div id="review-history-list">
-            </div>
+                </div>
         </div>
     </div>
 </div>
@@ -304,21 +295,6 @@ Hi! 使用者
 </div>
 </div>
 </div>
-</div>
-
-<div class="card mb-4 border-success">
-    <div class="card-header bg-success text-white fw-bold">
-        <i class="fas fa-tools me-2"></i>PDCA 改善作業紀錄 (Correction Log)
-    </div>
-    <div class="card-body p-3 bg-white">
-        <div id="improvement-history-list" class="mb-3">
-            </div>
-        
-        <label class="form-label fw-bold text-dark small">
-            <i class="fas fa-pen me-1"></i>本次改善說明 / 針對主管要求之回覆：
-        </label>
-        <textarea class="form-control border-success" id="current-improvement-note" rows="2" placeholder="若此為補件重送，請務必在此說明本次修正內容..."></textarea>
-    </div>
 </div>
 
 <div class="remark-box">
@@ -426,7 +402,6 @@ let currentRecordId = null; // 母案 ID
 let currentStagingId = null; // 暫存案 ID (同時也是資料夾名稱)
 let currentUserId = sessionStorage.getItem('currentUserId'); 
 let currentCaseNumber = null; // [修正新增] 用來暫存目前的案號，避免重複生成
-let currentImprovementRecords = []; // [新增] 用來暫存改善歷程
 
 // 【新增】Q 選項擴充的後綴定義
 const qSuffixes = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("");
@@ -810,7 +785,6 @@ async function initStep2(stagingId) {
     if (modal) modal.hide();
 
     currentCaseNumber = null;
-    currentImprovementRecords = []; // 重置改善紀錄
 
     if (!stagingId) {
         currentStagingId = crypto.randomUUID();
@@ -824,8 +798,6 @@ async function initStep2(stagingId) {
     document.getElementById('service-type-select').value = "";
     toggleServiceTypeOther();
     document.getElementById('service-remark').value = ""; 
-    document.getElementById('current-improvement-note').value = ""; // 重置新框
-    document.getElementById('improvement-history-list').innerHTML = ""; // 重置歷史紀錄
     document.getElementById('execution-date').value = "";
     document.getElementById('start-time').value = "";
     document.getElementById('end-time').value = "";
@@ -918,29 +890,6 @@ async function initStep2(stagingId) {
     updateStepIndicator(2);
 }
 
-// 渲染改善紀錄 (PDCA 區塊)
-function renderImprovementHistory() {
-    const container = document.getElementById('improvement-history-list');
-    container.innerHTML = '';
-    
-    if (currentImprovementRecords.length === 0) {
-        container.innerHTML = '<span class="text-muted small">尚無改善紀錄</span>';
-        return;
-    }
-
-    currentImprovementRecords.forEach((rec, idx) => {
-        container.innerHTML += `
-            <div class="improvement-history-item animate__animated animate__fadeIn">
-                <div class="d-flex justify-content-between mb-1">
-                    <span class="badge bg-success">紀錄 #${idx + 1}</span>
-                    <small class="text-muted">${rec.date}</small>
-                </div>
-                <div class="text-dark" style="white-space: pre-wrap;">${rec.content}</div>
-            </div>
-        `;
-    });
-}
-
 async function loadStagingData(stagingId) {
 const { data, error } = await supabaseClient.from('service_record_staging').select('*').eq('id', stagingId).single();
 if(error) { alert('讀取暫存資料失敗'); return; }
@@ -948,12 +897,6 @@ if(error) { alert('讀取暫存資料失敗'); return; }
 // [修正重點]：載入既有資料時，將案號保存到全域變數
 if (data.case_number) {
     currentCaseNumber = data.case_number;
-}
-
-// 載入改善紀錄
-if (data.improvement_records && Array.isArray(data.improvement_records)) {
-    currentImprovementRecords = data.improvement_records;
-    renderImprovementHistory();
 }
 
 document.getElementById('execution-date').value = data.visit_date || data.service_date || '';
@@ -1019,7 +962,6 @@ const visitDate = document.getElementById('execution-date').value;
 const startTime = document.getElementById('start-time').value;
 const endTime = document.getElementById('end-time').value;
 const remark = document.getElementById('service-remark').value.trim(); 
-const currentImprovement = document.getElementById('current-improvement-note').value.trim();
 
 const serviceTypeSelect = document.getElementById('service-type-select');
 let serviceType = serviceTypeSelect.value;
@@ -1064,16 +1006,6 @@ if (!finalCaseNumber) {
     currentCaseNumber = finalCaseNumber;
 }
 
-// 處理改善紀錄：若有新內容，加入陣列
-let finalImprovementRecords = [...currentImprovementRecords];
-if (currentImprovement) {
-    const nowStr = new Date().toLocaleString('zh-TW', { hour12: false });
-    finalImprovementRecords.push({
-        date: nowStr,
-        content: currentImprovement
-    });
-}
-
 const payload = {
 id: currentStagingId, 
 origin_record_id: currentRecordId,
@@ -1096,7 +1028,6 @@ user_remark: remark
 attachment_files: attachments,
 case_number: finalCaseNumber, // [修正] 使用固定的案號
 status: 'pending',
-improvement_records: finalImprovementRecords, // [新增] 寫入資料庫
 updated_at: new Date()
 };
 
