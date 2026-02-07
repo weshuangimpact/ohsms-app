@@ -756,6 +756,80 @@
                     }
                 } catch(e) {}
 
+                // ============================================
+                // 新增：互動歷史資料讀取與組裝
+                // ============================================
+                let interactionHtml = '';
+                try {
+                    let interactions = [];
+                    // 1. Consultant Improvements
+                    if (record.improvement_records && Array.isArray(record.improvement_records)) {
+                        record.improvement_records.forEach(r => {
+                            interactions.push({
+                                type: 'consultant',
+                                user: '顧問',
+                                date: r.date,
+                                content: r.content,
+                                timestamp: new Date(r.date).getTime()
+                            });
+                        });
+                    }
+
+                    // 2. Manager Reviews (Fetch from Evidence table)
+                    if (record.case_number) {
+                        const { data: evData } = await supabaseClient
+                            .from('evidence')
+                            .select('evaluation_reviews')
+                            .eq('case_number', record.case_number)
+                            .maybeSingle();
+                            
+                        if (evData && evData.evaluation_reviews && Array.isArray(evData.evaluation_reviews)) {
+                            evData.evaluation_reviews.forEach(r => {
+                                interactions.push({
+                                    type: 'manager',
+                                    user: r.reviewer || '管理者',
+                                    date: r.date,
+                                    content: r.note,
+                                    deadline: r.deadline,
+                                    timestamp: new Date(r.date).getTime()
+                                });
+                            });
+                        }
+                    }
+
+                    // Sort by timestamp
+                    interactions.sort((a, b) => a.timestamp - b.timestamp);
+
+                    if (interactions.length > 0) {
+                        const listItems = interactions.map(item => {
+                            const isMgr = item.type === 'manager';
+                            const bg = isMgr ? '#fff3cd' : '#d1e7dd';
+                            const border = isMgr ? '#ffc107' : '#198754';
+                            const icon = isMgr ? 'fa-user-shield' : 'fa-tools';
+                            const title = isMgr ? '管理者審查' : '顧問改善回覆';
+                            
+                            return `
+                                <div style="background: ${bg}; border-left: 4px solid ${border}; padding: 10px; border-radius: 4px; margin-bottom: 10px;">
+                                    <div style="display: flex; justify-content: space-between; font-size: 0.85rem; font-weight: bold; color: #555; margin-bottom: 5px;">
+                                        <span><i class="fas ${icon} me-1"></i> ${title} (${item.user})</span>
+                                        <span>${item.date}</span>
+                                    </div>
+                                    <div style="font-size: 0.95rem; white-space: pre-wrap; color: #333;">${item.content}</div>
+                                    ${ isMgr && item.deadline ? `<div style="margin-top:5px; font-size:0.85rem; color:#dc3545;"><strong><i class="far fa-clock me-1"></i>要求期限：</strong>${item.deadline} 天</div>` : '' }
+                                </div>
+                            `;
+                        }).join('');
+
+                        interactionHtml = `
+                            <div style="margin-top: 15px; border-top: 1px dashed #ccc; padding-top: 15px;">
+                                <div style="font-weight: bold; color: #6c757d; margin-bottom: 10px;"><i class="fas fa-comments me-2"></i>審核與改善互動紀錄 (Interactions)</div>
+                                ${listItems}
+                            </div>
+                        `;
+                    }
+                } catch (e) { console.error("Error building interactions", e); }
+                // ============================================
+
                 const fileSourceId = record.id; 
                 let files = record.attachment_files;
                 if (typeof files === 'string') { try { files = JSON.parse(files); } catch(e) { files = []; } }
@@ -854,6 +928,7 @@
                                 <div class="meta-item"><label>執行期間</label><div>${timeRange}</div></div>
                             </div>
                             ${ specialNote !== '無' ? `<div class="note-box"><strong><i class="fas fa-sticky-note me-1"></i>特殊事項備註 / 結案理由：</strong> ${specialNote}</div>` : '' }
+                            ${ interactionHtml }
                             ${ otherLinks.length > 0 ? `<div class="file-links"><strong><i class="fas fa-paperclip me-1"></i>其他附件：</strong> ${otherLinksHtml}</div>` : ''}
                         </div>
                         <div class="pdf-container">
@@ -1157,6 +1232,81 @@
                     }
                 } catch(e) {}
 
+                // ============================================
+                // 新增：互動歷史資料讀取與組裝
+                // ============================================
+                let interactionHtml = '';
+                try {
+                    let interactions = [];
+                    // 1. Consultant Improvements (from current staging record)
+                    if (record.improvement_records && Array.isArray(record.improvement_records)) {
+                        record.improvement_records.forEach(r => {
+                            interactions.push({
+                                type: 'consultant',
+                                user: '顧問',
+                                date: r.date,
+                                content: r.content,
+                                timestamp: new Date(r.date).getTime()
+                            });
+                        });
+                    }
+
+                    // 2. Manager Reviews (Fetch from Evidence table)
+                    if (record.case_number) {
+                        const { data: evData } = await supabaseClient
+                            .from('evidence')
+                            .select('evaluation_reviews')
+                            .eq('case_number', record.case_number)
+                            .maybeSingle();
+                            
+                        if (evData && evData.evaluation_reviews && Array.isArray(evData.evaluation_reviews)) {
+                            evData.evaluation_reviews.forEach(r => {
+                                interactions.push({
+                                    type: 'manager',
+                                    user: r.reviewer || '管理者',
+                                    date: r.date,
+                                    content: r.note,
+                                    deadline: r.deadline,
+                                    timestamp: new Date(r.date).getTime()
+                                });
+                            });
+                        }
+                    }
+
+                    // Sort by timestamp
+                    interactions.sort((a, b) => a.timestamp - b.timestamp);
+
+                    if (interactions.length > 0) {
+                        const listItems = interactions.map(item => {
+                            const isMgr = item.type === 'manager';
+                            // 使用行內樣式確保在彈出視窗中正確顯示
+                            const bg = isMgr ? '#fff3cd' : '#d1e7dd';
+                            const border = isMgr ? '#ffc107' : '#198754';
+                            const icon = isMgr ? 'fa-user-shield' : 'fa-tools';
+                            const title = isMgr ? '管理者審查' : '顧問改善回覆';
+                            
+                            return `
+                                <div style="background: ${bg}; border-left: 4px solid ${border}; padding: 10px; border-radius: 4px; margin-bottom: 10px;">
+                                    <div style="display: flex; justify-content: space-between; font-size: 0.85rem; font-weight: bold; color: #555; margin-bottom: 5px;">
+                                        <span><i class="fas ${icon} me-1"></i> ${title} (${item.user})</span>
+                                        <span>${item.date}</span>
+                                    </div>
+                                    <div style="font-size: 0.95rem; white-space: pre-wrap; color: #333;">${item.content}</div>
+                                    ${ isMgr && item.deadline ? `<div style="margin-top:5px; font-size:0.85rem; color:#dc3545;"><strong><i class="far fa-clock me-1"></i>要求期限：</strong>${item.deadline} 天</div>` : '' }
+                                </div>
+                            `;
+                        }).join('');
+
+                        interactionHtml = `
+                            <div style="margin-top: 15px; border-top: 1px dashed #ccc; padding-top: 15px;">
+                                <div style="font-weight: bold; color: #6c757d; margin-bottom: 10px;"><i class="fas fa-comments me-2"></i>審核與改善互動紀錄 (Interactions)</div>
+                                ${listItems}
+                            </div>
+                        `;
+                    }
+                } catch (e) { console.error("Error building interactions", e); }
+                // ============================================
+
                 const fileSourceId = record.id; 
                 let files = record.attachment_files;
                 if (typeof files === 'string') { try { files = JSON.parse(files); } catch(e) { files = []; } }
@@ -1257,6 +1407,7 @@
                                 <div class="meta-item"><label>執行期間</label><div>${timeRange}</div></div>
                             </div>
                             ${ specialNote !== '無' ? `<div class="note-box"><strong><i class="fas fa-sticky-note me-1"></i>特殊事項備註 / 結案理由：</strong> ${specialNote}</div>` : '' }
+                            ${ interactionHtml }
                             ${ otherLinks.length > 0 ? `<div class="file-links"><strong><i class="fas fa-paperclip me-1"></i>其他附件：</strong> ${otherLinksHtml}</div>` : ''}
                         </div>
                         <div class="pdf-container">
@@ -1423,13 +1574,13 @@
                 const { data: existingEvidence } = await supabaseClient.from('evidence').select('id').eq('case_number', freshRecord.case_number).single();
 
                 if (existingEvidence) {
-                     await supabaseClient.from('evidence').update({
+                      await supabaseClient.from('evidence').update({
                         status: 'approved',
                         evaluation_status: 'closed',
                         file_url: evidenceFileUrl,
                         updated_by: currentUserId,
                         review_date: new Date().toISOString()
-                     }).eq('id', existingEvidence.id);
+                      }).eq('id', existingEvidence.id);
                 } else {
                     const { error: insertError } = await supabaseClient
                     .from('evidence')
@@ -1448,7 +1599,7 @@
                         reviewer_id: currentUserId,           
                         updated_by: currentUserId,            
                         status: 'approved',                   
-                        evaluation_status: 'closed'           
+                        evaluation_status: 'closed'            
                     });
                     if (insertError) throw new Error("寫入正式資料庫失敗: " + insertError.message);
                 }
