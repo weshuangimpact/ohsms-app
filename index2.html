@@ -407,7 +407,7 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
-    <script>
+<script>
         // ==========================================
         // 統一頁首與系統初始化邏輯
         // ==========================================
@@ -893,7 +893,7 @@
                 ).join('');
 
                 const pdfViewerHtml = finalPdfUrl 
-                    ? `<iframe src="${finalPdfUrl}#toolbar=0" class="pdf-viewer"></iframe>` 
+                    ? `<iframe src="${finalPdfUrl}#toolbar=0&view=FitH" class="pdf-viewer"></iframe>` 
                     : `<div class="alert alert-warning text-center mt-5">此案件無 PDF 附件可預覽</div>`;
 
                 const htmlContent = `
@@ -1094,7 +1094,7 @@
                 if (targetFilePath) {
                     const { data: fileData } = await supabaseClient.storage.from('evidence').createSignedUrl(targetFilePath, 3600);
                     if (fileData?.signedUrl) {
-                        previewContent = `<iframe src="${fileData.signedUrl}#toolbar=0" style="width:100%; height:100%; border:none;" title="Evidence Preview"></iframe>`;
+                        previewContent = `<iframe src="${fileData.signedUrl}#toolbar=0&view=FitH" style="width:100%; height:100%; border:none;" title="Evidence Preview"></iframe>`;
                     } else {
                         previewContent = `<div style="color:white;text-align:center;padding-top:20%;">無法取得檔案簽署連結</div>`;
                     }
@@ -1408,9 +1408,9 @@
                     `<a href="${l.url}" target="_blank" class="btn btn-sm btn-outline-secondary me-2 mb-2"><i class="fas fa-paperclip"></i> ${l.name}</a>`
                 ).join('');
 
-const pdfViewerHtml = finalPdfUrl 
-    ? `<iframe src="${finalPdfUrl}#toolbar=0&view=FitH" class="pdf-viewer"></iframe>` 
-    : `<div class="alert alert-warning text-center mt-5">此案件無 PDF 附件可預覽</div>`;
+                const pdfViewerHtml = finalPdfUrl 
+                    ? `<iframe src="${finalPdfUrl}#toolbar=0&view=FitH" class="pdf-viewer"></iframe>` 
+                    : `<div class="alert alert-warning text-center mt-5">此案件無 PDF 附件可預覽</div>`;
 
                 const htmlContent = `
                     <!DOCTYPE html>
@@ -1625,14 +1625,17 @@ const pdfViewerHtml = finalPdfUrl
                 }
 
                 let executionItemsStr = '';
-                if (freshRecord.service_desc) {
-                    try {
-                        const descObj = JSON.parse(freshRecord.service_desc);
-                        if (descObj.items && Array.isArray(descObj.items)) {
-                            executionItemsStr = descObj.items.join(', ');
+                let serviceDescJson = {};
+                try {
+                    if (freshRecord.service_desc && freshRecord.service_desc.trim().startsWith('{')) {
+                        serviceDescJson = JSON.parse(freshRecord.service_desc);
+                        if (serviceDescJson.items && Array.isArray(serviceDescJson.items)) {
+                            executionItemsStr = serviceDescJson.items.join(', ');
                         }
-                    } catch(e) { console.error('解析執行項目失敗', e); }
-                }
+                    } else {
+                        executionItemsStr = freshRecord.service_desc;
+                    }
+                } catch(e) { console.error('解析執行項目失敗', e); }
                 
                 const currentUserId = sessionStorage.getItem('currentUserId');
 
@@ -1647,34 +1650,51 @@ const pdfViewerHtml = finalPdfUrl
 
                 const { data: existingEvidence } = await supabaseClient.from('evidence').select('id').eq('case_number', freshRecord.case_number).single();
 
+                // 準備寫入 Evidence 的完整資料物件
+                const evidenceData = {
+                    workplace_id: freshRecord.workplace_id,
+                    consultant_id: freshRecord.consultant_id,
+                    visit_date: freshRecord.visit_date,
+                    service_year: year,
+                    case_number: freshRecord.case_number,
+                    
+                    // 關鍵漏寫欄位補正
+                    start_time: freshRecord.start_time,
+                    end_time: freshRecord.end_time,
+                    service_type: freshRecord.service_type,
+                    
+                    // 狀態與審核資訊
+                    status: 'approved',
+                    evaluation_status: 'closed',
+                    is_special_case: (type === 'special'),
+                    audit_note: comment,
+                    reviewer_id: currentUserId,
+                    updated_by: currentUserId,
+                    review_date: new Date().toISOString(),
+                    
+                    // 檔案與連結
+                    attachment_folder_id: fileSourceId,
+                    file_url: evidenceFileUrl, 
+                    additional_appendices: hyperlinksArray, 
+                    
+                    // 內容描述與歷程
+                    execution_items: executionItemsStr,
+                    process_desc: serviceDescJson.process_summary || serviceDescJson.process_desc || null,
+                    issues_found: serviceDescJson.issues_found || null,
+                    measures_taken: serviceDescJson.measures_taken || null,
+                    work_pattern: serviceDescJson.work_pattern || null,
+                    hazard_desc: serviceDescJson.hazard_desc || null,
+                    tracking_status: serviceDescJson.tracking_status || null,
+                    improvement_records: freshRecord.improvement_records,
+                    origin_staging_id: freshRecord.id
+                };
+
                 if (existingEvidence) {
-                      await supabaseClient.from('evidence').update({
-                        status: 'approved',
-                        evaluation_status: 'closed',
-                        file_url: evidenceFileUrl,
-                        updated_by: currentUserId,
-                        review_date: new Date().toISOString()
-                      }).eq('id', existingEvidence.id);
+                      await supabaseClient.from('evidence').update(evidenceData).eq('id', existingEvidence.id);
                 } else {
                     const { error: insertError } = await supabaseClient
                     .from('evidence')
-                    .insert({
-                        workplace_id: freshRecord.workplace_id,
-                        visit_date: freshRecord.visit_date,
-                        service_year: year,
-                        consultant_id: freshRecord.consultant_id,
-                        is_special_case: (type === 'special'),
-                        audit_note: comment,
-                        attachment_folder_id: fileSourceId,
-                        file_url: evidenceFileUrl, 
-                        additional_appendices: hyperlinksArray,
-                        case_number: freshRecord.case_number, 
-                        execution_items: executionItemsStr,   
-                        reviewer_id: currentUserId,           
-                        updated_by: currentUserId,            
-                        status: 'approved',                   
-                        evaluation_status: 'closed'            
-                    });
+                    .insert(evidenceData);
                     if (insertError) throw new Error("寫入正式資料庫失敗: " + insertError.message);
                 }
                 
