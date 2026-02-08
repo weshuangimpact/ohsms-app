@@ -7,11 +7,6 @@
     
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
-    <script>
-        // 設定 PDF.js worker
-        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
-    </script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
     <style>
@@ -527,9 +522,21 @@
                 return;
             }
 
-            newWindow.document.write(`<html><head><title>讀取中...</title></head><body style="display:flex;justify-content:center;align-items:center;height:100vh;background:#f8f9fa;font-family:sans-serif;">資料讀取中...</body></html>`);
+            // 先寫入 Loading 狀態
+            newWindow.document.write(`
+                <html>
+                <head><title>讀取中...</title></head>
+                <body style="display:flex;justify-content:center;align-items:center;height:100vh;background:#f8f9fa;font-family:sans-serif;">
+                    <div style="text-align:center;">
+                        <div style="font-size:24px;margin-bottom:10px;">資料讀取中...</div>
+                        <div style="color:#666;">正在從資料庫取得完整證據紀錄</div>
+                    </div>
+                </body>
+                </html>
+            `);
 
             try {
+                // 1. 查詢詳細資料
                 const { data, error } = await supabaseClient
                     .from('evidence')
                     .select(`
@@ -544,6 +551,7 @@
 
                 if (error) throw error;
 
+                // 2. 讀取 staging 表 (只用來補時間)
                 let stagingData = {};
                 if (data.attachment_folder_id) {
                     const { data: sData } = await supabaseClient
@@ -554,6 +562,7 @@
                     if (sData) stagingData = sData;
                 }
                 
+                // 3. 讀取 Reviewer Profile
                 let reviewerRealName = null;
                 if (data.reviewer_id) {
                     const { data: profileData } = await supabaseClient
@@ -561,28 +570,52 @@
                         .select('full_name')
                         .eq('id', data.reviewer_id)
                         .maybeSingle();
-                    if (profileData && profileData.full_name) reviewerRealName = profileData.full_name;
+                        
+                    if (profileData && profileData.full_name) {
+                        reviewerRealName = profileData.full_name;
+                    }
                 }
 
+                // 4. 變數準備
                 const staffName = data.medical_staff?.name || '未指派';
                 const compName = data.workplaces?.companies?.name || '未知企業';
-                const fullDate = `${data.visit_date} (${stagingData.start_time || '--:--'} ~ ${stagingData.end_time || '--:--'})`;
+                
+                const startTime = stagingData.start_time || data.start_time || '--:--';
+                const endTime = stagingData.end_time || data.end_time || '--:--';
+                const fullDate = `${data.visit_date} (${startTime} ~ ${endTime})`;
+                
+                // ★ 修正重點：優先從 evidence 表讀取 service_type，若無則顯示無紀錄
                 const serviceType = data.service_type || '無紀錄';
                 
+                // 5. 處理 Appendices
                 let appendicesHtml = '<span class="text-muted small">無附件</span>';
-                if (data.additional_appendices && data.additional_appendices.length > 0) {
-                    appendicesHtml = data.additional_appendices.map((file, idx) => 
-                        `<div style="margin-bottom:4px;"><a href="${file.signedUrl || file.url || '#'}" target="_blank" style="color:#0d6efd;text-decoration:none;"><i class="fas fa-paperclip me-1"></i>${file.name}</a></div>`
-                    ).join('');
+                let existingAppendices = data.additional_appendices || [];
+                if (!Array.isArray(existingAppendices)) existingAppendices = [];
+
+                if (existingAppendices.length > 0) {
+                    appendicesHtml = existingAppendices.map((file, idx) => {
+                        let fName = file.name || `附件-${idx + 1}`;
+                        let fUrl = file.signedUrl || file.url || '#';
+                        return `<div style="margin-bottom:4px;"><a href="${fUrl}" target="_blank" style="color:#0d6efd;text-decoration:none;"><i class="fas fa-paperclip me-1"></i>${fName}</a></div>`;
+                    }).join('');
                 }
 
+                // 6. 檔案預覽
                 let previewContent = '';
-                if (data.file_url) {
-                    const { data: fileData } = await supabaseClient.storage.from('evidence').createSignedUrl(data.file_url, 3600);
-                    if (fileData?.signedUrl) previewContent = `<iframe src="${fileData.signedUrl}#toolbar=0" style="width:100%; height:100%; border:none;"></iframe>`;
+                let targetFilePath = data.file_url;
+                if (targetFilePath) {
+                    const { data: fileData } = await supabaseClient.storage.from('evidence').createSignedUrl(targetFilePath, 3600);
+                    if (fileData?.signedUrl) {
+                        previewContent = `<iframe src="${fileData.signedUrl}#toolbar=0" style="width:100%; height:100%; border:none;" title="Evidence Preview"></iframe>`;
+                    } else {
+                        previewContent = `<div style="color:white;text-align:center;padding-top:20%;">無法取得檔案簽署連結</div>`;
+                    }
+                } else {
+                    previewContent = `<div style="color:#aaa;text-align:center;padding-top:20%;font-size:1.2rem;">此紀錄無證據檔案<br><span style="font-size:0.9rem">(Folder ID: ${data.attachment_folder_id || '無'})</span></div>`;
                 }
 
-                const htmlContent = `
+                // 7. 構建 HTML (參考 Index 3)
+                const finalHtml = `
                     <!DOCTYPE html>
                     <html lang="zh-TW">
                     <head>
@@ -593,31 +626,90 @@
                         <style>
                             body, html { margin: 0; padding: 0; height: 100%; overflow: hidden; font-family: 'Segoe UI', sans-serif; }
                             .layout-container { display: flex; height: 100vh; }
-                            .sidebar { width: 25%; background: #fff; border-right: 1px solid #dee2e6; padding: 20px; overflow-y: auto; }
-                            .preview { width: 75%; background: #525659; }
+                            
+                            .sidebar { 
+                                width: 25%; 
+                                background: #fff; 
+                                border-right: 1px solid #dee2e6; 
+                                display: flex; 
+                                flex-direction: column; 
+                                box-shadow: 2px 0 5px rgba(0,0,0,0.1);
+                                z-index: 10;
+                            }
+                            .sidebar-header {
+                                background: #202124;
+                                color: #fff;
+                                padding: 15px 20px;
+                            }
+                            .sidebar-content {
+                                padding: 20px;
+                                overflow-y: auto;
+                                flex: 1;
+                            }
+                            
+                            .preview-area { 
+                                width: 75%; 
+                                background: #525659; 
+                                position: relative;
+                            }
+
+                            .info-group { margin-bottom: 20px; }
                             .label { font-weight: bold; color: #5f6368; display: block; margin-bottom: 4px; font-size: 0.9rem; }
-                            .value { color: #202124; background: #f8f9fa; padding: 8px 10px; border-radius: 4px; border: 1px solid #eee; margin-bottom: 15px;}
+                            .value { color: #202124; background: #f8f9fa; padding: 8px 10px; border-radius: 4px; border: 1px solid #eee; white-space: pre-wrap; }
+                            
+                            .section-title { 
+                                font-size: 1.1rem; 
+                                color: #0d6efd; 
+                                font-weight: bold; 
+                                margin-top: 25px; 
+                                margin-bottom: 15px; 
+                                border-bottom: 2px solid #0d6efd; 
+                                padding-bottom: 5px; 
+                            }
                         </style>
                     </head>
                     <body>
-                        <div class="layout">
+                        <div class="layout-container">
                             <div class="sidebar">
-                                <h4 class="mb-4">服務軌跡詳情</h4>
-                                <span class="label">Who</span><div class="value">${staffName} (顧問)<br>${compName}</div>
-                                <span class="label">When</span><div class="value">${fullDate}</div>
-                                <span class="label">Where</span><div class="value">${compName}</div>
-                                <span class="label">What</span><div class="value">${serviceType}</div>
-                                <hr>
-                                <h6>佐證資料</h6>
-                                <div class="value">${appendicesHtml}</div>
+                                <div class="sidebar-header">
+                                    <h3 style="margin:0; font-size:1.2rem;"><i class="fas fa-file-contract"></i> 服務軌跡詳情</h3>
+                                </div>
+                                <div class="sidebar-content">
+                                    <div class="info-group">
+                                        <span class="label">Who (執行者/對象)</span>
+                                        <div class="value"><strong>${staffName}</strong> (顧問)<br>${compName}</div>
+                                    </div>
+                                    <div class="info-group">
+                                        <span class="label">When (時間)</span>
+                                        <div class="value">${fullDate}</div>
+                                    </div>
+                                    <div class="info-group">
+                                        <span class="label">Where (地點)</span>
+                                        <div class="value">${compName}</div>
+                                    </div>
+                                    <div class="info-group">
+                                        <span class="label">What (服務類型)</span>
+                                        <div class="value" style="background:#e8f0fe; border-color:#d2e3fc;">${serviceType}</div>
+                                    </div>
+
+                                    <div class="section-title">佐證資料</div>
+                                    <div class="info-group">
+                                        <div class="value" style="background:transparent; border:none; padding-left:0;">
+                                            ${appendicesHtml}
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
-                            <div class="preview">${previewContent}</div>
+                            <div class="preview-area">
+                                ${previewContent}
+                            </div>
                         </div>
                     </body>
                     </html>
                 `;
+
                 newWindow.document.open();
-                newWindow.document.write(htmlContent);
+                newWindow.document.write(finalHtml);
                 newWindow.document.close();
 
             } catch (err) {
@@ -626,147 +718,32 @@
         }
 
         // ==========================================
-        // ★ 新增功能：檢視完整評鑑報告 (含 PDF.js 拆頁與 Canvas 渲染)
+        // ★ 新增功能：檢視完整評鑑報告 (含列印與浮水印)
         // ==========================================
         async function openFullReport(evidenceId) {
             const newWindow = window.open('', '_blank');
             if (!newWindow) return alert('請允許彈跳視窗');
 
-            // 寫入基礎 HTML 結構 (包含載入 PDF.js)
-            newWindow.document.write(`
-                <!DOCTYPE html>
-                <html lang="zh-TW">
-                <head>
-                    <meta charset="UTF-8">
-                    <title>完整評鑑報告</title>
-                    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-                    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
-                    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"><\/script>
-                    <script>
-                        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
-                    <\/script>
-                    <style>
-                        body { font-family: 'Segoe UI', serif; background: #525659; padding: 20px; counter-reset: page; }
-                        .paper {
-                            background: white;
-                            width: 210mm;
-                            min-height: 297mm;
-                            margin: 0 auto 20px auto;
-                            padding: 20mm;
-                            position: relative;
-                            box-shadow: 0 0 10px rgba(0,0,0,0.5);
-                            overflow: hidden;
-                        }
-                        
-                        /* 浮水印：置頂、不遮擋操作 */
-                        .watermark {
-                            position: fixed; 
-                            top: 50%;
-                            left: 50%;
-                            transform: translate(-50%, -50%) rotate(-45deg);
-                            font-size: 80px;
-                            color: rgba(0, 0, 0, 0.05);
-                            white-space: nowrap;
-                            pointer-events: none;
-                            z-index: 9999;
-                            font-weight: bold;
-                            border: 5px solid rgba(0, 0, 0, 0.05);
-                            padding: 20px 50px;
-                        }
+            newWindow.document.write(`<html><head><title>生成報告中...</title></head><body style="display:flex;justify-content:center;align-items:center;height:100vh;font-family:sans-serif;">正在生成完整評鑑報告...</body></html>`);
 
-                        .content { position: relative; z-index: 1; }
-                        h1 { font-size: 24px; font-weight: bold; text-align: center; margin-bottom: 30px; border-bottom: 2px solid #333; padding-bottom: 10px; }
-                        h2 { font-size: 18px; font-weight: bold; margin-top: 20px; border-left: 5px solid #0d6efd; padding-left: 10px; background: #f8f9fa; }
-                        
-                        .info-table { width: 100%; margin-bottom: 20px; font-size: 14px; }
-                        .info-table td { padding: 8px; border-bottom: 1px solid #eee; }
-                        .label { font-weight: bold; color: #555; width: 120px; }
-                        
-                        .interaction-item { margin-bottom: 15px; padding: 10px; border-radius: 5px; font-size: 14px; page-break-inside: avoid; }
-                        .interaction-item.check { border-left: 4px solid #dc3545; background: #fff5f5; }
-                        .interaction-item.act { border-left: 4px solid #198754; background: #f0fff4; margin-left: 20px; }
-                        .header { display: flex; justify-content: space-between; margin-bottom: 5px; font-size: 12px; color: #666; }
-                        .file-tag { display: inline-block; margin-right: 10px; font-size: 12px; color: #0d6efd; background: #e7f1ff; padding: 2px 6px; border-radius: 4px;}
-
-                        /* 檔案頁面樣式 (Canvas 渲染後) */
-                        .file-page { display: flex; flex-direction: column; height: auto; min-height: 297mm; padding: 10mm 15mm; page-break-before: always; }
-                        .page-header { text-align: center; font-size: 14px; font-weight: bold; margin-bottom: 10px; border-bottom: 1px solid #ccc; padding-bottom: 5px; color: #555; }
-                        .file-content-wrapper { flex: 1; width: 100%; display: flex; flex-direction: column; align-items: center; justify-content: flex-start; }
-                        .pdf-canvas { width: 100%; height: auto; border: 1px solid #eee; box-shadow: 0 2px 5px rgba(0,0,0,0.05); margin-bottom: 20px; }
-                        .file-img { max-width: 100%; height: auto; object-fit: contain; }
-                        .file-unsupported { color: #888; border: 2px dashed #ccc; padding: 20px; border-radius: 10px; text-align: center; width: 100%; }
-                        
-                        /* 頁尾頁碼 */
-                        .page-footer { 
-                            position: absolute; 
-                            bottom: 10mm; 
-                            width: 100%; 
-                            text-align: center; 
-                            font-size: 12px; 
-                            color: #666;
-                            left: 0;
-                        }
-                        .page-footer::after { 
-                            counter-increment: page; 
-                            content: "Page " counter(page); 
-                        }
-
-                        @media print {
-                            body { background: white; padding: 0; }
-                            .paper { box-shadow: none; margin: 0; width: 100%; min-height: 297mm; page-break-after: always; }
-                            .no-print { display: none !important; }
-                            .page-break { page-break-before: always; }
-                            /* 列印時強制顯示背景色 */
-                            -webkit-print-color-adjust: exact;
-                            print-color-adjust: exact;
-                        }
-                    </style>
-                </head>
-                <body>
-                    <div class="watermark">可信智慧整合有限公司</div>
-                    
-                    <div class="d-flex justify-content-end mb-3 no-print" style="width: 210mm; margin: 0 auto;">
-                        <button class="btn btn-primary" onclick="window.print()"><i class="fas fa-print me-2"></i>列印 / 匯出 PDF</button>
-                    </div>
-                    
-                    <div id="reportContent">
-                        <div class="text-center py-5 text-white">正在讀取並渲染資料，請稍候...</div>
-                    </div>
-
-                </body>
-                </html>
-            `);
-
-            // 在新視窗中執行腳本 (由於要操作新視窗 DOM 與 PDF.js)
-            const script = newWindow.document.createElement('script');
-            script.textContent = \`
-                async function renderReport() {
-                    const contentDiv = document.getElementById('reportContent');
-                    
-                    // 1. 取得資料 (模擬 Supabase 資料, 實際需從外部傳入或再次 fetch)
-                    // 由於跨視窗傳遞大量資料較複雜，這裡我們直接在新視窗中重新 fetch
-                    // 為了簡化，我們先在 index3 主視窗 fetch 好，透過變數傳遞
-                }
-            \`;
-            
             try {
-                // 1. 在主視窗 Fetch 資料
+                // 1. 取得完整資料
                 const { data, error } = await supabaseClient
                     .from('evidence')
-                    .select(\`
+                    .select(`
                         id, visit_date, start_time, end_time, service_year, service_type,
                         case_number, is_special_case, audit_note, reviewer_id, created_at,
                         attachment_folder_id, additional_appendices,
                         assessment_logs, act_improvements,
                         workplaces ( companies (name) ),
                         medical_staff (name)
-                    \`)
+                    `)
                     .eq('id', evidenceId)
                     .single();
 
                 if (error) throw error;
 
-                // Staging Data
+                // 2. 取得 Staging (只補時間)
                 let stagingData = {};
                 if (data.attachment_folder_id) {
                     const { data: sData } = await supabaseClient
@@ -777,408 +754,13 @@
                     if (sData) stagingData = sData;
                 }
 
-                // 資料準備
-                const staffName = data.medical_staff?.name || '未指派';
-                const compName = data.workplaces?.companies?.name || '未知企業';
-                const startTime = stagingData.start_time || data.start_time || '--:--';
-                const endTime = stagingData.end_time || data.end_time || '--:--';
-                const serviceType = data.service_type || '無紀錄';
-                const caseNo = data.case_number || '無';
-                
-                // 互動歷程
-                const checkLogs = (data.assessment_logs || []).map((r, i) => ({ type: 'check', ...r, index: i+1 }));
-                const actLogs = (data.act_improvements || []).map((r, i) => ({ type: 'act', ...r, index: i+1 }));
-                const combinedTimeline = [...checkLogs, ...actLogs].sort((a, b) => new Date(a.created_at || a.date) - new Date(b.created_at || b.date));
-                
-                let timelineHtml = '';
-                if(combinedTimeline.length === 0) timelineHtml = '<div class="text-muted p-3">尚無互動紀錄</div>';
-                else {
-                    combinedTimeline.forEach(item => {
-                        const dateStr = item.date || '-';
-                        const saveTime = item.created_at ? new Date(item.created_at).toLocaleString() : '-';
-                        if(item.type === 'check') {
-                            timelineHtml += \`
-                                <div class="interaction-item check">
-                                    <div class="header">
-                                        <span class="badge bg-danger">評鑑缺失 #\${item.index}</span>
-                                        <span>\${dateStr}</span>
-                                    </div>
-                                    <div class="content">\${item.note || item.result}</div>
-                                    <div class="text-muted small mt-1">存檔: \${saveTime}</div>
-                                </div>\`;
-                        } else {
-                            let files = (item.files || []).map(f => \`<span><i class="fas fa-paperclip"></i> \${f.name}</span>\`).join(' ');
-                            timelineHtml += \`
-                                <div class="interaction-item act">
-                                    <div class="header">
-                                        <span class="badge bg-success">實際改善行動</span>
-                                        <span>\${dateStr}</span>
-                                    </div>
-                                    <div class="content fw-bold text-success">\${item.description}</div>
-                                    <div class="files">\${files}</div>
-                                    <div class="text-muted small mt-1">存檔: \${saveTime}</div>
-                                </div>\`;
-                        }
-                    });
-                }
-
-                // 檔案列表 (含補件)
-                let allFiles = [];
-                if (data.additional_appendices) allFiles.push(...data.additional_appendices);
-                if (data.act_improvements) {
-                    data.act_improvements.forEach(act => {
-                        if (act.files) allFiles.push(...act.files);
-                    });
-                }
-
-                let attachListHtml = allFiles.length > 0 
-                    ? allFiles.map(f => \`<li>\${f.name}</li>\`).join('') 
-                    : '<li>無附件</li>';
-
-                // ==========================================
-                // 渲染主報告頁 (第一頁)
-                // ==========================================
-                const mainPageHtml = \`
-                    <div class="paper">
-                        <div class="content">
-                            <h1>完整評鑑報告 (Full Evaluation Report)</h1>
-                            <table class="info-table">
-                                <tr><td class="label">案號</td><td>\${caseNo}</td><td class="label">年度</td><td>\${data.service_year}</td></tr>
-                                <tr><td class="label">企業名稱</td><td>\${compName}</td><td class="label">顧問</td><td>\${staffName}</td></tr>
-                                <tr><td class="label">服務日期</td><td>\${data.visit_date}</td><td class="label">時間</td><td>\${startTime} ~ \${endTime}</td></tr>
-                                <tr><td class="label">服務類型</td><td colspan="3">\${serviceType}</td></tr>
-                            </table>
-
-                            <h2>1. 評鑑互動歷程</h2>
-                            <div>\${timelineHtml}</div>
-
-                            <h2>2. 附件清單</h2>
-                            <ul>\${attachListHtml}</ul>
-                        </div>
-                        <div class="page-footer"></div>
-                    </div>
-                \`;
-
-                newWindow.document.getElementById('reportContent').innerHTML = mainPageHtml;
-
-                // ==========================================
-                // 渲染附件頁面 (Canvas / Image)
-                // ==========================================
-                const contentContainer = newWindow.document.getElementById('reportContent');
-
-                for (const file of allFiles) {
-                    const fileUrl = file.signedUrl || file.url;
-                    if (!fileUrl) continue;
-
-                    const isPdf = file.name.toLowerCase().endsWith('.pdf');
-                    const isImg = /\\.(jpg|jpeg|png|gif|webp)$/i.test(file.name);
-
-                    if (isImg) {
-                         // 圖片：直接一頁
-                         const pageDiv = newWindow.document.createElement('div');
-                         pageDiv.className = 'paper file-page';
-                         pageDiv.innerHTML = \`
-                            <div class="page-header">\${file.name}</div>
-                            <div class="file-content-wrapper">
-                                <img src="\${fileUrl}" class="file-img">
-                            </div>
-                            <div class="page-footer"></div>
-                         \`;
-                         contentContainer.appendChild(pageDiv);
-
-                    } else if (isPdf) {
-                        // PDF：使用 PDF.js 拆頁渲染
-                        try {
-                            const loadingTask = newWindow.pdfjsLib.getDocument(fileUrl);
-                            const pdf = await loadingTask.promise;
-                            
-                            // 每一頁 PDF 轉成一個 Canvas，並放入獨立的 A4 div
-                            for (let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {
-                                const page = await pdf.getPage(pageNum);
-                                const scale = 2; // 提高解析度
-                                const viewport = page.getViewport({ scale: scale });
-
-                                const canvas = newWindow.document.createElement('canvas');
-                                const context = canvas.getContext('2d');
-                                canvas.height = viewport.height;
-                                canvas.width = viewport.width;
-                                canvas.className = 'pdf-canvas';
-                                // 調整 CSS 寬度以適應 A4 容器
-                                canvas.style.width = '100%';
-                                canvas.style.height = 'auto';
-
-                                await page.render({ canvasContext: context, viewport: viewport }).promise;
-
-                                const pageDiv = newWindow.document.createElement('div');
-                                pageDiv.className = 'paper file-page';
-                                pageDiv.innerHTML = \`
-                                    <div class="page-header">\${file.name} (Page \${pageNum}/\${pdf.numPages})</div>
-                                    <div class="file-content-wrapper"></div>
-                                    <div class="page-footer"></div>
-                                \`;
-                                pageDiv.querySelector('.file-content-wrapper').appendChild(canvas);
-                                contentContainer.appendChild(pageDiv);
-                            }
-
-                        } catch (pdfErr) {
-                            console.error(pdfErr);
-                            const errDiv = newWindow.document.createElement('div');
-                            errDiv.className = 'paper file-page';
-                            errDiv.innerHTML = \`
-                                <div class="page-header">\${file.name}</div>
-                                <div class="file-content-wrapper">
-                                    <div class="file-unsupported">PDF 渲染失敗：\${pdfErr.message} <br> <a href="\${fileUrl}" target="_blank">點此下載原始檔案</a></div>
-                                </div>
-                                <div class="page-footer"></div>
-                            \`;
-                            contentContainer.appendChild(errDiv);
-                        }
-                    }
-                }
-
-            } catch (e) {
-                newWindow.document.body.innerHTML = '<h3 style="color:red;text-align:center;">發生錯誤：' + e.message + '</h3>';
-            }
-        }
-
-        // 評鑑審查紀錄 (Modal) 功能 (修正：讀寫 assessment_logs)
-        let currentReviewEvidenceId = null;
-        const reviewModal = new bootstrap.Modal(document.getElementById('reviewModal'));
-
-        // 開啟審查紀錄 Modal
-        async function openReviewModal(evidenceId, companyName) {
-            currentReviewEvidenceId = evidenceId;
-            document.getElementById('reviewCompanyInfo').innerText = \`目前查看企業：\${companyName}\`;
-            const container = document.getElementById('reviewContainer');
-            
-            container.innerHTML = '<div class="text-center py-4"><i class="fas fa-spinner fa-spin fa-2x text-primary"></i><br>正在讀取評鑑紀錄...</div>';
-            reviewModal.show();
-
-            try {
-                // 改為讀取 'assessment_logs' 專用欄位
-                const { data, error } = await supabaseClient
-                    .from('evidence')
-                    .select('assessment_logs')
-                    .eq('id', evidenceId)
-                    .single();
-
-                if (error) throw error;
-
-                container.innerHTML = ''; 
-
-                let existingRecords = [];
-                if (data && data.assessment_logs) {
-                    existingRecords = data.assessment_logs;
-                }
-
-                if (existingRecords.length > 0) {
-                    existingRecords.forEach(record => {
-                        addReviewRow(record.date, record.note, true, record.reviewer, record.created_at);
-                    });
-                } else {
-                    container.innerHTML = '<div class="text-muted text-center py-3 mb-3 border-bottom"><i class="fas fa-info-circle me-1"></i>尚無評鑑紀錄，請點擊下方按鈕新增。</div>';
-                }
-
-                addReviewRow();
-
-            } catch (err) {
-                console.error('讀取評鑑紀錄錯誤:', err);
-                container.innerHTML = \`<div class="alert alert-danger">資料讀取失敗：\${err.message}</div>\`;
-            }
-        }
-
-        // 動態新增一行紀錄
-        function addReviewRow(dateVal = '', noteVal = '', isReadonly = false, reviewerVal = '', timestampVal = '') {
-            const container = document.getElementById('reviewContainer');
-            const rowDiv = document.createElement('div');
-            
-            rowDiv.className = \`row g-2 mb-3 p-3 border rounded shadow-sm review-row \${isReadonly ? 'readonly-row' : 'bg-white'}\`;
-
-            let metaInfoHtml = '';
-            if (isReadonly && (reviewerVal || timestampVal)) {
-                let timeStr = '';
-                if(timestampVal) {
-                     try {
-                        const d = new Date(timestampVal);
-                        timeStr = d.toLocaleString('zh-TW', { 
-                            hour12: false, 
-                            year: 'numeric', month: '2-digit', day: '2-digit', 
-                            hour: '2-digit', minute: '2-digit', second: '2-digit' 
-                        });
-                     } catch(e) { timeStr = timestampVal; }
-                }
-                metaInfoHtml = \`<div class="col-12 mb-2 pb-2 border-bottom text-muted small d-flex justify-content-between">
-                    <span><i class="fas fa-user-check me-1 text-primary"></i>評鑑委員：<strong>\${reviewerVal || '未知'}</strong></span>
-                    <span><i class="far fa-clock me-1"></i>存檔時間：\${timeStr}</span>
-                </div>\`;
-            }
-
-            rowDiv.innerHTML = \`
-                \${metaInfoHtml}
-                <div class="col-md-3">
-                    <label class="form-label small fw-bold text-secondary">審查日期</label>
-                    <input type="date" class="form-control review-date" value="\${dateVal}" \${isReadonly ? 'disabled' : ''}>
-                </div>
-                <div class="col-md-8">
-                    <label class="form-label small fw-bold text-secondary">審查備註 / 結果</label>
-                    <textarea class="form-control review-note" rows="2" placeholder="請輸入評鑑結果與意見..." \${isReadonly ? 'disabled' : ''}>\${noteVal}</textarea>
-                </div>
-                <div class="col-md-1 d-flex align-items-end justify-content-center">
-                    \${isReadonly 
-                        ? '<span class="badge bg-secondary"><i class="fas fa-lock me-1"></i>鎖定</span>' 
-                        : '<button type="button" class="btn btn-outline-danger" onclick="removeReviewRow(this)" title="刪除此列"><i class="fas fa-trash-alt"></i></button>'
-                    }
-                </div>
-            \`;
-
-            const noDataMsg = container.querySelector('.text-muted.text-center');
-            if(noDataMsg) noDataMsg.remove();
-
-            container.appendChild(rowDiv);
-        }
-
-        function removeReviewRow(btnElement) {
-            btnElement.closest('.row').remove();
-        }
-
-        // 確認儲存按鈕
-        async function confirmSaveReview() {
-            const container = document.getElementById('reviewContainer');
-            const newRows = container.querySelectorAll('.review-row:not(.readonly-row)');
-            
-            let newRecords = [];
-            let isValid = true;
-            
-            const currentUserName = sessionStorage.getItem('currentUserName') || '評鑑委員';
-
-            newRows.forEach(row => {
-                const date = row.querySelector('.review-date').value;
-                const note = row.querySelector('.review-note').value.trim();
-
-                if (date || note) {
-                    if (!date || !note) {
-                        isValid = false; 
-                    } else {
-                        newRecords.push({ 
-                            date: date, 
-                            note: note, 
-                            reviewer: currentUserName,
-                            created_at: new Date().toISOString() 
-                        });
-                    }
-                }
-            });
-
-            if (!isValid) {
-                alert('請確認所有新增的紀錄皆已填寫「日期」與「備註」。\\n如欲刪除空白列請點擊紅色垃圾桶。');
-                return;
-            }
-
-            if (newRecords.length === 0) {
-                alert('目前沒有新增的有效紀錄需要儲存。');
-                return;
-            }
-
-            if (!confirm("請確定輸入內容是否正確，為保留評鑑證據完整，儲存後將不能修改!")) {
-                return; 
-            }
-
-            const loading = document.getElementById('loadingOverlay');
-            loading.style.display = 'flex';
-
-            try {
-                const { data: existingData, error: fetchErr } = await supabaseClient
-                    .from('evidence')
-                    .select('assessment_logs')
-                    .eq('id', currentReviewEvidenceId)
-                    .single();
-                
-                if (fetchErr) throw fetchErr;
-
-                let mergedRecords = (existingData.assessment_logs || []).concat(newRecords);
-
-                const { error: updateErr } = await supabaseClient
-                    .from('evidence')
-                    .update({ assessment_logs: mergedRecords })
-                    .eq('id', currentReviewEvidenceId);
-
-                if (updateErr) throw updateErr;
-
-                alert('評鑑紀錄儲存成功！資料已鎖定。');
-                reviewModal.hide();
-
-            } catch (err) {
-                console.error('儲存失敗:', err);
-                alert('儲存發生錯誤，請稍後重試。');
-            } finally {
-                loading.style.display = 'none';
-            }
-        }
-        
-        // 評鑑補件通知寄信功能
-        async function sendRevisionMail(evidenceId, companyName) {
-            if (!confirm(\`是否發送「\${companyName}」的評鑑補件通知信？\`)) {
-                return;
-            }
-
-            try {
-                const res = await fetch(
-                'https://yhehfucgemxnfrdvpdhw.supabase.co/functions/v1/send-evaluation-revision',
-                {
-                    method: 'POST',
-                    headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': \`Bearer \${SUPABASE_KEY}\`
-                    },
-                    body: JSON.stringify({
-                    id: evidenceId
-                    })
-                }
-                );
-
-                const result = await res.json();
-
-                if (!res.ok) {
-                throw result;
-                }
-
-                alert('評鑑補件通知已成功寄出。');
-            } catch (err) {
-                console.error(err);
-                alert('寄送失敗，請稍後再試。');
-            }
-        }
-
-        // ==========================================
-        // 評鑑改善紀錄 (Modal) 功能
-        // ==========================================
-        const improvementModal = new bootstrap.Modal(document.getElementById('improvementModal'));
-        
-        async function openImprovementModal(evidenceId, companyName) {
-            document.getElementById('improvementCompanyInfo').innerText = \`企業：\${companyName}\`;
-            const container = document.getElementById('improvementContainer');
-            
-            container.innerHTML = '<div class="text-center py-4"><i class="fas fa-spinner fa-spin fa-2x text-success"></i><br>讀取改善紀錄中...</div>';
-            improvementModal.show();
-
-            try {
-                // 讀取 assessment_logs (Check) 與 act_improvements (Act)
-                const { data, error } = await supabaseClient
-                    .from('evidence')
-                    .select('assessment_logs, act_improvements')
-                    .eq('id', evidenceId)
-                    .single();
-
-                if (error) throw error;
-
-                container.innerHTML = ''; 
-
+                // 3. 整合互動歷程
                 const checkLogs = (data.assessment_logs || []).map((r, i) => ({
                     type: 'check',
                     dateObj: new Date(r.created_at || r.date || 0),
                     displayDate: r.date || '無日期',
                     content: r.note || r.result || '無詳細內容',
-                    reviewer: r.reviewer || '',
+                    reviewer: r.reviewer || '系統',
                     created_at: r.created_at,
                     index: i + 1
                 }));
@@ -1195,69 +777,221 @@
                 }));
 
                 const combinedTimeline = [...checkLogs, ...actLogs].sort((a, b) => a.dateObj - b.dateObj);
-
-                if (combinedTimeline.length === 0) {
-                    container.innerHTML = '<div class="alert alert-light text-center text-muted"><i class="fas fa-info-circle me-1"></i>目前尚無相關評鑑或改善紀錄。</div>';
-                    return;
+                
+                let timelineHtml = '';
+                if (combinedTimeline.length > 0) {
+                    combinedTimeline.forEach(item => {
+                        const saveTime = item.created_at ? formatDateTime(item.created_at) : '-';
+                        if (item.type === 'check') {
+                            timelineHtml += `
+                                <div class="interaction-item check">
+                                    <div class="header">
+                                        <span class="badge bg-danger">評鑑缺失 #${item.index}</span>
+                                        <span class="time">評鑑日期: ${item.displayDate} | 存檔: ${saveTime}</span>
+                                    </div>
+                                    <div class="reviewer"><i class="fas fa-user-shield"></i> ${item.reviewer}</div>
+                                    <div class="content">${item.content}</div>
+                                </div>
+                            `;
+                        } else {
+                            let filesList = (item.files || []).map(f => `<span class="file-tag"><i class="fas fa-paperclip"></i> ${f.name}</span>`).join(' ');
+                            timelineHtml += `
+                                <div class="interaction-item act">
+                                    <div class="header">
+                                        <span class="badge bg-success">實際改善行動</span>
+                                        <span class="time">改善日期: ${item.displayDate} | 存檔: ${saveTime}</span>
+                                    </div>
+                                    <div class="content fw-bold text-success">${item.content}</div>
+                                    <div class="files">${filesList}</div>
+                                </div>
+                            `;
+                        }
+                    });
+                } else {
+                    timelineHtml = '<div class="text-muted text-center p-3">尚無互動紀錄</div>';
                 }
 
-                let timelineHtml = '';
-                combinedTimeline.forEach(item => {
-                    if (item.type === 'check') {
-                        const saveTimeStr = item.created_at ? formatDateTime(item.created_at) : '無紀錄';
-                        timelineHtml += \`
-                            <div class="improvement-record-item animate__animated animate__fadeIn" style="border-left: 4px solid #dc3545;">
-                                <div class="d-flex justify-content-between mb-2">
-                                    <span class="badge bg-danger">評鑑缺失 #\${item.index}</span>
-                                    <div class="text-end text-muted small">
-                                        <div><i class="far fa-calendar-alt me-1"></i>評鑑日期：\${item.displayDate}</div>
-                                        <div><i class="far fa-clock me-1"></i>存檔時間：\${saveTimeStr}</div>
-                                    </div>
-                                </div>
-                                <div class="mb-2">
-                                    <span class="fw-bold text-dark"><i class="fas fa-user-shield me-1"></i>\${item.reviewer}</span>
-                                </div>
-                                <div class="bg-light p-2 rounded border text-dark">\${item.content}</div>
-                            </div>
-                        \`;
-                    } else {
-                        let filesHtml = '';
-                        if (item.files && item.files.length > 0) {
-                            filesHtml = item.files.map(f => 
-                                \`<a href="\${f.url}" target="_blank" class="btn btn-sm btn-outline-success me-2 mt-2">
-                                    <i class="fas fa-paperclip"></i> \${f.name}
-                                </a>\`
-                            ).join('');
-                        } else {
-                            filesHtml = '<span class="text-muted small">無附件</span>';
+                // 4. 準備附件列表 (★關鍵修正：整合 Act 補件檔案)
+                let allFiles = [];
+                // 原始附件
+                if (data.additional_appendices && Array.isArray(data.additional_appendices)) {
+                    allFiles = [...data.additional_appendices];
+                }
+                // 補件檔案 (從 Act 中提取)
+                if (data.act_improvements && Array.isArray(data.act_improvements)) {
+                    data.act_improvements.forEach(act => {
+                        if (act.files && Array.isArray(act.files)) {
+                            allFiles = [...allFiles, ...act.files];
                         }
-                        const saveTimeStr = item.created_at ? formatDateTime(item.created_at) : '無紀錄';
-                        timelineHtml += \`
-                            <div class="improvement-record-item animate__animated animate__fadeIn" style="border-left: 4px solid #198754;">
-                                <div class="d-flex justify-content-between mb-2">
-                                    <span class="badge bg-success">實際改善行動</span>
-                                    <div class="text-end text-muted small">
-                                        <div><i class="far fa-check-circle me-1"></i>改善完成日：\${item.displayDate}</div>
-                                        <div><i class="far fa-clock me-1"></i>存檔時間：\${saveTimeStr}</div>
-                                    </div>
-                                </div>
-                                <div class="mb-2">
-                                    <label class="small fw-bold text-secondary">改善說明：</label>
-                                    <div class="bg-light p-2 rounded border text-success fw-bold">\${item.content}</div>
-                                </div>
-                                <div>
-                                    <label class="small fw-bold text-secondary">佐證附件：</label>
-                                    <div>\${filesHtml}</div>
-                                </div>
-                            </div>
-                        \`;
-                    }
-                });
-                container.innerHTML = timelineHtml;
+                    });
+                }
 
-            } catch (err) {
-                console.error('讀取改善紀錄錯誤:', err);
-                container.innerHTML = \`<div class="alert alert-danger">讀取失敗：\${err.message}</div>\`;
+                let attachHtml = '';
+                let filePagesHtml = '';
+
+                if (allFiles.length > 0) {
+                    attachHtml = allFiles.map((f, i) => `
+                        <li>${f.name}</li>
+                    `).join('');
+
+                    // 生成每頁的檔案預覽 (PDF 嵌入 iframe，圖片嵌入 img)
+                    filePagesHtml = allFiles.map(f => {
+                        const fileUrl = f.signedUrl || f.url || '';
+                        // 判斷副檔名
+                        const isPdf = f.name.toLowerCase().endsWith('.pdf');
+                        const isImg = /\.(jpg|jpeg|png|gif|webp)$/i.test(f.name);
+                        
+                        let content = '';
+                        if (isPdf) {
+                            content = `<iframe src="${fileUrl}#toolbar=0" class="file-frame"></iframe>`;
+                        } else if (isImg) {
+                            content = `<img src="${fileUrl}" class="file-img">`;
+                        } else {
+                            content = `<div class="file-unsupported">不支援預覽此格式：${f.name}</div>`;
+                        }
+
+                        return `
+                            <div class="page-break"></div>
+                            <div class="paper file-page">
+                                <div class="page-header">${f.name}</div>
+                                <div class="file-content-wrapper">
+                                    ${content}
+                                </div>
+                                <div class="page-footer"></div>
+                            </div>
+                        `;
+                    }).join('');
+                } else {
+                    attachHtml = '<li>無附件</li>';
+                }
+                
+                const serviceType = data.service_type || '無紀錄';
+
+                // 5. 構建報告 HTML
+                const reportHtml = `
+                    <!DOCTYPE html>
+                    <html lang="zh-TW">
+                    <head>
+                        <meta charset="UTF-8">
+                        <title>完整評鑑報告 - ${data.case_number}</title>
+                        <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+                        <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+                        <style>
+                            body { font-family: 'Segoe UI', serif; background: #525659; padding: 20px; counter-reset: page; }
+                            .paper {
+                                background: white;
+                                width: 210mm;
+                                min-height: 297mm;
+                                margin: 0 auto 20px auto;
+                                padding: 20mm;
+                                position: relative;
+                                box-shadow: 0 0 10px rgba(0,0,0,0.5);
+                                overflow: hidden;
+                            }
+                            
+                            /* 浮水印：置於最上層但穿透點擊 */
+                            .watermark {
+                                position: fixed; /* 固定在視窗，列印時會在每頁 */
+                                top: 50%;
+                                left: 50%;
+                                transform: translate(-50%, -50%) rotate(-45deg);
+                                font-size: 80px;
+                                color: rgba(0, 0, 0, 0.05);
+                                white-space: nowrap;
+                                pointer-events: none;
+                                z-index: 9999;
+                                font-weight: bold;
+                                border: 5px solid rgba(0, 0, 0, 0.05);
+                                padding: 20px 50px;
+                            }
+
+                            .content { position: relative; z-index: 1; }
+                            h1 { font-size: 24px; font-weight: bold; text-align: center; margin-bottom: 30px; border-bottom: 2px solid #333; padding-bottom: 10px; }
+                            h2 { font-size: 18px; font-weight: bold; margin-top: 20px; border-left: 5px solid #0d6efd; padding-left: 10px; background: #f8f9fa; }
+                            
+                            .info-table { width: 100%; margin-bottom: 20px; font-size: 14px; }
+                            .info-table td { padding: 8px; border-bottom: 1px solid #eee; }
+                            .label { font-weight: bold; color: #555; width: 120px; }
+                            
+                            .interaction-item { margin-bottom: 15px; padding: 10px; border-radius: 5px; font-size: 14px; page-break-inside: avoid; }
+                            .interaction-item.check { border-left: 4px solid #dc3545; background: #fff5f5; }
+                            .interaction-item.act { border-left: 4px solid #198754; background: #f0fff4; margin-left: 20px; }
+                            .header { display: flex; justify-content: space-between; margin-bottom: 5px; font-size: 12px; color: #666; }
+                            .file-tag { display: inline-block; margin-right: 10px; font-size: 12px; color: #0d6efd; background: #e7f1ff; padding: 2px 6px; border-radius: 4px;}
+
+                            /* 檔案頁面樣式 */
+                            .file-page { display: flex; flex-direction: column; height: 297mm; padding: 10mm 15mm; }
+                            .page-header { text-align: center; font-size: 14px; font-weight: bold; margin-bottom: 10px; border-bottom: 1px solid #ccc; padding-bottom: 5px; }
+                            .file-content-wrapper { flex: 1; width: 100%; display: flex; justify-content: center; align-items: center; overflow: hidden; }
+                            .file-frame { width: 100%; height: 100%; border: none; }
+                            .file-img { max-width: 100%; max-height: 100%; object-fit: contain; }
+                            .file-unsupported { color: #888; border: 2px dashed #ccc; padding: 20px; border-radius: 10px; }
+                            
+                            /* 頁尾頁碼 */
+                            .page-footer { 
+                                position: absolute; 
+                                bottom: 10mm; 
+                                width: 100%; 
+                                text-align: center; 
+                                font-size: 12px; 
+                                color: #666;
+                                left: 0;
+                            }
+                            .page-footer::after { 
+                                counter-increment: page; 
+                                content: "Page " counter(page); 
+                            }
+
+                            @media print {
+                                body { background: white; padding: 0; }
+                                .paper { box-shadow: none; margin: 0; width: 100%; height: 100%; page-break-after: always; }
+                                .no-print { display: none !important; }
+                                .page-break { page-break-before: always; }
+                                /* 列印時強制顯示背景色 */
+                                -webkit-print-color-adjust: exact;
+                                print-color-adjust: exact;
+                            }
+                        </style>
+                    </head>
+                    <body>
+                        <div class="watermark">可信智慧整合有限公司</div>
+                        
+                        <div class="d-flex justify-content-end mb-3 no-print" style="width: 210mm; margin: 0 auto;">
+                            <button class="btn btn-primary" onclick="window.print()"><i class="fas fa-print me-2"></i>列印 / 匯出 PDF</button>
+                        </div>
+                        
+                        <div class="paper">
+                            <div class="content">
+                                <h1>完整評鑑報告 (Full Evaluation Report)</h1>
+                                
+                                <table class="info-table">
+                                    <tr><td class="label">案號</td><td>${data.case_number}</td><td class="label">服務年度</td><td>${data.service_year}</td></tr>
+                                    <tr><td class="label">企業名稱</td><td>${data.workplaces?.companies?.name}</td><td class="label">負責顧問</td><td>${data.medical_staff?.name}</td></tr>
+                                    <tr><td class="label">服務日期</td><td>${data.visit_date}</td><td class="label">執行時間</td><td>${stagingData.start_time || '-'} ~ ${stagingData.end_time || '-'}</td></tr>
+                                    <tr><td class="label">服務類型</td><td colspan="3">${serviceType}</td></tr>
+                                </table>
+
+                                <h2>1. 評鑑互動歷程 (Audit Trail)</h2>
+                                <div>${timelineHtml}</div>
+
+                                <h2>2. 附件清單</h2>
+                                <ul>${attachHtml}</ul>
+                            </div>
+                            <div class="page-footer"></div>
+                        </div>
+
+                        ${filePagesHtml}
+
+                    </body>
+                    </html>
+                `;
+
+                newWindow.document.open();
+                newWindow.document.write(reportHtml);
+                newWindow.document.close();
+
+            } catch(e) {
+                newWindow.document.body.innerHTML = 'Error: ' + e.message;
             }
         }
     </script>
