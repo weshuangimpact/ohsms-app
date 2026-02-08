@@ -545,22 +545,6 @@
                         .single();
                     if (sData) stagingData = sData;
                 }
-                
-                // ------------------------------------------------
-                // ★ 新增：讀取 Reviewer Profile (改為顯示全名)
-                // ------------------------------------------------
-                let reviewerRealName = null;
-                if (data.reviewer_id) {
-                    const { data: profileData } = await supabaseClient
-                        .from('profiles')
-                        .select('full_name')
-                        .eq('id', data.reviewer_id)
-                        .maybeSingle();
-                        
-                    if (profileData && profileData.full_name) {
-                        reviewerRealName = profileData.full_name;
-                    }
-                }
                 // ------------------------------------------------
 
                 // 2. 變數準備
@@ -582,8 +566,8 @@
                 const badgeClass = data.is_special_case ? 'background:#ffc107; color:#212529;' : 'background:#198754; color:white;';
                 const auditNote = data.audit_note || '無';
                 
-                // ★ 審核者邏輯修正：使用 profiles 查到的全名，若無則顯示系統管理員，若連 ID 都沒有則顯示無
-                const reviewerText = reviewerRealName || (data.reviewer_id ? '系統管理員' : '無');
+                // ★ 審核者邏輯：reviewer_id 有值就顯示系統管理員，無值顯示無
+                const reviewerText = data.reviewer_id ? '系統管理員' : '無';
                 
                 const reviewDate = data.created_at ? new Date(data.created_at).toLocaleString('zh-TW', { hour12: false }) : '無';
 
@@ -963,6 +947,108 @@
                 alert('儲存發生錯誤，請稍後重試。');
             } finally {
                 loading.style.display = 'none';
+            }
+        }
+        
+        // 評鑑補件通知寄信功能
+        async function sendRevisionMail(evidenceId, companyName) {
+            if (!confirm(`是否發送「${companyName}」的評鑑補件通知信？`)) {
+                return;
+            }
+
+            try {
+                const res = await fetch(
+                'https://yhehfucgemxnfrdvpdhw.supabase.co/functions/v1/send-evaluation-revision',
+                {
+                    method: 'POST',
+                    headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${SUPABASE_KEY}`
+                    },
+                    body: JSON.stringify({
+                    id: evidenceId
+                    })
+                }
+                );
+
+                const result = await res.json();
+
+                if (!res.ok) {
+                throw result;
+                }
+
+                alert('評鑑補件通知已成功寄出。');
+            } catch (err) {
+                console.error(err);
+                alert('寄送失敗，請稍後再試。');
+            }
+        }
+
+        // ==========================================
+        // ★ 新增：評鑑改善紀錄 (Modal) 功能
+        // ==========================================
+        const improvementModal = new bootstrap.Modal(document.getElementById('improvementModal'));
+        
+        async function openImprovementModal(evidenceId, companyName) {
+            document.getElementById('improvementCompanyInfo').innerText = `企業：${companyName}`;
+            const container = document.getElementById('improvementContainer');
+            
+            container.innerHTML = '<div class="text-center py-4"><i class="fas fa-spinner fa-spin fa-2x text-success"></i><br>讀取改善紀錄中...</div>';
+            improvementModal.show();
+
+            try {
+                // 讀取 improvement_records 欄位
+                const { data, error } = await supabaseClient
+                    .from('evidence')
+                    .select('improvement_records')
+                    .eq('id', evidenceId)
+                    .single();
+
+                if (error) throw error;
+
+                container.innerHTML = ''; 
+
+                const records = data.improvement_records;
+                if (!records || !Array.isArray(records) || records.length === 0) {
+                    container.innerHTML = '<div class="alert alert-light text-center text-muted"><i class="fas fa-info-circle me-1"></i>目前尚無顧問提交的改善紀錄。</div>';
+                    return;
+                }
+
+                // 渲染紀錄 (倒序顯示：最新的在上面)
+                records.reverse().forEach((rec, idx) => {
+                    let filesHtml = '';
+                    if (rec.files && rec.files.length > 0) {
+                        filesHtml = rec.files.map(f => 
+                            `<a href="${f.url}" target="_blank" class="btn btn-sm btn-outline-success me-2 mt-2">
+                                <i class="fas fa-paperclip"></i> ${f.name}
+                             </a>`
+                        ).join('');
+                    } else {
+                        filesHtml = '<span class="text-muted small">無附件</span>';
+                    }
+
+                    const html = `
+                        <div class="improvement-record-item animate__animated animate__fadeIn">
+                            <div class="d-flex justify-content-between mb-2">
+                                <span class="badge bg-secondary">第 ${records.length - idx} 次回覆</span>
+                                <small class="text-muted"><i class="far fa-calendar-alt me-1"></i>改善完成日：${rec.date}</small>
+                            </div>
+                            <div class="mb-3">
+                                <label class="small fw-bold text-secondary">改善說明：</label>
+                                <div class="bg-light p-2 rounded border">${rec.description}</div>
+                            </div>
+                            <div>
+                                <label class="small fw-bold text-secondary">佐證附件：</label>
+                                <div>${filesHtml}</div>
+                            </div>
+                        </div>
+                    `;
+                    container.insertAdjacentHTML('beforeend', html);
+                });
+
+            } catch (err) {
+                console.error('讀取改善紀錄錯誤:', err);
+                container.innerHTML = `<div class="alert alert-danger">讀取失敗：${err.message}</div>`;
             }
         }
 
