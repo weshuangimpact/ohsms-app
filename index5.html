@@ -217,13 +217,10 @@
                 <div class="card-body px-4 pb-4">
                     
                     <div class="review-info-box">
-                        <h6 class="fw-bold text-dark border-bottom border-warning pb-2 mb-3"><i class="fas fa-clipboard-check me-2"></i>原始評鑑審查紀錄</h6>
+                        <h6 class="fw-bold text-dark border-bottom border-warning pb-2 mb-3"><i class="fas fa-clipboard-check me-2"></i>正式評鑑審查紀錄 (Assessment Logs)</h6>
                         <div id="evaluationReviewsList" style="font-size: 0.95rem;">
-                            </div>
+                        </div>
                     </div>
-
-                    <h6 class="fw-bold text-secondary mb-3"><i class="fas fa-history me-1"></i>歷次改善紀錄 (已存檔)</h6>
-                    <div id="existingRecordsContainer" class="mb-4"></div>
 
                     <h6 class="fw-bold text-dark mb-3"><i class="fas fa-edit me-1"></i>新增改善行動</h6>
                     <div id="newRecordsContainer"></div>
@@ -301,12 +298,12 @@
             document.getElementById('loadingOverlay').style.display = 'flex';
 
             try {
-                // 修正：增加讀取 evaluation_reviews (歷次審查詳細紀錄)
+                // 修正1: 只撈取 assessment_logs 與新欄位 act_improvements，移除舊的 improvement_records
                 const { data, error } = await supabaseClient
                     .from('evidence')
                     .select(`
-                        id, case_number, visit_date, service_year, improvement_records, 
-                        evaluation_reviews,
+                        id, case_number, visit_date, service_year, 
+                        assessment_logs, act_improvements,
                         workplaces(companies(name)),
                         medical_staff(name)
                     `)
@@ -322,20 +319,22 @@
                 document.getElementById('caseNumberDisplay').innerText = data.case_number;
                 document.getElementById('caseVisitDate').innerText = data.visit_date;
 
-                // ★ 修正：只顯示 evaluation_reviews 的內容，不顯示其他管理資訊
+                // ★ 修正：顯示 assessment_logs (正式評鑑紀錄)
                 const reviewsContainer = document.getElementById('evaluationReviewsList');
                 reviewsContainer.innerHTML = '';
 
-                if (data.evaluation_reviews && Array.isArray(data.evaluation_reviews) && data.evaluation_reviews.length > 0) {
+                if (data.assessment_logs && Array.isArray(data.assessment_logs) && data.assessment_logs.length > 0) {
                     let reviewsHtml = '';
-                    data.evaluation_reviews.forEach((r, idx) => {
+                    data.assessment_logs.forEach((r, idx) => {
                         const rDate = r.date || '無日期';
-                        const rNote = r.note || '無內容';
+                        // 注意：assessment_logs 結構通常含有 result 或 note
+                        const rNote = r.note || r.result || '無詳細內容'; 
+                        const rReviewer = r.reviewer || '';
                         reviewsHtml += `
                             <div class="review-list-item">
                                 <div class="d-flex justify-content-between">
-                                    <span class="badge bg-secondary mb-1">紀錄 #${idx + 1}</span>
-                                    <small class="text-muted"><i class="far fa-clock me-1"></i>${rDate}</small>
+                                    <span class="badge bg-danger mb-1">評鑑缺失 #${idx + 1}</span>
+                                    <small class="text-muted"><i class="far fa-clock me-1"></i>${rDate} ${rReviewer ? `(${rReviewer})` : ''}</small>
                                 </div>
                                 <div class="text-dark mt-1 ps-1" style="white-space: pre-wrap;">${rNote}</div>
                             </div>
@@ -343,10 +342,11 @@
                     });
                     reviewsContainer.innerHTML = reviewsHtml;
                 } else {
-                    reviewsContainer.innerHTML = '<div class="text-muted small py-2"><i class="fas fa-info-circle me-1"></i>目前尚無詳細評鑑審查(補件)紀錄。</div>';
+                    reviewsContainer.innerHTML = '<div class="text-muted small py-2"><i class="fas fa-check-circle me-1"></i>目前尚無相關評鑑缺失紀錄。</div>';
                 }
 
-                renderExistingRecords(data.improvement_records);
+                // 3. 已移除 renderExistingRecords (隱藏歷次前置改善紀錄)
+                
                 document.getElementById('newRecordsContainer').innerHTML = '';
                 addNewRow();
                 workArea.style.display = 'block';
@@ -357,30 +357,6 @@
             } finally {
                 document.getElementById('loadingOverlay').style.display = 'none';
             }
-        }
-
-        function renderExistingRecords(records) {
-            const container = document.getElementById('existingRecordsContainer');
-            container.innerHTML = '';
-            if (!records || records.length === 0) {
-                container.innerHTML = '<div class="alert alert-light text-muted border-0 small"><i class="fas fa-info-circle me-1"></i>此案目前尚無任何改善紀錄。</div>';
-                return;
-            }
-            records.forEach(rec => {
-                let filesHtml = '';
-                if (rec.files && rec.files.length > 0) {
-                    filesHtml = rec.files.map(f => `<a href="${f.url}" target="_blank" class="btn btn-sm btn-outline-danger me-2 mt-2"><i class="fas fa-paperclip"></i> ${f.name}</a>`).join('');
-                }
-                container.innerHTML += `
-                    <div class="improvement-row readonly-row">
-                        <div class="row align-items-center">
-                            <div class="col-md-2 fw-bold text-secondary"><i class="far fa-calendar-check me-1"></i>${rec.date}</div>
-                            <div class="col-md-7 text-dark">${rec.description}</div>
-                            <div class="col-md-3 text-end">${filesHtml}</div>
-                        </div>
-                    </div>
-                `;
-            });
         }
 
         function addNewRow() {
@@ -433,21 +409,24 @@
             if (!isValid) return alert('請確認「日期」與「說明」皆已填寫完整。');
             if (newEntries.length === 0) return alert('沒有新增的資料需要儲存。');
 
-            if (!confirm('送出後資料將正式寫入證據鏈，是否確認？')) return;
+            if (!confirm('送出後資料將正式寫入 Act 改善欄位，是否確認？')) return;
 
             document.getElementById('loadingOverlay').style.display = 'flex';
 
             try {
                 const evidenceId = currentEvidenceData.id;
                 const year = currentEvidenceData.service_year || new Date().getFullYear();
-                let finalRecords = currentEvidenceData.improvement_records || [];
+                
+                // 修正2: 讀取並寫入新的 act_improvements 欄位 (獨立欄位)
+                let finalRecords = currentEvidenceData.act_improvements || [];
                 if (!Array.isArray(finalRecords)) finalRecords = [];
 
                 for (const entry of newEntries) {
                     let uploadedFiles = [];
                     if (entry.file) {
                         const fileExt = entry.file.name.split('.').pop();
-                        const fileName = `Improvement_${Date.now()}.${fileExt}`;
+                        // 檔案路徑仍保留在該案號資料夾下，方便管理
+                        const fileName = `Act_${Date.now()}.${fileExt}`;
                         const filePath = `${year}/${evidenceId}/improvements/${fileName}`;
                         const { error: uploadErr } = await supabaseClient.storage.from('evidence').upload(filePath, entry.file);
                         if (uploadErr) throw uploadErr;
@@ -463,13 +442,14 @@
                     });
                 }
 
+                // 更新 act_improvements 欄位
                 const { error: updateErr } = await supabaseClient
                     .from('evidence')
-                    .update({ improvement_records: finalRecords, status: 'pending' })
+                    .update({ act_improvements: finalRecords, status: 'pending_review' }) // 更新狀態提示後台
                     .eq('id', evidenceId);
 
                 if (updateErr) throw updateErr;
-                alert('✅ 改善紀錄上傳成功！');
+                alert('✅ Act 改善行動紀錄上傳成功！');
                 searchCase();
             } catch (err) {
                 alert('❌ 上傳失敗: ' + err.message);
@@ -479,7 +459,7 @@
         }
 
         // ==========================================
-        // 5. 開啟執行歷程檢視 (複製自 Index 3)
+        // 5. 開啟執行歷程檢視 (保留原功能)
         // ==========================================
         async function openPreviewWindow() {
             if (!currentEvidenceData) return;
