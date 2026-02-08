@@ -545,6 +545,22 @@
                         .single();
                     if (sData) stagingData = sData;
                 }
+                
+                // ------------------------------------------------
+                // ★ 新增：讀取 Reviewer Profile (改為顯示全名)
+                // ------------------------------------------------
+                let reviewerRealName = null;
+                if (data.reviewer_id) {
+                    const { data: profileData } = await supabaseClient
+                        .from('profiles')
+                        .select('full_name')
+                        .eq('id', data.reviewer_id)
+                        .maybeSingle();
+                        
+                    if (profileData && profileData.full_name) {
+                        reviewerRealName = profileData.full_name;
+                    }
+                }
                 // ------------------------------------------------
 
                 // 2. 變數準備
@@ -566,8 +582,8 @@
                 const badgeClass = data.is_special_case ? 'background:#ffc107; color:#212529;' : 'background:#198754; color:white;';
                 const auditNote = data.audit_note || '無';
                 
-                // ★ 審核者邏輯：reviewer_id 有值就顯示系統管理員，無值顯示無
-                const reviewerText = data.reviewer_id ? '系統管理員' : '無';
+                // ★ 審核者邏輯修正：使用 profiles 查到的全名，若無則顯示系統管理員，若連 ID 都沒有則顯示無
+                const reviewerText = reviewerRealName || (data.reviewer_id ? '系統管理員' : '無');
                 
                 const reviewDate = data.created_at ? new Date(data.created_at).toLocaleString('zh-TW', { hour12: false }) : '無';
 
@@ -759,7 +775,7 @@
             }
         }
 
-// ==========================================
+        // ==========================================
         // 4. 評鑑審查紀錄 (Modal) 功能 (已修正：讀寫 assessment_logs)
         // ==========================================
         let currentReviewEvidenceId = null;
