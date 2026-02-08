@@ -796,19 +796,10 @@
                                     <tr><td class="label">服務類型</td><td colspan="3">${stagingData.service_type || '-'}</td></tr>
                                 </table>
 
-                                <h2>1. 原始作業概況與發現 (Snapshot)</h2>
-                                <table class="info-table">
-                                    <tr><td class="label">作業概況</td><td>${stagingData.process_desc || '無'}</td></tr>
-                                    <tr><td class="label">發現問題</td><td>${stagingData.issues_found || '無'}</td></tr>
-                                    <tr><td class="label">採行對策</td><td>${stagingData.measures_taken || '無'}</td></tr>
-                                    <tr><td class="label">作業型態</td><td>${stagingData.work_pattern || '無'}</td></tr>
-                                    <tr><td class="label">危害描述</td><td>${stagingData.hazard_desc || '無'}</td></tr>
-                                </table>
-
-                                <h2>2. 評鑑互動歷程 (Audit Trail)</h2>
+                                <h2>1. 評鑑互動歷程 (Audit Trail)</h2>
                                 <div>${timelineHtml}</div>
 
-                                <h2>3. 附件清單</h2>
+                                <h2>2. 附件清單</h2>
                                 <ul>${attachHtml}</ul>
                             </div>
                         </div>
