@@ -286,6 +286,18 @@
 
         let currentEvidenceData = null;
 
+        // 時間格式化輔助函數
+        function formatDateTime(isoString) {
+            if (!isoString) return '';
+            const d = new Date(isoString);
+            return d.getFullYear() + '/' +
+                   String(d.getMonth() + 1).padStart(2, '0') + '/' +
+                   String(d.getDate()).padStart(2, '0') + ' ' +
+                   String(d.getHours()).padStart(2, '0') + ':' +
+                   String(d.getMinutes()).padStart(2, '0') + ':' +
+                   String(d.getSeconds()).padStart(2, '0');
+        }
+
         async function searchCase() {
             const caseNumber = document.getElementById('searchInput').value.trim();
             const errorMsg = document.getElementById('searchError');
@@ -324,24 +336,26 @@
                 reviewsContainer.innerHTML = '';
 
                 // 準備資料來源
-                // A. Check: Assessment Logs
+                // A. Check: Assessment Logs (評鑑紀錄)
                 const checkLogs = (data.assessment_logs || []).map((r, i) => ({
                     type: 'check',
-                    dateObj: new Date(r.date || 0), // 用於排序
-                    displayDate: r.date || '無日期',
+                    dateObj: new Date(r.created_at || r.date || 0), // 用於排序
+                    displayDate: r.date || '無日期', // 評鑑填寫的日期
                     content: r.note || r.result || '無詳細內容',
                     reviewer: r.reviewer || '',
+                    created_at: r.created_at, // 實際存檔時間
                     index: i + 1
                 }));
 
-                // B. Act: Improvement Actions
+                // B. Act: Improvement Actions (改善行動)
                 const actLogs = (data.act_improvements || []).map((r, i) => ({
                     type: 'act',
                     dateObj: new Date(r.created_at || r.date || 0), // 優先使用建立時間來排序
-                    displayDate: r.date || '無日期', // 顯示使用者填寫的改善日期
+                    displayDate: r.date || '無日期', // 顧問填寫的改善日期
                     content: r.description || '無改善說明',
                     files: r.files || [],
-                    reviewer: r.created_by_name || '顧問', // 若有紀錄人名
+                    reviewer: r.created_by_name || '顧問', 
+                    created_at: r.created_at, // 實際提交時間
                     index: i + 1
                 }));
 
@@ -353,26 +367,36 @@
                     combinedTimeline.forEach(item => {
                         if (item.type === 'check') {
                             // 顯示 Check (評鑑缺失) - 紅色
+                            const saveTimeStr = item.created_at ? formatDateTime(item.created_at) : '無紀錄';
                             timelineHtml += `
                                 <div class="review-list-item">
                                     <div class="d-flex justify-content-between">
                                         <span class="badge bg-danger mb-1">評鑑缺失 #${item.index}</span>
-                                        <small class="text-muted"><i class="far fa-clock me-1"></i>${item.displayDate} ${item.reviewer ? `(${item.reviewer})` : ''}</small>
+                                        <div class="text-end">
+                                            <small class="text-muted"><i class="far fa-calendar-alt me-1"></i>評鑑日期 ${item.displayDate} ${item.reviewer ? `(${item.reviewer})` : ''}</small>
+                                            <br>
+                                            <small class="text-muted" style="font-size: 0.85em;">存檔時間：${saveTimeStr}</small>
+                                        </div>
                                     </div>
                                     <div class="text-dark mt-1 ps-1" style="white-space: pre-wrap;">${item.content}</div>
                                 </div>
                             `;
                         } else {
-                            // 顯示 Act (實際改善行動) - 綠色 (模擬新增的一欄)
+                            // 顯示 Act (實際改善行動) - 綠色
                             let filesHtml = '';
                             if (item.files && item.files.length > 0) {
                                 filesHtml = item.files.map(f => `<a href="${f.url}" target="_blank" class="text-decoration-none me-2"><i class="fas fa-paperclip small"></i> ${f.name}</a>`).join('');
                             }
+                            const saveTimeStr = item.created_at ? formatDateTime(item.created_at) : '無紀錄';
                             timelineHtml += `
                                 <div class="review-list-item" style="background-color: #fafafa;">
                                     <div class="d-flex justify-content-between">
                                         <span class="badge bg-success mb-1">實際改善行動</span>
-                                        <small class="text-muted"><i class="far fa-check-circle me-1"></i>${item.displayDate} (提交時間)</small>
+                                        <div class="text-end">
+                                            <small class="text-muted"><i class="far fa-check-circle me-1"></i>${item.displayDate} (提交時間)</small>
+                                            <br>
+                                            <small class="text-muted" style="font-size: 0.85em;">系統存檔：${saveTimeStr}</small>
+                                        </div>
                                     </div>
                                     <div class="text-dark mt-1 ps-1 fw-bold" style="white-space: pre-wrap; color: #198754;">${item.content}</div>
                                     <div class="mt-2 ps-1">${filesHtml}</div>
@@ -473,7 +497,7 @@
                         date: entry.date,
                         description: entry.desc,
                         files: uploadedFiles,
-                        created_at: new Date().toISOString(),
+                        created_at: new Date().toISOString(), // 這裡會寫入當下的時間戳記
                         created_by: sessionStorage.getItem('currentUserId')
                     });
                 }
