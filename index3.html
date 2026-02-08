@@ -231,7 +231,7 @@
 
             <form id="searchForm" onsubmit="event.preventDefault(); performSearch();">
                 <div class="google-search-bar">
-                    <input type="number" class="search-input" id="searchYear" placeholder="年度 (西元)" min="2020" max="2050" style="width: 120px;">
+                    <input type="date" class="search-input" id="searchDate" style="width: 160px;">
                     <div class="vertical-divider"></div>
                     <input type="text" class="search-input" id="searchCompany" placeholder="公司名稱 / 統編" style="flex: 1;">
                     <div class="vertical-divider"></div>
@@ -405,7 +405,8 @@
         // 2. 搜尋主邏輯
         // ==========================================
         async function performSearch() {
-            const year = document.getElementById('searchYear').value.trim();
+            // 修改 2：獲取日期輸入的值
+            const searchDate = document.getElementById('searchDate').value.trim();
             const companyQuery = document.getElementById('searchCompany').value.trim();
             const consultant = document.getElementById('searchConsultant').value.trim();
             const loading = document.getElementById('loadingOverlay');
@@ -424,7 +425,8 @@
                     `)
                     .order('visit_date', { ascending: false });
 
-                if (year) query = query.eq('service_year', year);
+                // 修改 3：若有選擇日期，則針對 visit_date 進行篩選
+                if (searchDate) query = query.eq('visit_date', searchDate);
 
                 const { data, error } = await query;
                 if (error) throw error;
@@ -826,13 +828,16 @@
                     });
                 }
 
+                // 修改 4：將純文字清單改為超連結清單
                 let attachHtml = '';
                 let filePagesHtml = '';
 
                 if (allFiles.length > 0) {
-                    attachHtml = allFiles.map((f, i) => `
-                        <li>${f.name}</li>
-                    `).join('');
+                    // ★ 修正：將 map 的返回值改為包含 <a> 標籤的 HTML 字串
+                    attachHtml = allFiles.map((f, i) => {
+                        const linkUrl = f.signedUrl || f.url || '#';
+                        return `<li><a href="${linkUrl}" target="_blank" style="text-decoration:none; color:#0d6efd;"><i class="fas fa-paperclip me-1"></i>${f.name}</a></li>`;
+                    }).join('');
 
                     // 生成每頁的檔案預覽 (PDF 嵌入 iframe，圖片嵌入 img)
                     filePagesHtml = allFiles.map(f => {
