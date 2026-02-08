@@ -522,7 +522,7 @@
         }
 
         // ==========================================
-        // 5. 開啟執行歷程檢視 (參考 Index 2 邏輯)
+        // 5. 開啟執行歷程檢視 (使用 Index 3 邏輯)
         // ==========================================
         async function openPreviewWindow() {
             if (!currentEvidenceData) return;
@@ -534,156 +534,115 @@
             newWindow.document.write(`<html><head><title>Loading...</title></head><body style="display:flex;justify-content:center;align-items:center;height:100vh;">Loading Evidence...</body></html>`);
 
             try {
-                // 1. 讀取 evidence 詳細資料 (包含 evaluation_reviews 和 improvement_records)
-                const { data: evidenceData, error: err1 } = await supabaseClient
+                // 1. 讀取 evidence 詳細資料
+                const { data, error } = await supabaseClient
                     .from('evidence')
                     .select(`
                         id, visit_date, start_time, end_time, execution_items, file_url, attachment_folder_id, 
                         service_year, additional_appendices, 
-                        evaluation_reviews, improvement_records,
                         workplaces(companies(name)), medical_staff(name)
                     `)
                     .eq('id', evidenceId)
                     .single();
 
-                if (err1) throw err1;
+                if (error) throw error;
 
-                // 2. 嘗試取得 Staging 補充資料
+                // 2. 嘗試取得 Staging 補充資料 (如 Index 3 邏輯)
                 let stagingData = {};
-                if (evidenceData.attachment_folder_id) {
+                if (data.attachment_folder_id) {
                     const { data: sData } = await supabaseClient
                         .from('service_record_staging')
-                        .select('service_type, start_time, end_time, process_desc, issues_found, measures_taken, audit_note')
-                        .eq('id', evidenceData.attachment_folder_id)
+                        .select('service_type, start_time, end_time, process_desc, issues_found, measures_taken, work_pattern, hazard_desc')
+                        .eq('id', data.attachment_folder_id)
                         .single();
                     if (sData) stagingData = sData;
                 }
 
-                // 資料整合
-                const companyName = evidenceData.workplaces?.companies?.name || '未知公司';
+                const staffName = data.medical_staff?.name || '未指派';
+                const compName = data.workplaces?.companies?.name || '未知';
+                const startTime = stagingData.start_time || data.start_time || '--:--';
+                const endTime = stagingData.end_time || data.end_time || '--:--';
+                const fullDate = `${data.visit_date} (${startTime}~${endTime})`;
                 const serviceType = stagingData.service_type || '無紀錄';
-                const visitDate = evidenceData.visit_date;
-                const startTime = stagingData.start_time || evidenceData.start_time || '--:--';
-                const endTime = stagingData.end_time || evidenceData.end_time || '--:--';
-                const auditNote = stagingData.audit_note || '無';
 
-                // 組合歷程對話
-                let interactionsHtml = '';
-                const reviews = evidenceData.evaluation_reviews || [];
-                const improvements = evidenceData.improvement_records || [];
-                const combined = [
-                    ...reviews.map(r => ({ type: 'review', ...r, time: new Date(r.date).getTime() })),
-                    ...improvements.map(i => ({ type: 'improvement', ...i, time: new Date(i.date).getTime() }))
-                ].sort((a, b) => a.time - b.time);
+                // 3. 處理作業資料細節 (參考 Index 3 的 Sidebar 內容)
+                const processDesc = stagingData.process_desc || '無紀錄';
+                const issuesFound = stagingData.issues_found || '無紀錄';
+                const measuresTaken = stagingData.measures_taken || '無紀錄';
+                const workPattern = stagingData.work_pattern || '無紀錄';
+                const hazardDesc = stagingData.hazard_desc || '無紀錄';
 
-                if (combined.length === 0) {
-                    interactionsHtml = '<div class="text-muted small">尚無互動紀錄</div>';
-                } else {
-                    combined.forEach(item => {
-                        if (item.type === 'review') {
-                            // 管理者審查 (左側)
-                            interactionsHtml += `
-                                <div class="mb-3">
-                                    <div class="fw-bold text-dark small">
-                                        <i class="fas fa-user-shield me-1"></i> 管理者審查 (${item.reviewer || '管理員'})
-                                        <span class="float-end text-muted small">${item.date}</span>
-                                    </div>
-                                    <div class="bg-light p-2 rounded border small mt-1 text-dark">
-                                        ${item.note || '無內容'}
-                                        ${item.deadline ? `<div class="mt-1 text-danger fw-bold">要求期限：${item.deadline}</div>` : ''}
-                                    </div>
-                                </div>
-                            `;
-                        } else {
-                            // 顧問改善 (右側)
-                            let filesLink = '';
-                            if (item.files && item.files.length > 0) {
-                                filesLink = item.files.map(f => `<a href="${f.url}" target="_blank" class="d-block mt-1"><i class="fas fa-paperclip"></i> ${f.name}</a>`).join('');
-                            }
-                            interactionsHtml += `
-                                <div class="mb-3 text-end">
-                                    <div class="fw-bold text-primary small">
-                                        <i class="fas fa-user-tie me-1"></i> 顧問改善回覆 (${item.created_by_name || '顧問'})
-                                        <span class="float-start text-muted small">${item.date}</span>
-                                    </div>
-                                    <div class="bg-primary bg-opacity-10 p-2 rounded border border-primary small mt-1 text-dark text-start d-inline-block" style="max-width:90%;">
-                                        ${item.description || '無內容'}
-                                        ${filesLink}
-                                    </div>
-                                </div>
-                            `;
-                        }
-                    });
+                // 4. 處理附件顯示
+                let appendicesHtml = '<span class="text-muted small">無附件</span>';
+                let existingAppendices = data.additional_appendices || [];
+                if(Array.isArray(existingAppendices) && existingAppendices.length > 0) {
+                     appendicesHtml = existingAppendices.map((file, idx) => {
+                        let fName = file.name || `附件-${idx+1}`;
+                        let fUrl = file.signedUrl || file.url || '#';
+                        return `<div style="margin-bottom:4px;"><a href="${fUrl}" target="_blank" style="color:#0d6efd;text-decoration:none;"><i class="fas fa-paperclip me-1"></i>${fName}</a></div>`;
+                    }).join('');
                 }
 
-                // 其他附件
-                let otherFilesHtml = '<span class="text-muted small">無其他附件</span>';
-                if(evidenceData.additional_appendices && evidenceData.additional_appendices.length > 0){
-                    otherFilesHtml = evidenceData.additional_appendices.map(f => `
-                        <a href="${f.url}" target="_blank" class="btn btn-sm btn-outline-secondary me-1 mb-1 small">
-                            <i class="fas fa-paperclip"></i> ${f.name}
-                        </a>
-                    `).join('');
-                }
-
-                // PDF 預覽網址
+                // 5. 處理 PDF 預覽
                 let previewContent = '';
-                if(evidenceData.file_url) {
-                    const { data: fileData } = await supabaseClient.storage.from('evidence').createSignedUrl(evidenceData.file_url, 3600);
+                let targetFilePath = data.file_url;
+                if(targetFilePath) {
+                    const { data: fileData } = await supabaseClient.storage.from('evidence').createSignedUrl(targetFilePath, 3600);
                     if(fileData?.signedUrl) previewContent = `<iframe src="${fileData.signedUrl}#toolbar=0" style="width:100%; height:100%; border:none;"></iframe>`;
                 }
 
+                // 生成預覽視窗 HTML (參考 Index 3 樣式)
                 const htmlContent = `
                     <!DOCTYPE html>
                     <html lang="zh-TW">
                     <head>
                         <meta charset="UTF-8">
-                        <title>歷史案件審核預覽</title>
+                        <title>證據詳情預覽</title>
                         <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-                        <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
                         <style>
                             body, html { margin: 0; padding: 0; height: 100%; overflow: hidden; font-family: 'Segoe UI'; }
                             .layout { display: flex; height: 100vh; }
-                            .sidebar { width: 30%; background: #fff; border-right: 1px solid #dee2e6; padding: 20px; overflow-y: auto; display: flex; flex-direction: column; }
+                            .sidebar { width: 30%; background: #fff; border-right: 1px solid #dee2e6; padding: 20px; overflow-y: auto; }
                             .preview { width: 70%; background: #525659; }
-                            .label { font-weight: bold; color: #5f6368; display: block; margin-bottom: 2px; font-size: 0.85rem; }
-                            .value { color: #202124; background: #f8f9fa; padding: 6px 10px; border-radius: 4px; border: 1px solid #eee; margin-bottom: 12px; font-size: 0.95rem; }
-                            .interaction-box { flex: 1; overflow-y: auto; border: 1px solid #eee; padding: 10px; border-radius: 4px; margin-bottom: 10px; background: #fafafa; }
+                            .label { font-weight: bold; color: #5f6368; display: block; margin-bottom: 4px; font-size: 0.9rem; }
+                            .value { color: #202124; background: #f8f9fa; padding: 8px 10px; border-radius: 4px; border: 1px solid #eee; margin-bottom: 15px;}
                         </style>
                     </head>
                     <body>
                         <div class="layout">
                             <div class="sidebar">
-                                <h5 class="fw-bold mb-3 border-bottom pb-2 text-dark"><i class="fas fa-history me-2"></i>歷史案件審核預覽 (Snapshot)</h5>
+                                <h4 class="mb-4 fw-bold">服務軌跡詳情</h4>
                                 
-                                <span class="label">當前案件 (公司)</span>
-                                <div class="value fw-bold text-primary">${companyName}</div>
+                                <span class="label">公司名稱 / 顧問</span>
+                                <div class="value">${compName}<br><small class="text-muted">${staffName}</small></div>
+                                
+                                <span class="label">服務時間</span>
+                                <div class="value">${fullDate}</div>
+                                
+                                <span class="label">服務類型</span>
+                                <div class="value">${serviceType}</div>
 
-                                <div class="row g-2">
-                                    <div class="col-6">
-                                        <span class="label">執行事項</span>
-                                        <div class="value">${serviceType}</div>
-                                    </div>
-                                    <div class="col-6">
-                                        <span class="label">執行日期</span>
-                                        <div class="value">${visitDate}</div>
-                                    </div>
-                                </div>
+                                <hr>
+                                <h6 class="fw-bold mb-3">作業內容與發現</h6>
+                                
+                                <span class="label">作業概況 (Process)</span>
+                                <div class="value">${processDesc}</div>
 
-                                <span class="label">執行期間</span>
-                                <div class="value">${startTime} ~ ${endTime}</div>
+                                <span class="label">發現問題 (Issues)</span>
+                                <div class="value">${issuesFound}</div>
 
-                                <span class="label text-danger">特殊事項備註 / 結案理由：</span>
-                                <div class="value text-danger bg-danger bg-opacity-10 border-danger">${auditNote}</div>
+                                <span class="label">採行對策 (Measures)</span>
+                                <div class="value">${measuresTaken}</div>
 
-                                <hr class="my-2">
-                                <span class="label mb-2"><i class="fas fa-comments me-1"></i>審核與改善互動紀錄 (Interactions)</span>
-                                <div class="interaction-box">
-                                    ${interactionsHtml}
-                                </div>
+                                <span class="label">作業型態</span>
+                                <div class="value">${workPattern}</div>
 
-                                <span class="label">其他附件：</span>
-                                <div class="mb-2">${otherFilesHtml}</div>
+                                <span class="label">危害描述</span>
+                                <div class="value">${hazardDesc}</div>
+
+                                <hr>
+                                <h6 class="fw-bold mb-2">佐證資料清單</h6>
+                                <div class="value">${appendicesHtml}</div>
                             </div>
                             <div class="preview">${previewContent}</div>
                         </div>
