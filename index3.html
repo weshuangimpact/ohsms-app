@@ -326,7 +326,7 @@
                 <div class="modal-body bg-light">
                     <div class="alert alert-warning py-2 px-3 mb-3">
                         <span id="improvementCompanyInfo" class="fw-bold">--</span>
-                        <span class="ms-2 small"> (由 Index 5 顧問端提交之改善資料)</span>
+                        <span class="ms-2 small"> (含審查意見與改善回覆之完整歷程)</span>
                     </div>
                     <div id="improvementContainer" class="p-2">
                         </div>
@@ -365,7 +365,8 @@
             if(dateEl) {
                 const now = new Date();
                 const days = ['日', '一', '二', '三', '四', '五', '六'];
-                dateEl.innerHTML = `<i class="far fa-calendar-alt me-1"></i>今日是 ${now.getFullYear()}/${now.getMonth() + 1}/${now.getDate()}(${days[now.getDay()]})`;
+                const formattedDate = `${now.getFullYear()}/${now.getMonth() + 1}/${now.getDate()}(${days[now.getDay()]})`;
+                dateEl.innerHTML = `<i class="far fa-calendar-alt me-1"></i>今日是 ${formattedDate}`;
             }
 
             const userName = sessionStorage.getItem('currentUserName');
@@ -386,6 +387,18 @@
             document.getElementById('searchForm').reset();
             document.getElementById('resultArea').style.display = 'none';
             document.getElementById('noDataMessage').style.display = 'none';
+        }
+
+        // 時間格式化輔助函數
+        function formatDateTime(isoString) {
+            if (!isoString) return '';
+            const d = new Date(isoString);
+            return d.getFullYear() + '/' +
+                   String(d.getMonth() + 1).padStart(2, '0') + '/' +
+                   String(d.getDate()).padStart(2, '0') + ' ' +
+                   String(d.getHours()).padStart(2, '0') + ':' +
+                   String(d.getMinutes()).padStart(2, '0') + ':' +
+                   String(d.getSeconds()).padStart(2, '0');
         }
 
         // ==========================================
@@ -497,7 +510,7 @@
         }
 
         // ==========================================
-        // 3. 開啟新分頁 (純預覽功能) -> ★ 修正：側邊欄新增審核資訊 (查 profiles)
+        // 3. 開啟新分頁 (純預覽功能)
         // ==========================================
         async function openEvidenceTab(evidenceId) {
             const newWindow = window.open('', '_blank');
@@ -520,7 +533,7 @@
             `);
 
             try {
-                // 1. 查詢詳細資料 (加入審核相關欄位)
+                // 1. 查詢詳細資料
                 const { data, error } = await supabaseClient
                     .from('evidence')
                     .select(`
@@ -535,20 +548,18 @@
 
                 if (error) throw error;
 
-                // --- 新增：讀取 staging 表的服務類型與時間數據 ---
+                // 2. 讀取 staging 表
                 let stagingData = {};
                 if (data.attachment_folder_id) {
                     const { data: sData } = await supabaseClient
                         .from('service_record_staging')
-                        .select('service_type, start_time, end_time')
+                        .select('service_type, start_time, end_time, process_desc, issues_found, measures_taken, work_pattern, hazard_desc')
                         .eq('id', data.attachment_folder_id)
                         .single();
                     if (sData) stagingData = sData;
                 }
                 
-                // ------------------------------------------------
-                // ★ 新增：讀取 Reviewer Profile (改為顯示全名)
-                // ------------------------------------------------
+                // 3. 讀取 Reviewer Profile
                 let reviewerRealName = null;
                 if (data.reviewer_id) {
                     const { data: profileData } = await supabaseClient
@@ -561,67 +572,48 @@
                         reviewerRealName = profileData.full_name;
                     }
                 }
-                // ------------------------------------------------
 
-                // 2. 變數準備
+                // 4. 變數準備
                 const staffName = data.medical_staff?.name || '未指派';
                 const compName = data.workplaces?.companies?.name || '未知企業';
                 
-                // 修正：時間改為優先讀取 staging 的資料
                 const startTime = stagingData.start_time || data.start_time || '--:--';
                 const endTime = stagingData.end_time || data.end_time || '--:--';
-                const timeRange = `${startTime} ~ ${endTime}`;
-                const fullDate = `${data.visit_date} (${timeRange})`;
+                const fullDate = `${data.visit_date} (${startTime} ~ ${endTime})`;
                 
-                // 修正：項目顯示改為 service_type
-                const serviceType = stagingData.service_type || '無服務類型紀錄';
+                const serviceType = stagingData.service_type || '無紀錄';
+                const processDesc = stagingData.process_desc || '無紀錄';
+                const issuesFound = stagingData.issues_found || '無紀錄';
+                const measuresTaken = stagingData.measures_taken || '無紀錄';
+                const workPattern = stagingData.work_pattern || '無紀錄';
+                const hazardDesc = stagingData.hazard_desc || '無紀錄';
                 
-                // --- 初始審核資訊變數 ---
                 const caseNo = data.case_number || '無';
                 const closeType = data.is_special_case ? '特案允許結案' : '核定結案';
                 const badgeClass = data.is_special_case ? 'background:#ffc107; color:#212529;' : 'background:#198754; color:white;';
                 const auditNote = data.audit_note || '無';
                 
-                // ★ 審核者邏輯修正：使用 profiles 查到的全名，若無則顯示系統管理員，若連 ID 都沒有則顯示無
                 const reviewerText = reviewerRealName || (data.reviewer_id ? '系統管理員' : '無');
-                
                 const reviewDate = data.created_at ? new Date(data.created_at).toLocaleString('zh-TW', { hour12: false }) : '無';
 
-                // 3. 處理 Appendices (一般 Q 類附件)
+                // 5. 處理 Appendices
                 let appendicesHtml = '';
                 let existingAppendices = data.additional_appendices || [];
                 if (!Array.isArray(existingAppendices)) existingAppendices = [];
 
-                const standardDocs = existingAppendices.filter(f => f.type !== 'improvement');
-
-                // 顯示 Q 類附件
-                const qDocs = standardDocs.filter(f => {
-                    const name = f.name || '';
-                    return name.toUpperCase().startsWith('Q') || name.toUpperCase().includes('_Q_');
-                });
-
-                if (qDocs.length > 0) {
-                    appendicesHtml = qDocs.map((file, idx) => {
-                        let fName = file.name || `附件 Q-${idx + 1}`;
+                if (existingAppendices.length > 0) {
+                    appendicesHtml = existingAppendices.map((file, idx) => {
+                        let fName = file.name || `附件-${idx + 1}`;
                         let fUrl = file.signedUrl || file.url || '#';
                         return `<div style="margin-bottom:4px;"><a href="${fUrl}" target="_blank" style="color:#0d6efd;text-decoration:none;"><i class="fas fa-paperclip me-1"></i>${fName}</a></div>`;
                     }).join('');
                 } else {
-                    appendicesHtml = '<span class="text-muted small">無 Q 類附件</span>';
+                    appendicesHtml = '<span class="text-muted small">無附件</span>';
                 }
 
-                // 4. 檔案預覽 (右側)
-                let targetFilePath = data.file_url;
-                if (!targetFilePath && data.attachment_folder_id) {
-                    const searchPath = `${data.service_year}/${data.attachment_folder_id}`;
-                    const { data: fileList } = await supabaseClient.storage.from('evidence').list(searchPath);
-                    if (fileList && fileList.length > 0) {
-                        const pdfFile = fileList.find(f => f.name.toLowerCase().endsWith('.pdf'));
-                        targetFilePath = `${searchPath}/${pdfFile ? pdfFile.name : fileList[0].name}`;
-                    }
-                }
-
+                // 6. 檔案預覽
                 let previewContent = '';
+                let targetFilePath = data.file_url;
                 if (targetFilePath) {
                     const { data: fileData } = await supabaseClient.storage.from('evidence').createSignedUrl(targetFilePath, 3600);
                     if (fileData?.signedUrl) {
@@ -633,7 +625,7 @@
                     previewContent = `<div style="color:#aaa;text-align:center;padding-top:20%;font-size:1.2rem;">此紀錄無證據檔案<br><span style="font-size:0.9rem">(Folder ID: ${data.attachment_folder_id || '無'})</span></div>`;
                 }
 
-                // 5. 構建 HTML (純預覽 UI)
+                // 7. 構建 HTML (參考 Index 3)
                 const finalHtml = `
                     <!DOCTYPE html>
                     <html lang="zh-TW">
@@ -646,7 +638,6 @@
                             body, html { margin: 0; padding: 0; height: 100%; overflow: hidden; font-family: 'Segoe UI', sans-serif; }
                             .layout-container { display: flex; height: 100vh; }
                             
-                            /* 左側 25% */
                             .sidebar { 
                                 width: 25%; 
                                 background: #fff; 
@@ -667,7 +658,6 @@
                                 flex: 1;
                             }
                             
-                            /* 右側 75% */
                             .preview-area { 
                                 width: 75%; 
                                 background: #525659; 
@@ -676,7 +666,7 @@
 
                             .info-group { margin-bottom: 20px; }
                             .label { font-weight: bold; color: #5f6368; display: block; margin-bottom: 4px; font-size: 0.9rem; }
-                            .value { color: #202124; background: #f8f9fa; padding: 8px 10px; border-radius: 4px; border: 1px solid #eee; }
+                            .value { color: #202124; background: #f8f9fa; padding: 8px 10px; border-radius: 4px; border: 1px solid #eee; white-space: pre-wrap; }
                             
                             .section-title { 
                                 font-size: 1.1rem; 
@@ -688,7 +678,6 @@
                                 padding-bottom: 5px; 
                             }
 
-                            /* 審核資訊樣式 */
                             .review-info-box {
                                 margin-top: 30px;
                                 padding: 15px;
@@ -723,6 +712,13 @@
                                         <span class="label">What (服務類型)</span>
                                         <div class="value" style="background:#e8f0fe; border-color:#d2e3fc;">${serviceType}</div>
                                     </div>
+
+                                    <div class="section-title">作業內容與發現</div>
+                                    <span class="label">作業概況</span><div class="value">${processDesc}</div>
+                                    <span class="label">發現問題</span><div class="value">${issuesFound}</div>
+                                    <span class="label">採行對策</span><div class="value">${measuresTaken}</div>
+                                    <span class="label">作業型態</span><div class="value">${workPattern}</div>
+                                    <span class="label">危害描述</span><div class="value">${hazardDesc}</div>
 
                                     <div class="section-title">佐證資料與備註</div>
                                     <div class="info-group">
@@ -776,7 +772,7 @@
         }
 
         // ==========================================
-        // 4. 評鑑審查紀錄 (Modal) 功能 (已修正：讀寫 assessment_logs)
+        // 4. 評鑑審查紀錄 (Modal) 功能 (修正：讀寫 assessment_logs)
         // ==========================================
         let currentReviewEvidenceId = null;
         const reviewModal = new bootstrap.Modal(document.getElementById('reviewModal'));
@@ -787,12 +783,11 @@
             document.getElementById('reviewCompanyInfo').innerText = `目前查看企業：${companyName}`;
             const container = document.getElementById('reviewContainer');
             
-            // 顯示 Loading
             container.innerHTML = '<div class="text-center py-4"><i class="fas fa-spinner fa-spin fa-2x text-primary"></i><br>正在讀取評鑑紀錄...</div>';
             reviewModal.show();
 
             try {
-                // ★ 修正重點：改為讀取 'assessment_logs' 專用欄位
+                // 改為讀取 'assessment_logs' 專用欄位
                 const { data, error } = await supabaseClient
                     .from('evidence')
                     .select('assessment_logs')
@@ -801,14 +796,13 @@
 
                 if (error) throw error;
 
-                container.innerHTML = ''; // 清空
+                container.innerHTML = ''; 
 
                 let existingRecords = [];
                 if (data && data.assessment_logs) {
                     existingRecords = data.assessment_logs;
                 }
 
-                // 渲染現有紀錄 (設定為唯讀，並傳入 Reviewer 與 Timestamp)
                 if (existingRecords.length > 0) {
                     existingRecords.forEach(record => {
                         addReviewRow(record.date, record.note, true, record.reviewer, record.created_at);
@@ -817,7 +811,6 @@
                     container.innerHTML = '<div class="text-muted text-center py-3 mb-3 border-bottom"><i class="fas fa-info-circle me-1"></i>尚無評鑑紀錄，請點擊下方按鈕新增。</div>';
                 }
 
-                // 自動新增一列空白輸入格供使用者填寫
                 addReviewRow();
 
             } catch (err) {
@@ -826,21 +819,19 @@
             }
         }
 
-        // 動態新增一行紀錄 (支援顯示評鑑者與時間戳)
+        // 動態新增一行紀錄
         function addReviewRow(dateVal = '', noteVal = '', isReadonly = false, reviewerVal = '', timestampVal = '') {
             const container = document.getElementById('reviewContainer');
             const rowDiv = document.createElement('div');
             
             rowDiv.className = `row g-2 mb-3 p-3 border rounded shadow-sm review-row ${isReadonly ? 'readonly-row' : 'bg-white'}`;
 
-            // ★ 新增：如果是唯讀模式(已存檔)，顯示評鑑者與精確時間
             let metaInfoHtml = '';
             if (isReadonly && (reviewerVal || timestampVal)) {
                 let timeStr = '';
                 if(timestampVal) {
                      try {
                         const d = new Date(timestampVal);
-                        // 格式化時間到秒：YYYY/MM/DD HH:mm:ss
                         timeStr = d.toLocaleString('zh-TW', { 
                             hour12: false, 
                             year: 'numeric', month: '2-digit', day: '2-digit', 
@@ -854,7 +845,6 @@
                 </div>`;
             }
 
-            // HTML 結構
             rowDiv.innerHTML = `
                 ${metaInfoHtml}
                 <div class="col-md-3">
@@ -873,28 +863,24 @@
                 </div>
             `;
 
-            // 如果本來有「尚無紀錄」的提示，先移除
             const noDataMsg = container.querySelector('.text-muted.text-center');
             if(noDataMsg) noDataMsg.remove();
 
             container.appendChild(rowDiv);
         }
 
-        // 移除一行 (僅限尚未儲存的新增列)
         function removeReviewRow(btnElement) {
             btnElement.closest('.row').remove();
         }
 
-        // 確認儲存按鈕 (包含跳窗提醒)
+        // 確認儲存按鈕
         async function confirmSaveReview() {
-            // 收集所有新輸入的資料
             const container = document.getElementById('reviewContainer');
             const newRows = container.querySelectorAll('.review-row:not(.readonly-row)');
             
             let newRecords = [];
             let isValid = true;
             
-            // 取得當前操作者名稱 (若無則預設為 評鑑委員)
             const currentUserName = sessionStorage.getItem('currentUserName') || '評鑑委員';
 
             newRows.forEach(row => {
@@ -903,9 +889,8 @@
 
                 if (date || note) {
                     if (!date || !note) {
-                        isValid = false; // 需同時填寫日期與備註
+                        isValid = false; 
                     } else {
-                        // ★ 修正重點：建立完整的紀錄物件，包含 reviewer 與 created_at
                         newRecords.push({ 
                             date: date, 
                             note: note, 
@@ -926,7 +911,6 @@
                 return;
             }
 
-            // 儲存前跳窗嚴格提醒
             if (!confirm("請確定輸入內容是否正確，為保留評鑑證據完整，儲存後將不能修改!")) {
                 return; 
             }
@@ -946,7 +930,7 @@
 
                 let mergedRecords = (existingData.assessment_logs || []).concat(newRecords);
 
-                // 2. 更新至資料庫 (assessment_logs)
+                // 2. 更新至資料庫
                 const { error: updateErr } = await supabaseClient
                     .from('evidence')
                     .update({ assessment_logs: mergedRecords })
@@ -956,7 +940,6 @@
 
                 alert('評鑑紀錄儲存成功！資料已鎖定。');
                 reviewModal.hide();
-                // 可選擇是否重新搜尋以刷新列表，這裡保持現狀
 
             } catch (err) {
                 console.error('儲存失敗:', err);
@@ -1013,10 +996,10 @@
             improvementModal.show();
 
             try {
-                // 讀取 improvement_records 欄位
+                // 讀取 assessment_logs (Check) 與 act_improvements (Act)
                 const { data, error } = await supabaseClient
                     .from('evidence')
-                    .select('improvement_records')
+                    .select('assessment_logs, act_improvements')
                     .eq('id', evidenceId)
                     .single();
 
@@ -1024,43 +1007,95 @@
 
                 container.innerHTML = ''; 
 
-                const records = data.improvement_records;
-                if (!records || !Array.isArray(records) || records.length === 0) {
-                    container.innerHTML = '<div class="alert alert-light text-center text-muted"><i class="fas fa-info-circle me-1"></i>目前尚無顧問提交的改善紀錄。</div>';
+                // 準備資料來源
+                // A. Check: Assessment Logs (評鑑紀錄)
+                const checkLogs = (data.assessment_logs || []).map((r, i) => ({
+                    type: 'check',
+                    dateObj: new Date(r.created_at || r.date || 0),
+                    displayDate: r.date || '無日期',
+                    content: r.note || r.result || '無詳細內容',
+                    reviewer: r.reviewer || '',
+                    created_at: r.created_at,
+                    index: i + 1
+                }));
+
+                // B. Act: Improvement Actions (改善行動)
+                const actLogs = (data.act_improvements || []).map((r, i) => ({
+                    type: 'act',
+                    dateObj: new Date(r.created_at || r.date || 0),
+                    displayDate: r.date || '無日期',
+                    content: r.description || '無改善說明',
+                    files: r.files || [],
+                    reviewer: r.created_by_name || '顧問',
+                    created_at: r.created_at,
+                    index: i + 1
+                }));
+
+                // 合併並排序 (時間早 -> 晚)
+                const combinedTimeline = [...checkLogs, ...actLogs].sort((a, b) => a.dateObj - b.dateObj);
+
+                if (combinedTimeline.length === 0) {
+                    container.innerHTML = '<div class="alert alert-light text-center text-muted"><i class="fas fa-info-circle me-1"></i>目前尚無相關評鑑或改善紀錄。</div>';
                     return;
                 }
 
-                // 渲染紀錄 (倒序顯示：最新的在上面)
-                records.reverse().forEach((rec, idx) => {
-                    let filesHtml = '';
-                    if (rec.files && rec.files.length > 0) {
-                        filesHtml = rec.files.map(f => 
-                            `<a href="${f.url}" target="_blank" class="btn btn-sm btn-outline-success me-2 mt-2">
-                                <i class="fas fa-paperclip"></i> ${f.name}
-                             </a>`
-                        ).join('');
+                // 渲染時間軸
+                let timelineHtml = '';
+                combinedTimeline.forEach(item => {
+                    if (item.type === 'check') {
+                        // 顯示 Check (評鑑缺失)
+                        const saveTimeStr = item.created_at ? formatDateTime(item.created_at) : '無紀錄';
+                        timelineHtml += `
+                            <div class="improvement-record-item animate__animated animate__fadeIn" style="border-left: 4px solid #dc3545;">
+                                <div class="d-flex justify-content-between mb-2">
+                                    <span class="badge bg-danger">評鑑缺失 #${item.index}</span>
+                                    <div class="text-end text-muted small">
+                                        <div><i class="far fa-calendar-alt me-1"></i>評鑑日期：${item.displayDate}</div>
+                                        <div><i class="far fa-clock me-1"></i>存檔時間：${saveTimeStr}</div>
+                                    </div>
+                                </div>
+                                <div class="mb-2">
+                                    <span class="fw-bold text-dark"><i class="fas fa-user-shield me-1"></i>${item.reviewer}</span>
+                                </div>
+                                <div class="bg-light p-2 rounded border text-dark">${item.content}</div>
+                            </div>
+                        `;
                     } else {
-                        filesHtml = '<span class="text-muted small">無附件</span>';
+                        // 顯示 Act (實際改善行動)
+                        let filesHtml = '';
+                        if (item.files && item.files.length > 0) {
+                            filesHtml = item.files.map(f => 
+                                `<a href="${f.url}" target="_blank" class="btn btn-sm btn-outline-success me-2 mt-2">
+                                    <i class="fas fa-paperclip"></i> ${f.name}
+                                </a>`
+                            ).join('');
+                        } else {
+                            filesHtml = '<span class="text-muted small">無附件</span>';
+                        }
+                        const saveTimeStr = item.created_at ? formatDateTime(item.created_at) : '無紀錄';
+                        timelineHtml += `
+                            <div class="improvement-record-item animate__animated animate__fadeIn" style="border-left: 4px solid #198754;">
+                                <div class="d-flex justify-content-between mb-2">
+                                    <span class="badge bg-success">實際改善行動</span>
+                                    <div class="text-end text-muted small">
+                                        <div><i class="far fa-check-circle me-1"></i>改善完成日：${item.displayDate}</div>
+                                        <div><i class="far fa-clock me-1"></i>存檔時間：${saveTimeStr}</div>
+                                    </div>
+                                </div>
+                                <div class="mb-2">
+                                    <label class="small fw-bold text-secondary">改善說明：</label>
+                                    <div class="bg-light p-2 rounded border text-success fw-bold">${item.content}</div>
+                                </div>
+                                <div>
+                                    <label class="small fw-bold text-secondary">佐證附件：</label>
+                                    <div>${filesHtml}</div>
+                                </div>
+                            </div>
+                        `;
                     }
-
-                    const html = `
-                        <div class="improvement-record-item animate__animated animate__fadeIn">
-                            <div class="d-flex justify-content-between mb-2">
-                                <span class="badge bg-secondary">第 ${records.length - idx} 次回覆</span>
-                                <small class="text-muted"><i class="far fa-calendar-alt me-1"></i>改善完成日：${rec.date}</small>
-                            </div>
-                            <div class="mb-3">
-                                <label class="small fw-bold text-secondary">改善說明：</label>
-                                <div class="bg-light p-2 rounded border">${rec.description}</div>
-                            </div>
-                            <div>
-                                <label class="small fw-bold text-secondary">佐證附件：</label>
-                                <div>${filesHtml}</div>
-                            </div>
-                        </div>
-                    `;
-                    container.insertAdjacentHTML('beforeend', html);
                 });
+
+                container.innerHTML = timelineHtml;
 
             } catch (err) {
                 console.error('讀取改善紀錄錯誤:', err);
