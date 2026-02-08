@@ -244,7 +244,7 @@
 
             <div class="row g-4">
                 <div class="col-md-6">
-                    <h5 class="fw-bold mb-3 text-secondary"><i class="fas fa-history me-2"></i>審查與改善歷程</h5>
+                    <h5 class="fw-bold mb-3 text-secondary"><i class="fas fa-history me-2"></i>審查與改善歷程 (Assessment & Improvement)</h5>
                     <div class="history-timeline" id="history-container">
                         </div>
                 </div>
@@ -378,14 +378,15 @@
             }
         }
 
-        // 載入並整合歷程 (評鑑審查 + 改善回覆)
+        // 載入並整合歷程 (僅載入 assessment_logs 與 improvement_records)
         function loadEvidenceData(data) {
             const container = document.getElementById('history-container');
             container.innerHTML = '';
             
             let timeline = [];
 
-            // 1. 加入評鑑審查紀錄 (Assessment Logs) - 來自 Index 3
+            // 1. [修正] 只抓取 正式評鑑審查紀錄 (assessment_logs)
+            // 忽略 evaluation_reviews (那些是前置作業的雜訊)
             if (data.assessment_logs && Array.isArray(data.assessment_logs)) {
                 data.assessment_logs.forEach(log => {
                     timeline.push({
@@ -397,15 +398,21 @@
                 });
             }
 
-            // 2. 加入歷史改善紀錄 (Improvement Records) - 來自 Index 5 (自己)
-            // ★ 關鍵修正：同時讀取 description 與 content，避免 undefined
+            // 2. 加入歷史改善紀錄 (Improvement Records)
+            // 這些是顧問在 Act 階段 (或前置階段) 的回覆
             if (data.improvement_records && Array.isArray(data.improvement_records)) {
                 currentImprovementRecords = data.improvement_records; // 存入全域變數供後續 append 使用
                 data.improvement_records.forEach(rec => {
-                    const descText = rec.description || rec.content || '(無內容)';
+                    // [修正] 處理 undefined 內容
+                    let descText = rec.description;
+                    if (!descText || descText === 'undefined') {
+                        descText = rec.content || '(無內容或舊版資料)';
+                    }
+                    if (descText === 'undefined') descText = '(資料讀取異常)';
+
                     timeline.push({
                         type: 'reply',
-                        date: rec.date, // Index 5 寫入時已有 date 欄位
+                        date: rec.date,
                         user: '顧問回覆',
                         content: descText,
                         files: rec.files
@@ -415,12 +422,12 @@
                 currentImprovementRecords = [];
             }
 
-            // 排序：依時間先後 (舊 -> 新) 或 (新 -> 舊)？通常 Timeline 新的在上面
-            // 這裡簡單用字串比較，若格式統一為 ISO 或 YYYY/MM/DD 即可
+            // 排序：最新的在上面 (由新到舊)
+            // 這樣使用者一眼就能看到最新的審查意見或自己的回覆
             timeline.sort((a, b) => new Date(b.date) - new Date(a.date));
 
             if (timeline.length === 0) {
-                container.innerHTML = '<div class="text-muted small">尚無任何審查或改善紀錄。</div>';
+                container.innerHTML = '<div class="text-muted small">尚無正式評鑑或改善紀錄。<br>(前置審查紀錄不在此顯示)</div>';
                 return;
             }
 
@@ -440,10 +447,14 @@
                 const roleText = isReview ? '評鑑委員審查' : '顧問改善回覆';
                 const textColor = isReview ? 'text-primary' : 'text-success';
                 
-                // 格式化時間 (去除秒數後面的小數點等，若需要)
+                // 格式化時間
                 let dateDisplay = item.date;
                 try {
-                     dateDisplay = new Date(item.date).toLocaleString('zh-TW', {hour12: false});
+                     dateDisplay = new Date(item.date).toLocaleString('zh-TW', {
+                         year: 'numeric', month: '2-digit', day: '2-digit', 
+                         hour: '2-digit', minute: '2-digit', second: '2-digit',
+                         hour12: false
+                     });
                 } catch(e) {}
 
                 const html = `
@@ -494,18 +505,17 @@
 
             try {
                 // 1. 上傳檔案 (若有)
-                // 為了方便管理，這裡還是傳到 staging bucket (或 evidence bucket)，重點是取得 URL
-                // 這裡假設沿用 'staging' bucket，資料夾用 currentEvidenceId (或者原始 staging ID 若有)
-                // 簡單起見，直接用 evidence ID 當資料夾
+                // 直接上傳到 evidence bucket (或 staging bucket)
+                // 使用 currentEvidenceId 作為資料夾路徑
                 let fileRecords = [];
                 
                 if (uploadedFiles.length > 0) {
                     for (const file of uploadedFiles) {
                         const timestamp = Date.now();
-                        const path = `${currentEvidenceId}/Improvement_${timestamp}_${file.name}`;
+                        const path = `${currentEvidenceId}/Act_${timestamp}_${file.name}`;
                         
                         const { data, error } = await supabaseClient.storage
-                            .from('staging') // 或是 'evidence' bucket，視您的權限設定而定
+                            .from('staging') // 使用 staging bucket 權限較寬鬆，若有 evidence bucket 則改用
                             .upload(path, file);
                             
                         if (error) throw error;
@@ -520,23 +530,18 @@
                 }
 
                 // 2. 建構新紀錄物件
-                const nowStr = new Date().toLocaleString('zh-TW', {
-                    year: 'numeric', month: '2-digit', day: '2-digit',
-                    hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false
-                });
+                const nowStr = new Date().toISOString(); // 使用 ISO 格式方便排序
 
-                // ★ 關鍵修正：統一使用 description，並相容舊欄位 content
                 const newRecord = {
                     date: nowStr,
-                    description: desc,     // 新版主要欄位
-                    content: desc,         // 相容舊版 (避免其他地方讀取錯誤)
+                    description: desc,     // 新版欄位
                     files: fileRecords,
                     submitter: sessionStorage.getItem('currentUserName') || '顧問'
                 };
 
                 // 3. 更新 evidence table
-                // 將新紀錄 append 到舊陣列
-                const updatedRecords = [...currentImprovementRecords, newRecord];
+                // 將新紀錄 append 到舊陣列 (注意：如果舊的是 null，預設為空陣列)
+                const updatedRecords = [...(currentImprovementRecords || []), newRecord];
 
                 const { error: updateError } = await supabaseClient
                     .from('evidence')
@@ -566,30 +571,23 @@
             }
         }
 
-        // 查看原案詳情 (保留原功能)
+        // 查看原案詳情 (複用 Index 2 邏輯的簡化版)
         async function viewEvidenceDetail() {
             if(!currentEvidenceId) return;
-            // 這裡可以複用 Index 2 的 openEvidenceTab 邏輯，或簡單開新視窗
-            // 簡單實作：
              const newWindow = window.open('', '_blank');
-             newWindow.document.write('讀取中...');
+             newWindow.document.write('<div style="text-align:center;padding:50px;">讀取中...</div>');
              
-             // ... (由於篇幅，這裡建議直接調用後端查詢，或複製 Index 2 的 openEvidenceTab 函式過來)
-             // 為求精簡，這裡暫時僅 alert，您可將 Index 2 的該函式整塊貼過來
              try {
                 const { data } = await supabaseClient.from('evidence').select('file_url').eq('id', currentEvidenceId).single();
                 if(data && data.file_url) {
-                    // 取得 signed url
                      const { data: fileData } = await supabaseClient.storage.from('evidence').createSignedUrl(data.file_url, 3600);
-                     if(fileData) newWindow.location.href = fileData.signedUrl;
+                     // 加入 #view=FitH 參數
+                     if(fileData) newWindow.location.href = fileData.signedUrl + '#toolbar=0&view=FitH';
                 } else {
-                    newWindow.document.body.innerHTML = '無主檔 PDF';
+                    newWindow.document.body.innerHTML = '<h3 style="text-align:center;color:red;">此案件無主檔 PDF</h3>';
                 }
              } catch(e) { newWindow.close(); }
         }
-        
-        // 為了完整體驗，這裡補上 openEvidenceTab 的完整邏輯 (縮減版)
-        // 您可以視需要將 Index 3 完整的 openEvidenceTab 貼入此處
     </script>
 </body>
 </html>
