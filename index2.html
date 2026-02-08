@@ -1408,9 +1408,9 @@
                     `<a href="${l.url}" target="_blank" class="btn btn-sm btn-outline-secondary me-2 mb-2"><i class="fas fa-paperclip"></i> ${l.name}</a>`
                 ).join('');
 
-                const pdfViewerHtml = finalPdfUrl 
-                    ? `<iframe src="${finalPdfUrl}#toolbar=0" class="pdf-viewer"></iframe>` 
-                    : `<div class="alert alert-warning text-center mt-5">此案件無 PDF 附件可預覽</div>`;
+const pdfViewerHtml = finalPdfUrl 
+    ? `<iframe src="${finalPdfUrl}#toolbar=0&view=FitH" class="pdf-viewer"></iframe>` 
+    : `<div class="alert alert-warning text-center mt-5">此案件無 PDF 附件可預覽</div>`;
 
                 const htmlContent = `
                     <!DOCTYPE html>
