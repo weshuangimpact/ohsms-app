@@ -904,35 +904,72 @@
                         <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
                         <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
                         <style>
-                            body { background: #f0f2f5; padding: 20px; height: 100vh; display: flex; flex-direction: column; }
-                            .header-card { background: white; padding: 15px 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); margin-bottom: 15px; flex-shrink: 0; }
-                            .meta-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 15px; margin-bottom: 10px; }
-                            .meta-item label { font-size: 0.85rem; color: #6c757d; font-weight: bold; display: block; }
-                            .meta-item div { font-weight: 500; color: #212529; }
-                            .note-box { background: #fff3cd; color: #664d03; padding: 10px; border-radius: 4px; font-size: 0.9rem; margin-top: 10px; border: 1px solid #ffecb5; }
-                            .pdf-container { flex-grow: 1; background: white; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); overflow: hidden; display: flex; flex-direction: column; }
+                            body, html { margin: 0; padding: 0; height: 100%; overflow: hidden; background: #f0f2f5; }
+                            .layout-wrapper { display: flex; height: 100vh; width: 100%; }
+                            
+                            /* Left Sidebar 25% */
+                            .sidebar {
+                                width: 25%;
+                                min-width: 300px;
+                                height: 100%;
+                                background: white;
+                                border-right: 1px solid #dee2e6;
+                                overflow-y: auto;
+                                padding: 20px;
+                                box-shadow: 2px 0 5px rgba(0,0,0,0.05);
+                                z-index: 10;
+                                display: flex;
+                                flex-direction: column;
+                            }
+
+                            /* Right PDF Area 75% */
+                            .pdf-area {
+                                width: 75%;
+                                flex-grow: 1;
+                                height: 100%;
+                                background: #525659;
+                            }
+
+                            .header-title {
+                                font-size: 1.1rem;
+                                font-weight: bold;
+                                color: #198754;
+                                margin-bottom: 15px;
+                                padding-bottom: 10px;
+                                border-bottom: 2px solid #198754;
+                            }
+
+                            .meta-item { margin-bottom: 12px; }
+                            .meta-item label { font-size: 0.85rem; color: #6c757d; font-weight: bold; display: block; margin-bottom: 2px; }
+                            .meta-item div { font-weight: 500; color: #212529; word-break: break-word; }
+
+                            .note-box { background: #fff3cd; color: #664d03; padding: 10px; border-radius: 4px; font-size: 0.9rem; margin-top: 15px; border: 1px solid #ffecb5; }
+                            .file-links { margin-top: 20px; border-top: 1px dashed #dee2e6; padding-top: 15px; }
+
                             .pdf-viewer { width: 100%; height: 100%; border: none; }
-                            .file-links { margin-top: 10px; }
                         </style>
                     </head>
                     <body>
-                        <div class="header-card">
-                            <div class="d-flex justify-content-between align-items-start">
-                                <h5 class="fw-bold text-success"><i class="fas fa-history me-2"></i>歷史案件審核預覽 (Snapshot)</h5>
-                            </div>
-                            <hr class="my-2">
-                            <div class="meta-grid">
+                        <div class="layout-wrapper">
+                            <div class="sidebar">
+                                <div class="header-title">
+                                    <i class="fas fa-history me-2"></i>歷史案件審核預覽 (Snapshot)
+                                </div>
+                                
                                 <div class="meta-item"><label>當前案件 (公司)</label><div>${companyName}</div></div>
                                 <div class="meta-item"><label>執行事項</label><div>${serviceItem}</div></div>
                                 <div class="meta-item"><label>執行日期</label><div>${visitDate}</div></div>
                                 <div class="meta-item"><label>執行期間</label><div>${timeRange}</div></div>
+                                
+                                ${ specialNote !== '無' ? `<div class="note-box"><strong><i class="fas fa-sticky-note me-1"></i>特殊事項備註 / 結案理由：</strong><br>${specialNote}</div>` : '' }
+                                
+                                ${ interactionHtml }
+                                
+                                ${ otherLinks.length > 0 ? `<div class="file-links"><strong><i class="fas fa-paperclip me-1"></i>其他附件：</strong><div class="mt-2">${otherLinksHtml}</div></div>` : ''}
                             </div>
-                            ${ specialNote !== '無' ? `<div class="note-box"><strong><i class="fas fa-sticky-note me-1"></i>特殊事項備註 / 結案理由：</strong> ${specialNote}</div>` : '' }
-                            ${ interactionHtml }
-                            ${ otherLinks.length > 0 ? `<div class="file-links"><strong><i class="fas fa-paperclip me-1"></i>其他附件：</strong> ${otherLinksHtml}</div>` : ''}
-                        </div>
-                        <div class="pdf-container">
-                            ${pdfViewerHtml}
+                            <div class="pdf-area">
+                                ${pdfViewerHtml}
+                            </div>
                         </div>
                     </body>
                     </html>
@@ -1383,35 +1420,72 @@
                         <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
                         <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
                         <style>
-                            body { background: #f0f2f5; padding: 20px; height: 100vh; display: flex; flex-direction: column; }
-                            .header-card { background: white; padding: 15px 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); margin-bottom: 15px; flex-shrink: 0; }
-                            .meta-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 15px; margin-bottom: 10px; }
-                            .meta-item label { font-size: 0.85rem; color: #6c757d; font-weight: bold; display: block; }
-                            .meta-item div { font-weight: 500; color: #212529; }
-                            .note-box { background: #fff3cd; color: #664d03; padding: 10px; border-radius: 4px; font-size: 0.9rem; margin-top: 10px; border: 1px solid #ffecb5; }
-                            .pdf-container { flex-grow: 1; background: white; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); overflow: hidden; display: flex; flex-direction: column; }
+                            body, html { margin: 0; padding: 0; height: 100%; overflow: hidden; background: #f0f2f5; }
+                            .layout-wrapper { display: flex; height: 100vh; width: 100%; }
+                            
+                            /* Left Sidebar 25% */
+                            .sidebar {
+                                width: 25%;
+                                min-width: 300px; /* Optional constraint */
+                                height: 100%;
+                                background: white;
+                                border-right: 1px solid #dee2e6;
+                                overflow-y: auto;
+                                padding: 20px;
+                                box-shadow: 2px 0 5px rgba(0,0,0,0.05);
+                                z-index: 10;
+                                display: flex;
+                                flex-direction: column;
+                            }
+
+                            /* Right PDF Area 75% */
+                            .pdf-area {
+                                width: 75%;
+                                flex-grow: 1;
+                                height: 100%;
+                                background: #525659;
+                            }
+
+                            .header-title {
+                                font-size: 1.1rem;
+                                font-weight: bold;
+                                color: #198754;
+                                margin-bottom: 15px;
+                                padding-bottom: 10px;
+                                border-bottom: 2px solid #198754;
+                            }
+
+                            .meta-item { margin-bottom: 12px; }
+                            .meta-item label { font-size: 0.85rem; color: #6c757d; font-weight: bold; display: block; margin-bottom: 2px; }
+                            .meta-item div { font-weight: 500; color: #212529; word-break: break-word; }
+
+                            .note-box { background: #fff3cd; color: #664d03; padding: 10px; border-radius: 4px; font-size: 0.9rem; margin-top: 15px; border: 1px solid #ffecb5; }
+                            .file-links { margin-top: 20px; border-top: 1px dashed #dee2e6; padding-top: 15px; }
+
                             .pdf-viewer { width: 100%; height: 100%; border: none; }
-                            .file-links { margin-top: 10px; }
                         </style>
                     </head>
                     <body>
-                        <div class="header-card">
-                            <div class="d-flex justify-content-between align-items-start">
-                                <h5 class="fw-bold text-success"><i class="fas fa-clipboard-check me-2"></i>案件審核預覽</h5>
-                            </div>
-                            <hr class="my-2">
-                            <div class="meta-grid">
+                        <div class="layout-wrapper">
+                            <div class="sidebar">
+                                <div class="header-title">
+                                    <i class="fas fa-clipboard-check me-2"></i>案件審核預覽
+                                </div>
+                                
                                 <div class="meta-item"><label>當前案件 (公司)</label><div>${companyName}</div></div>
                                 <div class="meta-item"><label>執行事項</label><div>${serviceItem}</div></div>
                                 <div class="meta-item"><label>執行日期</label><div>${visitDate}</div></div>
                                 <div class="meta-item"><label>執行期間</label><div>${timeRange}</div></div>
+                                
+                                ${ specialNote !== '無' ? `<div class="note-box"><strong><i class="fas fa-sticky-note me-1"></i>特殊事項備註 / 結案理由：</strong><br>${specialNote}</div>` : '' }
+                                
+                                ${ interactionHtml }
+                                
+                                ${ otherLinks.length > 0 ? `<div class="file-links"><strong><i class="fas fa-paperclip me-1"></i>其他附件：</strong><div class="mt-2">${otherLinksHtml}</div></div>` : ''}
                             </div>
-                            ${ specialNote !== '無' ? `<div class="note-box"><strong><i class="fas fa-sticky-note me-1"></i>特殊事項備註 / 結案理由：</strong> ${specialNote}</div>` : '' }
-                            ${ interactionHtml }
-                            ${ otherLinks.length > 0 ? `<div class="file-links"><strong><i class="fas fa-paperclip me-1"></i>其他附件：</strong> ${otherLinksHtml}</div>` : ''}
-                        </div>
-                        <div class="pdf-container">
-                            ${pdfViewerHtml}
+                            <div class="pdf-area">
+                                ${pdfViewerHtml}
+                            </div>
                         </div>
                     </body>
                     </html>
