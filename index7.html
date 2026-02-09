@@ -92,11 +92,10 @@
         .import-area:hover { border-color: var(--theme-color); background: #eef2ff; }
         
         /* 計畫管理專用樣式 */
-        .plan-icon { font-size: 1.2rem; margin-right: 5px; cursor: pointer; transition: color 0.2s; }
-        .plan-icon.uploaded { color: #198754; } /* 綠色 */
-        .plan-icon.missing { color: #adb5bd; } /* 灰色 */
-        .plan-icon:hover { opacity: 0.8; }
-        .plan-cell { min-width: 140px; }
+        .plan-link { font-size: 0.9rem; text-decoration: none; font-weight: 600; }
+        .plan-link:hover { text-decoration: underline; }
+        .plan-missing { color: #adb5bd; font-size: 0.85rem; }
+        .plan-cell { min-width: 160px; } /* 加寬欄位以容納時間 */
     </style>
 
     <script>
@@ -646,7 +645,12 @@
                         <div class="row g-4">
                             <div class="col-md-4">
                                 <div class="p-3 border rounded h-100 bg-light">
-                                    <h6 class="fw-bold text-dark mb-3">A. 職安衛管理計畫</h6>
+                                    <div class="d-flex justify-content-between align-items-center mb-3">
+                                        <h6 class="fw-bold text-dark mb-0">A. 職安衛管理計畫</h6>
+                                        <button type="button" class="btn btn-sm btn-outline-danger border-0 p-1" onclick="deletePlanFile('plan_osh')" title="刪除檔案">
+                                            <i class="fas fa-trash-alt"></i>
+                                        </button>
+                                    </div>
                                     <div class="mb-3 text-center" id="link-osh">
                                         <span class="text-muted small">尚未上傳</span>
                                     </div>
@@ -656,7 +660,12 @@
 
                             <div class="col-md-4">
                                 <div class="p-3 border rounded h-100 bg-light">
-                                    <h6 class="fw-bold text-dark mb-3">B. 風險評估總表</h6>
+                                    <div class="d-flex justify-content-between align-items-center mb-3">
+                                        <h6 class="fw-bold text-dark mb-0">B. 風險評估總表</h6>
+                                        <button type="button" class="btn btn-sm btn-outline-danger border-0 p-1" onclick="deletePlanFile('plan_risk')" title="刪除檔案">
+                                            <i class="fas fa-trash-alt"></i>
+                                        </button>
+                                    </div>
                                     <div class="mb-3 text-center" id="link-risk">
                                         <span class="text-muted small">尚未上傳</span>
                                     </div>
@@ -666,7 +675,12 @@
 
                             <div class="col-md-4">
                                 <div class="p-3 border rounded h-100 bg-light">
-                                    <h6 class="fw-bold text-dark mb-3">C. 教育訓練計畫</h6>
+                                    <div class="d-flex justify-content-between align-items-center mb-3">
+                                        <h6 class="fw-bold text-dark mb-0">C. 教育訓練計畫</h6>
+                                        <button type="button" class="btn btn-sm btn-outline-danger border-0 p-1" onclick="deletePlanFile('plan_training')" title="刪除檔案">
+                                            <i class="fas fa-trash-alt"></i>
+                                        </button>
+                                    </div>
                                     <div class="mb-3 text-center" id="link-training">
                                         <span class="text-muted small">尚未上傳</span>
                                     </div>
@@ -1300,7 +1314,7 @@
             const search = document.getElementById('search-plan').value.trim();
             tbody.innerHTML = '<tr><td colspan="6" class="text-center py-4"><div class="spinner-border spinner-border-sm text-primary"></div></td></tr>';
 
-            // 1. 查詢所有服務紀錄 (不限是否有日期，因為母案可能無日期但有年度)
+            // 1. 查詢所有服務紀錄
             let query = supabaseClient.from('service_records')
                 .select(`
                     id, service_year, visit_date, management_plans,
@@ -1333,27 +1347,35 @@
                 return;
             }
 
-            // 3. 渲染列表
+            // 3. 渲染列表 (修正版：顯示時間戳記連結)
             tbody.innerHTML = filteredData.map(r => {
                 const compName = r.workplaces?.companies?.name || '未知公司';
                 const year = r.service_year || '<span class="text-muted small">未定</span>';
                 const plans = r.management_plans || {}; // JSONB
                 
-                // 輔助函式：產生圖示連結
-                const renderLink = (key, iconClass = 'fa-file-pdf') => {
+                // 輔助函式：產生時間戳連結
+                const renderPlanLink = (key) => {
                     if (plans[key] && plans[key].url) {
-                        return `<i class="fas ${iconClass} plan-icon uploaded" title="點擊預覽 ${plans[key].name}" onclick="window.open('${plans[key].url}', '_blank')"></i>`;
+                        const dateStr = plans[key].updated_at 
+                            ? new Date(plans[key].updated_at).toLocaleString('zh-TW', {
+                                year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute:'2-digit'
+                              })
+                            : '已上傳';
+                            
+                        return `<a href="${plans[key].url}" target="_blank" class="plan-link text-success" title="${plans[key].name}">
+                                    <i class="fas fa-check-circle me-1"></i>${dateStr}
+                                </a>`;
                     }
-                    return `<i class="fas ${iconClass} plan-icon missing" title="未上傳"></i>`;
+                    return `<span class="plan-missing">未上傳</span>`;
                 };
 
                 return `
                 <tr>
                     <td class="font-monospace fw-bold text-primary">${year}</td>
                     <td class="fw-bold">${compName}</td>
-                    <td class="text-center">${renderLink('plan_osh', 'fa-shield-alt')}</td>
-                    <td class="text-center">${renderLink('plan_risk', 'fa-exclamation-triangle')}</td>
-                    <td class="text-center">${renderLink('plan_training', 'fa-chalkboard-teacher')}</td>
+                    <td class="text-center plan-cell">${renderPlanLink('plan_osh')}</td>
+                    <td class="text-center plan-cell">${renderPlanLink('plan_risk')}</td>
+                    <td class="text-center plan-cell">${renderPlanLink('plan_training')}</td>
                     <td class="text-end">
                         <button class="btn btn-sm btn-outline-primary" onclick="openPlanModal('${r.id}')">
                             <i class="fas fa-edit me-1"></i>管理
@@ -1389,14 +1411,20 @@
 
             // 3. 處理現有連結顯示
             currentPlanData = data.management_plans || {};
+            
             const updateLinkDisplay = (key, elId) => {
                 const el = document.getElementById(elId);
                 if (currentPlanData[key] && currentPlanData[key].url) {
+                    const dateStr = new Date(currentPlanData[key].updated_at).toLocaleString('zh-TW');
                     el.innerHTML = `
-                        <a href="${currentPlanData[key].url}" target="_blank" class="text-success text-decoration-none fw-bold small">
-                            <i class="fas fa-check-circle me-1"></i>已上傳
-                        </a>
-                        <div class="text-muted" style="font-size: 0.7rem;">${currentPlanData[key].updated_at.split('T')[0]}</div>
+                        <div class="mb-2">
+                            <a href="${currentPlanData[key].url}" target="_blank" class="text-success text-decoration-none fw-bold small">
+                                <i class="fas fa-file-pdf me-1"></i>${currentPlanData[key].name}
+                            </a>
+                        </div>
+                        <div class="text-muted" style="font-size: 0.75rem;">
+                            上傳於：${dateStr}
+                        </div>
                     `;
                 } else {
                     el.innerHTML = '<span class="text-muted small">尚未上傳</span>';
@@ -1415,7 +1443,7 @@
             new bootstrap.Modal(document.getElementById('planModal')).show();
         }
 
-async function savePlans() {
+        async function savePlans() {
             const btn = document.getElementById('btn-save-plan');
             const recordId = document.getElementById('plan-record-id').value;
             const workplaceId = document.getElementById('plan-workplace-id').value;
@@ -1491,6 +1519,44 @@ async function savePlans() {
             } finally {
                 btn.disabled = false;
                 btn.innerHTML = '<i class="fas fa-save me-1"></i>儲存並上傳';
+            }
+        }
+        
+        // [新增] 刪除單一計畫檔案
+        async function deletePlanFile(key) {
+            const recordId = document.getElementById('plan-record-id').value;
+            
+            if(!currentPlanData[key] || !currentPlanData[key].url) {
+                return alert('尚未上傳檔案，無法刪除。');
+            }
+            
+            if(!confirm(`確定要刪除「${currentPlanData[key].name}」嗎？\n\n注意：這將會從系統中永久移除此檔案。`)) return;
+            
+            try {
+                // 1. 更新 JSON 物件 (移除該 key 的內容)
+                delete currentPlanData[key];
+                
+                // 2. 寫回資料庫
+                const { error } = await supabaseClient
+                    .from('service_records')
+                    .update({ management_plans: currentPlanData })
+                    .eq('id', recordId);
+                    
+                if(error) throw error;
+                
+                alert('🗑️ 檔案已移除');
+                
+                // 3. 重新渲染 Modal 內的顯示
+                const elIdMap = {
+                    'plan_osh': 'link-osh',
+                    'plan_risk': 'link-risk',
+                    'plan_training': 'link-training'
+                };
+                document.getElementById(elIdMap[key]).innerHTML = '<span class="text-muted small">尚未上傳</span>';
+                
+            } catch(e) {
+                console.error(e);
+                alert('刪除失敗: ' + e.message);
             }
         }
 
