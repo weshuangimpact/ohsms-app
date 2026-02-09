@@ -1415,7 +1415,7 @@
             new bootstrap.Modal(document.getElementById('planModal')).show();
         }
 
-        async function savePlans() {
+async function savePlans() {
             const btn = document.getElementById('btn-save-plan');
             const recordId = document.getElementById('plan-record-id').value;
             const workplaceId = document.getElementById('plan-workplace-id').value;
@@ -1430,15 +1430,18 @@
                 // 1. 如果年度變更，先更新 service_year
                 await supabaseClient.from('service_records').update({ service_year: year }).eq('id', recordId);
 
-                // 2. 處理檔案上傳 helper
+                // 2. 處理檔案上傳 helper (修正版：解決中文檔名 Invalid Key 問題)
                 const uploadFile = async (fileInputId, planKey) => {
                     const fileInput = document.getElementById(fileInputId);
                     const file = fileInput.files[0];
                     if (!file) return null; // 沒選檔案就不更新
 
-                    const fileName = `${Date.now()}_${file.name}`;
-                    // 路徑規則：plans/{workplace_id}/{year}/{filename}
-                    const filePath = `${workplaceId}/${year}/${fileName}`;
+                    // [修正重點]：將 Storage 儲存的檔名改為 "時間戳_亂數.副檔名" (純英文)
+                    const fileExt = file.name.split('.').pop();
+                    const safeFileName = `${Date.now()}_${Math.random().toString(36).substring(2, 10)}.${fileExt}`;
+                    
+                    // 路徑規則：plans/{workplace_id}/{year}/{safeFileName}
+                    const filePath = `${workplaceId}/${year}/${safeFileName}`;
 
                     const { data, error } = await supabaseClient.storage
                         .from('plans')
@@ -1449,9 +1452,10 @@
                     // 取得 Public URL
                     const { data: { publicUrl } } = supabaseClient.storage.from('plans').getPublicUrl(filePath);
 
+                    // 回傳資料：這裡的 name 存原始中文檔名，讓前端顯示正常
                     return {
                         url: publicUrl,
-                        name: file.name,
+                        name: file.name, // 保留原始中文名稱給使用者看
                         updated_at: new Date().toISOString(),
                         uploaded_by: sessionStorage.getItem('currentUserId')
                     };
