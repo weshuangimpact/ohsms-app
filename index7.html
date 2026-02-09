@@ -90,6 +90,13 @@
         .nav-pills .nav-link.active { background-color: var(--theme-color); color: white; }
         .import-area { border: 2px dashed #cbd5e1; border-radius: 8px; padding: 20px; text-align: center; background: #fff; transition: all 0.3s; cursor: pointer; }
         .import-area:hover { border-color: var(--theme-color); background: #eef2ff; }
+        
+        /* 計畫管理專用樣式 */
+        .plan-icon { font-size: 1.2rem; margin-right: 5px; cursor: pointer; transition: color 0.2s; }
+        .plan-icon.uploaded { color: #198754; } /* 綠色 */
+        .plan-icon.missing { color: #adb5bd; } /* 灰色 */
+        .plan-icon:hover { opacity: 0.8; }
+        .plan-cell { min-width: 140px; }
     </style>
 
     <script>
@@ -122,7 +129,7 @@
                 <span class="text-white me-4 small border-start ps-3 border-secondary" id="header-clock" style="opacity: 0.9;">
                     --:--
                 </span>
-              
+             
                 <span class="text-white me-4 fw-bold" id="header-user">
                     Hi! 使用者
                 </span>
@@ -162,6 +169,9 @@
             </li>
             <li class="nav-item" role="presentation">
                 <button class="nav-link" id="pills-record-tab" data-bs-toggle="pill" data-bs-target="#pills-record" type="button" role="tab">3. 服務執行歷程</button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="pills-plan-tab" data-bs-toggle="pill" data-bs-target="#pills-plan" type="button" role="tab">4. 計畫管理</button>
             </li>
         </ul>
 
@@ -355,6 +365,41 @@
                                 <div class="d-flex justify-content-between mb-1">
                                     <span>總服務場次：</span>
                                     <strong id="stat-record-count">0</strong>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="tab-pane fade" id="pills-plan" role="tabpanel">
+                <div class="row g-4">
+                    <div class="col-lg-12">
+                        <div class="card border-0 shadow-sm h-100">
+                            <div class="card-header py-3 d-flex justify-content-between align-items-center">
+                                <h6 class="fw-bold mb-0 text-dark"><i class="fas fa-tasks me-2 text-primary"></i>年度計畫管理 (Annual Plans)</h6>
+                                <div class="input-group input-group-sm w-auto">
+                                    <input type="text" class="form-control" placeholder="搜尋公司..." id="search-plan">
+                                    <button class="btn btn-outline-secondary" onclick="loadPlans()"><i class="fas fa-search"></i></button>
+                                </div>
+                            </div>
+                            <div class="card-body p-0">
+                                <div class="table-responsive" style="max-height: 600px;">
+                                    <table class="table table-hover mb-0">
+                                        <thead class="table-light sticky-top">
+                                            <tr>
+                                                <th style="width: 100px;">年度</th>
+                                                <th>客戶公司</th>
+                                                <th class="text-center plan-cell">A.職安計畫</th>
+                                                <th class="text-center plan-cell">B.風險評估</th>
+                                                <th class="text-center plan-cell">C.教育訓練</th>
+                                                <th class="text-end">管理</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="planTableBody">
+                                            <tr><td colspan="6" class="text-center py-4">載入中...</td></tr>
+                                        </tbody>
+                                    </table>
                                 </div>
                             </div>
                         </div>
@@ -575,6 +620,73 @@
         </div>
     </div>
 
+    <div class="modal fade" id="planModal" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header bg-primary text-white">
+                    <h5 class="modal-title"><i class="fas fa-cloud-upload-alt me-2"></i>年度計畫管理</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="planForm">
+                        <input type="hidden" id="plan-record-id">
+                        <input type="hidden" id="plan-workplace-id">
+
+                        <div class="alert alert-light border d-flex justify-content-between align-items-center mb-4">
+                            <div>
+                                <h5 class="mb-1 fw-bold text-dark" id="plan-company-name">載入中...</h5>
+                                <div class="text-secondary small">負責顧問：<span id="plan-consultant-name">-</span></div>
+                            </div>
+                            <div class="d-flex align-items-center">
+                                <label class="me-2 fw-bold text-primary">所屬年度：</label>
+                                <input type="number" class="form-control" id="plan-year" style="width: 100px;" placeholder="2026">
+                            </div>
+                        </div>
+
+                        <div class="row g-4">
+                            <div class="col-md-4">
+                                <div class="p-3 border rounded h-100 bg-light">
+                                    <h6 class="fw-bold text-dark mb-3">A. 職安衛管理計畫</h6>
+                                    <div class="mb-3 text-center" id="link-osh">
+                                        <span class="text-muted small">尚未上傳</span>
+                                    </div>
+                                    <input type="file" class="form-control form-control-sm" id="file-osh" accept=".pdf,.doc,.docx">
+                                </div>
+                            </div>
+
+                            <div class="col-md-4">
+                                <div class="p-3 border rounded h-100 bg-light">
+                                    <h6 class="fw-bold text-dark mb-3">B. 風險評估總表</h6>
+                                    <div class="mb-3 text-center" id="link-risk">
+                                        <span class="text-muted small">尚未上傳</span>
+                                    </div>
+                                    <input type="file" class="form-control form-control-sm" id="file-risk" accept=".pdf,.xlsx,.xls">
+                                </div>
+                            </div>
+
+                            <div class="col-md-4">
+                                <div class="p-3 border rounded h-100 bg-light">
+                                    <h6 class="fw-bold text-dark mb-3">C. 教育訓練計畫</h6>
+                                    <div class="mb-3 text-center" id="link-training">
+                                        <span class="text-muted small">尚未上傳</span>
+                                    </div>
+                                    <input type="file" class="form-control form-control-sm" id="file-training" accept=".pdf,.doc,.docx">
+                                </div>
+                            </div>
+                        </div>
+
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">關閉</button>
+                    <button type="button" class="btn btn-primary" id="btn-save-plan" onclick="savePlans()">
+                        <i class="fas fa-save me-1"></i>儲存並上傳
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <div class="modal fade" id="importModal" tabindex="-1">
         <div class="modal-dialog modal-lg">
             <div class="modal-content">
@@ -632,6 +744,7 @@
             loadCompanies();
             loadStaff();
             loadRecords(); 
+            loadPlans(); // 新增：載入計畫
         });
 
         // 登出功能
@@ -1178,7 +1291,207 @@
 
 
         // ==========================================
-        // 4. 匯入功能 (Excel Import) - 修正版
+        // 4. 計畫管理邏輯 (Plan Management) - 新功能
+        // ==========================================
+        let currentPlanData = {}; // 暫存目前的計畫資料
+
+        async function loadPlans() {
+            const tbody = document.getElementById('planTableBody');
+            const search = document.getElementById('search-plan').value.trim();
+            tbody.innerHTML = '<tr><td colspan="6" class="text-center py-4"><div class="spinner-border spinner-border-sm text-primary"></div></td></tr>';
+
+            // 1. 查詢所有服務紀錄 (不限是否有日期，因為母案可能無日期但有年度)
+            let query = supabaseClient.from('service_records')
+                .select(`
+                    id, service_year, visit_date, management_plans,
+                    workplaces (
+                        id, companies ( name )
+                    ),
+                    medical_staff ( name )
+                `)
+                .order('service_year', {ascending: false})
+                .order('visit_date', {ascending: false}); // 排序：年度 > 日期
+
+            const { data, error } = await query;
+            if (error) {
+                tbody.innerHTML = `<tr><td colspan="6" class="text-center text-danger">載入失敗: ${error.message}</td></tr>`;
+                return;
+            }
+
+            // 2. 前端過濾 (公司名稱)
+            let filteredData = data;
+            if (search) {
+                const s = search.toLowerCase();
+                filteredData = data.filter(r => {
+                    const compName = r.workplaces?.companies?.name || '';
+                    return compName.toLowerCase().includes(s);
+                });
+            }
+
+            if (filteredData.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="6" class="text-center text-muted py-4">尚無資料</td></tr>';
+                return;
+            }
+
+            // 3. 渲染列表
+            tbody.innerHTML = filteredData.map(r => {
+                const compName = r.workplaces?.companies?.name || '未知公司';
+                const year = r.service_year || '<span class="text-muted small">未定</span>';
+                const plans = r.management_plans || {}; // JSONB
+                
+                // 輔助函式：產生圖示連結
+                const renderLink = (key, iconClass = 'fa-file-pdf') => {
+                    if (plans[key] && plans[key].url) {
+                        return `<i class="fas ${iconClass} plan-icon uploaded" title="點擊預覽 ${plans[key].name}" onclick="window.open('${plans[key].url}', '_blank')"></i>`;
+                    }
+                    return `<i class="fas ${iconClass} plan-icon missing" title="未上傳"></i>`;
+                };
+
+                return `
+                <tr>
+                    <td class="font-monospace fw-bold text-primary">${year}</td>
+                    <td class="fw-bold">${compName}</td>
+                    <td class="text-center">${renderLink('plan_osh', 'fa-shield-alt')}</td>
+                    <td class="text-center">${renderLink('plan_risk', 'fa-exclamation-triangle')}</td>
+                    <td class="text-center">${renderLink('plan_training', 'fa-chalkboard-teacher')}</td>
+                    <td class="text-end">
+                        <button class="btn btn-sm btn-outline-primary" onclick="openPlanModal('${r.id}')">
+                            <i class="fas fa-edit me-1"></i>管理
+                        </button>
+                    </td>
+                </tr>
+                `;
+            }).join('');
+        }
+
+        async function openPlanModal(recordId) {
+            // 1. 取得該筆紀錄的詳細資料
+            const { data, error } = await supabaseClient
+                .from('service_records')
+                .select(`
+                    id, service_year, management_plans, workplace_id,
+                    workplaces ( companies ( name ) ),
+                    medical_staff ( name )
+                `)
+                .eq('id', recordId)
+                .single();
+
+            if (error) return alert('讀取失敗: ' + error.message);
+
+            // 2. 填入 Modal 資訊
+            document.getElementById('plan-record-id').value = data.id;
+            document.getElementById('plan-workplace-id').value = data.workplace_id;
+            document.getElementById('plan-company-name').innerText = data.workplaces?.companies?.name || '未知公司';
+            document.getElementById('plan-consultant-name').innerText = data.medical_staff?.name || '-';
+            
+            // 填入年度 (若無則預設今年)
+            document.getElementById('plan-year').value = data.service_year || new Date().getFullYear();
+
+            // 3. 處理現有連結顯示
+            currentPlanData = data.management_plans || {};
+            const updateLinkDisplay = (key, elId) => {
+                const el = document.getElementById(elId);
+                if (currentPlanData[key] && currentPlanData[key].url) {
+                    el.innerHTML = `
+                        <a href="${currentPlanData[key].url}" target="_blank" class="text-success text-decoration-none fw-bold small">
+                            <i class="fas fa-check-circle me-1"></i>已上傳
+                        </a>
+                        <div class="text-muted" style="font-size: 0.7rem;">${currentPlanData[key].updated_at.split('T')[0]}</div>
+                    `;
+                } else {
+                    el.innerHTML = '<span class="text-muted small">尚未上傳</span>';
+                }
+            };
+
+            updateLinkDisplay('plan_osh', 'link-osh');
+            updateLinkDisplay('plan_risk', 'link-risk');
+            updateLinkDisplay('plan_training', 'link-training');
+
+            // 4. 重置檔案輸入框
+            document.getElementById('file-osh').value = '';
+            document.getElementById('file-risk').value = '';
+            document.getElementById('file-training').value = '';
+
+            new bootstrap.Modal(document.getElementById('planModal')).show();
+        }
+
+        async function savePlans() {
+            const btn = document.getElementById('btn-save-plan');
+            const recordId = document.getElementById('plan-record-id').value;
+            const workplaceId = document.getElementById('plan-workplace-id').value;
+            const year = document.getElementById('plan-year').value;
+
+            if (!year) return alert('請輸入所屬年度');
+
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>上傳中...';
+
+            try {
+                // 1. 如果年度變更，先更新 service_year
+                await supabaseClient.from('service_records').update({ service_year: year }).eq('id', recordId);
+
+                // 2. 處理檔案上傳 helper
+                const uploadFile = async (fileInputId, planKey) => {
+                    const fileInput = document.getElementById(fileInputId);
+                    const file = fileInput.files[0];
+                    if (!file) return null; // 沒選檔案就不更新
+
+                    const fileName = `${Date.now()}_${file.name}`;
+                    // 路徑規則：plans/{workplace_id}/{year}/{filename}
+                    const filePath = `${workplaceId}/${year}/${fileName}`;
+
+                    const { data, error } = await supabaseClient.storage
+                        .from('plans')
+                        .upload(filePath, file, { upsert: true });
+
+                    if (error) throw error;
+
+                    // 取得 Public URL
+                    const { data: { publicUrl } } = supabaseClient.storage.from('plans').getPublicUrl(filePath);
+
+                    return {
+                        url: publicUrl,
+                        name: file.name,
+                        updated_at: new Date().toISOString(),
+                        uploaded_by: sessionStorage.getItem('currentUserId')
+                    };
+                };
+
+                // 3. 依序上傳 (並行處理)
+                const [resOsh, resRisk, resTraining] = await Promise.all([
+                    uploadFile('file-osh', 'plan_osh'),
+                    uploadFile('file-risk', 'plan_risk'),
+                    uploadFile('file-training', 'plan_training')
+                ]);
+
+                // 4. 更新 JSONB 資料 (只更新有新上傳的部分)
+                if (resOsh) currentPlanData.plan_osh = resOsh;
+                if (resRisk) currentPlanData.plan_risk = resRisk;
+                if (resTraining) currentPlanData.plan_training = resTraining;
+
+                // 5. 寫回資料庫
+                const { error: updateError } = await supabaseClient
+                    .from('service_records')
+                    .update({ management_plans: currentPlanData })
+                    .eq('id', recordId);
+
+                if (updateError) throw updateError;
+
+                alert('✅ 計畫上傳成功！');
+                bootstrap.Modal.getInstance(document.getElementById('planModal')).hide();
+                loadPlans(); // 重新整理列表
+
+            } catch (err) {
+                console.error(err);
+                alert('❌ 上傳失敗: ' + err.message);
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = '<i class="fas fa-save me-1"></i>儲存並上傳';
+            }
+        }
+
+        // ==========================================
+        // 5. 匯入功能 (Excel Import) - 修正版
         // ==========================================
         let pendingImportData = [];
         let pendingImportType = '';
@@ -1287,7 +1600,7 @@
                     rows.forEach(row => {
                         if(!row[0]) return; 
                         const taxId = row[0]; const name = row[1]; const address = row[2];
-                        const contact = row[3]; const phone = row[4];    
+                        const contact = row[3]; const phone = row[4];   
                         const startDate = formatDate(row[5]); const endDate = formatDate(row[6]);
                         
                         let isActive = true;
@@ -1377,7 +1690,7 @@
                              pendingImportData.push({
                                 workplace_id: wpId, 
                                 consultant_id: stId, 
-                                visit_date: date,      
+                                visit_date: date,       
                                 service_year: year,
                                 start_time: startTime, // 寫入開始時間
                                 end_time: endTime,      // 寫入結束時間
