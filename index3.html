@@ -729,13 +729,13 @@
             newWindow.document.write(`<html><head><title>生成報告中...</title></head><body style="display:flex;justify-content:center;align-items:center;height:100vh;font-family:sans-serif;">正在生成完整評鑑報告...</body></html>`);
 
             try {
-                // 1. 取得完整資料
+                // 1. 取得完整資料 (新增 workplace_id 用於反查計畫)
                 const { data, error } = await supabaseClient
                     .from('evidence')
                     .select(`
                         id, visit_date, start_time, end_time, service_year, service_type,
                         case_number, is_special_case, audit_note, reviewer_id, created_at,
-                        attachment_folder_id, additional_appendices,
+                        attachment_folder_id, additional_appendices, workplace_id,
                         assessment_logs, act_improvements,
                         workplaces ( companies (name) ),
                         medical_staff (name)
@@ -756,7 +756,54 @@
                     if (sData) stagingData = sData;
                 }
 
-                // 3. 整合互動歷程
+                // ==========================================
+                // ★ 3. 抓取年度計畫 (Annual Plans)
+                // ==========================================
+                let planHtml = '<div class="text-muted small">尚無關聯的年度計畫</div>';
+                
+                if (data.workplace_id && data.service_year) {
+                    // 反查 service_records 中，符合該場所+該年度，且有上傳計畫的紀錄
+                    // 邏輯：只要該年度有上傳過，就抓最新的一筆
+                    const { data: sRecord } = await supabaseClient
+                        .from('service_records')
+                        .select('management_plans')
+                        .eq('workplace_id', data.workplace_id)
+                        .eq('service_year', data.service_year)
+                        .not('management_plans', 'is', null) // 確保有計畫資料
+                        .order('created_at', { ascending: false }) // 抓最新的一筆
+                        .limit(1)
+                        .maybeSingle();
+
+                    if (sRecord && sRecord.management_plans) {
+                        const p = sRecord.management_plans;
+                        // 輔助渲染函式
+                        const renderP = (key, title) => {
+                             if (p[key] && p[key].url) {
+                                 // 格式化日期
+                                 const dateStr = new Date(p[key].updated_at).toLocaleString('zh-TW', { hour12: false });
+                                 return `
+                                    <div style="margin-bottom: 8px;">
+                                        <strong>${title}：</strong> 
+                                        <a href="${p[key].url}" target="_blank" style="color:#0d6efd; text-decoration:none; font-weight:bold;">
+                                            <i class="fas fa-file-pdf"></i> ${p[key].name}
+                                        </a> 
+                                        <span style="font-size:12px; color:#666; margin-left:5px;">(更新於: ${dateStr})</span>
+                                    </div>`;
+                             }
+                             return `<div style="margin-bottom: 8px;"><strong>${title}：</strong> <span style="color:#999;">未上傳</span></div>`;
+                        };
+                        
+                        planHtml = `
+                            <div style="margin-left: 10px; line-height: 1.6; background-color:#f8f9fa; padding:15px; border-radius:5px; border-left:4px solid #ffc107;">
+                                ${renderP('plan_osh', 'A. 職安衛管理計畫')}
+                                ${renderP('plan_risk', 'B. 危害辨識與風險評估總表')}
+                                ${renderP('plan_training', 'C. 教育訓練年度計畫')}
+                            </div>
+                        `;
+                    }
+                }
+
+                // 4. 整合互動歷程
                 const checkLogs = (data.assessment_logs || []).map((r, i) => ({
                     type: 'check',
                     dateObj: new Date(r.created_at || r.date || 0),
@@ -813,7 +860,7 @@
                     timelineHtml = '<div class="text-muted text-center p-3">尚無互動紀錄</div>';
                 }
 
-                // 4. 準備附件列表 (★關鍵修正：整合 Act 補件檔案)
+                // 5. 準備附件列表 (★關鍵修正：整合 Act 補件檔案)
                 let allFiles = [];
                 // 原始附件
                 if (data.additional_appendices && Array.isArray(data.additional_appendices)) {
@@ -872,7 +919,7 @@
                 
                 const serviceType = data.service_type || '無紀錄';
 
-                // 5. 構建報告 HTML
+                // 6. 構建報告 HTML
                 const reportHtml = `
                     <!DOCTYPE html>
                     <html lang="zh-TW">
@@ -978,6 +1025,9 @@
 
                                 <h2>2. 附件清單</h2>
                                 <ul>${attachHtml}</ul>
+
+                                <h2>3. 年度計畫 (Annual Plans)</h2>
+                                ${planHtml}
                             </div>
                             <div class="page-footer"></div>
                         </div>
