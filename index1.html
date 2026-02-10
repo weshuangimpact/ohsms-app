@@ -1065,8 +1065,24 @@ async function submitRecord() {
         if (!finalCaseNumber) {
             const now = new Date();
             const dateStr = now.getFullYear().toString() + (now.getMonth() + 1).toString().padStart(2, '0') + now.getDate().toString().padStart(2, '0');
-            const randomSeq = String(Date.now()).slice(-3);
-            finalCaseNumber = `SR-${dateStr}-${randomSeq}`;
+            
+            // 亂數生成設定
+            const alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+            
+            // 1. 兩個英文亂數 (原本的 SR 位置)
+            let randomPrefix = "";
+            for (let i = 0; i < 2; i++) randomPrefix += alphabet.charAt(Math.floor(Math.random() * alphabet.length));
+            
+            // 2. 三個數字亂數 (原本的 123 位置)
+            let randomNum = "";
+            for (let i = 0; i < 3; i++) randomNum += Math.floor(Math.random() * 10).toString();
+            
+            // 3. 一個英文亂數 (最後加一碼)
+            const randomSuffix = alphabet.charAt(Math.floor(Math.random() * alphabet.length));
+
+            // 格式：兩個英文亂數組合-當日時間戳-三個數字亂數+一個英文亂數
+            // 例如：AB-20260210-123C
+            finalCaseNumber = `${randomPrefix}-${dateStr}-${randomNum}${randomSuffix}`;
             currentCaseNumber = finalCaseNumber;
         }
 
@@ -1075,10 +1091,10 @@ async function submitRecord() {
         let finalImprovementRecords = [...currentImprovementRecords];
         
         if (improvementNote) {
-const nowStr = new Date().toLocaleString('zh-TW', {
-    year: 'numeric', month: '2-digit', day: '2-digit',
-    hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false
-});
+            const nowStr = new Date().toLocaleString('zh-TW', {
+                year: 'numeric', month: '2-digit', day: '2-digit',
+                hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false
+            });
             
             finalImprovementRecords.push({
                 date: nowStr,
